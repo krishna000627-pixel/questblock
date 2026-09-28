@@ -54,7 +54,6 @@ class BlockerAccessibilityService : AccessibilityService() {
         expiryJob?.cancel()
     }
 
-    /** Blocks the app if locked; if unlocked, schedules a re-check for when the timer ends. */
     private suspend fun evaluate(pkg: String) {
         val app = repo.getBlockedApp(pkg) ?: return
         val now = System.currentTimeMillis()
@@ -84,9 +83,11 @@ class BlockerAccessibilityService : AccessibilityService() {
         Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
             ?.substringBefore('/')
 
-    /** Strict mode: kick the user out of Settings/uninstall screens that show this app. */
+    /** Strict mode: auto-paused if strictPausedUntil is in the future (setup flow). */
     private fun guardSettings() {
         if (!prefs.strictMode) return
+        // Auto-pause: if within a pause window, don't guard
+        if (System.currentTimeMillis() < prefs.strictPausedUntil) return
         val now = SystemClock.uptimeMillis()
         if (now - lastGuard < 300) return
         lastGuard = now

@@ -31,8 +31,8 @@ android {
         applicationId = "com.krishna.questblock"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "2.0.0"
     }
 
     signingConfigs {
@@ -48,7 +48,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             signingConfig = if (hasReleaseKey) signingConfigs.getByName("release")
             else signingConfigs.getByName("debug")
         }
@@ -82,5 +82,6 @@ dependencies {
 
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
+    implementation("androidx.compose.material:material-icons-extended")
     ksp("androidx.room:room-compiler:2.6.1")
 }

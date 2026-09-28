@@ -12,4 +12,13 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     var strictMode: Boolean
         get() = sp.getBoolean("strict", false)
         set(value) = sp.edit().putBoolean("strict", value).apply()
+
+    // Millisecond timestamp until which strict mode is paused (0 = not paused)
+    var strictPausedUntil: Long
+        get() = sp.getLong("strict_paused_until", 0L)
+        set(value) = sp.edit().putLong("strict_paused_until", value).apply()
+
+    var onboardingDone: Boolean
+        get() = sp.getBoolean("onboarding_done", false)
+        set(value) = sp.edit().putBoolean("onboarding_done", value).apply()
 }

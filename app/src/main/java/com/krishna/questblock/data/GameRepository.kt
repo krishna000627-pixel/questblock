@@ -23,11 +23,13 @@ class GameRepository @Inject constructor(
     private val taskDao: TaskDao,
     private val appDao: BlockedAppDao,
     private val playerDao: PlayerDao,
+    private val unlockEventDao: UnlockEventDao,
 ) {
     val tasks: Flow<List<TaskEntity>> = taskDao.observeAll()
     val blockedApps: Flow<List<BlockedApp>> = appDao.observeAll()
+    val recentUnlocks: Flow<List<UnlockEvent>> = unlockEventDao.observeRecent()
+    val totalCoinsSpent: Flow<Int?> = unlockEventDao.observeTotalSpent()
 
-    /** Player for display; a broken streak shows as 0. */
     val player: Flow<Player> = playerDao.observe().map { stored ->
         val p = stored ?: Player()
         if (p.lastCompletionDay < dayNumber(System.currentTimeMillis()) - 1) p.copy(streak = 0) else p
@@ -49,9 +51,9 @@ class GameRepository @Inject constructor(
                 val p = playerDao.get() ?: Player()
                 val today = dayNumber(now)
                 val newStreak = when (p.lastCompletionDay) {
-                    today -> p.streak
-                    today - 1 -> p.streak + 1
-                    else -> 1
+                    today      -> p.streak
+                    today - 1  -> p.streak + 1
+                    else       -> 1
                 }
                 val base = baseReward(fresh.difficulty)
                 val multiplier = 1.0 + (newStreak - 1).coerceIn(0, 5) * 0.1
@@ -78,7 +80,6 @@ class GameRepository @Inject constructor(
         appDao.upsert(app.copy(cost = cost, unlockMinutes = minutes))
     }
 
-    /** Spends coins and starts the unlock timer. Returns false if not enough coins. */
     suspend fun unlock(pkg: String): Boolean = db.withTransaction {
         val app = appDao.get(pkg)
         val p = playerDao.get() ?: Player()
@@ -87,6 +88,7 @@ class GameRepository @Inject constructor(
         } else {
             playerDao.upsert(p.copy(coins = p.coins - app.cost))
             appDao.upsert(app.copy(unlockedUntil = System.currentTimeMillis() + app.unlockMinutes * 60_000L))
+            unlockEventDao.insert(UnlockEvent(packageName = app.packageName, label = app.label, coinsSpent = app.cost))
             true
         }
     }

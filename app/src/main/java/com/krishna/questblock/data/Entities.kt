@@ -25,10 +25,20 @@ data class BlockedApp(
 @Entity(tableName = "player")
 data class Player(
     @PrimaryKey val id: Int = 1,
-    val coins: Int = 20, // starter coins so you can test the unlock flow
+    val coins: Int = 20,
     val xp: Int = 0,
     val streak: Int = 0,
     val lastCompletionDay: Long = 0L,
+)
+
+// Unlock event log for Stats screen
+@Entity(tableName = "unlock_events")
+data class UnlockEvent(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val packageName: String,
+    val label: String,
+    val coinsSpent: Int,
+    val timestamp: Long = System.currentTimeMillis(),
 )
 
 fun Player.level(): Int = xp / 100 + 1

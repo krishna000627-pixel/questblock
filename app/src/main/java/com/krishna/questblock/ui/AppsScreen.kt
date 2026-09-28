@@ -2,25 +2,35 @@ package com.krishna.questblock.ui
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -91,43 +103,77 @@ fun AppsScreen(vm: AppsViewModel = hiltViewModel()) {
     val query by vm.query.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<BlockedApp?>(null) }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        Spacer(Modifier.height(16.dp))
-        Text("Distraction apps", style = MaterialTheme.typography.headlineSmall)
-        Text(
-            "Locked apps need coins to open.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        OutlinedTextField(
-            value = query,
-            onValueChange = vm::setQuery,
-            label = { Text("Search apps") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        )
-        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            items(rows, key = { it.app.pkg }) { row ->
-                Row(
-                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(row.app.label)
-                        row.rule?.let {
-                            Text(
-                                "${it.cost} 🪙 for ${it.unlockMinutes} min",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.secondary,
-                            )
-                        }
+    val now = System.currentTimeMillis()
+    val lockedRows = rows.filter { it.rule != null }
+    val unlockedRows = rows.filter { it.rule == null }
+
+    Column(Modifier.fillMaxSize()) {
+        // Header
+        Column(Modifier.padding(horizontal = 16.dp).padding(top = 16.dp, bottom = 8.dp)) {
+            Text(
+                "Vault",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = ColorText,
+            )
+            Text(
+                "${lockedRows.size} app${if (lockedRows.size != 1) "s" else ""} locked",
+                style = MaterialTheme.typography.bodySmall,
+                color = ColorMuted,
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = query,
+                onValueChange = vm::setQuery,
+                placeholder = { Text("Search apps", color = ColorMuted) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = ColorMuted) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = ColorPrimary,
+                    unfocusedBorderColor = ColorSurfaceHigh,
+                    cursorColor = ColorPrimary,
+                    focusedTextColor = ColorText,
+                    unfocusedTextColor = ColorText,
+                    focusedContainerColor = ColorSurface,
+                    unfocusedContainerColor = ColorSurface,
+                ),
+            )
+        }
+
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (lockedRows.isNotEmpty()) {
+                item { Text("Locked", style = MaterialTheme.typography.labelLarge, color = ColorMuted) }
+                items(lockedRows, key = { it.app.pkg }) { row ->
+                    AppCard(row, now, onEditRule = { editing = row.rule }, onToggle = { vm.setBlocked(row.app, it) })
+                }
+                item { Spacer(Modifier.height(8.dp)) }
+            }
+
+            if (unlockedRows.isNotEmpty()) {
+                item { Text("All apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted) }
+                items(unlockedRows, key = { it.app.pkg }) { row ->
+                    AppCard(row, now, onEditRule = {}, onToggle = { vm.setBlocked(row.app, it) })
+                }
+            }
+
+            if (rows.isEmpty() && query.isBlank()) {
+                item {
+                    Spacer(Modifier.height(40.dp))
+                    Column(
+                        Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text("🔒", style = MaterialTheme.typography.displayMedium)
+                        Text("No apps found", style = MaterialTheme.typography.titleMedium, color = ColorText)
+                        Text("Toggle an app to lock it.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
                     }
-                    row.rule?.let { rule ->
-                        IconButton(onClick = { editing = rule }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit rule")
-                        }
-                    }
-                    Switch(checked = row.rule != null, onCheckedChange = { vm.setBlocked(row.app, it) })
                 }
             }
         }
@@ -146,27 +192,111 @@ fun AppsScreen(vm: AppsViewModel = hiltViewModel()) {
 }
 
 @Composable
+private fun AppCard(
+    row: AppRow,
+    now: Long,
+    onEditRule: () -> Unit,
+    onToggle: (Boolean) -> Unit,
+) {
+    val isLocked = row.rule != null
+    val isActivelyUnlocked = (row.rule?.unlockedUntil ?: 0L) > now
+    val remaining = if (isActivelyUnlocked) ((row.rule!!.unlockedUntil - now) / 1000) else 0L
+
+    Card(
+        onClick = { if (isLocked) onEditRule() },
+        colors = CardDefaults.cardColors(
+            containerColor = if (isLocked) ColorSurface else ColorSurface.copy(alpha = 0.6f)
+        ),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Row(
+            Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // App icon placeholder (letter avatar)
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(if (isLocked) ColorPrimary.copy(alpha = 0.15f) else ColorSurfaceHigh),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isLocked) {
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = ColorPrimary, modifier = Modifier.size(18.dp))
+                } else {
+                    Text(
+                        row.app.label.firstOrNull()?.uppercase() ?: "?",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = ColorMuted,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+
+            Column(Modifier.weight(1f)) {
+                Text(row.app.label, style = MaterialTheme.typography.bodyMedium, color = ColorText, fontWeight = if (isLocked) FontWeight.Medium else FontWeight.Normal)
+                if (row.rule != null) {
+                    if (isActivelyUnlocked) {
+                        val m = remaining / 60; val s = remaining % 60
+                        Text("Unlocked · %02d:%02d left".format(m, s), style = MaterialTheme.typography.labelSmall, color = ColorCoin)
+                    } else {
+                        Text("${row.rule.cost} 🪙 · ${row.rule.unlockMinutes} min", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+                    }
+                }
+            }
+
+            Switch(
+                checked = isLocked,
+                onCheckedChange = onToggle,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = ColorOnPrimary,
+                    checkedTrackColor = ColorPrimary,
+                    uncheckedThumbColor = ColorMuted,
+                    uncheckedTrackColor = ColorSurfaceHigh,
+                ),
+            )
+        }
+    }
+}
+
+@Composable
 private fun RuleDialog(rule: BlockedApp, onDismiss: () -> Unit, onSave: (Int, Int) -> Unit) {
     var cost by remember { mutableStateOf(rule.cost.toString()) }
     var minutes by remember { mutableStateOf(rule.unlockMinutes.toString()) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(rule.label) },
+        containerColor = ColorSurface,
+        title = { Text(rule.label, color = ColorText) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     value = cost,
                     onValueChange = { cost = it.filter(Char::isDigit) },
-                    label = { Text("Coins per unlock") },
+                    label = { Text("Coins per unlock", color = ColorMuted) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = ColorPrimary,
+                        unfocusedBorderColor = ColorSurfaceHigh,
+                        focusedTextColor = ColorText,
+                        unfocusedTextColor = ColorText,
+                        cursorColor = ColorPrimary,
+                    ),
                 )
                 OutlinedTextField(
                     value = minutes,
                     onValueChange = { minutes = it.filter(Char::isDigit) },
-                    label = { Text("Minutes per unlock") },
+                    label = { Text("Minutes per unlock", color = ColorMuted) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = ColorPrimary,
+                        unfocusedBorderColor = ColorSurfaceHigh,
+                        focusedTextColor = ColorText,
+                        unfocusedTextColor = ColorText,
+                        cursorColor = ColorPrimary,
+                    ),
                 )
             }
         },
@@ -176,8 +306,8 @@ private fun RuleDialog(rule: BlockedApp, onDismiss: () -> Unit, onSave: (Int, In
                     cost.toIntOrNull()?.coerceAtLeast(1) ?: rule.cost,
                     minutes.toIntOrNull()?.coerceIn(1, 240) ?: rule.unlockMinutes,
                 )
-            }) { Text("Save") }
+            }) { Text("Save", color = ColorPrimary) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = ColorMuted) } },
     )
 }

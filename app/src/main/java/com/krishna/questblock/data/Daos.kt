@@ -52,3 +52,15 @@ interface PlayerDao {
     @Upsert
     suspend fun upsert(player: Player)
 }
+
+@Dao
+interface UnlockEventDao {
+    @Insert
+    suspend fun insert(event: UnlockEvent)
+
+    @Query("SELECT * FROM unlock_events ORDER BY timestamp DESC LIMIT 100")
+    fun observeRecent(): Flow<List<UnlockEvent>>
+
+    @Query("SELECT SUM(coinsSpent) FROM unlock_events")
+    fun observeTotalSpent(): Flow<Int?>
+}
