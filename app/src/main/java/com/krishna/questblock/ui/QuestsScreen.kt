@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.krishna.questblock.ui
 
 import androidx.compose.foundation.background
@@ -23,6 +24,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -46,7 +48,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -122,11 +123,7 @@ fun QuestsScreen(vm: QuestsViewModel = hiltViewModel()) {
                     Spacer(Modifier.height(4.dp))
                 }
                 items(pending, key = { it.id }) { task ->
-                    QuestCard(
-                        task = task,
-                        onComplete = { vm.complete(task) },
-                        onDelete = { vm.delete(task) },
-                    )
+                    QuestCard(task = task, onComplete = { vm.complete(task) }, onDelete = { vm.delete(task) })
                 }
             }
 
@@ -137,11 +134,7 @@ fun QuestsScreen(vm: QuestsViewModel = hiltViewModel()) {
                     Spacer(Modifier.height(4.dp))
                 }
                 items(done, key = { it.id }) { task ->
-                    QuestCard(
-                        task = task,
-                        onComplete = {},
-                        onDelete = { vm.delete(task) },
-                    )
+                    QuestCard(task = task, onComplete = {}, onDelete = { vm.delete(task) })
                 }
             }
 
@@ -155,7 +148,7 @@ fun QuestsScreen(vm: QuestsViewModel = hiltViewModel()) {
                     ) {
                         Text("🗺️", style = MaterialTheme.typography.displayMedium)
                         Text("No quests yet", style = MaterialTheme.typography.titleMedium, color = ColorText)
-                        Text("Tap + to add your first quest and start earning coins.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                        Text("Tap + to add your first quest.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
                     }
                 }
             }
@@ -193,29 +186,18 @@ private fun QuestCard(task: TaskEntity, onComplete: () -> Unit, onDelete: () -> 
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            // Tap dot to complete
             Box(
                 modifier = Modifier
                     .size(22.dp)
                     .background(
                         if (task.done) color.copy(alpha = 0.3f) else ColorSurfaceHigh,
                         CircleShape,
-                    )
-                    .then(
-                        if (!task.done) Modifier.padding(2.dp) else Modifier
                     ),
                 contentAlignment = Alignment.Center,
             ) {
                 if (!task.done) {
-                    androidx.compose.material3.IconButton(
-                        onClick = onComplete,
-                        modifier = Modifier.size(22.dp),
-                    ) {
-                        Box(
-                            Modifier
-                                .size(14.dp)
-                                .background(color.copy(alpha = 0.3f), CircleShape)
-                        )
+                    IconButton(onClick = onComplete, modifier = Modifier.size(22.dp)) {
+                        Box(Modifier.size(12.dp).background(color.copy(alpha = 0.4f), CircleShape))
                     }
                 } else {
                     Text("✓", color = color, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
@@ -241,11 +223,7 @@ private fun QuestCard(task: TaskEntity, onComplete: () -> Unit, onDelete: () -> 
                             color = color,
                         )
                     }
-                    Text(
-                        "+${baseReward(task.difficulty)} 🪙",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = ColorCoin,
-                    )
+                    Text("+${baseReward(task.difficulty)} 🪙", style = MaterialTheme.typography.labelSmall, color = ColorCoin)
                 }
             }
 
@@ -262,9 +240,7 @@ private fun AddQuestSheet(onAdd: (String, Int) -> Unit) {
     var difficulty by rememberSaveable { mutableIntStateOf(1) }
 
     Column(
-        Modifier
-            .padding(horizontal = 20.dp)
-            .padding(bottom = 32.dp),
+        Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text("New Quest", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ColorText)
@@ -302,14 +278,9 @@ private fun AddQuestSheet(onAdd: (String, Int) -> Unit) {
         }
 
         Button(
-            onClick = {
-                if (title.isNotBlank()) onAdd(title.trim(), difficulty)
-            },
+            onClick = { if (title.isNotBlank()) onAdd(title.trim(), difficulty) },
             modifier = Modifier.fillMaxWidth().height(50.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = ColorPrimary,
-                contentColor = ColorOnPrimary,
-            ),
+            colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
             shape = RoundedCornerShape(12.dp),
         ) {
             Text("Add Quest", fontWeight = FontWeight.Bold)
