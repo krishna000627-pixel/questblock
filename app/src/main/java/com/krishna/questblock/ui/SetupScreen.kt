@@ -45,7 +45,7 @@ class SetupViewModel @Inject constructor(private val prefs: Prefs) : ViewModel()
     var strict by mutableStateOf(prefs.strictMode)
         private set
 
-    fun setStrict(on: Boolean) {
+    fun updateStrict(on: Boolean) {
         prefs.strictMode = on
         strict = on
     }
@@ -144,7 +144,7 @@ fun SetupScreen(vm: SetupViewModel = hiltViewModel()) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Switch(checked = vm.strict, onCheckedChange = vm::setStrict)
+                Switch(checked = vm.strict, onCheckedChange = vm::updateStrict)
             }
         }
     }
