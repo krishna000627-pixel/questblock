@@ -95,6 +95,8 @@ class AppsViewModel @Inject constructor(
         viewModelScope.launch { repo.setBlocked(app.pkg, app.label, on) }
     fun updateRule(rule: BlockedApp, cost: Int, minutes: Int) =
         viewModelScope.launch { repo.updateRule(rule, cost, minutes) }
+    fun setStudyApp(app: InstalledApp, isStudy: Boolean) =
+        viewModelScope.launch { repo.setStudyApp(app.pkg, app.label, isStudy) }
 }
 
 @Composable
@@ -147,9 +149,20 @@ fun AppsScreen(vm: AppsViewModel = hiltViewModel()) {
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            if (lockedRows.isNotEmpty()) {
-                item { Text("Locked", style = MaterialTheme.typography.labelLarge, color = ColorMuted) }
-                items(lockedRows, key = { it.app.pkg }) { row ->
+            val studyRows  = rows.filter { it.rule?.isStudyApp == true }
+            val blockedRows2 = rows.filter { it.rule != null && it.rule.isStudyApp == false }
+
+            if (studyRows.isNotEmpty()) {
+                item { Text("📚 Study apps (earn 1🪙/5min)", style = MaterialTheme.typography.labelLarge, color = ColorPrimary) }
+                items(studyRows, key = { "s_${it.app.pkg}" }) { row ->
+                    AppCard(row, now, onEditRule = {}, onToggle = { vm.setStudyApp(row.app, it) })
+                }
+                item { Spacer(Modifier.height(8.dp)) }
+            }
+
+            if (blockedRows2.isNotEmpty()) {
+                item { Text("🔒 Blocked apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted) }
+                items(blockedRows2, key = { it.app.pkg }) { row ->
                     AppCard(row, now, onEditRule = { editing = row.rule }, onToggle = { vm.setBlocked(row.app, it) })
                 }
                 item { Spacer(Modifier.height(8.dp)) }
@@ -157,7 +170,8 @@ fun AppsScreen(vm: AppsViewModel = hiltViewModel()) {
 
             if (unlockedRows.isNotEmpty()) {
                 item { Text("All apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted) }
-                items(unlockedRows, key = { it.app.pkg }) { row ->
+                items(unlockedRows, key = { "u_${it.app.pkg}" }) { row ->
+                    // Long-press to mark as study; single toggle to block
                     AppCard(row, now, onEditRule = {}, onToggle = { vm.setBlocked(row.app, it) })
                 }
             }
@@ -237,7 +251,9 @@ private fun AppCard(
             Column(Modifier.weight(1f)) {
                 Text(row.app.label, style = MaterialTheme.typography.bodyMedium, color = ColorText, fontWeight = if (isLocked) FontWeight.Medium else FontWeight.Normal)
                 if (row.rule != null) {
-                    if (isActivelyUnlocked) {
+                    if (row.rule.isStudyApp) {
+                        Text("📚 Study app · earns 1🪙/5min", style = MaterialTheme.typography.labelSmall, color = ColorPrimary)
+                    } else if (isActivelyUnlocked) {
                         val m = remaining / 60; val s = remaining % 60
                         Text("Unlocked · %02d:%02d left".format(m, s), style = MaterialTheme.typography.labelSmall, color = ColorCoin)
                     } else {
@@ -311,3 +327,4 @@ private fun RuleDialog(rule: BlockedApp, onDismiss: () -> Unit, onSave: (Int, In
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = ColorMuted) } },
     )
 }
+

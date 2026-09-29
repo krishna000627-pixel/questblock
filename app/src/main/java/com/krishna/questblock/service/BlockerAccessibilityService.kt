@@ -10,6 +10,7 @@ import android.widget.Toast
 import com.krishna.questblock.data.BlockedApp
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Prefs
+import com.krishna.questblock.data.StudySession
 import com.krishna.questblock.ui.BlockActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -29,8 +30,15 @@ class BlockerAccessibilityService : AccessibilityService() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var expiryJob: Job? = null
+    private var studyTimerJob: Job? = null
     private var currentPkg: String? = null
     private var lastGuard = 0L
+
+    // Study-session tracking
+    private var activeStudyPkg: String? = null
+    private var activeStudySessionId: Long = -1L
+    private var studyStartTime: Long = 0L
+    private var studyMinutesCredited: Int = 0
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         event ?: return
@@ -39,33 +47,90 @@ class BlockerAccessibilityService : AccessibilityService() {
         val isWindowChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
 
         if (pkg in GUARDED_PKGS) {
-            if (isWindowChange) markForeground(pkg)
+            if (isWindowChange) {
+                stopStudyTimer()
+                markForeground(pkg)
+            }
             guardSettings()
             return
         }
         if (!isWindowChange || pkg in IGNORED_PKGS || pkg == imePackage()) return
 
         markForeground(pkg)
-        scope.launch { evaluate(pkg) }
+        scope.launch { evaluateApp(pkg) }
     }
 
     private fun markForeground(pkg: String) {
+        if (currentPkg != pkg) {
+            // App switched — if leaving a study app, stop timer
+            if (activeStudyPkg != null && pkg != activeStudyPkg) {
+                stopStudyTimer()
+            }
+        }
         currentPkg = pkg
         expiryJob?.cancel()
     }
 
-    private suspend fun evaluate(pkg: String) {
-        val app = repo.getBlockedApp(pkg) ?: return
-        val now = System.currentTimeMillis()
-        if (app.unlockedUntil > now) {
-            expiryJob?.cancel()
-            expiryJob = scope.launch {
-                delay(app.unlockedUntil - now + 250)
-                if (currentPkg == pkg) evaluate(pkg)
+    private suspend fun evaluateApp(pkg: String) {
+        // Check if it's a blocked app
+        val app = repo.getBlockedApp(pkg)
+        if (app != null && !app.isStudyApp) {
+            val now = System.currentTimeMillis()
+            if (app.unlockedUntil > now) {
+                expiryJob?.cancel()
+                expiryJob = scope.launch {
+                    delay(app.unlockedUntil - now + 250)
+                    if (currentPkg == pkg) evaluateApp(pkg)
+                }
+            } else {
+                showBlock(app)
             }
-        } else {
-            showBlock(app)
+            return
         }
+
+        // Check if it's a study app → start earning timer
+        val studyApp = repo.blockedApps.let { flow ->
+            // Fast path: check DB directly
+            repo.getBlockedApp(pkg)
+        }
+        if (studyApp != null && studyApp.isStudyApp) {
+            startStudyTimer(pkg, studyApp.label)
+        } else {
+            stopStudyTimer()
+        }
+    }
+
+    // ── Study timer (1 coin per 5 min) ───────────────────────────────────
+    private fun startStudyTimer(pkg: String, label: String) {
+        if (activeStudyPkg == pkg && studyTimerJob?.isActive == true) return // already running
+        stopStudyTimer()
+        activeStudyPkg = pkg
+        studyStartTime = System.currentTimeMillis()
+        studyMinutesCredited = 0
+
+        scope.launch {
+            val sessionId = repo.startStudySession(pkg, label)
+            activeStudySessionId = sessionId
+            // Tick every minute; award 1 coin every 5 min
+            var minutesTicked = 0
+            while (true) {
+                delay(60_000L) // 1 minute
+                if (currentPkg != pkg) break
+                minutesTicked++
+                if (minutesTicked % 5 == 0) {
+                    repo.creditStudyCoins(sessionId, 5)
+                    studyMinutesCredited += 5
+                }
+            }
+        }.also { studyTimerJob = it }
+    }
+
+    private fun stopStudyTimer() {
+        studyTimerJob?.cancel()
+        studyTimerJob = null
+        activeStudyPkg = null
+        activeStudySessionId = -1L
+        studyMinutesCredited = 0
     }
 
     private fun showBlock(app: BlockedApp) {
@@ -83,15 +148,12 @@ class BlockerAccessibilityService : AccessibilityService() {
         Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
             ?.substringBefore('/')
 
-    /** Strict mode: auto-paused if strictPausedUntil is in the future (setup flow). */
     private fun guardSettings() {
         if (!prefs.strictMode) return
-        // Auto-pause: if within a pause window, don't guard
         if (System.currentTimeMillis() < prefs.strictPausedUntil) return
         val now = SystemClock.uptimeMillis()
         if (now - lastGuard < 300) return
         lastGuard = now
-
         val root = rootInActiveWindow ?: return
         val text = StringBuilder()
         collectText(root, text, 0)
@@ -111,6 +173,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     override fun onInterrupt() = Unit
 
     override fun onDestroy() {
+        stopStudyTimer()
         scope.cancel()
         super.onDestroy()
     }

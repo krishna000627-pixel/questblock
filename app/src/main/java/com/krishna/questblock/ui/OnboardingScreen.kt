@@ -10,62 +10,82 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.viewModelScope
+import com.krishna.questblock.data.GameRepository
+import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.util.Perms
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-private data class OnboardStep(
-    val emoji: String,
-    val title: String,
-    val body: String,
-    val actionLabel: String?,
-    val isDone: (Context) -> Boolean,
-    val onAction: (Context) -> Unit,
-)
+@HiltViewModel
+class OnboardingViewModel @Inject constructor(
+    private val repo: GameRepository,
+    val prefs: Prefs,
+) : ViewModel() {
+    fun saveProfile(name: String, goal: String, dob: String) = viewModelScope.launch {
+        repo.saveProfile(name, goal, dob)
+    }
+    fun finishOnboarding() { prefs.onboardingDone = true }
+}
 
-private fun onboardSteps(pkgUri: Uri) = listOf(
-    OnboardStep(
+// ── Step model ────────────────────────────────────────────────────────────────
+private sealed class OnboardStep {
+    data class InfoStep(
+        val emoji: String,
+        val title: String,
+        val body: String,
+    ) : OnboardStep()
+
+    data class ProfileStep(
+        val emoji: String,
+        val title: String,
+        val body: String,
+    ) : OnboardStep()
+
+    data class PermStep(
+        val emoji: String,
+        val title: String,
+        val body: String,
+        val actionLabel: String?,
+        val isDone: (Context) -> Boolean,
+        val onAction: (Context) -> Unit,
+    ) : OnboardStep()
+}
+
+private fun buildSteps(pkgUri: Uri): List<OnboardStep> = listOf(
+    OnboardStep.InfoStep(
         emoji = "⚔️",
         title = "Welcome to QuestBlock",
-        body = "Turn your distractions into a game. Lock apps, complete quests, earn coins. Let's get you set up.",
-        actionLabel = null,
-        isDone = { false },
-        onAction = {},
+        body = "Turn your distractions into a game.\nLock apps, complete quests, earn coins!\nLet's set you up as a hero.",
     ),
-    OnboardStep(
+    OnboardStep.ProfileStep(
+        emoji = "🧙",
+        title = "Create your hero",
+        body = "Tell us a bit about yourself to personalise your quest journey.",
+    ),
+    OnboardStep.PermStep(
         emoji = "♿",
         title = "Enable accessibility",
         body = "QuestBlock watches which app is open to enforce locks. On Android 13+, open App info → ⋮ → Allow restricted settings first.",
@@ -73,23 +93,23 @@ private fun onboardSteps(pkgUri: Uri) = listOf(
         isDone = { Perms.accessibilityEnabled(it) },
         onAction = { it.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
     ),
-    OnboardStep(
+    OnboardStep.PermStep(
         emoji = "🪟",
         title = "Allow overlay",
-        body = "This lets the lock screen appear on top of blocked apps reliably.",
+        body = "Lets the lock screen appear reliably on top of blocked apps.",
         actionLabel = "Grant overlay permission",
         isDone = { Perms.overlayGranted(it) },
         onAction = { it.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, pkgUri)) },
     ),
-    OnboardStep(
+    OnboardStep.PermStep(
         emoji = "🔋",
         title = "Battery exemption",
-        body = "Stops Android from killing the blocker service in the background.",
+        body = "Stops Android from killing the blocker in the background.",
         actionLabel = "Exempt from battery saver",
         isDone = { Perms.batteryExempt(it) },
         onAction = { it.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkgUri)) },
     ),
-    OnboardStep(
+    OnboardStep.PermStep(
         emoji = "🛡️",
         title = "Device admin (optional)",
         body = "Makes QuestBlock harder to uninstall on a whim. You can skip this.",
@@ -106,24 +126,37 @@ private fun onboardSteps(pkgUri: Uri) = listOf(
 )
 
 @Composable
-fun OnboardingScreen(onDone: () -> Unit) {
+fun OnboardingScreen(
+    onDone: () -> Unit,
+    vm: OnboardingViewModel = hiltViewModel(),
+) {
     val ctx = LocalContext.current
     val pkgUri = Uri.parse("package:${ctx.packageName}")
-    val steps = remember { onboardSteps(pkgUri) }
+    val steps = remember { buildSteps(pkgUri) }
 
     var step by remember { mutableIntStateOf(0) }
     var tick by remember { mutableIntStateOf(0) }
 
+    // Profile fields (shared state lives here so Back doesn't wipe them)
+    var heroName by remember { mutableStateOf("") }
+    var heroGoal by remember { mutableStateOf("") }
+    var heroDob  by remember { mutableStateOf("") }
+
     val owner = LocalLifecycleOwner.current
     DisposableEffect(owner) {
-        val obs = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) tick++ }
+        val obs = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) tick++
+        }
         owner.lifecycle.addObserver(obs)
         onDispose { owner.lifecycle.removeObserver(obs) }
     }
 
     val current = steps[step]
-    val done = remember(tick, step) { current.isDone(ctx) }
     val isLast = step == steps.size - 1
+
+    val permDone = remember(tick, step) {
+        if (current is OnboardStep.PermStep) current.isDone(ctx) else false
+    }
 
     Column(
         Modifier
@@ -143,49 +176,30 @@ fun OnboardingScreen(onDone: () -> Unit) {
             }
         }
 
-        // Content
+        // Content area
         AnimatedContent(
             targetState = step,
-            transitionSpec = {
-                slideInHorizontally { it } togetherWith slideOutHorizontally { -it }
-            },
+            transitionSpec = { slideInHorizontally { it } togetherWith slideOutHorizontally { -it } },
             label = "onboard_step",
         ) { s ->
-            val st = steps[s]
-            Column(
-                Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Text(st.emoji, style = MaterialTheme.typography.displayLarge)
-                Text(
-                    st.title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = ColorText,
-                    textAlign = TextAlign.Center,
+            when (val st = steps[s]) {
+                is OnboardStep.InfoStep -> InfoContent(st)
+                is OnboardStep.ProfileStep -> ProfileContent(
+                    heroName = heroName,
+                    heroGoal = heroGoal,
+                    heroDob  = heroDob,
+                    onNameChange = { heroName = it },
+                    onGoalChange = { heroGoal = it },
+                    onDobChange  = { heroDob  = it },
                 )
-                Text(
-                    st.body,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ColorMuted,
-                    textAlign = TextAlign.Center,
-                )
-                if (done) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = ColorPrimary)
-                        Text("Done!", style = MaterialTheme.typography.labelLarge, color = ColorPrimary)
-                    }
-                }
+                is OnboardStep.PermStep -> PermContent(st, permDone)
             }
         }
 
-        // Buttons
+        // Bottom buttons
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (current.actionLabel != null && !done) {
+            // Action button for perm steps
+            if (current is OnboardStep.PermStep && current.actionLabel != null && !permDone) {
                 Button(
                     onClick = { runCatching { current.onAction(ctx) } },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -205,21 +219,36 @@ fun OnboardingScreen(onDone: () -> Unit) {
                     Spacer(Modifier.size(1.dp))
                 }
 
+                val canProceed = when (current) {
+                    is OnboardStep.InfoStep    -> true
+                    is OnboardStep.ProfileStep -> heroName.isNotBlank()
+                    is OnboardStep.PermStep    -> permDone || current.actionLabel == null
+                }
+
                 Button(
                     onClick = {
-                        if (isLast) onDone() else step++
+                        if (isLast) {
+                            vm.saveProfile(heroName, heroGoal, heroDob)
+                            vm.finishOnboarding()
+                            onDone()
+                        } else {
+                            if (current is OnboardStep.ProfileStep) {
+                                vm.saveProfile(heroName, heroGoal, heroDob)
+                            }
+                            step++
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (done || current.actionLabel == null || isLast) ColorPrimary else ColorSurfaceHigh,
-                        contentColor = if (done || current.actionLabel == null || isLast) ColorOnPrimary else ColorMuted,
+                        containerColor = if (canProceed || isLast) ColorPrimary else ColorSurfaceHigh,
+                        contentColor   = if (canProceed || isLast) ColorOnPrimary else ColorMuted,
                     ),
                     shape = RoundedCornerShape(12.dp),
                 ) {
                     Text(
                         when {
-                            isLast -> "Let's go!"
-                            done || current.actionLabel == null -> "Next"
-                            else -> "Skip"
+                            isLast                                                     -> "Let's go!"
+                            current is OnboardStep.PermStep && !permDone && current.actionLabel != null -> "Skip"
+                            else                                                       -> "Next"
                         },
                         fontWeight = FontWeight.Bold,
                     )
@@ -228,3 +257,99 @@ fun OnboardingScreen(onDone: () -> Unit) {
         }
     }
 }
+
+@Composable
+private fun InfoContent(step: OnboardStep.InfoStep) {
+    Column(
+        Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(step.emoji, style = MaterialTheme.typography.displayLarge)
+        Text(step.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
+            color = ColorText, textAlign = TextAlign.Center)
+        Text(step.body, style = MaterialTheme.typography.bodyMedium, color = ColorMuted, textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+private fun ProfileContent(
+    heroName: String,
+    heroGoal: String,
+    heroDob: String,
+    onNameChange: (String) -> Unit,
+    onGoalChange: (String) -> Unit,
+    onDobChange: (String) -> Unit,
+) {
+    Column(
+        Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("🧙", style = MaterialTheme.typography.displayLarge)
+        Text("Create your hero", style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold, color = ColorText, textAlign = TextAlign.Center)
+
+        OutlinedTextField(
+            value = heroName,
+            onValueChange = onNameChange,
+            label = { Text("Your name *", color = ColorMuted) },
+            placeholder = { Text("e.g. Krishna", color = ColorMuted) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            colors = onboardFieldColors(),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+        )
+        OutlinedTextField(
+            value = heroGoal,
+            onValueChange = onGoalChange,
+            label = { Text("Your main goal", color = ColorMuted) },
+            placeholder = { Text("e.g. Study 4 hours daily", color = ColorMuted) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            colors = onboardFieldColors(),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+        )
+        OutlinedTextField(
+            value = heroDob,
+            onValueChange = onDobChange,
+            label = { Text("Date of birth", color = ColorMuted) },
+            placeholder = { Text("DD/MM/YYYY", color = ColorMuted) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            colors = onboardFieldColors(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        )
+        Text("* Required to continue", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+    }
+}
+
+@Composable
+private fun PermContent(step: OnboardStep.PermStep, done: Boolean) {
+    Column(
+        Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(step.emoji, style = MaterialTheme.typography.displayLarge)
+        Text(step.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
+            color = ColorText, textAlign = TextAlign.Center)
+        Text(step.body, style = MaterialTheme.typography.bodyMedium, color = ColorMuted, textAlign = TextAlign.Center)
+        if (done) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = ColorPrimary)
+                Text("Done!", style = MaterialTheme.typography.labelLarge, color = ColorPrimary)
+            }
+        }
+    }
+}
+
+@Composable
+private fun onboardFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor   = ColorPrimary,
+    unfocusedBorderColor = ColorSurfaceHigh,
+    cursorColor          = ColorPrimary,
+    focusedTextColor     = ColorText,
+    unfocusedTextColor   = ColorText,
+    focusedLabelColor    = ColorPrimary,
+)

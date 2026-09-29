@@ -1,250 +1,211 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.krishna.questblock.ui
 
-import android.app.admin.DevicePolicyManager
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import com.krishna.questblock.data.GameRepository
+import com.krishna.questblock.data.Player
 import com.krishna.questblock.data.Prefs
-import com.krishna.questblock.util.Perms
+import com.krishna.questblock.data.level
+import com.krishna.questblock.data.xpIntoLevel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class ProfileViewModel @Inject constructor(private val prefs: Prefs) : ViewModel() {
-    var isStrict by mutableStateOf(prefs.strictMode)
-        private set
-
-    // Pause strict mode for 5 minutes so user can complete setup
-    fun pauseStrict() {
-        prefs.strictPausedUntil = System.currentTimeMillis() + 5 * 60 * 1000L
-    }
-
-    fun toggleStrict(on: Boolean) {
-        prefs.strictMode = on
-        if (!on) prefs.strictPausedUntil = 0L
-        isStrict = on
-    }
-}
-
-@Composable
-private fun OnResume(block: () -> Unit) {
-    val owner = LocalLifecycleOwner.current
-    DisposableEffect(owner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) block()
-        }
-        owner.lifecycle.addObserver(observer)
-        onDispose { owner.lifecycle.removeObserver(observer) }
-    }
-}
-
-private fun Context.safeStart(intent: Intent) {
-    runCatching { startActivity(intent) }
+class ProfileViewModel @Inject constructor(
+    private val repo: GameRepository,
+    val prefs: Prefs,
+) : ViewModel() {
+    val player = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
+    fun saveProfile(name: String, goal: String, dob: String) =
+        viewModelScope.launch { repo.saveProfile(name, goal, dob) }
 }
 
 @Composable
 fun ProfileScreen(vm: ProfileViewModel = hiltViewModel()) {
-    val ctx = LocalContext.current
-    var tick by remember { mutableIntStateOf(0) }
-    OnResume { tick++ }
+    val player by vm.player.collectAsStateWithLifecycle()
 
-    val accessibility = remember(tick) { Perms.accessibilityEnabled(ctx) }
-    val overlay = remember(tick) { Perms.overlayGranted(ctx) }
-    val battery = remember(tick) { Perms.batteryExempt(ctx) }
-    val admin = remember(tick) { Perms.adminActive(ctx) }
-    val allGood = accessibility && overlay
+    var editMode by remember { mutableStateOf(false) }
+    var name by remember(player.name) { mutableStateOf(player.name) }
+    var goal by remember(player.goal) { mutableStateOf(player.goal) }
+    var dob  by remember(player.dob)  { mutableStateOf(player.dob) }
 
-    val pkgUri = Uri.parse("package:${ctx.packageName}")
+    val snack = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text("Profile & Setup", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = ColorText)
-
-        // Health summary
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = if (allGood) ColorPrimary.copy(alpha = 0.1f) else ColorDanger.copy(alpha = 0.1f)
-            ),
-            shape = RoundedCornerShape(12.dp),
+    Scaffold(containerColor = ColorBg, snackbarHost = { SnackbarHost(snack) }) { pad ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(pad)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Row(
-                Modifier.padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Icon(
-                    if (allGood) Icons.Default.CheckCircle else Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = if (allGood) ColorPrimary else ColorDanger,
-                    modifier = Modifier.size(22.dp),
-                )
-                Text(
-                    if (allGood) "All permissions granted. Blocker is active." else "Some permissions are missing. Blocker may not work.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (allGood) ColorPrimary else ColorDanger,
-                )
-            }
-        }
-
-        // Step cards
-        PermCard(
-            title = "Accessibility service",
-            body = "Required. On Android 13+: open App info → ⋮ menu → Allow restricted settings, then return here.",
-            done = accessibility,
-            actionLabel = "Open settings",
-            onAction = {
-                vm.pauseStrict()
-                ctx.safeStart(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            },
-        )
-        PermCard(
-            title = "App info (restricted settings)",
-            body = "Use this first if the accessibility toggle is greyed out.",
-            done = null,
-            actionLabel = "Open app info",
-            onAction = {
-                vm.pauseStrict()
-                ctx.safeStart(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkgUri))
-            },
-        )
-        PermCard(
-            title = "Display over other apps",
-            body = "Makes the lock screen appear on top reliably.",
-            done = overlay,
-            actionLabel = "Grant overlay",
-            onAction = {
-                vm.pauseStrict()
-                ctx.safeStart(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, pkgUri))
-            },
-        )
-        PermCard(
-            title = "Battery optimization",
-            body = "Prevents the system from killing the blocker service. On Xiaomi/Samsung also enable Autostart.",
-            done = battery,
-            actionLabel = "Allow",
-            onAction = {
-                vm.pauseStrict()
-                ctx.safeStart(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkgUri))
-            },
-        )
-        PermCard(
-            title = "Device admin (optional)",
-            body = "Makes QuestBlock harder to uninstall on impulse.",
-            done = admin,
-            actionLabel = "Activate",
-            onAction = {
-                vm.pauseStrict()
-                ctx.safeStart(
-                    Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
-                        .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, Perms.adminComponent(ctx))
-                        .putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Makes QuestBlock harder to uninstall on a whim."),
-                )
-            },
-        )
-
-        // Strict mode
-        Card(
-            colors = CardDefaults.cardColors(containerColor = ColorSurface),
-            shape = RoundedCornerShape(12.dp),
-        ) {
-            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Strict mode", style = MaterialTheme.typography.titleMedium, color = ColorText, fontWeight = FontWeight.Medium)
-                    Text(
-                        "Kicks you home if you open Settings screens that show QuestBlock. Auto-paused 5 min when you tap any setup button above.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = ColorMuted,
-                    )
+            // ── Avatar section ─────────────────────────────────────────────
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                val frameColor = when (player.equippedFrame) {
+                    "frame_fire"   -> androidx.compose.ui.graphics.Color(0xFFFF6B35)
+                    "frame_ice"    -> androidx.compose.ui.graphics.Color(0xFF64B5F6)
+                    "frame_gold"   -> ColorCoin
+                    "frame_galaxy" -> androidx.compose.ui.graphics.Color(0xFF9C27B0)
+                    else           -> ColorPrimary
                 }
-                Spacer(Modifier.size(12.dp))
-                Switch(
-                    checked = vm.isStrict,
-                    onCheckedChange = vm::toggleStrict,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = ColorOnPrimary,
-                        checkedTrackColor = ColorPrimary,
-                        uncheckedThumbColor = ColorMuted,
-                        uncheckedTrackColor = ColorSurfaceHigh,
-                    ),
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(90.dp).background(
+                            Brush.radialGradient(listOf(frameColor.copy(0.5f), frameColor.copy(0.1f))), CircleShape))
+                        Box(
+                            Modifier.size(78.dp).clip(CircleShape).background(frameColor.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("${player.level()}", fontSize = 32.sp,
+                                fontWeight = FontWeight.Black, color = frameColor)
+                        }
+                        // Badge overlay
+                        if (player.equippedBadge.isNotBlank()) {
+                            val emoji = when (player.equippedBadge) {
+                                "badge_star"   -> "⭐"; "badge_crown" -> "👑"
+                                "badge_sword"  -> "⚔️"; "badge_dragon" -> "🐉"; else -> ""
+                            }
+                            if (emoji.isNotBlank()) {
+                                Box(Modifier.align(Alignment.BottomEnd).size(28.dp)
+                                    .background(ColorSurface, CircleShape), contentAlignment = Alignment.Center) {
+                                    Text(emoji, fontSize = 16.sp)
+                                }
+                            }
+                        }
+                    }
+                    Text(player.name.ifBlank { "Hero" }, style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold, color = ColorText)
+                    Text("Level ${player.level()} · ${player.xpIntoLevel()}/100 XP",
+                        style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                }
             }
+
+            // ── Stats row ───────────────────────────────────────────────────
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ProfileStatChip(Modifier.weight(1f), "🪙", "${player.coins}", "Coins")
+                ProfileStatChip(Modifier.weight(1f), "🔥", "${player.streak}d", "Streak")
+                ProfileStatChip(Modifier.weight(1f), "⚡", "${player.xp}", "Total XP")
+            }
+
+            // ── Info / Edit card ────────────────────────────────────────────
+            Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
+                shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text("Hero info", style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold, color = ColorText)
+                        TextButton(onClick = {
+                            if (editMode) {
+                                vm.saveProfile(name, goal, dob)
+                                scope.launch { snack.showSnackbar("Profile saved!") }
+                            }
+                            editMode = !editMode
+                        }) { Text(if (editMode) "Save" else "Edit", color = ColorPrimary, fontWeight = FontWeight.Bold) }
+                    }
+
+                    if (editMode) {
+                        ProfileField("Name", name, KeyboardCapitalization.Words) { name = it }
+                        ProfileField("Goal", goal, KeyboardCapitalization.Sentences) { goal = it }
+                        OutlinedTextField(
+                            value = dob, onValueChange = { dob = it },
+                            label = { Text("Date of birth", color = ColorMuted) },
+                            placeholder = { Text("DD/MM/YYYY", color = ColorMuted) },
+                            singleLine = true, modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            colors = profileFieldColors(),
+                        )
+                    } else {
+                        ProfileInfoRow("👤 Name",  player.name.ifBlank { "—" })
+                        ProfileInfoRow("🎯 Goal",  player.goal.ifBlank { "—" })
+                        ProfileInfoRow("🎂 DOB",   player.dob.ifBlank  { "—" })
+                    }
+                }
+            }
+
+            // ── Equipped cosmetics ──────────────────────────────────────────
+            if (player.equippedFrame.isNotBlank() || player.equippedBadge.isNotBlank() || player.equippedTheme != "default") {
+                Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
+                    shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Equipped", style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold, color = ColorText)
+                        if (player.equippedFrame.isNotBlank())
+                            ProfileInfoRow("🖼️ Frame", player.equippedFrame.replace("_", " ").replaceFirstChar { it.uppercase() })
+                        if (player.equippedBadge.isNotBlank())
+                            ProfileInfoRow("🏅 Badge", player.equippedBadge.replace("_", " ").replaceFirstChar { it.uppercase() })
+                        if (player.equippedTheme != "default")
+                            ProfileInfoRow("🎨 Theme", player.equippedTheme.replace("_", " ").replaceFirstChar { it.uppercase() })
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(40.dp))
         }
     }
 }
 
 @Composable
-private fun PermCard(title: String, body: String, done: Boolean?, actionLabel: String, onAction: () -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = ColorSurface),
-        shape = RoundedCornerShape(12.dp),
-    ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (done == true) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = ColorPrimary, modifier = Modifier.size(18.dp))
-                } else if (done == false) {
-                    Icon(Icons.Default.Warning, contentDescription = null, tint = ColorDanger, modifier = Modifier.size(18.dp))
-                }
-                Text(title, style = MaterialTheme.typography.titleSmall, color = ColorText, fontWeight = FontWeight.Medium)
-            }
-            Text(body, style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-            if (done != true) {
-                Button(
-                    onClick = onAction,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = ColorPrimary,
-                        contentColor = ColorOnPrimary,
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                ) { Text(actionLabel) }
-            }
+private fun ProfileStatChip(modifier: Modifier, emoji: String, value: String, label: String) {
+    Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = ColorSurface),
+        shape = RoundedCornerShape(12.dp)) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(emoji, fontSize = 20.sp)
+            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ColorText)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = ColorMuted)
         }
     }
 }
+
+@Composable
+private fun ProfileInfoRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = ColorText)
+    }
+}
+
+@Composable
+private fun ProfileField(label: String, value: String, cap: KeyboardCapitalization, onChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value, onValueChange = onChange,
+        label = { Text(label, color = ColorMuted) },
+        singleLine = true, modifier = Modifier.fillMaxWidth(),
+        keyboardOptions = KeyboardOptions(capitalization = cap),
+        colors = profileFieldColors(),
+    )
+}
+
+@Composable
+private fun profileFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor   = ColorPrimary, unfocusedBorderColor = ColorSurfaceHigh,
+    cursorColor = ColorPrimary, focusedTextColor = ColorText, unfocusedTextColor = ColorText,
+    focusedLabelColor = ColorPrimary,
+)

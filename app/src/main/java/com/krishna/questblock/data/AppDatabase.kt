@@ -4,8 +4,15 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [TaskEntity::class, BlockedApp::class, Player::class, UnlockEvent::class],
-    version = 2,
+    entities = [
+        TaskEntity::class,
+        BlockedApp::class,
+        Player::class,
+        UnlockEvent::class,
+        InventoryItem::class,
+        StudySession::class,
+    ],
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -13,4 +20,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun blockedAppDao(): BlockedAppDao
     abstract fun playerDao(): PlayerDao
     abstract fun unlockEventDao(): UnlockEventDao
+    abstract fun inventoryDao(): InventoryDao
+    abstract fun studySessionDao(): StudySessionDao
 }
