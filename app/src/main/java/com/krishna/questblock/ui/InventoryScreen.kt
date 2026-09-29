@@ -172,8 +172,8 @@ private fun ShopTab(player: Player, onBuy: (ShopItem) -> Unit) {
         val filtered = ShopCatalog.filter(selectedCat)
         LazyVerticalGrid(
             columns               = GridCells.Fixed(2),
-            contentPadding        = PaddingValues(horizontal = 16.dp, bottom = 80.dp),
-            verticalItemSpacing   = 10.dp,
+            contentPadding        = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
+            verticalArrangement   = Arrangement.spacedBy(10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             items(filtered, key = { it.id }) { item ->
