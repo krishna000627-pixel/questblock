@@ -5,23 +5,34 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-// Emerald Night palette
-val ColorBg          = Color(0xFF0E1116)
-val ColorSurface     = Color(0xFF151A21)
-val ColorSurfaceHigh = Color(0xFF1D242D)
-val ColorPrimary     = Color(0xFF3DDC97)
-val ColorOnPrimary   = Color(0xFF00271A)
+// ── Palette ──────────────────────────────────────────────────────────────────
+val ColorBg          = Color(0xFF0A0D12)
+val ColorSurface     = Color(0xFF111720)
+val ColorSurfaceHigh = Color(0xFF1A2230)
+val ColorCard        = Color(0xFF16202E)
+val ColorPrimary     = Color(0xFF00E5A0)
+val ColorOnPrimary   = Color(0xFF001A10)
+val ColorAccent      = Color(0xFF7C6EF5)   // purple accent
 val ColorCoin        = Color(0xFFFFC857)
-val ColorText        = Color(0xFFE8ECF1)
-val ColorMuted       = Color(0xFF9AA5B1)
-val ColorDanger      = Color(0xFFFF6B6B)
-val ColorSuccess     = Color(0xFF3DDC97)
+val ColorDanger      = Color(0xFFFF5C5C)
+val ColorWarning     = Color(0xFFFFAA00)
+val ColorText        = Color(0xFFEAEFF5)
+val ColorMuted       = Color(0xFF5A6A7E)
+val ColorDivider     = Color(0xFF1E2A3A)
 
-private val scheme = darkColorScheme(
+// Category colours
+val CatColors = mapOf(
+    "Study"    to Color(0xFF5C9EFF),
+    "Work"     to Color(0xFFFF8C5C),
+    "Health"   to Color(0xFF5CFF8C),
+    "Personal" to Color(0xFFB45CFF),
+    "Custom"   to Color(0xFFFFD05C),
+)
+
+private val DarkScheme = darkColorScheme(
     primary          = ColorPrimary,
     onPrimary        = ColorOnPrimary,
     secondary        = ColorCoin,
-    onSecondary      = Color(0xFF3A2A00),
     background       = ColorBg,
     onBackground     = ColorText,
     surface          = ColorSurface,
@@ -29,11 +40,9 @@ private val scheme = darkColorScheme(
     surfaceVariant   = ColorSurfaceHigh,
     onSurfaceVariant = ColorMuted,
     error            = ColorDanger,
-    onError          = Color.White,
-    outline          = Color(0xFF2E3A47),
 )
 
 @Composable
 fun QuestTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = scheme, content = content)
+    MaterialTheme(colorScheme = DarkScheme, content = content)
 }

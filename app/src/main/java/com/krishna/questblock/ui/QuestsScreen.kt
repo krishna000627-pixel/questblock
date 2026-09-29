@@ -1,24 +1,30 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.krishna.questblock.ui
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.SwipeToDismissBoxValue.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -31,6 +37,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 import javax.inject.Inject
 
 @HiltViewModel
@@ -40,185 +48,298 @@ class QuestsViewModel @Inject constructor(private val repo: GameRepository) : Vi
     fun add(title: String, difficulty: Int) = viewModelScope.launch { repo.addTask(title, difficulty) }
     fun complete(task: TaskEntity) = viewModelScope.launch { repo.completeTask(task) }
     fun delete(task: TaskEntity)   = viewModelScope.launch { repo.deleteTask(task) }
+    fun startTimer(task: TaskEntity) = viewModelScope.launch { repo.startTimerQuest(task) }
+    fun stopTimer(task: TaskEntity)  = viewModelScope.launch { repo.stopTimerQuest(task) }
 }
 
-private val DIFF_NAMES  = listOf("Easy", "Medium", "Hard")
 private val DIFF_COLORS = listOf(ColorPrimary, ColorCoin, ColorDanger)
+private val DIFF_NAMES  = listOf("Easy", "Medium", "Hard")
+private val FILTER_TABS = listOf("All", "Active", "Done", "Overdue")
 
 @Composable
-fun QuestsScreen(vm: QuestsViewModel = hiltViewModel()) {
+fun QuestsScreen(onAddQuest: () -> Unit, vm: QuestsViewModel = hiltViewModel()) {
     val tasks by vm.tasks.collectAsStateWithLifecycle()
-    val pending = tasks.filter { !it.done }
-    val done    = tasks.filter { it.done }
+    val now   = System.currentTimeMillis()
 
-    var showSheet by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
+    var filterTab by remember { mutableStateOf("All") }
+    var filterCat by remember { mutableStateOf("All") }
+
+    val filtered = tasks.filter { task ->
+        val tabOk = when (filterTab) {
+            "Active"  -> !task.done
+            "Done"    -> task.done
+            "Overdue" -> !task.done && task.dueAt != null && task.dueAt < now
+            else      -> true
+        }
+        val catOk = filterCat == "All" || task.category == filterCat
+        tabOk && catOk
+    }
+    val pending  = filtered.filter { !it.done }
+    val done     = filtered.filter { it.done }
 
     Scaffold(
         containerColor = ColorBg,
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showSheet = true },
-                containerColor = ColorPrimary,
-                contentColor   = ColorOnPrimary,
-                shape          = CircleShape,
-            ) { Icon(Icons.Default.Add, contentDescription = "Add quest") }
+            FloatingActionButton(onClick = onAddQuest, containerColor = ColorPrimary,
+                contentColor = ColorOnPrimary, shape = CircleShape) {
+                Icon(Icons.Default.Add, "Add quest")
+            }
         }
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+    ) { pad ->
+        LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(bottom = 80.dp)) {
+            // Header
             item {
-                Text("Quests", style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold, color = ColorText)
-                Spacer(Modifier.height(4.dp))
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text("Quests", style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold, color = ColorText)
+                        Text("${tasks.count { it.done }}/${tasks.size} done",
+                            style = MaterialTheme.typography.labelMedium, color = ColorPrimary)
+                    }
+                    // Filter tabs
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(FILTER_TABS) { tab ->
+                            val sel = filterTab == tab
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (sel) ColorPrimary.copy(0.2f) else ColorSurface,
+                                modifier = Modifier.clickable { filterTab = tab },
+                            ) {
+                                Text(tab, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                    color = if (sel) ColorPrimary else ColorMuted,
+                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                                    style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                    // Category filter
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        item {
+                            val sel = filterCat == "All"
+                            Surface(shape = RoundedCornerShape(16.dp),
+                                color = if (sel) ColorMuted.copy(0.2f) else Color.Transparent,
+                                modifier = Modifier.border(1.dp, if (sel) ColorMuted else ColorDivider, RoundedCornerShape(16.dp))
+                                    .clickable { filterCat = "All" }) {
+                                Text("All", modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                                    color = if (sel) ColorText else ColorMuted,
+                                    style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        items(listOf("Study","Work","Health","Personal","Custom")) { cat ->
+                            val color = CatColors[cat] ?: ColorPrimary
+                            val sel = filterCat == cat
+                            Surface(shape = RoundedCornerShape(16.dp),
+                                color = if (sel) color.copy(0.2f) else Color.Transparent,
+                                modifier = Modifier.border(1.dp, if (sel) color else ColorDivider, RoundedCornerShape(16.dp))
+                                    .clickable { filterCat = cat }) {
+                                Text(cat, modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                                    color = if (sel) color else ColorMuted,
+                                    style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
             }
 
+            // Empty state
+            if (filtered.isEmpty()) {
+                item {
+                    Box(Modifier.fillMaxWidth().padding(60.dp), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("🗺️", fontSize = 48.sp)
+                            Text("No quests", style = MaterialTheme.typography.titleMedium, color = ColorText)
+                            Text("Tap + to add one", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                        }
+                    }
+                }
+            }
+
+            // Pending quests
             if (pending.isNotEmpty()) {
-                item { Text("Active", style = MaterialTheme.typography.labelLarge, color = ColorMuted) }
+                item { SectionHeader("Active (${pending.size})") }
                 items(pending, key = { it.id }) { task ->
-                    QuestCard(task, onComplete = { vm.complete(task) }, onDelete = { vm.delete(task) })
+                    SwipeableQuestCard(task = task, now = now,
+                        onComplete = { vm.complete(task) },
+                        onDelete   = { vm.delete(task) },
+                        onStartTimer = { vm.startTimer(task) },
+                        onStopTimer  = { vm.stopTimer(task) },
+                    )
                 }
             }
+
+            // Completed
             if (done.isNotEmpty()) {
-                item {
-                    Spacer(Modifier.height(8.dp))
-                    Text("Completed", style = MaterialTheme.typography.labelLarge, color = ColorMuted)
-                }
+                item { SectionHeader("Completed (${done.size})") }
                 items(done, key = { it.id }) { task ->
-                    QuestCard(task, onComplete = {}, onDelete = { vm.delete(task) })
+                    SwipeableQuestCard(task = task, now = now,
+                        onComplete = {}, onDelete = { vm.delete(task) },
+                        onStartTimer = {}, onStopTimer = {},
+                    )
                 }
-            }
-            if (tasks.isEmpty()) {
-                item {
-                    Spacer(Modifier.height(40.dp))
-                    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("🗺️", style = MaterialTheme.typography.displayMedium)
-                        Text("No quests yet", style = MaterialTheme.typography.titleMedium, color = ColorText)
-                        Text("Tap + to add your first quest.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-                    }
-                }
-            }
-        }
-    }
-
-    if (showSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showSheet = false },
-            sheetState = sheetState,
-            containerColor = ColorSurface,
-        ) {
-            AddQuestSheet(onAdd = { title, diff ->
-                vm.add(title, diff)
-                scope.launch { sheetState.hide() }.invokeOnCompletion { showSheet = false }
-            })
-        }
-    }
-}
-
-@Composable
-private fun QuestCard(task: TaskEntity, onComplete: () -> Unit, onDelete: () -> Unit) {
-    val color = DIFF_COLORS.getOrElse(task.difficulty - 1) { ColorPrimary }
-    Card(
-        colors = CardDefaults.cardColors(containerColor = ColorSurface),
-        shape  = RoundedCornerShape(12.dp),
-        modifier = Modifier.alpha(if (task.done) 0.45f else 1f),
-    ) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(
-                modifier = Modifier.size(22.dp)
-                    .background(if (task.done) color.copy(alpha = 0.3f) else ColorSurfaceHigh, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (!task.done) {
-                    IconButton(onClick = onComplete, modifier = Modifier.size(22.dp)) {
-                        Box(Modifier.size(12.dp).background(color.copy(alpha = 0.4f), CircleShape))
-                    }
-                } else {
-                    Text("✓", color = color, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                }
-            }
-            Column(Modifier.weight(1f)) {
-                Text(task.title, style = MaterialTheme.typography.bodyMedium, color = ColorText,
-                    textDecoration = if (task.done) TextDecoration.LineThrough else TextDecoration.None)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.background(color.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)) {
-                        Text(DIFF_NAMES.getOrElse(task.difficulty - 1) { "Easy" },
-                            style = MaterialTheme.typography.labelSmall, color = color)
-                    }
-                    Text("+${baseReward(task.difficulty)} 🪙", style = MaterialTheme.typography.labelSmall, color = ColorCoin)
-                }
-            }
-            IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = ColorMuted, modifier = Modifier.size(18.dp))
             }
         }
     }
 }
 
 @Composable
-private fun AddQuestSheet(onAdd: (String, Int) -> Unit) {
-    var title      by rememberSaveable { mutableStateOf("") }
-    var difficulty by rememberSaveable { mutableIntStateOf(1) }
+private fun SectionHeader(label: String) {
+    Text(label, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+        style = MaterialTheme.typography.labelLarge, color = ColorMuted, fontWeight = FontWeight.SemiBold)
+}
 
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .padding(bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text("New Quest", style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold, color = ColorText)
-
-        OutlinedTextField(
-            value = title,
-            onValueChange = { title = it },
-            placeholder = { Text("What do you need to do?", color = ColorMuted) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor   = ColorPrimary,
-                unfocusedBorderColor = ColorSurfaceHigh,
-                cursorColor          = ColorPrimary,
-                focusedTextColor     = ColorText,
-                unfocusedTextColor   = ColorText,
-            ),
-        )
-
-        // Difficulty chips — full width row so Hard chip never gets cut off
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            (1..3).forEach { d ->
-                val color = DIFF_COLORS[d - 1]
-                FilterChip(
-                    selected = difficulty == d,
-                    onClick  = { difficulty = d },
-                    label    = { Text("${DIFF_NAMES[d - 1]} +${baseReward(d)}🪙") },
-                    modifier = Modifier.weight(1f),
-                    colors   = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = color.copy(alpha = 0.2f),
-                        selectedLabelColor     = color,
-                        containerColor         = ColorSurfaceHigh,
-                        labelColor             = ColorMuted,
-                    ),
+@Composable
+private fun SwipeableQuestCard(
+    task: TaskEntity, now: Long,
+    onComplete: () -> Unit, onDelete: () -> Unit,
+    onStartTimer: () -> Unit, onStopTimer: () -> Unit,
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                EndToStart -> { onDelete(); true }
+                StartToEnd -> { if (!task.done) onComplete(); true }
+                else -> false
+            }
+        }
+    )
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            val dir = dismissState.dismissDirection
+            val color by animateColorAsState(
+                when (dir) {
+                    StartToEnd -> ColorPrimary.copy(0.3f)
+                    EndToStart -> ColorDanger.copy(0.3f)
+                    else       -> Color.Transparent
+                }, label = "swipe_bg"
+            )
+            Box(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 4.dp)
+                .clip(RoundedCornerShape(14.dp)).background(color),
+                contentAlignment = if (dir == StartToEnd) Alignment.CenterStart else Alignment.CenterEnd) {
+                Icon(
+                    if (dir == StartToEnd) Icons.Default.Check else Icons.Default.Delete,
+                    contentDescription = null,
+                    tint   = ColorText,
+                    modifier = Modifier.padding(16.dp).size(22.dp),
                 )
             }
-        }
+        },
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        QuestCard(task = task, now = now,
+            onComplete = onComplete, onDelete = onDelete,
+            onStartTimer = onStartTimer, onStopTimer = onStopTimer)
+    }
+}
 
-        Button(
-            onClick  = { if (title.isNotBlank()) onAdd(title.trim(), difficulty) },
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
-            shape    = RoundedCornerShape(12.dp),
-        ) { Text("Add Quest", fontWeight = FontWeight.Bold) }
+@Composable
+private fun QuestCard(
+    task: TaskEntity, now: Long,
+    onComplete: () -> Unit, onDelete: () -> Unit,
+    onStartTimer: () -> Unit, onStopTimer: () -> Unit,
+) {
+    val diffColor  = DIFF_COLORS.getOrElse(task.difficulty - 1) { ColorPrimary }
+    val catColor   = CatColors[task.category] ?: ColorPrimary
+    val isOverdue  = !task.done && task.dueAt != null && task.dueAt < now
+    val sdf = remember { SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()) }
+
+    Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth().alpha(if (task.done) 0.5f else 1f)) {
+        Row(Modifier.fillMaxWidth()) {
+            // Category colour strip
+            Box(Modifier.width(4.dp).fillMaxHeight().background(catColor))
+
+            Column(Modifier.weight(1f).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Priority dot
+                    val priColor = when (task.priority) { 1 -> ColorDanger; 3 -> ColorPrimary; else -> ColorWarning }
+                    Box(Modifier.size(8.dp).background(priColor, CircleShape))
+
+                    Text(task.title, style = MaterialTheme.typography.bodyMedium, color = ColorText,
+                        fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f),
+                        textDecoration = if (task.done) TextDecoration.LineThrough else TextDecoration.None)
+
+                    if (!task.done) {
+                        IconButton(onClick = onComplete, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = "Complete",
+                                tint = ColorPrimary, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete",
+                            tint = ColorMuted, modifier = Modifier.size(16.dp))
+                    }
+                }
+
+                // Tags row
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    item {
+                        TagChip(DIFF_NAMES.getOrElse(task.difficulty - 1) { "Easy" }, diffColor)
+                    }
+                    item { TagChip(task.category, catColor) }
+                    item { TagChip("+${baseReward(task.difficulty)}🪙", ColorCoin) }
+                    if (task.isTimerQuest) item { TagChip("⏱️ Timer", ColorAccent) }
+                    if (task.isRecurring)  item { TagChip("🔁 ${task.recurType}", ColorMuted) }
+                }
+
+                // Due date
+                if (task.dueAt != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(12.dp),
+                            tint = if (isOverdue) ColorDanger else ColorMuted)
+                        Text(
+                            if (isOverdue) "Overdue: ${sdf.format(Date(task.dueAt))}"
+                            else sdf.format(Date(task.dueAt)),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isOverdue) ColorDanger else ColorMuted,
+                        )
+                    }
+                }
+
+                // Notes preview
+                if (task.notes.isNotBlank()) {
+                    Text(task.notes, style = MaterialTheme.typography.bodySmall, color = ColorMuted, maxLines = 1)
+                }
+
+                // Timer quest controls
+                if (task.isTimerQuest && !task.done) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (!task.timerQuestActive) {
+                            OutlinedButton(onClick = onStartTimer,
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorAccent),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Start", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            }
+                        } else {
+                            val started = task.timerQuestStarted ?: now
+                            val elapsed = now - started
+                            val rem = (task.timerDurationMs - elapsed).coerceAtLeast(0)
+                            Text("⏱ %02d:%02d left".format(rem / 60_000, (rem % 60_000) / 1000),
+                                style = MaterialTheme.typography.labelSmall, color = ColorAccent, fontWeight = FontWeight.Bold)
+                            OutlinedButton(onClick = onStopTimer,
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorDanger),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
+                                Text("Stop", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TagChip(text: String, color: Color) {
+    Surface(shape = RoundedCornerShape(6.dp), color = color.copy(0.15f)) {
+        Text(text, modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+            style = MaterialTheme.typography.labelSmall, color = color)
     }
 }

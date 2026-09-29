@@ -3,11 +3,7 @@ package com.krishna.questblock.ui
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -21,8 +17,8 @@ private data class NavItem(val route: String, val label: String, val icon: Image
 private val NAV_ITEMS = listOf(
     NavItem("home",      "Home",      Icons.Default.Home),
     NavItem("quests",    "Quests",    Icons.Default.Star),
+    NavItem("focus",     "Focus",     Icons.Default.Bolt),
     NavItem("vault",     "Vault",     Icons.Default.Lock),
-    NavItem("inventory", "Inventory", Icons.Default.ShoppingCart),
     NavItem("profile",   "Profile",   Icons.Default.Person),
 )
 
@@ -41,34 +37,38 @@ fun MainScreen() {
                         onClick  = {
                             navController.navigate(item.route) {
                                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState    = true
+                                launchSingleTop = true; restoreState = true
                             }
                         },
                         icon  = { Icon(item.icon, contentDescription = item.label) },
                         label = { Text(item.label) },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor       = ColorPrimary,
-                            selectedTextColor       = ColorPrimary,
-                            indicatorColor          = ColorPrimary.copy(alpha = 0.15f),
-                            unselectedIconColor     = ColorMuted,
-                            unselectedTextColor     = ColorMuted,
+                            selectedIconColor   = ColorPrimary, selectedTextColor   = ColorPrimary,
+                            indicatorColor      = ColorPrimary.copy(0.15f),
+                            unselectedIconColor = ColorMuted,  unselectedTextColor = ColorMuted,
                         ),
                     )
                 }
             }
         }
     ) { innerPadding ->
-        NavHost(
-            navController    = navController,
-            startDestination = "home",
-            modifier         = Modifier.fillMaxSize().padding(innerPadding),
-        ) {
-            composable("home")      { HomeScreen() }
-            composable("quests")    { QuestsScreen() }
+        NavHost(navController = navController, startDestination = "home",
+            modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            composable("home") {
+                HomeScreen(
+                    onAddQuest = { navController.navigate("create_quest") },
+                    onGoFocus  = { navController.navigate("focus") },
+                )
+            }
+            composable("quests") {
+                QuestsScreen(onAddQuest = { navController.navigate("create_quest") })
+            }
+            composable("focus")     { FocusModeScreen() }
             composable("vault")     { VaultScreen() }
-            composable("inventory") { InventoryScreen() }
             composable("profile")   { ProfileScreen() }
+            composable("create_quest") {
+                QuestCreatorScreen(onBack = { navController.popBackStack() })
+            }
         }
     }
 }

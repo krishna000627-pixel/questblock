@@ -3,19 +3,15 @@ package com.krishna.questblock.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 
 @Composable
 fun VaultScreen() {
     var tab by remember { mutableIntStateOf(0) }
     Column(Modifier.fillMaxSize()) {
-        TabRow(
-            selectedTabIndex = tab,
-            containerColor   = ColorSurface,
-            contentColor     = ColorPrimary,
-        ) {
+        TabRow(selectedTabIndex = tab, containerColor = ColorSurface, contentColor = ColorPrimary) {
             Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Blocked Apps") })
             Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Stats") })
         }
