@@ -34,6 +34,8 @@ import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Player
 import com.krishna.questblock.data.TaskEntity
 import com.krishna.questblock.data.baseReward
+import com.krishna.questblock.data.daysLabel
+import com.krishna.questblock.data.isAvailableNow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -55,12 +57,12 @@ class QuestsViewModel @Inject constructor(private val repo: GameRepository) : Vi
     fun stopFocus() = viewModelScope.launch { repo.finishFocus(completed = false) }
 }
 
-private val DIFF_COLORS = listOf(ColorPrimary, ColorCoin, ColorDanger)
+private val DIFF_COLORS: List<androidx.compose.ui.graphics.Color> get() = listOf(ColorPrimary, ColorCoin, ColorDanger)
 private val DIFF_NAMES  = listOf("Easy", "Medium", "Hard")
-private val FILTER_TABS = listOf("All", "Active", "Done", "Overdue")
+private val FILTER_TABS = listOf("All", "Today", "Active", "Done", "Overdue")
 
 @Composable
-fun QuestsScreen(onAddQuest: () -> Unit, onOpenFocus: () -> Unit, vm: QuestsViewModel = hiltViewModel()) {
+fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocus: () -> Unit, vm: QuestsViewModel = hiltViewModel()) {
     val tasks by vm.tasks.collectAsStateWithLifecycle()
     val now   = System.currentTimeMillis()
 
@@ -69,6 +71,7 @@ fun QuestsScreen(onAddQuest: () -> Unit, onOpenFocus: () -> Unit, vm: QuestsView
 
     val filtered = tasks.filter { task ->
         val tabOk = when (filterTab) {
+            "Today"   -> task.isAvailableNow(now)
             "Active"  -> !task.done
             "Done"    -> task.done
             "Overdue" -> !task.done && task.dueAt != null && task.dueAt < now
@@ -166,6 +169,7 @@ fun QuestsScreen(onAddQuest: () -> Unit, onOpenFocus: () -> Unit, vm: QuestsView
                     SwipeableQuestCard(task = task, now = now,
                         onComplete = { vm.complete(task) },
                         onDelete   = { vm.delete(task) },
+                        onEdit     = { onEditQuest(task.id) },
                         onStartFocus = { vm.startFocus(task); onOpenFocus() },
                         onStopFocus  = { vm.stopFocus() },
                     )
@@ -177,7 +181,7 @@ fun QuestsScreen(onAddQuest: () -> Unit, onOpenFocus: () -> Unit, vm: QuestsView
                 item { SectionHeader("Completed (${done.size})") }
                 items(done, key = { it.id }) { task ->
                     SwipeableQuestCard(task = task, now = now,
-                        onComplete = {}, onDelete = { vm.delete(task) },
+                        onComplete = {}, onDelete = { vm.delete(task) }, onEdit = {},
                         onStartFocus = {}, onStopFocus = {},
                     )
                 }
@@ -195,7 +199,7 @@ private fun SectionHeader(label: String) {
 @Composable
 private fun SwipeableQuestCard(
     task: TaskEntity, now: Long,
-    onComplete: () -> Unit, onDelete: () -> Unit,
+    onComplete: () -> Unit, onDelete: () -> Unit, onEdit: () -> Unit,
     onStartFocus: () -> Unit, onStopFocus: () -> Unit,
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
@@ -232,7 +236,7 @@ private fun SwipeableQuestCard(
         modifier = Modifier.padding(horizontal = 12.dp, vertical = 3.dp),
     ) {
         QuestCard(task = task, now = now,
-            onComplete = onComplete, onDelete = onDelete,
+            onComplete = onComplete, onDelete = onDelete, onEdit = onEdit,
             onStartFocus = onStartFocus, onStopFocus = onStopFocus)
     }
 }
@@ -240,9 +244,10 @@ private fun SwipeableQuestCard(
 @Composable
 private fun QuestCard(
     task: TaskEntity, now: Long,
-    onComplete: () -> Unit, onDelete: () -> Unit,
+    onComplete: () -> Unit, onDelete: () -> Unit, onEdit: () -> Unit,
     onStartFocus: () -> Unit, onStopFocus: () -> Unit,
 ) {
+    val availableNow = task.isAvailableNow(now)
     val diffColor  = DIFF_COLORS.getOrElse(task.difficulty - 1) { ColorPrimary }
     val catColor   = CatColors[task.category] ?: ColorPrimary
     val isOverdue  = !task.done && task.dueAt != null && task.dueAt < now
@@ -265,10 +270,16 @@ private fun QuestCard(
                         maxLines = 2, overflow = TextOverflow.Ellipsis,
                         textDecoration = if (task.done) TextDecoration.LineThrough else TextDecoration.None)
 
-                    if (!task.done) {
+                    if (!task.done && availableNow) {
                         IconButton(onClick = onComplete, modifier = Modifier.size(28.dp)) {
                             Icon(Icons.Default.CheckCircle, contentDescription = "Complete",
                                 tint = ColorPrimary, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    if (!task.done) {
+                        IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit",
+                                tint = ColorMuted, modifier = Modifier.size(16.dp))
                         }
                     }
                     IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
@@ -283,7 +294,8 @@ private fun QuestCard(
                     TagChip(task.category, catColor)
                     TagChip("+${baseReward(task.difficulty)}🪙", ColorCoin)
                     if (task.isTimerQuest) TagChip("⏱️", ColorAccent)
-                    if (task.isRecurring)  TagChip("🔁", ColorMuted)
+                    if (task.daysMask != 0) TagChip("📅 ${daysLabel(task.daysMask)}", ColorAccent)
+                    else if (task.isRecurring) TagChip("🔁", ColorMuted)
                 }
 
                 if (task.dueAt != null) {
@@ -299,13 +311,20 @@ private fun QuestCard(
                     }
                 }
 
+                if (!task.done && !availableNow) {
+                    Text(
+                        if (task.availableFrom > now) "💤 Back on ${SimpleDateFormat("EEE d MMM", Locale.getDefault()).format(Date(task.availableFrom))}"
+                        else "💤 Not scheduled today",
+                        style = MaterialTheme.typography.labelSmall, color = ColorAccent)
+                }
+
                 if (task.notes.isNotBlank()) {
                     Text(task.notes, style = MaterialTheme.typography.bodySmall, color = ColorMuted,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
 
                 // Timer quest = a Focus session with a goal attached
-                if (task.isTimerQuest && !task.done) {
+                if (task.isTimerQuest && !task.done && availableNow) {
                     if (!task.timerQuestActive) {
                         OutlinedButton(onClick = onStartFocus,
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorAccent),

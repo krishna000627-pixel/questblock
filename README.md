@@ -17,6 +17,16 @@ bash termux/setup.sh            # optional arg: repo name (default: questblock)
 `setup.sh` installs git/gh/JDK, generates a keystore in `~/.questblock/`, creates the private GitHub repo,
 uploads the keystore as Actions secrets, pushes, waits for CI, then downloads and opens the signed APK.
 
+## What's new in v9
+
+- **Quest days:** pick Mon–Sun (or Weekdays / Weekends). The quest only shows and can only be completed on those days, then comes back on the next one. Quests can now be **edited** (pencil icon).
+- **Settings** (Profile → Settings): profile, accent colour, editable unlock prices / focus bonus / study rate / daily login, lock-screen hold time and quotes, quest reminders, strict mode, live permission status, backup / restore / reset.
+- **Stats** has its own screen (Profile and Home): quests by weekday, focus minutes, study coins, 28-day activity calendar.
+- **Gift for me** lives in the Shop: make, edit and price your own rewards, optionally once per day.
+- **Per-app options** (Vault, tune icon on a locked app): daily time limit, lock only during set hours, unlock price %.
+- **Reminders:** notification before a quest's due time (Settings → Reminders).
+- DB migrates 6 -> 7 without wiping data.
+
 ## What's new in v7
 
 - **Focus = Timer Quest.** One flow: pick "Quick focus" or a Focus Quest, start, finish. Finishing pays +15🪙 (and completes the quest + its reward). Linked apps unlock for the session.

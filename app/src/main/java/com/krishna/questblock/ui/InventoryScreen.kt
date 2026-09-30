@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -52,15 +53,16 @@ class InventoryViewModel @Inject constructor(private val repo: GameRepository) :
     }
 
     fun buyReward(r: CustomReward) = viewModelScope.launch {
-        val ok = repo.buyCustomReward(r)
-        buyResult = when {
-            !ok -> "Not enough coins 🪙"
-            r.type == "reward" -> "Enjoy your ${r.emoji} ${r.name}! -${r.price}🪙"
-            else -> "${r.emoji} ${r.name} saved in My Items"
+        buyResult = when (repo.buyCustomReward(r)) {
+            1 -> "Not enough coins 🪙"
+            2 -> "You already got ${r.emoji} ${r.name} today"
+            else -> if (r.type == "reward") "Enjoy your ${r.emoji} ${r.name}! -${r.price}🪙"
+                    else "${r.emoji} ${r.name} saved in My Items"
         }
     }
-    fun addReward(name: String, emoji: String, price: Int, desc: String, type: String) =
-        viewModelScope.launch { repo.addCustomReward(name, emoji, price, desc, type) }
+    fun addReward(name: String, emoji: String, price: Int, desc: String, type: String, oncePerDay: Boolean) =
+        viewModelScope.launch { repo.addCustomReward(name, emoji, price, desc, type, oncePerDay) }
+    fun updateReward(r: CustomReward) = viewModelScope.launch { repo.updateCustomReward(r) }
     fun deleteReward(r: CustomReward) = viewModelScope.launch { repo.deleteCustomReward(r) }
     fun redeem(inv: InventoryItem) = viewModelScope.launch {
         repo.redeemItem(inv); buyResult = "Redeemed ${inv.emoji} ${inv.name}"
@@ -117,7 +119,8 @@ fun InventoryScreen(onBack: () -> Unit, vm: InventoryViewModel = hiltViewModel()
                 0 -> ShopTab(
                     player = player, rewards = rewards,
                     onBuy = { vm.buy(it) }, onBuyReward = { vm.buyReward(it) },
-                    onAddReward = { n, e, p, d, t -> vm.addReward(n, e, p, d, t) },
+                    onAddReward = { n, e, p, d, t, o -> vm.addReward(n, e, p, d, t, o) },
+                    onUpdateReward = { vm.updateReward(it) },
                     onDeleteReward = { vm.deleteReward(it) },
                 )
                 1 -> MyItemsTab(inventory, onEquip = { vm.equip(it) }, onRedeem = { vm.redeem(it) })
@@ -154,13 +157,34 @@ private fun ActivePowerUpsRow(player: Player) {
 private fun ShopTab(
     player: Player, rewards: List<CustomReward>,
     onBuy: (ShopItem) -> Unit, onBuyReward: (CustomReward) -> Unit,
-    onAddReward: (String, String, Int, String, String) -> Unit, onDeleteReward: (CustomReward) -> Unit,
+    onAddReward: (String, String, Int, String, String, Boolean) -> Unit,
+    onUpdateReward: (CustomReward) -> Unit, onDeleteReward: (CustomReward) -> Unit,
 ) {
     var selectedCat by remember { mutableStateOf("All") }
     var showCreate by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<CustomReward?>(null) }
     val cats = ShopCatalog.categories + MY_REWARDS
 
     Column {
+        // Reward yourself: a real-world treat you set the price for
+        Surface(
+            shape = RoundedCornerShape(14.dp), color = ColorPrimary.copy(0.12f),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
+                .clickable { showCreate = true },
+        ) {
+            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("🎁", fontSize = 22.sp)
+                Column(Modifier.weight(1f)) {
+                    Text("Gift for me", style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold, color = ColorPrimary)
+                    Text("Make your own reward and set its price",
+                        style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                }
+                Icon(Icons.Default.Add, contentDescription = null, tint = ColorPrimary)
+            }
+        }
+
         LazyRow(
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -203,7 +227,8 @@ private fun ShopTab(
                     }
                 }
                 items(rewards, key = { "r_${it.id}" }) { r ->
-                    RewardCard(r, canAfford = player.coins >= r.price, onBuy = { onBuyReward(r) }, onDelete = { onDeleteReward(r) })
+                    RewardCard(r, canAfford = player.coins >= r.price, onBuy = { onBuyReward(r) },
+                        onEdit = { editing = r }, onDelete = { onDeleteReward(r) })
                 }
             } else {
                 items(ShopCatalog.filter(selectedCat), key = { it.id }) { item ->
@@ -214,9 +239,22 @@ private fun ShopTab(
     }
 
     if (showCreate) {
-        CreateRewardDialog(
+        RewardDialog(
+            initial = null,
             onDismiss = { showCreate = false },
-            onCreate = { n, e, p, d, t -> onAddReward(n, e, p, d, t); showCreate = false },
+            onSubmit = { n, e, p, d, t, o ->
+                onAddReward(n, e, p, d, t, o); showCreate = false; selectedCat = MY_REWARDS
+            },
+        )
+    }
+    editing?.let { r ->
+        RewardDialog(
+            initial = r,
+            onDismiss = { editing = null },
+            onSubmit = { n, e, p, d, t, o ->
+                onUpdateReward(r.copy(name = n, emoji = e, price = p, description = d, type = t, oncePerDay = o))
+                editing = null
+            },
         )
     }
 }
@@ -237,7 +275,7 @@ private fun ShopItemCard(item: ShopItem, canAfford: Boolean, onBuy: () -> Unit) 
 }
 
 @Composable
-private fun RewardCard(r: CustomReward, canAfford: Boolean, onBuy: () -> Unit, onDelete: () -> Unit) {
+private fun RewardCard(r: CustomReward, canAfford: Boolean, onBuy: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = ColorSurface), shape = RoundedCornerShape(14.dp)) {
         Box {
             Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally,
@@ -245,11 +283,14 @@ private fun RewardCard(r: CustomReward, canAfford: Boolean, onBuy: () -> Unit, o
                 Text(r.emoji, fontSize = 28.sp)
                 Text(r.name, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
                     color = ColorText, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(if (r.description.isBlank()) (if (r.type == "reward") "Redeem instantly" else "Keep & redeem later")
-                     else r.description,
+                Text((if (r.description.isBlank()) (if (r.type == "reward") "Redeem instantly" else "Keep & redeem later")
+                     else r.description) + if (r.oncePerDay) " · 1×/day" else "",
                     style = MaterialTheme.typography.bodySmall, color = ColorMuted,
                     textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 BuyButton(r.price, canAfford, onBuy)
+            }
+            IconButton(onClick = onEdit, modifier = Modifier.align(Alignment.TopStart).size(30.dp)) {
+                Icon(Icons.Default.Edit, contentDescription = "Edit reward", tint = ColorMuted, modifier = Modifier.size(15.dp))
             }
             IconButton(onClick = onDelete, modifier = Modifier.align(Alignment.TopEnd).size(30.dp)) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete reward", tint = ColorMuted, modifier = Modifier.size(15.dp))
@@ -273,12 +314,16 @@ private fun BuyButton(price: Int, canAfford: Boolean, onBuy: () -> Unit) {
 }
 
 @Composable
-private fun CreateRewardDialog(onDismiss: () -> Unit, onCreate: (String, String, Int, String, String) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var emoji by remember { mutableStateOf("🎁") }
-    var price by remember { mutableStateOf("") }
-    var desc by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf("reward") }
+private fun RewardDialog(
+    initial: CustomReward?, onDismiss: () -> Unit,
+    onSubmit: (String, String, Int, String, String, Boolean) -> Unit,
+) {
+    var name by remember { mutableStateOf(initial?.name ?: "") }
+    var emoji by remember { mutableStateOf(initial?.emoji ?: "🎁") }
+    var price by remember { mutableStateOf(initial?.price?.toString() ?: "") }
+    var desc by remember { mutableStateOf(initial?.description ?: "") }
+    var type by remember { mutableStateOf(initial?.type ?: "reward") }
+    var oncePerDay by remember { mutableStateOf(initial?.oncePerDay ?: false) }
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = ColorPrimary, unfocusedBorderColor = ColorSurfaceHigh, cursorColor = ColorPrimary,
         focusedTextColor = ColorText, unfocusedTextColor = ColorText)
@@ -286,7 +331,7 @@ private fun CreateRewardDialog(onDismiss: () -> Unit, onCreate: (String, String,
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = ColorSurface,
-        title = { Text("New reward", color = ColorText, fontWeight = FontWeight.Bold) },
+        title = { Text(if (initial == null) "Gift for me" else "Edit reward", color = ColorText, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -309,13 +354,20 @@ private fun CreateRewardDialog(onDismiss: () -> Unit, onCreate: (String, String,
                     if (type == "reward") "Reward: coins are spent and it's logged as redeemed — go enjoy it."
                     else "Consumable: goes to My Items so you can redeem it later.",
                     style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Limit to once per day", color = ColorText, style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f))
+                    Switch(checked = oncePerDay, onCheckedChange = { oncePerDay = it },
+                        colors = SwitchDefaults.colors(checkedThumbColor = ColorOnPrimary, checkedTrackColor = ColorPrimary,
+                            uncheckedThumbColor = ColorMuted, uncheckedTrackColor = ColorSurfaceHigh))
+                }
             }
         },
         confirmButton = {
             TextButton(
                 enabled = name.isNotBlank() && (price.toIntOrNull() ?: 0) > 0,
-                onClick = { onCreate(name, emoji, price.toIntOrNull() ?: 1, desc, type) },
-            ) { Text("Create", color = ColorPrimary, fontWeight = FontWeight.Bold) }
+                onClick = { onSubmit(name, emoji, price.toIntOrNull() ?: 1, desc, type, oncePerDay) },
+            ) { Text(if (initial == null) "Create" else "Save", color = ColorPrimary, fontWeight = FontWeight.Bold) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = ColorMuted) } },
     )

@@ -4,6 +4,13 @@ package com.krishna.questblock.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import com.krishna.questblock.data.DAY_LABELS
+import com.krishna.questblock.data.dayNumber
+import com.krishna.questblock.data.dowIndex
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,6 +43,7 @@ class StatsViewModel @Inject constructor(private val repo: GameRepository) : Vie
     val unlocks      = repo.recentUnlocks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val achievements = repo.achievements.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val studySessions = repo.studySessions.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val focusLogs = repo.focusLogs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 }
 
 private val DATE_FILTERS = listOf("Today", "Week", "Month", "All")
@@ -273,4 +281,105 @@ private fun buildLeaderboard(player: Player, weeklyData: List<Pair<String, Int>>
         "QuestMstr" to (yourXp * 0.45).toInt().coerceAtLeast(3),
     )
     return (rivals + you).sortedByDescending { it.second }
+}
+
+
+// ── Dedicated Stats screen ─────────────────────────────────────────────────
+@Composable
+fun StatsScreen(onBack: () -> Unit, vm: StatsViewModel = hiltViewModel()) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
+            Text("Stats", style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold, color = ColorText)
+        }
+        StatsSection(vm)
+        StatsExtras(vm)
+        Spacer(Modifier.height(12.dp))
+    }
+}
+
+@Composable
+private fun StatsExtras(vm: StatsViewModel) {
+    val tasks    by vm.tasks.collectAsStateWithLifecycle()
+    val sessions by vm.studySessions.collectAsStateWithLifecycle()
+    val focus    by vm.focusLogs.collectAsStateWithLifecycle()
+
+    val done = tasks.filter { it.done && it.completedAt != null }
+    val byWeekday = IntArray(7).also { arr -> done.forEach { arr[dowIndex(it.completedAt!!)]++ } }
+    val maxDay = (byWeekday.maxOrNull() ?: 0).coerceAtLeast(1)
+
+    val today = dayNumber(System.currentTimeMillis())
+    val activeDays = done.map { dayNumber(it.completedAt!!) }.toSet()
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Completion by weekday
+        Card(colors = CardDefaults.cardColors(containerColor = ColorSurface), shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("📅 Quests by weekday", style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold, color = ColorText)
+                Row(Modifier.fillMaxWidth().height(90.dp), horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.Bottom) {
+                    byWeekday.forEachIndexed { i, n ->
+                        Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Bottom) {
+                            Text("$n", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+                            Box(Modifier.fillMaxWidth().height((56 * n / maxDay).coerceAtLeast(2).dp)
+                                .clip(RoundedCornerShape(4.dp)).background(ColorPrimary.copy(if (n == 0) 0.2f else 0.9f)))
+                        }
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    DAY_LABELS.forEach {
+                        Text(it.take(2), Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+                    }
+                }
+            }
+        }
+
+        // Focus + study
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val focusMin = focus.sumOf { it.minutes }
+            val finished = focus.count { it.completed }
+            ExtraCard(Modifier.weight(1f), "🎯", "$focusMin min", "focus · $finished/${focus.size} finished")
+            ExtraCard(Modifier.weight(1f), "📚", "${sessions.sumOf { it.coinsEarned }}🪙", "study · ${sessions.size} sessions")
+        }
+
+        // 28-day activity calendar
+        Card(colors = CardDefaults.cardColors(containerColor = ColorSurface), shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("🔥 Last 28 days", style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold, color = ColorText)
+                for (row in 0 until 4) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        for (col in 0 until 7) {
+                            val day = today - 27 + row * 7 + col
+                            val active = day in activeDays
+                            Box(Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(6.dp))
+                                .background(if (active) ColorPrimary else ColorSurfaceHigh))
+                        }
+                    }
+                }
+                Text("${activeDays.count { it > today - 28 }} active days", style = MaterialTheme.typography.bodySmall,
+                    color = ColorMuted)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExtraCard(modifier: Modifier, emoji: String, value: String, label: String) {
+    Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = ColorSurface),
+        shape = RoundedCornerShape(16.dp)) {
+        Column(Modifier.padding(12.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(emoji, fontSize = 18.sp)
+            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ColorText)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = ColorMuted, maxLines = 1)
+        }
+    }
 }

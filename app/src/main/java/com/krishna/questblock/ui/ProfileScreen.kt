@@ -46,7 +46,7 @@ class ProfileViewModel @Inject constructor(
 }
 
 @Composable
-fun ProfileScreen(onOpenShop: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
+fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSettings: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
     val player by vm.player.collectAsStateWithLifecycle()
 
     var editMode by remember { mutableStateOf(false) }
@@ -132,6 +132,28 @@ fun ProfileScreen(onOpenShop: () -> Unit, vm: ProfileViewModel = hiltViewModel()
                 }
             }
 
+            // ── Stats + Settings ─────────────────────────────────────────────
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Card(colors = CardDefaults.cardColors(containerColor = ColorSurface), shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.weight(1f).clickable { onOpenStats() }) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("📊", fontSize = 20.sp)
+                        Text("Stats", style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold, color = ColorText)
+                    }
+                }
+                Card(colors = CardDefaults.cardColors(containerColor = ColorSurface), shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.weight(1f).clickable { onOpenSettings() }) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("⚙️", fontSize = 20.sp)
+                        Text("Settings", style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold, color = ColorText)
+                    }
+                }
+            }
+
             // ── Info / Edit card ────────────────────────────────────────────
             Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
                 shape = RoundedCornerShape(16.dp)) {
@@ -184,9 +206,6 @@ fun ProfileScreen(onOpenShop: () -> Unit, vm: ProfileViewModel = hiltViewModel()
                     }
                 }
             }
-
-            // ── Stats (moved here from Vault) ────────────────────────────────
-            StatsSection()
 
             Spacer(Modifier.height(12.dp))
         }

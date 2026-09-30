@@ -2,12 +2,15 @@ package com.krishna.questblock.service
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Toast
 import com.krishna.questblock.data.BlockedApp
+import com.krishna.questblock.data.dayNumber
+import com.krishna.questblock.data.enforcedAt
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.StudySession
@@ -20,6 +23,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -31,6 +35,8 @@ class BlockerAccessibilityService : AccessibilityService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var expiryJob: Job? = null
     private var studyTimerJob: Job? = null
+    private var usageJob: Job? = null
+    private var usagePkg: String? = null
     private var currentPkg: String? = null
     private var lastGuard = 0L
     private var lastBlockPkg: String? = null
@@ -64,6 +70,7 @@ class BlockerAccessibilityService : AccessibilityService() {
 
     private fun markForeground(pkg: String) {
         if (currentPkg != pkg) {
+            stopUsageTimer()
             // App switched — if leaving a study app, stop timer
             if (activeStudyPkg != null && pkg != activeStudyPkg) {
                 stopStudyTimer()
@@ -79,6 +86,19 @@ class BlockerAccessibilityService : AccessibilityService() {
         // Blocked (non-study) app
         if (app != null && !app.isStudyApp) {
             stopStudyTimer()
+            val cal = Calendar.getInstance()
+            val minuteOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+
+            // Outside its lock schedule (e.g. only locked 09:00–17:00) -> free to use
+            if (!app.enforcedAt(minuteOfDay)) { stopUsageTimer(); return }
+
+            // Daily-limit mode: free until today's allowance is used up
+            if (app.dailyLimitMin > 0) {
+                val used = if (app.usedDay == dayNumber(System.currentTimeMillis())) app.usedTodayMs else 0L
+                if (used < app.dailyLimitMin * 60_000L) { startUsageTimer(pkg); return }
+            }
+            stopUsageTimer()
+
             val now = System.currentTimeMillis()
             if (app.unlockedUntil > now) {
                 expiryJob?.cancel()
@@ -96,11 +116,39 @@ class BlockerAccessibilityService : AccessibilityService() {
             return
         }
 
+        stopUsageTimer()
         // Study app -> earn coins while inside it
         if (app != null && app.isStudyApp) startStudyTimer(pkg, app.label) else stopStudyTimer()
     }
 
-    // ── Study timer (1 coin per 5 min) ───────────────────────────────────
+    // ── Daily-limit usage timer ──────────────────────────────────────────
+    private fun startUsageTimer(pkg: String) {
+        if (usagePkg == pkg && usageJob?.isActive == true) return
+        stopUsageTimer()
+        usagePkg = pkg
+        usageJob = scope.launch {
+            val pm = getSystemService(PowerManager::class.java)
+            while (true) {
+                delay(USAGE_TICK_MS)
+                if (currentPkg != pkg) break
+                if (!pm.isInteractive) continue          // screen off: don't count
+                if (repo.addUsage(pkg, USAGE_TICK_MS)) {  // limit reached -> lock now
+                    usagePkg = null
+                    // separate coroutine: evaluateApp stops this very timer job
+                    scope.launch { evaluateApp(pkg) }
+                    break
+                }
+            }
+        }
+    }
+
+    private fun stopUsageTimer() {
+        usageJob?.cancel()
+        usageJob = null
+        usagePkg = null
+    }
+
+    // ── Study timer (coins per N minutes — see Settings) ────────────────
     private fun startStudyTimer(pkg: String, label: String) {
         if (activeStudyPkg == pkg && studyTimerJob?.isActive == true) return // already running
         stopStudyTimer()
@@ -117,9 +165,10 @@ class BlockerAccessibilityService : AccessibilityService() {
                 delay(60_000L) // 1 minute
                 if (currentPkg != pkg) break
                 minutesTicked++
-                if (minutesTicked % 5 == 0) {
-                    repo.creditStudyCoins(sessionId, 5)
-                    studyMinutesCredited += 5
+                val perCoin = prefs.studyMinPerCoin
+                if (minutesTicked % perCoin == 0) {
+                    repo.creditStudyCoins(sessionId, perCoin)
+                    studyMinutesCredited += perCoin
                 }
             }
         }.also { studyTimerJob = it }
@@ -182,6 +231,7 @@ class BlockerAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         stopStudyTimer()
+        stopUsageTimer()
         scope.cancel()
         super.onDestroy()
     }
@@ -189,6 +239,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     private companion object {
         const val SETTLE_MS = 180L
         const val RELAUNCH_GUARD_MS = 800L
+        const val USAGE_TICK_MS = 15_000L
         val GUARDED_PKGS = setOf(
             "com.android.settings",
             "com.samsung.android.settings",

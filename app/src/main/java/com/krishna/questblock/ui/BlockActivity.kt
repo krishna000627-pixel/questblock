@@ -61,7 +61,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Player
-import com.krishna.questblock.data.UNLOCK_TIERS
+import com.krishna.questblock.data.costFor
 import com.krishna.questblock.data.UnlockTier
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -76,6 +76,9 @@ class BlockViewModel @Inject constructor(private val repo: GameRepository) : Vie
     val blocked = repo.blockedApps.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val player = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
 
+    fun tiers(): List<UnlockTier> = repo.unlockTiers()
+    fun holdSeconds(): Int = repo.holdSeconds()
+    fun showQuotes(): Boolean = repo.showQuotes()
     fun unlock(pkg: String, tier: UnlockTier, onResult: (Boolean) -> Unit) {
         viewModelScope.launch { onResult(repo.unlock(pkg, tier)) }
     }
@@ -180,9 +183,13 @@ fun BlockScreen(
         }.getOrDefault(pkg)
     }
     val quote = remember(pkg) { MOTIVATIONAL_LINES.random() }
+    val tiers = remember { vm.tiers() }
+    val holdSteps = remember { vm.holdSeconds() * 10 }
+    val quotesOn = remember { vm.showQuotes() }
 
     var tierIdx by remember { mutableStateOf(0) }
-    val tier = UNLOCK_TIERS[tierIdx]
+    val tier = tiers[tierIdx]
+    val tierCost = tier.costFor(rule)
 
     // Hold-to-unlock state
     var holdProgress by remember { mutableFloatStateOf(0f) }
@@ -195,14 +202,14 @@ fun BlockScreen(
 
     LaunchedEffect(isHolding) {
         if (isHolding) {
-            val steps = 30
+            val steps = holdSteps
             repeat(steps) {
                 if (!isHolding) return@repeat
                 delay(100L)
                 holdProgress = (it + 1) / steps.toFloat()
             }
             if (isHolding && rule != null) {
-                val canAfford = player.coins >= tier.cost
+                val canAfford = player.coins >= tierCost
                 if (canAfford) {
                     // Haptic
                     runCatching {
@@ -269,12 +276,14 @@ fun BlockScreen(
 
             Spacer(Modifier.height(6.dp))
 
-            Text(
-                quote,
-                style = MaterialTheme.typography.bodyMedium,
-                color = ColorMuted,
-                textAlign = TextAlign.Center,
-            )
+            if (quotesOn) {
+                Text(
+                    quote,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ColorMuted,
+                    textAlign = TextAlign.Center,
+                )
+            }
 
             Spacer(Modifier.height(16.dp))
 
@@ -295,13 +304,13 @@ fun BlockScreen(
             Spacer(Modifier.height(16.dp))
 
             if (rule != null) {
-                val canAfford = player.coins >= tier.cost
-                val missing = tier.cost - player.coins
+                val canAfford = player.coins >= tierCost
+                val missing = tierCost - player.coins
 
                 // Unlock length: 15m / 30m / 1h / 3h / 10h
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    UNLOCK_TIERS.forEachIndexed { i, t ->
-                        TierChip(t, selected = i == tierIdx, affordable = player.coins >= t.cost) { tierIdx = i }
+                    tiers.forEachIndexed { i, t ->
+                        TierChip(t, cost = t.costFor(rule), selected = i == tierIdx, affordable = player.coins >= t.costFor(rule)) { tierIdx = i }
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -341,7 +350,7 @@ fun BlockScreen(
                             )
                         }
                         Text(
-                            if (canAfford) "Hold to unlock · ${tier.cost} 🪙 · ${tier.label}"
+                            if (canAfford) "Hold to unlock · ${tierCost} 🪙 · ${tier.label}"
                             else "Need $missing more coins",
                             style = MaterialTheme.typography.labelLarge,
                             color = if (canAfford) ColorPrimary else ColorMuted,
@@ -380,7 +389,7 @@ fun BlockScreen(
 }
 
 @Composable
-private fun RowScope.TierChip(tier: UnlockTier, selected: Boolean, affordable: Boolean, onClick: () -> Unit) {
+private fun RowScope.TierChip(tier: UnlockTier, cost: Int, selected: Boolean, affordable: Boolean, onClick: () -> Unit) {
     Column(
         Modifier
             .weight(1f)
@@ -392,7 +401,7 @@ private fun RowScope.TierChip(tier: UnlockTier, selected: Boolean, affordable: B
     ) {
         Text(tier.label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
             color = if (selected) ColorPrimary else ColorText)
-        Text("${tier.cost}🪙", style = MaterialTheme.typography.labelSmall,
+        Text("${cost}🪙", style = MaterialTheme.typography.labelSmall,
             color = if (affordable) ColorCoin else ColorMuted)
     }
 }

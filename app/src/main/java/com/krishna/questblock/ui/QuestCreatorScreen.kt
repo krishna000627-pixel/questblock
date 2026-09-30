@@ -29,9 +29,17 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.krishna.questblock.data.ALL_DAYS_MASK
+import com.krishna.questblock.data.DAY_LABELS
 import com.krishna.questblock.data.GameRepository
+import com.krishna.questblock.data.TaskEntity
+import com.krishna.questblock.data.WEEKDAYS_MASK
+import com.krishna.questblock.data.WEEKEND_MASK
+import com.krishna.questblock.data.daysLabel
+import com.krishna.questblock.data.maskHas
 import com.krishna.questblock.ui.InstalledApp
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -47,7 +55,12 @@ import javax.inject.Inject
 class QuestCreatorViewModel @Inject constructor(
     @ApplicationContext private val ctx: Context,
     private val repo: GameRepository,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+
+    /** > 0 when editing an existing quest (nav arg "taskId"). */
+    val editId: Long = savedStateHandle.get<Long>("taskId") ?: -1L
+    suspend fun load(): TaskEntity? = if (editId > 0) repo.getTask(editId) else null
 
     private val _installed = MutableStateFlow<List<InstalledApp>>(emptyList())
     val installed = _installed.asStateFlow()
@@ -67,16 +80,27 @@ class QuestCreatorViewModel @Inject constructor(
         title: String, difficulty: Int, category: String, priority: Int,
         notes: String, dueAt: Long?, isRecurring: Boolean, recurType: String,
         linkedApps: List<String>, isTimerQuest: Boolean, timerDurationMs: Long,
+        daysMask: Int,
         onDone: () -> Unit,
     ) = viewModelScope.launch {
-        repo.addTask(
-            title = title, difficulty = difficulty, category = category,
-            priority = priority, notes = notes, dueAt = dueAt,
-            isRecurring = isRecurring, recurType = recurType,
-            linkedApps = linkedApps.joinToString(","),
-            isTimerQuest = isTimerQuest, timerDurationMs = timerDurationMs,
-        )
-        repo.unlockFirstQuestAchievement()
+        if (editId > 0) {
+            repo.updateTask(
+                id = editId, title = title, difficulty = difficulty, category = category,
+                priority = priority, notes = notes, dueAt = dueAt,
+                isRecurring = isRecurring, recurType = recurType,
+                linkedApps = linkedApps.joinToString(","),
+                isTimerQuest = isTimerQuest, timerDurationMs = timerDurationMs, daysMask = daysMask,
+            )
+        } else {
+            repo.addTask(
+                title = title, difficulty = difficulty, category = category,
+                priority = priority, notes = notes, dueAt = dueAt,
+                isRecurring = isRecurring, recurType = recurType,
+                linkedApps = linkedApps.joinToString(","),
+                isTimerQuest = isTimerQuest, timerDurationMs = timerDurationMs, daysMask = daysMask,
+            )
+            repo.unlockFirstQuestAchievement()
+        }
         onDone()
     }
 }
@@ -107,6 +131,22 @@ fun QuestCreatorScreen(
     var timerMins  by remember { mutableIntStateOf(0) }
     var linkedApps by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showAppPicker by remember { mutableStateOf(false) }
+    var daysMask   by remember { mutableIntStateOf(0) }
+    val isEdit = vm.editId > 0
+
+    // Edit mode: fill the form from the saved quest
+    LaunchedEffect(Unit) {
+        vm.load()?.let { t ->
+            title = t.title; notes = t.notes; difficulty = t.difficulty; category = t.category
+            priority = t.priority; dueAt = t.dueAt; daysMask = t.daysMask
+            isRecurring = t.isRecurring && t.daysMask == 0
+            recurType = if (t.recurType in RECUR_TYPES) t.recurType else "daily"
+            isTimerQuest = t.isTimerQuest
+            timerHours = (t.timerDurationMs / 3_600_000L).toInt()
+            timerMins = ((t.timerDurationMs % 3_600_000L) / 60_000L).toInt()
+            linkedApps = t.linkedApps.split(",").filter { it.isNotBlank() }.toSet()
+        }
+    }
 
     val sdf = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
 
@@ -116,7 +156,7 @@ fun QuestCreatorScreen(
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0),
-                title = { Text("New Quest", fontWeight = FontWeight.Bold, color = ColorText, style = MaterialTheme.typography.titleLarge) },
+                title = { Text(if (isEdit) "Edit Quest" else "New Quest", fontWeight = FontWeight.Bold, color = ColorText, style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = ColorText)
@@ -133,14 +173,15 @@ fun QuestCreatorScreen(
                             val durMs = (timerHours * 3600L + timerMins * 60L) * 1000L
                             vm.save(title, difficulty, category, priority, notes,
                                 dueAt, isRecurring, recurType, linkedApps.toList(),
-                                isTimerQuest, if (isTimerQuest) durMs else 0L, onBack)
+                                isTimerQuest, if (isTimerQuest) durMs else 0L,
+                                if (daysMask == ALL_DAYS_MASK) 0 else daysMask, onBack)
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     colors   = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
                     shape    = RoundedCornerShape(14.dp),
                     enabled  = title.isNotBlank(),
-                ) { Text("Create Quest", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+                ) { Text(if (isEdit) "Save Quest" else "Create Quest", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
             }
         }
     ) { pad ->
@@ -269,8 +310,51 @@ fun QuestCreatorScreen(
                 }
             }
 
-            // ── Recurring ─────────────────────────────────────────────────
+            // ── Days of week ──────────────────────────────────────────────
             item {
+                SectionLabel("Repeat on days")
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    DAY_LABELS.forEachIndexed { i, d ->
+                        val on = maskHas(daysMask, i)
+                        Box(
+                            Modifier.weight(1f).height(40.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (on) ColorPrimary.copy(0.22f) else ColorSurface)
+                                .border(1.dp, if (on) ColorPrimary else ColorDivider, RoundedCornerShape(10.dp))
+                                .clickable { daysMask = daysMask xor (1 shl i) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(d, maxLines = 1, style = MaterialTheme.typography.labelSmall,
+                                color = if (on) ColorPrimary else ColorMuted,
+                                fontWeight = if (on) FontWeight.Bold else FontWeight.Normal)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("Every day" to 0, "Weekdays" to WEEKDAYS_MASK, "Weekends" to WEEKEND_MASK).forEach { (label, m) ->
+                        FilterChip(
+                            selected = daysMask == m || (m == 0 && daysMask == ALL_DAYS_MASK),
+                            onClick = { daysMask = m },
+                            label = { Text(label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = ColorPrimary.copy(0.2f),
+                                selectedLabelColor = ColorPrimary,
+                                containerColor = ColorSurface, labelColor = ColorMuted,
+                            ),
+                        )
+                    }
+                }
+                Text(
+                    if (daysMask == 0 || daysMask == ALL_DAYS_MASK) "Available every day"
+                    else "Only on ${daysLabel(daysMask)} · comes back on the next of these days after you finish it",
+                    style = MaterialTheme.typography.bodySmall, color = ColorMuted,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+
+            // ── Recurring (only when no specific days are chosen) ─────────
+            if (daysMask == 0 || daysMask == ALL_DAYS_MASK) item {
                 CreatorToggleRow(
                     label = "Recurring quest",
                     sub   = if (isRecurring) "Repeats $recurType after completion" else "One-time quest",

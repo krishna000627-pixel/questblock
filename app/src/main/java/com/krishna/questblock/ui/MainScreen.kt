@@ -11,7 +11,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.*
+import androidx.navigation.navArgument
 
 private data class NavItem(val route: String, val label: String, val icon: ImageVector)
 
@@ -62,20 +64,31 @@ fun MainScreen() {
                     onAddQuest = { navController.navigate("create_quest") { launchSingleTop = true } },
                     onGoFocus  = { navController.goTab("focus") },
                     onOpenShop = { navController.navigate("shop") { launchSingleTop = true } },
+                    onOpenStats = { navController.navigate("stats") { launchSingleTop = true } },
                 )
             }
             composable("quests") {
                 QuestsScreen(
                     onAddQuest = { navController.navigate("create_quest") { launchSingleTop = true } },
+                    onEditQuest = { id -> navController.navigate("create_quest?taskId=$id") { launchSingleTop = true } },
                     onOpenFocus = { navController.goTab("focus") },
                 )
             }
             composable("focus")   { FocusModeScreen() }
             composable("vault")   { VaultScreen() }
             composable("profile") {
-                ProfileScreen(onOpenShop = { navController.navigate("shop") { launchSingleTop = true } })
+                ProfileScreen(
+                    onOpenShop = { navController.navigate("shop") { launchSingleTop = true } },
+                    onOpenStats = { navController.navigate("stats") { launchSingleTop = true } },
+                    onOpenSettings = { navController.navigate("settings") { launchSingleTop = true } },
+                )
             }
-            composable("create_quest") { QuestCreatorScreen(onBack = { navController.popBackStack() }) }
+            composable(
+                route = "create_quest?taskId={taskId}",
+                arguments = listOf(navArgument("taskId") { type = NavType.LongType; defaultValue = -1L }),
+            ) { QuestCreatorScreen(onBack = { navController.popBackStack() }) }
+            composable("stats")    { StatsScreen(onBack = { navController.popBackStack() }) }
+            composable("settings") { SettingsScreen(onBack = { navController.popBackStack() }) }
             composable("shop")         { InventoryScreen(onBack = { navController.popBackStack() }) }
         }
     }

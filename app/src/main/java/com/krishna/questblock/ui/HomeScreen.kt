@@ -41,7 +41,7 @@ class HomeViewModel @Inject constructor(private val repo: GameRepository) : View
     val tasks        = repo.tasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val achievements = repo.achievements.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     /** +5🪙 the first time the app opens each day. */
-    var loginBonus by mutableStateOf(false)
+    var loginBonus by mutableIntStateOf(0)
         private set
     init {
         viewModelScope.launch {
@@ -49,18 +49,18 @@ class HomeViewModel @Inject constructor(private val repo: GameRepository) : View
             loginBonus = repo.claimDailyLogin()
         }
     }
-    fun dismissBonus() { loginBonus = false }
+    fun dismissBonus() { loginBonus = 0 }
     fun complete(task: TaskEntity) = viewModelScope.launch { repo.completeTask(task) }
 }
 
 @Composable
-fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> Unit, onOpenStats: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
     val player       by vm.player.collectAsStateWithLifecycle()
     val tasks        by vm.tasks.collectAsStateWithLifecycle()
     val achievements by vm.achievements.collectAsStateWithLifecycle()
 
     val now      = System.currentTimeMillis()
-    val pending  = tasks.filter { !it.done }
+    val pending  = tasks.filter { it.isAvailableNow(now) }
     val overdue  = pending.filter { it.dueAt != null && it.dueAt < now }
     val upcoming = pending.filter { it.dueAt != null && it.dueAt >= now }.sortedBy { it.dueAt }
     val noDate   = pending.filter { it.dueAt == null }
@@ -76,11 +76,11 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
         item { HeroCard(player = player, doneToday = doneToday, total = tasks.size, onCoinsClick = onOpenShop) }
 
         // ── Daily login bonus ──────────────────────────────────────────────
-        if (vm.loginBonus) {
+        if (vm.loginBonus > 0) {
             item {
                 Surface(shape = RoundedCornerShape(12.dp), color = ColorCoin.copy(0.12f),
                     modifier = Modifier.fillMaxWidth().clickable { vm.dismissBonus() }) {
-                    Text("🎁 Daily login: +$DAILY_LOGIN_COINS🪙", modifier = Modifier.padding(12.dp),
+                    Text("🎁 Daily login: +${vm.loginBonus}🪙", modifier = Modifier.padding(12.dp),
                         style = MaterialTheme.typography.labelLarge, color = ColorCoin, fontWeight = FontWeight.Bold)
                 }
             }
@@ -133,6 +133,20 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                                 style = MaterialTheme.typography.labelSmall, color = ColorPrimary, fontWeight = FontWeight.Bold)
                         }
                     }
+                }
+            }
+        }
+
+        // ── Stats shortcut ─────────────────────────────────────────────────
+        item {
+            Surface(shape = RoundedCornerShape(14.dp), color = ColorSurface,
+                modifier = Modifier.fillMaxWidth().clickable { onOpenStats() }) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("📊", fontSize = 20.sp)
+                    Text("Stats & progress", style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold, color = ColorText, modifier = Modifier.weight(1f))
+                    Text("›", color = ColorMuted, fontSize = 20.sp)
                 }
             }
         }
@@ -323,7 +337,7 @@ private fun FocusShortcut(isActive: Boolean, remainingMs: Long, onClick: () -> U
                 Text(if (isActive) "Focus Mode Active" else "Start Focus Mode",
                     style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold,
                     color = if (isActive) ColorPrimary else ColorText)
-                Text(if (isActive) "%02d:%02d remaining".format(mm, ss) else "Timer quests & focus sessions · +${FOCUS_BONUS_COINS}🪙",
+                Text(if (isActive) "%02d:%02d remaining".format(mm, ss) else "Timer quests & focus sessions",
                     style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             }
             Icon(Icons.Default.ChevronRight, contentDescription = null, tint = ColorMuted)

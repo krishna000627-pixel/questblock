@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Search
@@ -29,7 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.krishna.questblock.data.BlockedApp
 import com.krishna.questblock.data.GameRepository
-import com.krishna.questblock.data.UNLOCK_TIERS
+import com.krishna.questblock.data.fmtMinute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -76,6 +78,10 @@ class AppsViewModel @Inject constructor(
         }
     }
 
+    fun tiers() = repo.unlockTiers()
+    fun studyMin() = repo.studyMinPerCoin()
+    fun setOptions(pkg: String, limit: Int, start: Int, end: Int, mult: Int) =
+        viewModelScope.launch { repo.setAppOptions(pkg, limit, start, end, mult) }
     fun setQuery(q: String) { query.value = q }
     fun setBlocked(app: InstalledApp, on: Boolean) =
         viewModelScope.launch { repo.setBlocked(app.pkg, app.label, on) }
@@ -89,6 +95,9 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
     val query by vm.query.collectAsStateWithLifecycle()
     val candidates by vm.studyCandidates.collectAsStateWithLifecycle()
     var showStudyPicker by remember { mutableStateOf(false) }
+    var optionsFor by remember { mutableStateOf<AppRow?>(null) }
+    val tiers = remember { vm.tiers() }
+    val studyMin = remember { vm.studyMin() }
 
     val now = System.currentTimeMillis()
     val studyRows  = rows.filter { it.rule?.isStudyApp == true }
@@ -140,7 +149,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
                         }
                     }
                     Text("Apps you learn in (Anki, Kindle, Duolingo…). They never lock, and you earn " +
-                        "1🪙 for every 5 minutes you spend inside them.",
+                        "1🪙 for every $studyMin minutes you spend inside them.",
                         style = MaterialTheme.typography.bodySmall, color = ColorMuted)
                     if (studyRows.isEmpty()) {
                         Text("No study apps yet — tap Add.", style = MaterialTheme.typography.labelMedium,
@@ -150,7 +159,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
             }
         }
         items(studyRows, key = { "s_${it.app.pkg}" }) { row ->
-            AppCard(row, now, onToggle = { vm.setStudyApp(row.app, it) })
+            AppCard(row, now, studyMin, onToggle = { vm.setStudyApp(row.app, it) })
         }
 
         // ── Locked apps ──────────────────────────────────────────────────
@@ -158,7 +167,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
             Column {
                 Text("🔒 Locked apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
                     fontWeight = FontWeight.SemiBold)
-                Text("Unlock: " + UNLOCK_TIERS.joinToString(" · ") { "${it.label} ${it.cost}🪙" },
+                Text("Unlock: " + tiers.joinToString(" · ") { "${it.label} ${it.cost}🪙" } + "  ·  ⚙ per-app limits & schedule",
                     style = MaterialTheme.typography.labelSmall, color = ColorMuted)
             }
         }
@@ -166,7 +175,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
             item { Text("Toggle an app below to lock it.", style = MaterialTheme.typography.bodySmall, color = ColorMuted) }
         }
         items(lockedRows, key = { it.app.pkg }) { row ->
-            AppCard(row, now, onToggle = { vm.setBlocked(row.app, it) })
+            AppCard(row, now, studyMin, onToggle = { vm.setBlocked(row.app, it) }, onOptions = { optionsFor = row })
         }
 
         // ── Everything else ──────────────────────────────────────────────
@@ -174,7 +183,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
             item { Text("All apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
                 fontWeight = FontWeight.SemiBold) }
             items(freeRows, key = { "u_${it.app.pkg}" }) { row ->
-                AppCard(row, now, onToggle = { vm.setBlocked(row.app, it) })
+                AppCard(row, now, studyMin, onToggle = { vm.setBlocked(row.app, it) })
             }
         }
 
@@ -190,6 +199,16 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
         }
     }
 
+    optionsFor?.let { row ->
+        AppOptionsDialog(
+            row = row,
+            onSave = { limit, start, end, mult ->
+                vm.setOptions(row.app.pkg, limit, start, end, mult); optionsFor = null
+            },
+            onDismiss = { optionsFor = null },
+        )
+    }
+
     if (showStudyPicker) {
         StudyPickerDialog(
             apps = candidates,
@@ -200,7 +219,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun AppCard(row: AppRow, now: Long, onToggle: (Boolean) -> Unit) {
+private fun AppCard(row: AppRow, now: Long, studyMin: Int, onToggle: (Boolean) -> Unit, onOptions: (() -> Unit)? = null) {
     val rule = row.rule
     val isOn = rule != null
     val isStudy = rule?.isStudyApp == true
@@ -227,10 +246,17 @@ private fun AppCard(row: AppRow, now: Long, onToggle: (Boolean) -> Unit) {
                     fontWeight = if (isOn) FontWeight.Medium else FontWeight.Normal,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 when {
-                    isStudy -> Text("Earning 1🪙 / 5 min", style = MaterialTheme.typography.labelSmall, color = ColorPrimary)
+                    isStudy -> Text("Earning 1🪙 / $studyMin min", style = MaterialTheme.typography.labelSmall, color = ColorPrimary)
                     unlockedLeft > 0 -> Text("Unlocked · %02d:%02d left".format(unlockedLeft / 60, unlockedLeft % 60),
                         style = MaterialTheme.typography.labelSmall, color = ColorCoin)
-                    isOn -> Text("Locked", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+                    isOn && rule != null -> Text(lockSummary(rule), style = MaterialTheme.typography.labelSmall, color = ColorMuted,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            if (onOptions != null && isOn && !isStudy) {
+                IconButton(onClick = onOptions, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Tune, contentDescription = "App options", tint = ColorMuted,
+                        modifier = Modifier.size(18.dp))
                 }
             }
             Switch(
@@ -260,6 +286,96 @@ private fun StudyPickerDialog(apps: List<InstalledApp>, onPick: (InstalledApp) -
             }
         },
         confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = ColorMuted) } },
+    )
+}
+
+private fun lockSummary(rule: BlockedApp): String {
+    val parts = mutableListOf(if (rule.dailyLimitMin > 0) "Limit ${rule.dailyLimitMin}m/day" else "Locked")
+    if (rule.schedStart >= 0 && rule.schedEnd >= 0 && rule.schedStart != rule.schedEnd)
+        parts += "${fmtMinute(rule.schedStart)}–${fmtMinute(rule.schedEnd)}"
+    if (rule.priceMult != 100) parts += "price ${rule.priceMult}%"
+    return parts.joinToString(" · ")
+}
+
+private val LIMIT_OPTIONS = listOf(0, 15, 30, 60, 90, 120)
+private val PRICE_OPTIONS = listOf(50, 100, 150, 200, 300)
+
+@Composable
+private fun OptionChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.clip(RoundedCornerShape(16.dp))
+            .background(if (selected) ColorPrimary.copy(0.2f) else ColorSurfaceHigh)
+            .clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 7.dp),
+    ) {
+        Text(text, color = if (selected) ColorPrimary else ColorMuted, maxLines = 1,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+@Composable
+private fun HourStepper(label: String, hour: Int, onChange: (Int) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(label, color = ColorMuted, modifier = Modifier.width(48.dp), style = MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick = { onChange((hour + 23) % 24) }, contentPadding = PaddingValues(0.dp),
+            modifier = Modifier.size(34.dp)) { Text("−") }
+        Text("%02d:00".format(hour), color = ColorText, fontWeight = FontWeight.Bold,
+            modifier = Modifier.width(54.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        OutlinedButton(onClick = { onChange((hour + 1) % 24) }, contentPadding = PaddingValues(0.dp),
+            modifier = Modifier.size(34.dp)) { Text("+") }
+    }
+}
+
+@Composable
+private fun AppOptionsDialog(row: AppRow, onSave: (Int, Int, Int, Int) -> Unit, onDismiss: () -> Unit) {
+    val rule = row.rule
+    var limit by remember { mutableIntStateOf(rule?.dailyLimitMin ?: 0) }
+    var schedOn by remember { mutableStateOf((rule?.schedStart ?: -1) >= 0 && (rule?.schedEnd ?: -1) >= 0) }
+    var startH by remember { mutableIntStateOf(rule?.schedStart?.takeIf { it >= 0 }?.div(60) ?: 9) }
+    var endH by remember { mutableIntStateOf(rule?.schedEnd?.takeIf { it >= 0 }?.div(60) ?: 17) }
+    var mult by remember { mutableIntStateOf(rule?.priceMult ?: 100) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = ColorSurface,
+        title = { Text(row.app.label, color = ColorText, fontWeight = FontWeight.Bold, maxLines = 1,
+            overflow = TextOverflow.Ellipsis) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Mode", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(LIMIT_OPTIONS) { m ->
+                        OptionChip(if (m == 0) "Always locked" else "${m}m / day", limit == m) { limit = m }
+                    }
+                }
+                Text(if (limit == 0) "Locked every time you open it."
+                     else "Free to use until you've spent $limit min in it today, then it locks.",
+                    style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Only lock during hours", color = ColorMuted, style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.weight(1f))
+                    Switch(checked = schedOn, onCheckedChange = { schedOn = it },
+                        colors = SwitchDefaults.colors(checkedThumbColor = ColorOnPrimary, checkedTrackColor = ColorPrimary,
+                            uncheckedThumbColor = ColorMuted, uncheckedTrackColor = ColorSurfaceHigh))
+                }
+                if (schedOn) {
+                    HourStepper("From", startH) { startH = it }
+                    HourStepper("Until", endH) { endH = it }
+                }
+
+                Text("Unlock price", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(PRICE_OPTIONS) { m -> OptionChip("$m%", mult == m) { mult = m } }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onSave(limit, if (schedOn) startH * 60 else -1, if (schedOn) endH * 60 else -1, mult)
+            }) { Text("Save", color = ColorPrimary, fontWeight = FontWeight.Bold) }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = ColorMuted) } },
     )
 }

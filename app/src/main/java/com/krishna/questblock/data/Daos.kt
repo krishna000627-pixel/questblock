@@ -47,6 +47,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao interface InventoryDao {
     @Query("SELECT * FROM inventory_items ORDER BY acquiredAt DESC") fun observeAll(): Flow<List<InventoryItem>>
     @Query("SELECT * FROM inventory_items WHERE itemId = :itemId LIMIT 1") suspend fun getByItemId(itemId: String): InventoryItem?
+    @Query("SELECT COUNT(*) FROM inventory_items WHERE itemId = :itemId AND acquiredAt >= :since") suspend fun countSince(itemId: String, since: Long): Int
     @Insert suspend fun insert(item: InventoryItem): Long
     @Update suspend fun update(item: InventoryItem)
     @Query("UPDATE inventory_items SET isEquipped = 0 WHERE category = :category") suspend fun unequipAll(category: String)
@@ -65,7 +66,13 @@ import kotlinx.coroutines.flow.Flow
 @Dao interface CustomRewardDao {
     @Query("SELECT * FROM custom_rewards ORDER BY createdAt DESC") fun observeAll(): Flow<List<CustomReward>>
     @Insert suspend fun insert(r: CustomReward): Long
+    @Update suspend fun update(r: CustomReward)
     @Delete suspend fun delete(r: CustomReward)
+}
+
+@Dao interface FocusLogDao {
+    @Insert suspend fun insert(l: FocusLog): Long
+    @Query("SELECT * FROM focus_log ORDER BY startedAt DESC LIMIT 500") fun observeRecent(): Flow<List<FocusLog>>
 }
 
 @Dao interface AchievementDao {

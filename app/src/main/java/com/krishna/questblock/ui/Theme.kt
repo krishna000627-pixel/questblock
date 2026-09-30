@@ -3,6 +3,10 @@ package com.krishna.questblock.ui
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 
 // ── Palette ──────────────────────────────────────────────────────────────────
@@ -10,7 +14,8 @@ val ColorBg          = Color(0xFF0A0D12)
 val ColorSurface     = Color(0xFF111720)
 val ColorSurfaceHigh = Color(0xFF1A2230)
 val ColorCard        = Color(0xFF16202E)
-val ColorPrimary     = Color(0xFF00E5A0)
+/** Accent colour. A state, so changing it in Settings recolours the app live. */
+var ColorPrimary by mutableStateOf(Color(0xFF00E5A0))
 val ColorOnPrimary   = Color(0xFF001A10)
 val ColorAccent      = Color(0xFF7C6EF5)   // purple accent
 val ColorCoin        = Color(0xFFFFC857)
@@ -29,20 +34,31 @@ val CatColors = mapOf(
     "Custom"   to Color(0xFFFFD05C),
 )
 
-private val DarkScheme = darkColorScheme(
-    primary          = ColorPrimary,
-    onPrimary        = ColorOnPrimary,
-    secondary        = ColorCoin,
-    background       = ColorBg,
-    onBackground     = ColorText,
-    surface          = ColorSurface,
-    onSurface        = ColorText,
-    surfaceVariant   = ColorSurfaceHigh,
-    onSurfaceVariant = ColorMuted,
-    error            = ColorDanger,
+val ACCENTS: List<Pair<String, Long>> = listOf(
+    "Mint"   to 0xFF00E5A0,
+    "Sky"    to 0xFF4DA3FF,
+    "Violet" to 0xFF9B7CFF,
+    "Rose"   to 0xFFFF6B9A,
+    "Amber"  to 0xFFFFB020,
+    "Coral"  to 0xFFFF7A59,
 )
 
 @Composable
 fun QuestTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = DarkScheme, content = content)
+    val primary = ColorPrimary
+    val scheme = remember(primary) {
+        darkColorScheme(
+            primary          = primary,
+            onPrimary        = ColorOnPrimary,
+            secondary        = ColorCoin,
+            background       = ColorBg,
+            onBackground     = ColorText,
+            surface          = ColorSurface,
+            onSurface        = ColorText,
+            surfaceVariant   = ColorSurfaceHigh,
+            onSurfaceVariant = ColorMuted,
+            error            = ColorDanger,
+        )
+    }
+    MaterialTheme(colorScheme = scheme, content = content)
 }

@@ -1,6 +1,12 @@
 package com.krishna.questblock.data
 
+import android.content.Context
 import androidx.room.withTransaction
+import com.krishna.questblock.service.Reminders
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.TimeZone
@@ -21,7 +27,11 @@ val UNLOCK_TIERS = listOf(
     UnlockTier(600, 300, "10h"),
 )
 
-private fun dayNumber(now: Long): Long = (now + TimeZone.getDefault().getOffset(now)) / 86_400_000L
+/** Tier price after the per-app price multiplier (Vault → app options). */
+fun UnlockTier.costFor(app: BlockedApp?): Int =
+    ((cost * (app?.priceMult ?: 100)) / 100.0).roundToInt().coerceAtLeast(1)
+
+fun dayNumber(now: Long): Long = (now + TimeZone.getDefault().getOffset(now)) / 86_400_000L
 
 val ACHIEVEMENTS_CATALOG = listOf(
     Achievement("first_quest",  "First Step",    "👣", "Complete your first quest"),
@@ -50,6 +60,9 @@ class GameRepository @Inject constructor(
     private val studySessionDao: StudySessionDao,
     private val achievementDao: AchievementDao,
     private val customRewardDao: CustomRewardDao,
+    private val focusLogDao: FocusLogDao,
+    private val prefs: Prefs,
+    @ApplicationContext private val ctx: Context,
 ) {
     val tasks: Flow<List<TaskEntity>> = taskDao.observeAll()
     val blockedApps: Flow<List<BlockedApp>> = appDao.observeAll()
@@ -60,6 +73,14 @@ class GameRepository @Inject constructor(
     val totalStudyCoins: Flow<Int?> = studySessionDao.observeTotalEarned()
     val achievements: Flow<List<Achievement>> = achievementDao.observeAll()
     val customRewards: Flow<List<CustomReward>> = customRewardDao.observeAll()
+    val focusLogs: Flow<List<FocusLog>> = focusLogDao.observeRecent()
+
+    // ── Settings shortcuts ────────────────────────────────────────────────
+    fun unlockTiers(): List<UnlockTier> = prefs.unlockTiers()
+    fun studyMinPerCoin(): Int = prefs.studyMinPerCoin
+    fun focusBonus(): Int = prefs.focusBonus
+    fun holdSeconds(): Int = prefs.holdSeconds
+    fun showQuotes(): Boolean = prefs.showQuotes
 
     val player: Flow<Player> = playerDao.observe().map { stored ->
         val p = stored ?: Player()
@@ -82,12 +103,51 @@ class GameRepository @Inject constructor(
         priority: Int = 2, notes: String = "", dueAt: Long? = null,
         isRecurring: Boolean = false, recurType: String = "",
         linkedApps: String = "", isTimerQuest: Boolean = false, timerDurationMs: Long = 0L,
-    ): Long = taskDao.insert(
-        TaskEntity(title = title.trim(), difficulty = difficulty, category = category,
-            priority = priority, notes = notes, dueAt = dueAt,
-            isRecurring = isRecurring, recurType = recurType,
-            linkedApps = linkedApps, isTimerQuest = isTimerQuest, timerDurationMs = timerDurationMs)
-    )
+        daysMask: Int = 0,
+    ): Long {
+        val id = taskDao.insert(
+            TaskEntity(title = title.trim(), difficulty = difficulty, category = category,
+                priority = priority, notes = notes, dueAt = dueAt,
+                isRecurring = isRecurring || daysMask != 0, recurType = if (daysMask != 0) "days" else recurType,
+                linkedApps = linkedApps, isTimerQuest = isTimerQuest, timerDurationMs = timerDurationMs,
+                daysMask = daysMask)
+        )
+        taskDao.get(id)?.let { scheduleReminder(it) }
+        return id
+    }
+
+    suspend fun getTask(id: Long): TaskEntity? = taskDao.get(id)
+
+    suspend fun updateTask(
+        id: Long, title: String, difficulty: Int, category: String, priority: Int,
+        notes: String, dueAt: Long?, isRecurring: Boolean, recurType: String,
+        linkedApps: String, isTimerQuest: Boolean, timerDurationMs: Long, daysMask: Int,
+    ) {
+        val t = taskDao.get(id) ?: return
+        val updated = t.copy(
+            title = title.trim(), difficulty = difficulty, category = category, priority = priority,
+            notes = notes, dueAt = dueAt,
+            isRecurring = isRecurring || daysMask != 0, recurType = if (daysMask != 0) "days" else recurType,
+            linkedApps = linkedApps, isTimerQuest = isTimerQuest, timerDurationMs = timerDurationMs,
+            daysMask = daysMask,
+        )
+        taskDao.update(updated)
+        cancelReminder(id)
+        scheduleReminder(updated)
+    }
+
+    // ── Reminders ─────────────────────────────────────────────────────────
+    private fun scheduleReminder(task: TaskEntity) {
+        if (!prefs.remindersEnabled || task.done) return
+        val due = task.dueAt ?: return
+        val at = due - prefs.reminderLeadMin * 60_000L
+        if (at > System.currentTimeMillis()) Reminders.schedule(ctx, task.id, task.title, at)
+    }
+    private fun cancelReminder(id: Long) = Reminders.cancel(ctx, id)
+
+    suspend fun rescheduleAllReminders() {
+        taskDao.observeAll().first().forEach { if (!it.done) scheduleReminder(it) }
+    }
 
     suspend fun addSubTask(taskId: Long, title: String) =
         subTaskDao.insert(SubTask(taskId = taskId, title = title))
@@ -95,6 +155,7 @@ class GameRepository @Inject constructor(
     suspend fun toggleSubTask(sub: SubTask) = subTaskDao.update(sub.copy(done = !sub.done))
 
     suspend fun deleteTask(task: TaskEntity) {
+        cancelReminder(task.id)
         subTaskDao.deleteAll(task.id)
         taskDao.delete(task)
     }
@@ -104,7 +165,10 @@ class GameRepository @Inject constructor(
             val fresh = taskDao.get(task.id) ?: return@withTransaction
             if (fresh.done) return@withTransaction
             val now = System.currentTimeMillis()
+            // Scheduled quests can only be completed on their days (no farming ahead of time)
+            if (!fresh.isAvailableNow(now)) return@withTransaction
             taskDao.update(fresh.copy(done = true, completedAt = now, timerQuestActive = false))
+            cancelReminder(fresh.id)
 
             val p = playerDao.get() ?: Player()
             val today = dayNumber(now)
@@ -136,10 +200,19 @@ class GameRepository @Inject constructor(
             checkAchievements(p.copy(xp = p.xp + xpEarned, streak = newStreak))
 
             // If recurring, re-create for next period
-            if (fresh.isRecurring && fresh.dueAt != null) {
+            if (fresh.daysMask != 0) {
+                // Scheduled days: the next copy appears on the next selected day
+                val nextDay = nextRunDayStart(fresh.daysMask, now)
+                val nextDue = fresh.dueAt?.let { withTimeOfDay(nextDay, it) }
+                val newId = taskDao.insert(fresh.copy(id = 0, done = false, completedAt = null,
+                    dueAt = nextDue, availableFrom = nextDay, createdAt = now,
+                    timerQuestActive = false, timerQuestStarted = null))
+                taskDao.get(newId)?.let { scheduleReminder(it) }
+            } else if (fresh.isRecurring && fresh.dueAt != null) {
                 val offset = if (fresh.recurType == "weekly") 7 * 86_400_000L else 86_400_000L
-                taskDao.insert(fresh.copy(id = 0, done = false, completedAt = null,
+                val newId = taskDao.insert(fresh.copy(id = 0, done = false, completedAt = null,
                     dueAt = fresh.dueAt + offset, createdAt = now))
+                taskDao.get(newId)?.let { scheduleReminder(it) }
             }
         }
     }
@@ -170,13 +243,15 @@ class GameRepository @Inject constructor(
     }
 
     // ── Daily login ───────────────────────────────────────────────────────
-    /** +5🪙 once per calendar day. Returns true if the bonus was granted. */
-    suspend fun claimDailyLogin(): Boolean = db.withTransaction {
+    /** Daily login coins, once per calendar day. Returns the coins granted (0 = none / disabled). */
+    suspend fun claimDailyLogin(): Int = db.withTransaction {
+        if (!prefs.dailyLoginEnabled) return@withTransaction 0
         val today = dayNumber(System.currentTimeMillis())
         val p = playerDao.get() ?: Player()
-        if (p.lastLoginDay >= today) return@withTransaction false
-        playerDao.upsert(p.copy(coins = p.coins + DAILY_LOGIN_COINS, lastLoginDay = today))
-        true
+        if (p.lastLoginDay >= today) return@withTransaction 0
+        val coins = prefs.dailyLoginCoins
+        playerDao.upsert(p.copy(coins = p.coins + coins, lastLoginDay = today))
+        coins
     }
 
     // ── Focus (Focus Mode + Timer Quest are one thing now) ───────────────
@@ -204,20 +279,28 @@ class GameRepository @Inject constructor(
     suspend fun finishFocus(completed: Boolean) {
         var questId = -1L
         var end = 0L
+        var total = 0L
         val ended = db.withTransaction {
             val p = playerDao.get() ?: return@withTransaction false
             if (p.focusModeUntil == 0L) return@withTransaction false
             questId = p.focusQuestId
             end = p.focusModeUntil
+            total = p.focusTotalMs
             playerDao.upsert(p.copy(
                 focusModeUntil = 0L, focusQuestId = -1L, focusTotalMs = 0L,
-                coins = p.coins + if (completed) FOCUS_BONUS_COINS else 0,
+                coins = p.coins + if (completed) prefs.focusBonus else 0,
             ))
             true
         }
         if (!ended) return
 
         val task = if (questId > 0) taskDao.get(questId) else null
+        run {
+            val startedAt = end - total
+            val elapsed = if (completed) total else (System.currentTimeMillis() - startedAt).coerceIn(0L, total)
+            focusLogDao.insert(FocusLog(startedAt = startedAt, minutes = (elapsed / 60_000L).toInt(),
+                completed = completed, questTitle = task?.title.orEmpty()))
+        }
         if (task != null) {
             task.linkedApps.split(",").filter { it.isNotBlank() }.forEach { pkg ->
                 val app = appDao.get(pkg)
@@ -258,16 +341,32 @@ class GameRepository @Inject constructor(
             .copy(isStudyApp = true, unlockedUntil = 0L))
         else appDao.delete(pkg)
     }
+    suspend fun setAppOptions(pkg: String, dailyLimitMin: Int, schedStart: Int, schedEnd: Int, priceMult: Int) {
+        val app = appDao.get(pkg) ?: return
+        appDao.upsert(app.copy(dailyLimitMin = dailyLimitMin, schedStart = schedStart,
+            schedEnd = schedEnd, priceMult = priceMult))
+    }
+
+    /** Adds foreground time for a daily-limit app. Returns true once today's limit is used up. */
+    suspend fun addUsage(pkg: String, ms: Long): Boolean = db.withTransaction {
+        val app = appDao.get(pkg) ?: return@withTransaction false
+        val today = dayNumber(System.currentTimeMillis())
+        val used = (if (app.usedDay == today) app.usedTodayMs else 0L) + ms
+        appDao.upsert(app.copy(usedTodayMs = used, usedDay = today))
+        app.dailyLimitMin > 0 && used >= app.dailyLimitMin * 60_000L
+    }
+
     suspend fun unlock(pkg: String, tier: UnlockTier): Boolean = db.withTransaction {
         val app = appDao.get(pkg) ?: return@withTransaction false
         val p = playerDao.get() ?: Player()
-        if (p.coins < tier.cost) return@withTransaction false
+        val cost = tier.costFor(app)
+        if (p.coins < cost) return@withTransaction false
         val now = System.currentTimeMillis()
-        playerDao.upsert(p.copy(coins = p.coins - tier.cost))
+        playerDao.upsert(p.copy(coins = p.coins - cost))
         // stacking: extend from the current unlock if one is still running
         val base = maxOf(now, app.unlockedUntil)
         appDao.upsert(app.copy(unlockedUntil = base + tier.minutes * 60_000L))
-        unlockEventDao.insert(UnlockEvent(packageName = app.packageName, label = app.label, coinsSpent = tier.cost))
+        unlockEventDao.insert(UnlockEvent(packageName = app.packageName, label = app.label, coinsSpent = cost))
         true
     }
 
@@ -276,7 +375,7 @@ class GameRepository @Inject constructor(
     suspend fun creditStudyCoins(sessionId: Long, minutes: Int) {
         db.withTransaction {
             val p = playerDao.get() ?: Player()
-            val earned = ((minutes / 5) * (if (p.hasCoinMultiplier()) 1.5 else 1.0)).roundToInt()
+            val earned = ((minutes / prefs.studyMinPerCoin) * (if (p.hasCoinMultiplier()) 1.5 else 1.0)).roundToInt()
             if (earned > 0) {
                 playerDao.upsert(p.copy(coins = p.coins + earned))
                 studySessionDao.addEarned(sessionId, earned)
@@ -306,25 +405,35 @@ class GameRepository @Inject constructor(
         true
     }
     // ── Custom rewards (user-made shop items) ────────────────────────────
-    suspend fun addCustomReward(name: String, emoji: String, price: Int, description: String, type: String) {
+    suspend fun addCustomReward(name: String, emoji: String, price: Int, description: String, type: String, oncePerDay: Boolean) {
         customRewardDao.insert(CustomReward(name = name.trim(), emoji = emoji.trim().ifBlank { "🎁" },
-            price = price.coerceAtLeast(1), description = description.trim(), type = type))
+            price = price.coerceAtLeast(1), description = description.trim(), type = type, oncePerDay = oncePerDay))
     }
+    suspend fun updateCustomReward(r: CustomReward) = customRewardDao.update(r.copy(
+        name = r.name.trim(), emoji = r.emoji.trim().ifBlank { "🎁" }, price = r.price.coerceAtLeast(1),
+        description = r.description.trim()))
     suspend fun deleteCustomReward(r: CustomReward) = customRewardDao.delete(r)
 
-    /** Deducts coins only. "reward" is logged as redeemed straight away; "consumable" waits in My Items. */
-    suspend fun buyCustomReward(r: CustomReward): Boolean = db.withTransaction {
+    /** 0 = bought, 1 = not enough coins, 2 = already bought today (once-per-day rewards). */
+    suspend fun buyCustomReward(r: CustomReward): Int = db.withTransaction {
         val p = playerDao.get() ?: Player()
-        if (p.coins < r.price) return@withTransaction false
+        if (r.oncePerDay && inventoryDao.countSince("custom_${r.id}", startOfToday()) > 0) return@withTransaction 2
+        if (p.coins < r.price) return@withTransaction 1
         playerDao.upsert(p.copy(coins = p.coins - r.price))
         inventoryDao.insert(InventoryItem(
             itemId = "custom_${r.id}", category = "custom", name = r.name, emoji = r.emoji,
             usedAt = if (r.type == "reward") System.currentTimeMillis() else null,
         ))
-        true
+        0
     }
     suspend fun redeemItem(inv: InventoryItem) =
         inventoryDao.update(inv.copy(usedAt = System.currentTimeMillis()))
+
+    // ── Settings helpers ─────────────────────────────────────────────────
+    suspend fun resetAll() = withContext(Dispatchers.IO) {
+        db.clearAllTables()
+        prefs.clearAll()
+    }
 
     suspend fun equipItem(inv: InventoryItem) = db.withTransaction {
         inventoryDao.unequipAll(inv.category); inventoryDao.equip(inv.id)

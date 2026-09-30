@@ -44,6 +44,7 @@ class FocusViewModel @Inject constructor(private val repo: GameRepository) : Vie
     // Session state lives in the database (Player.focusModeUntil), so it survives navigation and app kills.
     init { settle() }
 
+    fun bonus(): Int = repo.focusBonus()
     fun start(durationMs: Long, quest: TaskEntity?) = viewModelScope.launch { repo.startFocus(durationMs, quest) }
     fun end()    = viewModelScope.launch { repo.finishFocus(completed = false) }
     fun settle() = viewModelScope.launch { repo.settleFocus() }
@@ -66,7 +67,7 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
         if (player.focusModeUntil > 0L && !running) vm.settle()
     }
 
-    val timerQuests = tasks.filter { !it.done && it.isTimerQuest }
+    val timerQuests = tasks.filter { it.isTimerQuest && it.isAvailableNow(now) }
     val activeQuest = timerQuests.firstOrNull { it.id == player.focusQuestId }
         ?: tasks.firstOrNull { it.id == player.focusQuestId && player.focusQuestId > 0 }
 
@@ -85,14 +86,14 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
                 onStop = { vm.end() },
             )
         } else {
-            SetupCard(timerQuests = timerQuests, onStart = { dur, quest -> vm.start(dur, quest) })
+            SetupCard(timerQuests = timerQuests, bonus = vm.bonus(), onStart = { dur, quest -> vm.start(dur, quest) })
         }
     }
 }
 
 // One card, one flow: pick what you're focusing on -> (duration) -> start.
 @Composable
-private fun SetupCard(timerQuests: List<TaskEntity>, onStart: (Long, TaskEntity?) -> Unit) {
+private fun SetupCard(timerQuests: List<TaskEntity>, bonus: Int, onStart: (Long, TaskEntity?) -> Unit) {
     var minutes by remember { mutableIntStateOf(25) }
     var quest by remember { mutableStateOf<TaskEntity?>(null) }
     // quest may be deleted/completed while this screen is open
@@ -139,7 +140,7 @@ private fun SetupCard(timerQuests: List<TaskEntity>, onStart: (Long, TaskEntity?
                 )
             }
 
-            val reward = FOCUS_BONUS_COINS + (selected?.let { baseReward(it.difficulty) } ?: 0)
+            val reward = bonus + (selected?.let { baseReward(it.difficulty) } ?: 0)
             Text(
                 "Blocked apps stay locked · finish for +$reward🪙" +
                     if (selected != null) " and the quest completes" else "",

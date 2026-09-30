@@ -6,8 +6,8 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [TaskEntity::class, SubTask::class, BlockedApp::class, Player::class,
                 UnlockEvent::class, InventoryItem::class, StudySession::class, Achievement::class,
-                CustomReward::class],
-    version = 6, exportSchema = false,
+                CustomReward::class, FocusLog::class],
+    version = 7, exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
@@ -19,4 +19,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun studySessionDao(): StudySessionDao
     abstract fun achievementDao(): AchievementDao
     abstract fun customRewardDao(): CustomRewardDao
+    abstract fun focusLogDao(): FocusLogDao
 }

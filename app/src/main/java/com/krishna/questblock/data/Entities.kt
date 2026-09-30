@@ -24,6 +24,10 @@ data class TaskEntity(
     val timerQuestActive: Boolean = false,
     val timerQuestStarted: Long? = null,
     val timerDurationMs: Long = 0L,    // 0 = no timer limit
+    // Days-of-week schedule: bit0=Mon … bit6=Sun. 0 = every day / no restriction.
+    @ColumnInfo(defaultValue = "0") val daysMask: Int = 0,
+    // Hidden from "today" until this time (used after a scheduled quest is completed)
+    @ColumnInfo(defaultValue = "0") val availableFrom: Long = 0L,
 )
 
 @Entity(tableName = "subtasks")
@@ -42,6 +46,13 @@ data class BlockedApp(
     val unlockMinutes: Int = 15,
     val unlockedUntil: Long = 0L,
     val isStudyApp: Boolean = false,
+    // Per-app options (v9)
+    @ColumnInfo(defaultValue = "0")   val dailyLimitMin: Int = 0,     // 0 = always locked; >0 = free until N min used per day
+    @ColumnInfo(defaultValue = "0")   val usedTodayMs: Long = 0L,
+    @ColumnInfo(defaultValue = "0")   val usedDay: Long = 0L,
+    @ColumnInfo(defaultValue = "100") val priceMult: Int = 100,       // unlock price in percent
+    @ColumnInfo(defaultValue = "-1")  val schedStart: Int = -1,       // minutes from midnight, -1 = lock all day
+    @ColumnInfo(defaultValue = "-1")  val schedEnd: Int = -1,
 )
 
 @Entity(tableName = "player")
@@ -110,6 +121,16 @@ data class CustomReward(
     val description: String = "",
     val type: String = "reward",      // "reward" = redeemed on purchase, "consumable" = kept until you redeem it
     val createdAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "0") val oncePerDay: Boolean = false,
+)
+
+@Entity(tableName = "focus_log")
+data class FocusLog(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val startedAt: Long,
+    val minutes: Int,
+    val completed: Boolean,
+    val questTitle: String = "",
 )
 
 @Entity(tableName = "achievements")
