@@ -15,11 +15,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -59,6 +61,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Player
+import com.krishna.questblock.data.UNLOCK_TIERS
+import com.krishna.questblock.data.UnlockTier
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -72,14 +76,8 @@ class BlockViewModel @Inject constructor(private val repo: GameRepository) : Vie
     val blocked = repo.blockedApps.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val player = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
 
-    fun unlock(pkg: String, onResult: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            val app = repo.getBlockedApp(pkg)
-            val label = app?.label ?: pkg
-            // Default quick unlock = 15 min for 20 coins
-            val option = com.krishna.questblock.data.UNLOCK_OPTIONS.first()
-            onResult(repo.unlockApp(pkg, label, option))
-        }
+    fun unlock(pkg: String, tier: UnlockTier, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch { onResult(repo.unlock(pkg, tier)) }
     }
 }
 
@@ -95,6 +93,7 @@ class BlockActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         target = intent.getStringExtra(EXTRA_PKG).orEmpty()
+        showingFor = target
         onBackPressedDispatcher.addCallback(this) { goHome() }
         setContent {
             QuestTheme {
@@ -112,6 +111,18 @@ class BlockActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         target = intent.getStringExtra(EXTRA_PKG).orEmpty()
+        showingFor = target
+    }
+
+    // Never linger in the background. A leftover, half-alive lock screen is what ate taps on app icons.
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations && !isFinishing) finishAndRemoveTask()
+    }
+
+    override fun onDestroy() {
+        if (showingFor == target) showingFor = ""
+        super.onDestroy()
     }
 
     private fun goHome() {
@@ -137,6 +148,8 @@ class BlockActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_PKG = "target_pkg"
+        /** Package the lock screen is currently showing for ("" = not visible). Read by the accessibility service. */
+        @Volatile var showingFor: String = ""
     }
 }
 
@@ -168,6 +181,9 @@ fun BlockScreen(
     }
     val quote = remember(pkg) { MOTIVATIONAL_LINES.random() }
 
+    var tierIdx by remember { mutableStateOf(0) }
+    val tier = UNLOCK_TIERS[tierIdx]
+
     // Hold-to-unlock state
     var holdProgress by remember { mutableFloatStateOf(0f) }
     val animatedHold by animateFloatAsState(
@@ -186,7 +202,7 @@ fun BlockScreen(
                 holdProgress = (it + 1) / steps.toFloat()
             }
             if (isHolding && rule != null) {
-                val canAfford = player.coins >= 20
+                val canAfford = player.coins >= tier.cost
                 if (canAfford) {
                     // Haptic
                     runCatching {
@@ -200,7 +216,7 @@ fun BlockScreen(
                     }.getOrNull()?.let { vib ->
                         vib.vibrate(VibrationEffect.createOneShot(80, VibrationEffect.DEFAULT_AMPLITUDE))
                     }
-                    vm.unlock(pkg) { ok ->
+                    vm.unlock(pkg, tier) { ok ->
                         if (ok) onUnlocked()
                         else Toast.makeText(ctx, "Not enough coins", Toast.LENGTH_SHORT).show()
                     }
@@ -226,7 +242,7 @@ fun BlockScreen(
             Modifier
                 .fillMaxSize()
                 .systemBarsPadding()
-                .padding(24.dp),
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -241,7 +257,7 @@ fun BlockScreen(
                 Text(label.firstOrNull()?.uppercase() ?: "?", fontSize = 36.sp, color = ColorText, fontWeight = FontWeight.Bold)
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(12.dp))
 
             Text(
                 "$label is locked",
@@ -260,7 +276,7 @@ fun BlockScreen(
                 textAlign = TextAlign.Center,
             )
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(16.dp))
 
             // Coin balance
             Row(
@@ -276,11 +292,19 @@ fun BlockScreen(
                 )
             }
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(16.dp))
 
             if (rule != null) {
-                val canAfford = player.coins >= 20
-                val missing = 20 - player.coins
+                val canAfford = player.coins >= tier.cost
+                val missing = tier.cost - player.coins
+
+                // Unlock length: 15m / 30m / 1h / 3h / 10h
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    UNLOCK_TIERS.forEachIndexed { i, t ->
+                        TierChip(t, selected = i == tierIdx, affordable = player.coins >= t.cost) { tierIdx = i }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
 
                 // Hold-to-unlock button
                 Column(
@@ -317,7 +341,7 @@ fun BlockScreen(
                             )
                         }
                         Text(
-                            if (canAfford) "Hold to unlock · ${20} 🪙 · ${15} min"
+                            if (canAfford) "Hold to unlock · ${tier.cost} 🪙 · ${tier.label}"
                             else "Need $missing more coins",
                             style = MaterialTheme.typography.labelLarge,
                             color = if (canAfford) ColorPrimary else ColorMuted,
@@ -336,12 +360,12 @@ fun BlockScreen(
                     }
                 }
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(8.dp))
             }
 
             Button(
                 onClick = onQuests,
-                modifier = Modifier.fillMaxWidth().height(50.dp),
+                modifier = Modifier.fillMaxWidth().height(46.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ColorSurfaceHigh, contentColor = ColorText),
                 shape = RoundedCornerShape(12.dp),
             ) { Text("Do a quest instead") }
@@ -352,5 +376,23 @@ fun BlockScreen(
                 Text("Go home", color = ColorMuted)
             }
         }
+    }
+}
+
+@Composable
+private fun RowScope.TierChip(tier: UnlockTier, selected: Boolean, affordable: Boolean, onClick: () -> Unit) {
+    Column(
+        Modifier
+            .weight(1f)
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (selected) ColorPrimary.copy(alpha = 0.2f) else ColorSurfaceHigh)
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(tier.label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
+            color = if (selected) ColorPrimary else ColorText)
+        Text("${tier.cost}🪙", style = MaterialTheme.typography.labelSmall,
+            color = if (affordable) ColorCoin else ColorMuted)
     }
 }

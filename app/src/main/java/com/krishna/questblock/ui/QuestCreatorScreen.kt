@@ -66,7 +66,7 @@ class QuestCreatorViewModel @Inject constructor(
     fun save(
         title: String, difficulty: Int, category: String, priority: Int,
         notes: String, dueAt: Long?, isRecurring: Boolean, recurType: String,
-        linkedApps: List<String>, isFocusQuest: Boolean, focusDurationMs: Long,
+        linkedApps: List<String>, isTimerQuest: Boolean, timerDurationMs: Long,
         onDone: () -> Unit,
     ) = viewModelScope.launch {
         repo.addTask(
@@ -74,7 +74,7 @@ class QuestCreatorViewModel @Inject constructor(
             priority = priority, notes = notes, dueAt = dueAt,
             isRecurring = isRecurring, recurType = recurType,
             linkedApps = linkedApps.joinToString(","),
-            isFocusQuest = isFocusQuest, focusDurationMs = focusDurationMs,
+            isTimerQuest = isTimerQuest, timerDurationMs = timerDurationMs,
         )
         repo.unlockFirstQuestAchievement()
         onDone()
@@ -102,7 +102,7 @@ fun QuestCreatorScreen(
     var dueAt      by remember { mutableStateOf<Long?>(null) }
     var isRecurring by remember { mutableStateOf(false) }
     var recurType  by remember { mutableStateOf("daily") }
-    var isFocusQuest by remember { mutableStateOf(false) }
+    var isTimerQuest by remember { mutableStateOf(false) }
     var timerHours by remember { mutableIntStateOf(1) }
     var timerMins  by remember { mutableIntStateOf(0) }
     var linkedApps by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -112,9 +112,11 @@ fun QuestCreatorScreen(
 
     Scaffold(
         containerColor = ColorBg,
+        contentWindowInsets = WindowInsets(0),
         topBar = {
             TopAppBar(
-                title = { Text("New Quest", fontWeight = FontWeight.Bold, color = ColorText) },
+                windowInsets = WindowInsets(0),
+                title = { Text("New Quest", fontWeight = FontWeight.Bold, color = ColorText, style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = ColorText)
@@ -124,17 +126,17 @@ fun QuestCreatorScreen(
             )
         },
         bottomBar = {
-            Box(Modifier.fillMaxWidth().padding(16.dp)) {
+            Box(Modifier.fillMaxWidth().padding(12.dp)) {
                 Button(
                     onClick = {
                         if (title.isNotBlank()) {
                             val durMs = (timerHours * 3600L + timerMins * 60L) * 1000L
                             vm.save(title, difficulty, category, priority, notes,
                                 dueAt, isRecurring, recurType, linkedApps.toList(),
-                                isFocusQuest, if (isFocusQuest) durMs else 0L, onBack)
+                                isTimerQuest, if (isTimerQuest) durMs else 0L, onBack)
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
                     colors   = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
                     shape    = RoundedCornerShape(14.dp),
                     enabled  = title.isNotBlank(),
@@ -144,8 +146,8 @@ fun QuestCreatorScreen(
     ) { pad ->
         LazyColumn(
             Modifier.fillMaxSize().padding(pad),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+            contentPadding = PaddingValues(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // ── Title ──────────────────────────────────────────────────────
             item {
@@ -167,8 +169,8 @@ fun QuestCreatorScreen(
                 OutlinedTextField(
                     value = notes, onValueChange = { notes = it },
                     placeholder = { Text("Add details…", color = ColorMuted) },
-                    modifier = Modifier.fillMaxWidth().height(90.dp),
-                    maxLines = 4,
+                    modifier = Modifier.fillMaxWidth().height(80.dp),
+                    maxLines = 3,
                     colors = creatorFieldColors(),
                     shape = RoundedCornerShape(12.dp),
                 )
@@ -187,7 +189,7 @@ fun QuestCreatorScreen(
                                 .background(if (selected) color.copy(0.25f) else ColorSurface)
                                 .border(1.dp, if (selected) color else ColorDivider, RoundedCornerShape(20.dp))
                                 .clickable { category = cat }
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                .padding(horizontal = 14.dp, vertical = 6.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(cat, color = if (selected) color else ColorMuted,
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
@@ -271,7 +273,7 @@ fun QuestCreatorScreen(
             item {
                 CreatorToggleRow(
                     label = "Recurring quest",
-                    sub   = if (isRecurring) "Repeats ${recurType}ly after completion" else "One-time quest",
+                    sub   = if (isRecurring) "Repeats $recurType after completion" else "One-time quest",
                     emoji = "🔁",
                     checked = isRecurring,
                     onToggle = { isRecurring = it },
@@ -295,20 +297,20 @@ fun QuestCreatorScreen(
                 }
             }
 
-            // ── Focus Quest ───────────────────────────────────────────────
+            // ── Timer Quest ───────────────────────────────────────────────
             item {
                 CreatorToggleRow(
                     label = "Focus Quest",
-                    sub   = "Unlock selected apps for quest duration",
+                    sub   = "Runs a Focus session · unlocks chosen apps · auto-completes",
                     emoji = "⏱️",
-                    checked = isFocusQuest,
-                    onToggle = { isFocusQuest = it },
+                    checked = isTimerQuest,
+                    onToggle = { isTimerQuest = it },
                 )
-                if (isFocusQuest) {
+                if (isTimerQuest) {
                     Spacer(Modifier.height(10.dp))
                     // Duration picker
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Duration:", color = ColorMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("Focus time:", color = ColorMuted, style = MaterialTheme.typography.bodySmall)
                         NumberPicker(value = timerHours, range = 0..8, label = "h") { timerHours = it }
                         NumberPicker(value = timerMins, range = 0..55, step = 5, label = "m") { timerMins = it }
                     }
@@ -345,7 +347,7 @@ fun QuestCreatorScreen(
                 }
             }
 
-            item { Spacer(Modifier.height(80.dp)) }
+            item { Spacer(Modifier.height(48.dp)) }
         }
     }
 
@@ -364,7 +366,7 @@ fun QuestCreatorScreen(
 private fun SectionLabel(text: String) {
     Text(text, style = MaterialTheme.typography.labelMedium,
         color = ColorMuted, fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(bottom = 6.dp))
+        modifier = Modifier.padding(bottom = 4.dp))
 }
 
 @Composable
@@ -373,7 +375,7 @@ private fun CreatorToggleRow(label: String, sub: String, emoji: String, checked:
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(ColorSurface)
-            .padding(14.dp),
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {

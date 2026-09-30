@@ -1,24 +1,27 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.krishna.questblock.ui
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -27,7 +30,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.krishna.questblock.data.*
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -39,260 +41,183 @@ class FocusViewModel @Inject constructor(private val repo: GameRepository) : Vie
     val player = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
     val tasks  = repo.tasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    var remainingMs  by mutableLongStateOf(0L);  private set
-    var totalMs      by mutableLongStateOf(0L);  private set
-    var isRunning    by mutableStateOf(false);   private set
-    private var tickJob: Job? = null
+    // Session state lives in the database (Player.focusModeUntil), so it survives navigation and app kills.
+    init { settle() }
 
-    fun start(durationMs: Long, linkedQuest: TaskEntity? = null) = viewModelScope.launch {
-        totalMs = durationMs
-        remainingMs = durationMs
-        isRunning = true
-        repo.startGlobalFocus(durationMs)
-        linkedQuest?.let { repo.startFocusQuest(it) }
-        tick()
-    }
-
-    fun stop(linkedQuest: TaskEntity? = null) = viewModelScope.launch {
-        tickJob?.cancel()
-        isRunning = false
-        remainingMs = 0L
-        repo.endGlobalFocus()
-        linkedQuest?.let { repo.stopFocusQuest(it) }
-    }
-
-    private fun tick() {
-        tickJob?.cancel()
-        tickJob = viewModelScope.launch {
-            while (remainingMs > 0) {
-                delay(1000L)
-                remainingMs = (remainingMs - 1000L).coerceAtLeast(0L)
-            }
-            if (isRunning) {
-                isRunning = false
-                repo.endGlobalFocus()
-            }
-        }
-    }
-
-    fun completeQuest(task: TaskEntity) = viewModelScope.launch { repo.completeTask(task) }
-    fun stopFocusQuest(task: TaskEntity) = viewModelScope.launch { repo.stopFocusQuest(task) }
+    fun start(durationMs: Long, quest: TaskEntity?) = viewModelScope.launch { repo.startFocus(durationMs, quest) }
+    fun end()    = viewModelScope.launch { repo.finishFocus(completed = false) }
+    fun settle() = viewModelScope.launch { repo.settleFocus() }
 }
 
-private val DURATIONS = listOf(15 to "15m", 25 to "25m", 30 to "30m", 45 to "45m", 60 to "1h", 90 to "90m")
+private val DURATIONS = listOf(15, 25, 30, 45, 60, 90)
 
 @Composable
 fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
     val player by vm.player.collectAsStateWithLifecycle()
     val tasks  by vm.tasks.collectAsStateWithLifecycle()
 
-    val pending      = tasks.filter { !it.done }
-    val focusQuests  = pending.filter { it.isFocusQuest }
-    val activeQuests = pending.filter { it.isFocusQuest && it.focusActive }
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(1000L) } }
 
-    var selectedMins  by remember { mutableIntStateOf(25) }
-    var linkedQuest   by remember { mutableStateOf<TaskEntity?>(null) }
+    val remaining = (player.focusModeUntil - now).coerceAtLeast(0L)
+    val running   = player.focusModeUntil > now
+    // Timer hit zero (or app was reopened after it expired) -> pay out once.
+    LaunchedEffect(player.focusModeUntil, running) {
+        if (player.focusModeUntil > 0L && !running) vm.settle()
+    }
 
-    LazyColumn(
-        Modifier.fillMaxSize().background(ColorBg),
-        contentPadding = PaddingValues(12.dp),
+    val timerQuests = tasks.filter { !it.done && it.isTimerQuest }
+    val activeQuest = timerQuests.firstOrNull { it.id == player.focusQuestId }
+        ?: tasks.firstOrNull { it.id == player.focusQuestId && player.focusQuestId > 0 }
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            Text("Focus Mode", style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold, color = ColorText)
-        }
+        Text("Focus", style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold, color = ColorText)
 
-        if (vm.isRunning) {
-            // ── Active session ─────────────────────────────────────────────
-            item {
-                ActiveTimerCard(
-                    remainingMs = vm.remainingMs,
-                    totalMs     = vm.totalMs,
-                    onStop      = { vm.stop(linkedQuest) },
+        if (running) {
+            ActiveFocusCard(
+                remainingMs = remaining, totalMs = player.focusTotalMs,
+                questTitle = activeQuest?.title,
+                appCount = activeQuest?.linkedApps?.split(",")?.count { it.isNotBlank() } ?: 0,
+                onStop = { vm.end() },
+            )
+        } else {
+            SetupCard(timerQuests = timerQuests, onStart = { dur, quest -> vm.start(dur, quest) })
+        }
+    }
+}
+
+// One card, one flow: pick what you're focusing on -> (duration) -> start.
+@Composable
+private fun SetupCard(timerQuests: List<TaskEntity>, onStart: (Long, TaskEntity?) -> Unit) {
+    var minutes by remember { mutableIntStateOf(25) }
+    var quest by remember { mutableStateOf<TaskEntity?>(null) }
+    // quest may be deleted/completed while this screen is open
+    val selected = quest?.let { q -> timerQuests.firstOrNull { it.id == q.id } }
+    val questMs = selected?.timerDurationMs?.takeIf { it > 0 } ?: 60 * 60_000L
+    val durationMs = if (selected != null) questMs else minutes * 60_000L
+    val shownMin = (durationMs / 60_000L).toInt()
+
+    Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Focus on", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
+                fontWeight = FontWeight.SemiBold)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item { PickChip("⚡ Quick focus", quest == null, ColorPrimary) { quest = null } }
+                items(timerQuests, key = { it.id }) { t ->
+                    PickChip("⏱️ ${t.title}", selected?.id == t.id, ColorAccent) { quest = t }
+                }
+            }
+
+            if (selected == null) {
+                Text("Duration", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
+                    fontWeight = FontWeight.SemiBold)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    DURATIONS.forEach { m ->
+                        val sel = minutes == m
+                        Box(
+                            Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(8.dp))
+                                .background(if (sel) ColorPrimary.copy(0.2f) else ColorSurfaceHigh)
+                                .clickable { minutes = m },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("${m}m", maxLines = 1, color = if (sel) ColorPrimary else ColorMuted,
+                                fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                                style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+            } else {
+                val apps = selected.linkedApps.split(",").count { it.isNotBlank() }
+                Text(
+                    "⏱️ ${shownMin}m" + if (apps > 0) " · unlocks $apps app${if (apps > 1) "s" else ""}" else "",
+                    style = MaterialTheme.typography.bodyMedium, color = ColorAccent, fontWeight = FontWeight.SemiBold,
                 )
             }
-            if (activeQuests.isNotEmpty()) {
-                item {
-                    Text("Linked quests", style = MaterialTheme.typography.labelMedium,
-                        color = ColorMuted, fontWeight = FontWeight.SemiBold)
-                }
-                items(activeQuests, key = { it.id }) { task ->
-                    ActiveQuestRow(task = task, now = System.currentTimeMillis(),
-                        onComplete = { vm.completeQuest(task) },
-                        onStop     = { vm.stopFocusQuest(task) })
-                }
-            }
-        } else {
-            // ── Setup ──────────────────────────────────────────────────────
-            item {
-                // Duration picker
-                Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
-                    shape = RoundedCornerShape(14.dp)) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Session duration", style = MaterialTheme.typography.labelMedium,
-                            color = ColorMuted, fontWeight = FontWeight.SemiBold)
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            DURATIONS.forEach { (mins, label) ->
-                                val sel = selectedMins == mins
-                                Box(
-                                    Modifier.weight(1f)
-                                        .background(if (sel) ColorPrimary.copy(0.2f) else ColorSurfaceHigh, RoundedCornerShape(8.dp))
-                                        .clickable { selectedMins = mins }
-                                        .padding(vertical = 10.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(label,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = if (sel) ColorPrimary else ColorMuted,
-                                        fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
 
-            // Link a focus quest
-            if (focusQuests.isNotEmpty()) {
-                item {
-                    Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
-                        shape = RoundedCornerShape(14.dp)) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Link a quest (optional)", style = MaterialTheme.typography.labelMedium,
-                                color = ColorMuted, fontWeight = FontWeight.SemiBold)
-                            Text("Linked quest apps unlock during this session",
-                                style = MaterialTheme.typography.labelSmall, color = ColorMuted)
-                            focusQuests.forEach { task ->
-                                val sel = linkedQuest?.id == task.id
-                                Row(
-                                    Modifier.fillMaxWidth()
-                                        .background(if (sel) ColorAccent.copy(0.15f) else ColorSurfaceHigh, RoundedCornerShape(10.dp))
-                                        .clickable { linkedQuest = if (sel) null else task }
-                                        .padding(10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                ) {
-                                    RadioButton(selected = sel, onClick = { linkedQuest = if (sel) null else task },
-                                        colors = RadioButtonDefaults.colors(selectedColor = ColorAccent))
-                                    Column(Modifier.weight(1f)) {
-                                        Text(task.title, color = ColorText,
-                                            style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
-                                        val apps = task.linkedApps.split(",").filter { it.isNotBlank() }
-                                        if (apps.isNotEmpty())
-                                            Text("🔓 Unlocks ${apps.size} app(s)",
-                                                style = MaterialTheme.typography.labelSmall, color = ColorAccent)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            val reward = FOCUS_BONUS_COINS + (selected?.let { baseReward(it.difficulty) } ?: 0)
+            Text(
+                "Blocked apps stay locked · finish for +$reward🪙" +
+                    if (selected != null) " and the quest completes" else "",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted,
+            )
 
-            // Info card
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
-                    shape = RoundedCornerShape(14.dp)) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("During this session:", style = MaterialTheme.typography.labelSmall,
-                            color = ColorMuted, fontWeight = FontWeight.SemiBold)
-                        listOf(
-                            "🔒 All blocked apps stay locked",
-                            "📚 Study apps keep earning 🪙",
-                            if (linkedQuest != null) "🔓 ${linkedQuest!!.title} apps unlocked" else "⚡ 2× XP on all quest completions",
-                            "🎁 +15🪙 bonus when session ends",
-                        ).forEach {
-                            Text(it, style = MaterialTheme.typography.labelSmall, color = ColorMuted)
-                        }
-                    }
-                }
-            }
-
-            // Start button
-            item {
-                Button(
-                    onClick = { vm.start(selectedMins * 60_000L, linkedQuest) },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    colors   = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
-                    shape    = RoundedCornerShape(14.dp),
-                ) {
-                    Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Start ${selectedMins}min Focus", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                }
+            Button(
+                onClick = { onStart(durationMs, selected) },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null)
+                Spacer(Modifier.width(6.dp))
+                Text("Start ${shownMin}min Focus", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
     }
 }
 
 @Composable
-private fun ActiveTimerCard(remainingMs: Long, totalMs: Long, onStop: () -> Unit) {
-    val sec  = (remainingMs / 1000).coerceAtLeast(0)
-    val mm   = sec / 60
-    val ss   = sec % 60
-    val frac = if (totalMs > 0) remainingMs.toFloat() / totalMs else 0f
+private fun PickChip(text: String, selected: Boolean, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+    Box(
+        Modifier.clip(RoundedCornerShape(20.dp))
+            .background(if (selected) color.copy(0.2f) else ColorSurfaceHigh)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .widthIn(max = 200.dp),
+    ) {
+        Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            color = if (selected) color else ColorMuted,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            style = MaterialTheme.typography.labelLarge)
+    }
+}
 
-    Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
-        shape = RoundedCornerShape(20.dp),
+@Composable
+private fun ActiveFocusCard(remainingMs: Long, totalMs: Long, questTitle: String?, appCount: Int, onStop: () -> Unit) {
+    val totalSec = (remainingMs / 1000).coerceAtLeast(0)
+    val frac = if (totalMs > 0) (remainingMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
+
+    Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(20.dp),
         modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().padding(20.dp),
+        Column(
+            Modifier.fillMaxWidth().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(if (questTitle != null) "🎯 $questTitle" else "🎯 Focus session",
+                style = MaterialTheme.typography.titleSmall, color = ColorPrimary, fontWeight = FontWeight.Bold,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
 
-            Text("🎯 Focus Active", style = MaterialTheme.typography.labelLarge,
-                color = ColorPrimary, fontWeight = FontWeight.Bold)
-
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(150.dp)) {
-                Canvas(Modifier.size(150.dp)) {
-                    drawArc(color = ColorPrimary.copy(0.12f), startAngle = -90f, sweepAngle = 360f,
-                        useCenter = false, style = Stroke(10.dp.toPx(), cap = StrokeCap.Round))
-                    drawArc(color = ColorPrimary, startAngle = -90f, sweepAngle = frac * 360f,
-                        useCenter = false, style = Stroke(10.dp.toPx(), cap = StrokeCap.Round))
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(170.dp)) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val stroke = Stroke(width = 10.dp.toPx(), cap = StrokeCap.Round)
+                    drawArc(ColorPrimary.copy(0.15f), -90f, 360f, false, style = stroke)
+                    drawArc(ColorPrimary, -90f, 360f * frac, false, style = stroke)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("%02d:%02d".format(mm, ss), fontSize = 34.sp,
+                    Text("%02d:%02d".format(totalSec / 60, totalSec % 60), fontSize = 38.sp,
                         fontWeight = FontWeight.Black, color = ColorText)
                     Text("remaining", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
                 }
             }
 
-            OutlinedButton(onClick = onStop, shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorDanger)) {
-                Icon(Icons.Default.Stop, null, modifier = Modifier.size(16.dp))
+            Text(
+                "Blocked apps stay locked" + if (appCount > 0) " · $appCount linked app${if (appCount > 1) "s" else ""} unlocked" else "",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted,
+            )
+
+            OutlinedButton(
+                onClick = onStop,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorDanger),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("End Session", fontWeight = FontWeight.SemiBold)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ActiveQuestRow(task: TaskEntity, now: Long, onComplete: () -> Unit, onStop: () -> Unit) {
-    val started = task.focusStarted ?: now
-    val elapsed = now - started
-    val rem = (task.focusDurationMs - elapsed).coerceAtLeast(0L)
-    val mm = rem / 60_000; val ss = (rem % 60_000) / 1000
-
-    Card(colors = CardDefaults.cardColors(containerColor = ColorAccent.copy(0.1f)),
-        shape = RoundedCornerShape(12.dp)) {
-        Row(Modifier.fillMaxWidth().padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(Modifier.size(40.dp).background(ColorAccent.copy(0.2f), CircleShape),
-                contentAlignment = Alignment.Center) { Text("⏱️", fontSize = 18.sp) }
-            Column(Modifier.weight(1f)) {
-                Text(task.title, color = ColorText, fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodySmall)
-                Text("%02d:%02d left".format(mm, ss), color = ColorAccent,
-                    style = MaterialTheme.typography.labelSmall)
-            }
-            TextButton(onClick = onComplete,
-                colors = ButtonDefaults.textButtonColors(contentColor = ColorPrimary)) {
-                Text("Done", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
-            }
-            IconButton(onClick = onStop, modifier = Modifier.size(28.dp)) {
-                Icon(Icons.Default.Stop, null, tint = ColorDanger, modifier = Modifier.size(16.dp))
+                Text("End early (no reward)", fontWeight = FontWeight.SemiBold)
             }
         }
     }

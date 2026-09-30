@@ -10,16 +10,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 
 private data class NavItem(val route: String, val label: String, val icon: ImageVector)
+
 private val NAV_ITEMS = listOf(
-    NavItem("home",      "Home",      Icons.Default.Home),
-    NavItem("quests",    "Quests",    Icons.Default.Star),
-    NavItem("focus",     "Focus",     Icons.Default.Bolt),
-    NavItem("vault",     "Vault",     Icons.Default.Lock),
-    NavItem("shop",      "Shop",      Icons.Default.ShoppingCart),
+    NavItem("home",    "Home",    Icons.Default.Home),
+    NavItem("quests",  "Quests",  Icons.Default.Star),
+    NavItem("focus",   "Focus",   Icons.Default.Bolt),
+    NavItem("vault",   "Vault",   Icons.Default.Lock),
+    NavItem("profile", "Profile", Icons.Default.Person),
 )
+
+/** One way to switch tabs, used by the bottom bar AND every shortcut, so a tab is never pushed twice. */
+private fun NavHostController.goTab(route: String) = navigate(route) {
+    popUpTo(graph.findStartDestination().id) { saveState = true }
+    launchSingleTop = true
+    restoreState = true
+}
 
 @Composable
 fun MainScreen() {
@@ -29,42 +38,45 @@ fun MainScreen() {
         bottomBar = {
             NavigationBar(containerColor = ColorSurface) {
                 val backStack by navController.currentBackStackEntryAsState()
-                val current = backStack?.destination
+                val current   = backStack?.destination
                 NAV_ITEMS.forEach { item ->
                     NavigationBarItem(
                         selected = current?.hierarchy?.any { it.route == item.route } == true,
-                        onClick = {
-                            navController.navigate(item.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true; restoreState = true
-                            }
-                        },
-                        icon  = { Icon(item.icon, item.label) },
+                        onClick  = { navController.goTab(item.route) },
+                        icon  = { Icon(item.icon, contentDescription = item.label) },
                         label = { Text(item.label) },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = ColorPrimary, selectedTextColor = ColorPrimary,
-                            indicatorColor = ColorPrimary.copy(0.15f),
-                            unselectedIconColor = ColorMuted, unselectedTextColor = ColorMuted,
+                            selectedIconColor   = ColorPrimary, selectedTextColor   = ColorPrimary,
+                            indicatorColor      = ColorPrimary.copy(0.15f),
+                            unselectedIconColor = ColorMuted,  unselectedTextColor = ColorMuted,
                         ),
                     )
                 }
             }
         }
-    ) { pad ->
+    ) { innerPadding ->
         NavHost(navController = navController, startDestination = "home",
-            modifier = Modifier.fillMaxSize().padding(pad)) {
+            modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             composable("home") {
-                HomeScreen(onAddQuest = { navController.navigate("create_quest") },
-                    onGoFocus = { navController.navigate("focus") })
+                HomeScreen(
+                    onAddQuest = { navController.navigate("create_quest") { launchSingleTop = true } },
+                    onGoFocus  = { navController.goTab("focus") },
+                    onOpenShop = { navController.navigate("shop") { launchSingleTop = true } },
+                )
             }
             composable("quests") {
-                QuestsScreen(onAddQuest = { navController.navigate("create_quest") })
+                QuestsScreen(
+                    onAddQuest = { navController.navigate("create_quest") { launchSingleTop = true } },
+                    onOpenFocus = { navController.goTab("focus") },
+                )
             }
-            composable("focus")  { FocusModeScreen() }
-            composable("vault")  { VaultScreen() }
-            composable("shop")   { InventoryScreen() }
-            composable("profile") { ProfileScreen() }
+            composable("focus")   { FocusModeScreen() }
+            composable("vault")   { VaultScreen() }
+            composable("profile") {
+                ProfileScreen(onOpenShop = { navController.navigate("shop") { launchSingleTop = true } })
+            }
             composable("create_quest") { QuestCreatorScreen(onBack = { navController.popBackStack() }) }
+            composable("shop")         { InventoryScreen(onBack = { navController.popBackStack() }) }
         }
     }
 }

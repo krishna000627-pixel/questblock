@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -48,8 +49,10 @@ class QuestsViewModel @Inject constructor(private val repo: GameRepository) : Vi
     fun add(title: String, difficulty: Int) = viewModelScope.launch { repo.addTask(title, difficulty) }
     fun complete(task: TaskEntity) = viewModelScope.launch { repo.completeTask(task) }
     fun delete(task: TaskEntity)   = viewModelScope.launch { repo.deleteTask(task) }
-    fun startFocus(task: TaskEntity) = viewModelScope.launch { repo.startFocusQuest(task) }
-    fun stopFocus(task: TaskEntity)  = viewModelScope.launch { repo.stopFocusQuest(task) }
+    fun startFocus(task: TaskEntity) = viewModelScope.launch {
+        repo.startFocus(if (task.timerDurationMs > 0) task.timerDurationMs else 60 * 60_000L, task)
+    }
+    fun stopFocus() = viewModelScope.launch { repo.finishFocus(completed = false) }
 }
 
 private val DIFF_COLORS = listOf(ColorPrimary, ColorCoin, ColorDanger)
@@ -57,7 +60,7 @@ private val DIFF_NAMES  = listOf("Easy", "Medium", "Hard")
 private val FILTER_TABS = listOf("All", "Active", "Done", "Overdue")
 
 @Composable
-fun QuestsScreen(onAddQuest: () -> Unit, vm: QuestsViewModel = hiltViewModel()) {
+fun QuestsScreen(onAddQuest: () -> Unit, onOpenFocus: () -> Unit, vm: QuestsViewModel = hiltViewModel()) {
     val tasks by vm.tasks.collectAsStateWithLifecycle()
     val now   = System.currentTimeMillis()
 
@@ -79,6 +82,7 @@ fun QuestsScreen(onAddQuest: () -> Unit, vm: QuestsViewModel = hiltViewModel()) 
 
     Scaffold(
         containerColor = ColorBg,
+        contentWindowInsets = WindowInsets(0),
         floatingActionButton = {
             FloatingActionButton(onClick = onAddQuest, containerColor = ColorPrimary,
                 contentColor = ColorOnPrimary, shape = CircleShape) {
@@ -89,10 +93,10 @@ fun QuestsScreen(onAddQuest: () -> Unit, vm: QuestsViewModel = hiltViewModel()) 
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(bottom = 80.dp)) {
             // Header
             item {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically) {
-                        Text("Quests", style = MaterialTheme.typography.headlineMedium,
+                        Text("Quests", style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold, color = ColorText)
                         Text("${tasks.count { it.done }}/${tasks.size} done",
                             style = MaterialTheme.typography.labelMedium, color = ColorPrimary)
@@ -106,7 +110,7 @@ fun QuestsScreen(onAddQuest: () -> Unit, vm: QuestsViewModel = hiltViewModel()) 
                                 color = if (sel) ColorPrimary.copy(0.2f) else ColorSurface,
                                 modifier = Modifier.clickable { filterTab = tab },
                             ) {
-                                Text(tab, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                Text(tab, modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
                                     color = if (sel) ColorPrimary else ColorMuted,
                                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
                                     style = MaterialTheme.typography.labelMedium)
@@ -162,8 +166,8 @@ fun QuestsScreen(onAddQuest: () -> Unit, vm: QuestsViewModel = hiltViewModel()) 
                     SwipeableQuestCard(task = task, now = now,
                         onComplete = { vm.complete(task) },
                         onDelete   = { vm.delete(task) },
-                        onStartFocus = { vm.startFocus(task) },
-                        onStopFocus  = { vm.stopFocus(task) },
+                        onStartFocus = { vm.startFocus(task); onOpenFocus() },
+                        onStopFocus  = { vm.stopFocus() },
                     )
                 }
             }
@@ -184,7 +188,7 @@ fun QuestsScreen(onAddQuest: () -> Unit, vm: QuestsViewModel = hiltViewModel()) 
 
 @Composable
 private fun SectionHeader(label: String) {
-    Text(label, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+    Text(label, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
         style = MaterialTheme.typography.labelLarge, color = ColorMuted, fontWeight = FontWeight.SemiBold)
 }
 
@@ -214,7 +218,7 @@ private fun SwipeableQuestCard(
                     else       -> Color.Transparent
                 }, label = "swipe_bg"
             )
-            Box(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 4.dp)
+            Box(Modifier.fillMaxSize()
                 .clip(RoundedCornerShape(14.dp)).background(color),
                 contentAlignment = if (dir == StartToEnd) Alignment.CenterStart else Alignment.CenterEnd) {
                 Icon(
@@ -225,7 +229,7 @@ private fun SwipeableQuestCard(
                 )
             }
         },
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 3.dp),
     ) {
         QuestCard(task = task, now = now,
             onComplete = onComplete, onDelete = onDelete,
@@ -247,19 +251,18 @@ private fun QuestCard(
     Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
         shape = RoundedCornerShape(14.dp),
         modifier = Modifier.fillMaxWidth().alpha(if (task.done) 0.5f else 1f)) {
-        Row(Modifier.fillMaxWidth()) {
-            // Category colour strip
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
             Box(Modifier.width(4.dp).fillMaxHeight().background(catColor))
 
-            Column(Modifier.weight(1f).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Priority dot
+            Column(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     val priColor = when (task.priority) { 1 -> ColorDanger; 3 -> ColorPrimary; else -> ColorWarning }
                     Box(Modifier.size(8.dp).background(priColor, CircleShape))
 
                     Text(task.title, style = MaterialTheme.typography.bodyMedium, color = ColorText,
                         fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f),
+                        maxLines = 2, overflow = TextOverflow.Ellipsis,
                         textDecoration = if (task.done) TextDecoration.LineThrough else TextDecoration.None)
 
                     if (!task.done) {
@@ -274,58 +277,55 @@ private fun QuestCard(
                     }
                 }
 
-                // Tags row
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    item {
-                        TagChip(DIFF_NAMES.getOrElse(task.difficulty - 1) { "Easy" }, diffColor)
-                    }
-                    item { TagChip(task.category, catColor) }
-                    item { TagChip("+${baseReward(task.difficulty)}🪙", ColorCoin) }
-                    if (task.isFocusQuest) item { TagChip("⏱️ Focus", ColorAccent) }
-                    if (task.isRecurring)  item { TagChip("🔁 ${task.recurType}", ColorMuted) }
+                // Tags + due date share one row (plain Row: a scrollable row would fight the swipe gesture)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    TagChip(DIFF_NAMES.getOrElse(task.difficulty - 1) { "Easy" }, diffColor)
+                    TagChip(task.category, catColor)
+                    TagChip("+${baseReward(task.difficulty)}🪙", ColorCoin)
+                    if (task.isTimerQuest) TagChip("⏱️", ColorAccent)
+                    if (task.isRecurring)  TagChip("🔁", ColorMuted)
                 }
 
-                // Due date
                 if (task.dueAt != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(12.dp),
                             tint = if (isOverdue) ColorDanger else ColorMuted)
                         Text(
-                            if (isOverdue) "Overdue: ${sdf.format(Date(task.dueAt))}"
-                            else sdf.format(Date(task.dueAt)),
+                            if (isOverdue) "Overdue: ${sdf.format(Date(task.dueAt))}" else sdf.format(Date(task.dueAt)),
                             style = MaterialTheme.typography.labelSmall,
                             color = if (isOverdue) ColorDanger else ColorMuted,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
 
-                // Notes preview
                 if (task.notes.isNotBlank()) {
-                    Text(task.notes, style = MaterialTheme.typography.bodySmall, color = ColorMuted, maxLines = 1)
+                    Text(task.notes, style = MaterialTheme.typography.bodySmall, color = ColorMuted,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
 
-                // Focus quest controls
-                if (task.isFocusQuest && !task.done) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (!task.focusActive) {
-                            OutlinedButton(onClick = onStartFocus,
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorAccent),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Start", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                            }
-                        } else {
-                            val started = task.focusStarted ?: now
-                            val elapsed = now - started
-                            val rem = (task.focusDurationMs - elapsed).coerceAtLeast(0)
-                            Text("⏱ %02d:%02d left".format(rem / 60_000, (rem % 60_000) / 1000),
-                                style = MaterialTheme.typography.labelSmall, color = ColorAccent, fontWeight = FontWeight.Bold)
+                // Timer quest = a Focus session with a goal attached
+                if (task.isTimerQuest && !task.done) {
+                    if (!task.timerQuestActive) {
+                        OutlinedButton(onClick = onStartFocus,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorAccent),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                            modifier = Modifier.height(30.dp)) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(4.dp))
+                            val mins = if (task.timerDurationMs > 0) task.timerDurationMs / 60_000 else 60
+                            Text("Focus ${mins}m", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("🎯 In focus", style = MaterialTheme.typography.labelMedium,
+                                color = ColorAccent, fontWeight = FontWeight.Bold)
                             OutlinedButton(onClick = onStopFocus,
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorDanger),
                                 shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                modifier = Modifier.height(28.dp)) {
                                 Text("Stop", style = MaterialTheme.typography.labelSmall)
                             }
                         }
@@ -339,7 +339,7 @@ private fun QuestCard(
 @Composable
 private fun TagChip(text: String, color: Color) {
     Surface(shape = RoundedCornerShape(6.dp), color = color.copy(0.15f)) {
-        Text(text, modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-            style = MaterialTheme.typography.labelSmall, color = color)
+        Text(text, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall, color = color, maxLines = 1)
     }
 }

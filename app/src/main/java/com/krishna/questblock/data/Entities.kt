@@ -1,5 +1,6 @@
 package com.krishna.questblock.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -8,21 +9,21 @@ data class TaskEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
     val notes: String = "",
-    val difficulty: Int = 1,
-    val category: String = "Personal",
-    val priority: Int = 2,
+    val difficulty: Int = 1,           // 1=Easy 2=Medium 3=Hard
+    val category: String = "Personal", // Study/Work/Health/Personal/Custom
+    val priority: Int = 2,             // 1=High 2=Medium 3=Low
     val done: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val completedAt: Long? = null,
-    val dueAt: Long? = null,
+    val dueAt: Long? = null,           // scheduled due timestamp
     val isRecurring: Boolean = false,
-    val recurType: String = "daily",
-    // Focus/Timer quest (merged)
+    val recurType: String = "",        // "daily" "weekly"
+    // Timer Quest — linked app packages (comma-separated)
     val linkedApps: String = "",
-    val isFocusQuest: Boolean = false,
-    val focusActive: Boolean = false,
-    val focusStarted: Long? = null,
-    val focusDurationMs: Long = 25 * 60_000L,
+    val isTimerQuest: Boolean = false,
+    val timerQuestActive: Boolean = false,
+    val timerQuestStarted: Long? = null,
+    val timerDurationMs: Long = 0L,    // 0 = no timer limit
 )
 
 @Entity(tableName = "subtasks")
@@ -37,6 +38,8 @@ data class SubTask(
 data class BlockedApp(
     @PrimaryKey val packageName: String,
     val label: String,
+    val cost: Int = 20,
+    val unlockMinutes: Int = 15,
     val unlockedUntil: Long = 0L,
     val isStudyApp: Boolean = false,
 )
@@ -48,20 +51,23 @@ data class Player(
     val xp: Int = 0,
     val streak: Int = 0,
     val lastCompletionDay: Long = 0L,
-    val lastLoginDay: Long = 0L,
     val name: String = "",
     val goal: String = "",
     val dob: String = "",
     val xpBoostUntil: Long = 0L,
     val streakShieldUntil: Long = 0L,
     val coinMultiplierUntil: Long = 0L,
-    val focusModeUntil: Long = 0L,
-    val focusQuestId: Long = -1L,
     val equippedFrame: String = "",
     val equippedTheme: String = "default",
     val equippedBadge: String = "",
+    // Focus mode
+    val focusModeUntil: Long = 0L,
+    val focusQuestId: Long = -1L,
+    @ColumnInfo(defaultValue = "0") val focusTotalMs: Long = 0L,
+    // Daily login bonus (day number of last claim)
+    @ColumnInfo(defaultValue = "0") val lastLoginDay: Long = 0L,
+    // Weekly XP snapshots for simulated leaderboard (7 days, comma-sep)
     val weeklyXpLog: String = "",
-    val totalCoinsEarned: Int = 0,
 )
 
 @Entity(tableName = "inventory_items")
@@ -76,16 +82,13 @@ data class InventoryItem(
     val usedAt: Long? = null,
 )
 
-// Flexible unlock session (replaces fixed cost per app)
-@Entity(tableName = "unlock_sessions")
-data class UnlockSession(
+@Entity(tableName = "unlock_events")
+data class UnlockEvent(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val packageName: String,
     val label: String,
     val coinsSpent: Int,
-    val durationMs: Long,
-    val startedAt: Long = System.currentTimeMillis(),
-    val expiresAt: Long,
+    val timestamp: Long = System.currentTimeMillis(),
 )
 
 @Entity(tableName = "study_sessions")
@@ -94,7 +97,19 @@ data class StudySession(
     val packageName: String,
     val label: String,
     val startedAt: Long = System.currentTimeMillis(),
+    val endedAt: Long? = null,
     val coinsEarned: Int = 0,
+)
+
+@Entity(tableName = "custom_rewards")
+data class CustomReward(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val emoji: String,
+    val price: Int,
+    val description: String = "",
+    val type: String = "reward",      // "reward" = redeemed on purchase, "consumable" = kept until you redeem it
+    val createdAt: Long = System.currentTimeMillis(),
 )
 
 @Entity(tableName = "achievements")
@@ -106,41 +121,9 @@ data class Achievement(
     val unlockedAt: Long? = null,
 )
 
-// Custom shop items created by the user
-@Entity(tableName = "custom_shop_items")
-data class CustomShopItem(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val name: String,
-    val emoji: String,
-    val description: String,
-    val price: Int,
-    val createdAt: Long = System.currentTimeMillis(),
-)
-
-// Log of custom item purchases
-@Entity(tableName = "custom_purchases")
-data class CustomPurchase(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val itemId: Long,
-    val itemName: String,
-    val coinsSpent: Int,
-    val purchasedAt: Long = System.currentTimeMillis(),
-    val redeemed: Boolean = false,
-)
-
 fun Player.level(): Int = xp / 100 + 1
 fun Player.xpIntoLevel(): Int = xp % 100
 fun Player.hasXpBoost(): Boolean = System.currentTimeMillis() < xpBoostUntil
 fun Player.hasCoinMultiplier(): Boolean = System.currentTimeMillis() < coinMultiplierUntil
 fun Player.hasStreakShield(): Boolean = System.currentTimeMillis() < streakShieldUntil
 fun Player.isFocusMode(): Boolean = System.currentTimeMillis() < focusModeUntil
-
-// Unlock duration options
-data class UnlockOption(val label: String, val durationMs: Long, val cost: Int)
-val UNLOCK_OPTIONS = listOf(
-    UnlockOption("15 min",  15 * 60_000L,       20),
-    UnlockOption("30 min",  30 * 60_000L,       35),
-    UnlockOption("1 hour",  60 * 60_000L,       60),
-    UnlockOption("3 hours", 3 * 60 * 60_000L,  120),
-    UnlockOption("10 hours",10 * 60 * 60_000L, 300),
-)

@@ -4,301 +4,262 @@ package com.krishna.questblock.ui
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import com.krishna.questblock.data.*
+import com.krishna.questblock.data.BlockedApp
+import com.krishna.questblock.data.GameRepository
+import com.krishna.questblock.data.UNLOCK_TIERS
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+data class InstalledApp(val pkg: String, val label: String)
+data class AppRow(val app: InstalledApp, val rule: BlockedApp?)
+
 @HiltViewModel
-class VaultViewModel @Inject constructor(
+class AppsViewModel @Inject constructor(
     @ApplicationContext private val ctx: Context,
     private val repo: GameRepository,
 ) : ViewModel() {
-    val blockedApps = repo.blockedApps.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val player      = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
 
-    private val _installed = MutableStateFlow<List<InstalledApp>>(emptyList())
-    val installed = _installed.asStateFlow()
+    private val installed = MutableStateFlow<List<InstalledApp>>(emptyList())
+    val query = MutableStateFlow("")
 
-    var unlockResult by mutableStateOf<String?>(null)
-        private set
+    val rows = combine(installed, repo.blockedApps, query) { apps, blocked, q ->
+        val rules = blocked.associateBy { it.packageName }
+        apps.filter { q.isBlank() || it.label.contains(q, ignoreCase = true) }
+            .map { AppRow(it, rules[it.pkg]) }
+            .sortedBy { it.app.label.lowercase() }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Apps that can still be added as study apps (independent of the search box). */
+    val studyCandidates = combine(installed, repo.blockedApps) { apps, blocked ->
+        val study = blocked.filter { it.isStudyApp }.map { it.packageName }.toSet()
+        apps.filter { it.pkg !in study }.sortedBy { it.label.lowercase() }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
             val pm = ctx.packageManager
-            val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-            _installed.value = pm.queryIntentActivities(intent, 0)
+            val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            installed.value = pm.queryIntentActivities(launcherIntent, 0)
                 .map { InstalledApp(it.activityInfo.packageName, it.loadLabel(pm).toString()) }
-                .filter { it.pkg != ctx.packageName }.distinctBy { it.pkg }.sortedBy { it.label.lowercase() }
+                .filter { it.pkg != ctx.packageName }
+                .distinctBy { it.pkg }
         }
     }
 
-    fun setBlocked(pkg: String, label: String, on: Boolean) =
-        viewModelScope.launch { repo.setBlocked(pkg, label, on) }
-
-    fun setStudy(pkg: String, label: String, on: Boolean) =
-        viewModelScope.launch { repo.setStudyApp(pkg, label, on) }
-
-    fun unlockApp(pkg: String, label: String, option: UnlockOption) = viewModelScope.launch {
-        val ok = repo.unlockApp(pkg, label, option)
-        unlockResult = if (ok) "✓ ${label} unlocked for ${option.label}" else "Not enough coins 🪙"
-    }
-
-    fun clearResult() { unlockResult = null }
+    fun setQuery(q: String) { query.value = q }
+    fun setBlocked(app: InstalledApp, on: Boolean) =
+        viewModelScope.launch { repo.setBlocked(app.pkg, app.label, on) }
+    fun setStudyApp(app: InstalledApp, isStudy: Boolean) =
+        viewModelScope.launch { repo.setStudyApp(app.pkg, app.label, isStudy) }
 }
 
 @Composable
-fun VaultScreen(vm: VaultViewModel = hiltViewModel()) {
-    val blocked   by vm.blockedApps.collectAsStateWithLifecycle()
-    val player    by vm.player.collectAsStateWithLifecycle()
-    val installed by vm.installed.collectAsStateWithLifecycle()
-
-    var search       by remember { mutableStateOf("") }
-    var unlockTarget by remember { mutableStateOf<BlockedApp?>(null) }
-    val snack = remember { SnackbarHostState() }
-    val result = vm.unlockResult
-
-    LaunchedEffect(result) {
-        if (result != null) { snack.showSnackbar(result); vm.clearResult() }
-    }
+fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
+    val rows by vm.rows.collectAsStateWithLifecycle()
+    val query by vm.query.collectAsStateWithLifecycle()
+    val candidates by vm.studyCandidates.collectAsStateWithLifecycle()
+    var showStudyPicker by remember { mutableStateOf(false) }
 
     val now = System.currentTimeMillis()
-    val studyApps   = blocked.filter { it.isStudyApp }
-    val lockedApps  = blocked.filter { !it.isStudyApp }
-    val allFiltered = installed.filter {
-        search.isBlank() || it.label.contains(search, ignoreCase = true)
-    }
-    val notInBlocked = allFiltered.filter { app -> blocked.none { it.packageName == app.pkg } }
+    val studyRows  = rows.filter { it.rule?.isStudyApp == true }
+    val lockedRows = rows.filter { it.rule != null && it.rule.isStudyApp == false }
+    val freeRows   = rows.filter { it.rule == null }
 
-    Scaffold(containerColor = ColorBg, snackbarHost = { SnackbarHost(snack) }) { pad ->
-        LazyColumn(Modifier.fillMaxSize().padding(pad),
-            contentPadding = PaddingValues(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item {
+            Text("Vault", style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold, color = ColorText)
+            Text("${lockedRows.size} locked · ${studyRows.size} study",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        }
+        item {
+            OutlinedTextField(
+                value = query, onValueChange = vm::setQuery,
+                placeholder = { Text("Search apps", color = ColorMuted) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = ColorMuted) },
+                singleLine = true, modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = ColorPrimary, unfocusedBorderColor = ColorSurfaceHigh,
+                    cursorColor = ColorPrimary, focusedTextColor = ColorText, unfocusedTextColor = ColorText,
+                    focusedContainerColor = ColorSurface, unfocusedContainerColor = ColorSurface,
+                ),
+            )
+        }
 
-            // Header
-            item {
-                Row(Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically) {
-                    Column {
-                        Text("Vault", style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold, color = ColorText)
-                        Text("${lockedApps.size} locked · ${studyApps.size} study · 🪙 ${player.coins}",
-                            style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        // ── Study apps ───────────────────────────────────────────────────
+        item {
+            Card(colors = CardDefaults.cardColors(containerColor = ColorPrimary.copy(0.08f)),
+                shape = RoundedCornerShape(14.dp)) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.MenuBook, contentDescription = null, tint = ColorPrimary,
+                            modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Study Apps", style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold, color = ColorText, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { showStudyPicker = true },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Add", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    Text("Apps you learn in (Anki, Kindle, Duolingo…). They never lock, and you earn " +
+                        "1🪙 for every 5 minutes you spend inside them.",
+                        style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                    if (studyRows.isEmpty()) {
+                        Text("No study apps yet — tap Add.", style = MaterialTheme.typography.labelMedium,
+                            color = ColorPrimary)
                     }
                 }
             }
+        }
+        items(studyRows, key = { "s_${it.app.pkg}" }) { row ->
+            AppCard(row, now, onToggle = { vm.setStudyApp(row.app, it) })
+        }
 
-            // Search
+        // ── Locked apps ──────────────────────────────────────────────────
+        item {
+            Column {
+                Text("🔒 Locked apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
+                    fontWeight = FontWeight.SemiBold)
+                Text("Unlock: " + UNLOCK_TIERS.joinToString(" · ") { "${it.label} ${it.cost}🪙" },
+                    style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+            }
+        }
+        if (lockedRows.isEmpty()) {
+            item { Text("Toggle an app below to lock it.", style = MaterialTheme.typography.bodySmall, color = ColorMuted) }
+        }
+        items(lockedRows, key = { it.app.pkg }) { row ->
+            AppCard(row, now, onToggle = { vm.setBlocked(row.app, it) })
+        }
+
+        // ── Everything else ──────────────────────────────────────────────
+        if (freeRows.isNotEmpty()) {
+            item { Text("All apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
+                fontWeight = FontWeight.SemiBold) }
+            items(freeRows, key = { "u_${it.app.pkg}" }) { row ->
+                AppCard(row, now, onToggle = { vm.setBlocked(row.app, it) })
+            }
+        }
+
+        if (rows.isEmpty() && query.isBlank()) {
             item {
-                OutlinedTextField(
-                    value = search, onValueChange = { search = it },
-                    placeholder = { Text("Search apps…", color = ColorMuted) },
-                    leadingIcon = { Icon(Icons.Default.Search, null, tint = ColorMuted, modifier = Modifier.size(18.dp)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = ColorPrimary, unfocusedBorderColor = ColorDivider,
-                        cursorColor = ColorPrimary, focusedTextColor = ColorText, unfocusedTextColor = ColorText,
-                        focusedContainerColor = ColorSurface, unfocusedContainerColor = ColorSurface,
-                    ),
-                )
-            }
-
-            // Study apps section
-            if (studyApps.isNotEmpty() && search.isBlank()) {
-                item {
-                    Text("📚 Study Apps · earn 1🪙/5min",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = ColorPrimary, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp))
+                Column(Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("🔒", style = MaterialTheme.typography.displayMedium)
+                    Text("No apps found", style = MaterialTheme.typography.titleMedium, color = ColorText)
                 }
-                items(studyApps, key = { "study_${it.packageName}" }) { app ->
-                    AppRow(
-                        label = app.label, pkg = app.packageName,
-                        subtitle = "Study app · earns coins while in use",
-                        isOn = true, showUnlock = false, coins = player.coins, now = now, unlockedUntil = 0L,
-                        onToggle = { vm.setStudy(app.packageName, app.label, false) },
-                        onUnlock = {},
-                    )
-                }
-            }
-
-            // Blocked apps section
-            if (lockedApps.isNotEmpty() && search.isBlank()) {
-                item {
-                    Text("🔒 Blocked Apps",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = ColorMuted, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp))
-                }
-                items(lockedApps, key = { it.packageName }) { app ->
-                    val isUnlocked = app.unlockedUntil > now
-                    val remaining = if (isUnlocked) app.unlockedUntil - now else 0L
-                    AppRow(
-                        label = app.label, pkg = app.packageName,
-                        subtitle = if (isUnlocked) "Unlocked · ${formatRemaining(remaining)}" else "Locked",
-                        isOn = true, showUnlock = !isUnlocked, coins = player.coins, now = now,
-                        unlockedUntil = app.unlockedUntil,
-                        onToggle = { vm.setBlocked(app.packageName, app.label, false) },
-                        onUnlock = { unlockTarget = app },
-                    )
-                }
-            }
-
-            // All apps
-            if (search.isNotBlank() || lockedApps.isEmpty()) {
-                item {
-                    Text(if (search.isBlank()) "All Apps" else "Search results",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = ColorMuted, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp))
-                }
-            }
-            items(notInBlocked, key = { "all_${it.pkg}" }) { app ->
-                AppRow(
-                    label = app.label, pkg = app.pkg,
-                    subtitle = "Tap to block · long-press for study",
-                    isOn = false, showUnlock = false, coins = player.coins, now = now, unlockedUntil = 0L,
-                    onToggle = { vm.setBlocked(app.pkg, app.label, true) },
-                    onUnlock = {},
-                    onLongPress = { vm.setStudy(app.pkg, app.label, true) },
-                )
             }
         }
     }
 
-    // Unlock duration picker sheet
-    unlockTarget?.let { app ->
-        UnlockSheet(
-            app = app, playerCoins = player.coins,
-            onDismiss = { unlockTarget = null },
-            onUnlock  = { option -> vm.unlockApp(app.packageName, app.label, option); unlockTarget = null },
+    if (showStudyPicker) {
+        StudyPickerDialog(
+            apps = candidates,
+            onPick = { vm.setStudyApp(it, true); showStudyPicker = false },
+            onDismiss = { showStudyPicker = false },
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UnlockSheet(
-    app: BlockedApp, playerCoins: Int,
-    onDismiss: () -> Unit, onUnlock: (UnlockOption) -> Unit,
-) {
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = ColorCard) {
-        Column(Modifier.fillMaxWidth().padding(16.dp).padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Unlock ${app.label}", style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold, color = ColorText)
-            Text("🪙 You have $playerCoins coins", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-            Spacer(Modifier.height(4.dp))
-            UNLOCK_OPTIONS.forEach { option ->
-                val canAfford = playerCoins >= option.cost
-                Row(
-                    Modifier.fillMaxWidth()
-                        .background(if (canAfford) ColorSurface else ColorSurfaceHigh, RoundedCornerShape(12.dp))
-                        .padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        Text(option.label, style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold, color = if (canAfford) ColorText else ColorMuted)
-                    }
-                    Button(
-                        onClick = { onUnlock(option) }, enabled = canAfford,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = ColorPrimary, contentColor = ColorOnPrimary,
-                            disabledContainerColor = ColorSurfaceHigh, disabledContentColor = ColorMuted,
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                    ) { Text("🪙 ${option.cost}", fontWeight = FontWeight.Bold) }
-                }
-            }
-        }
-    }
-}
+private fun AppCard(row: AppRow, now: Long, onToggle: (Boolean) -> Unit) {
+    val rule = row.rule
+    val isOn = rule != null
+    val isStudy = rule?.isStudyApp == true
+    val unlockedLeft = if (rule != null && !isStudy && rule.unlockedUntil > now) (rule.unlockedUntil - now) / 1000 else 0L
 
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-@Composable
-private fun AppRow(
-    label: String, pkg: String, subtitle: String,
-    isOn: Boolean, showUnlock: Boolean, coins: Int, now: Long, unlockedUntil: Long,
-    onToggle: () -> Unit, onUnlock: () -> Unit,
-    onLongPress: (() -> Unit)? = null,
-) {
-    val isCurrentlyUnlocked = unlockedUntil > now
-    Card(colors = CardDefaults.cardColors(
-        containerColor = when {
-            isCurrentlyUnlocked -> ColorPrimary.copy(0.08f)
-            isOn -> ColorCard
-            else -> ColorSurface
-        }),
-        shape = RoundedCornerShape(12.dp),
-    ) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            // App initial avatar
-            Box(Modifier.size(36.dp).background(
-                if (isOn) ColorPrimary.copy(0.15f) else ColorSurfaceHigh, CircleShape),
-                contentAlignment = Alignment.Center) {
-                Text(label.firstOrNull()?.uppercase() ?: "?", fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isOn) ColorPrimary else ColorMuted)
+    Card(colors = CardDefaults.cardColors(containerColor = if (isOn) ColorSurface else ColorSurface.copy(alpha = 0.6f)),
+        shape = RoundedCornerShape(12.dp)) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(
+                Modifier.size(36.dp).clip(CircleShape)
+                    .background(if (isOn) ColorPrimary.copy(alpha = 0.15f) else ColorSurfaceHigh),
+                contentAlignment = Alignment.Center,
+            ) {
+                when {
+                    isStudy -> Icon(Icons.Default.MenuBook, contentDescription = null, tint = ColorPrimary, modifier = Modifier.size(18.dp))
+                    isOn    -> Icon(Icons.Default.Lock, contentDescription = null, tint = ColorPrimary, modifier = Modifier.size(18.dp))
+                    else    -> Text(row.app.label.firstOrNull()?.uppercase() ?: "?",
+                        style = MaterialTheme.typography.titleSmall, color = ColorMuted, fontWeight = FontWeight.Bold)
+                }
             }
             Column(Modifier.weight(1f)) {
-                Text(label, style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold, color = ColorText)
-                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = ColorMuted)
-            }
-            // Unlock + button
-            if (showUnlock) {
-                IconButton(onClick = onUnlock, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Add, contentDescription = "Unlock",
-                        tint = ColorCoin, modifier = Modifier.size(18.dp))
+                Text(row.app.label, style = MaterialTheme.typography.bodyMedium, color = ColorText,
+                    fontWeight = if (isOn) FontWeight.Medium else FontWeight.Normal,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                when {
+                    isStudy -> Text("Earning 1🪙 / 5 min", style = MaterialTheme.typography.labelSmall, color = ColorPrimary)
+                    unlockedLeft > 0 -> Text("Unlocked · %02d:%02d left".format(unlockedLeft / 60, unlockedLeft % 60),
+                        style = MaterialTheme.typography.labelSmall, color = ColorCoin)
+                    isOn -> Text("Locked", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
                 }
             }
-            // Block toggle
-            Switch(checked = isOn, onCheckedChange = { onToggle() },
+            Switch(
+                checked = isOn, onCheckedChange = onToggle,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = ColorOnPrimary, checkedTrackColor = ColorPrimary,
-                    uncheckedThumbColor = ColorMuted, uncheckedTrackColor = ColorSurfaceHigh,
-                ),
-                modifier = Modifier.height(24.dp),
+                    uncheckedThumbColor = ColorMuted, uncheckedTrackColor = ColorSurfaceHigh),
             )
         }
     }
 }
 
-private fun formatRemaining(ms: Long): String {
-    val h = ms / 3_600_000; val m = (ms % 3_600_000) / 60_000
-    return if (h > 0) "${h}h ${m}m left" else "${m}m left"
+@Composable
+private fun StudyPickerDialog(apps: List<InstalledApp>, onPick: (InstalledApp) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = ColorSurface,
+        title = { Text("Add a study app", color = ColorText, fontWeight = FontWeight.Bold) },
+        text = {
+            LazyColumn(Modifier.height(340.dp)) {
+                items(apps, key = { it.pkg }) { app ->
+                    Text(app.label, color = ColorText, style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth().clickable { onPick(app) }.padding(vertical = 12.dp))
+                    HorizontalDivider(color = ColorDivider, thickness = 0.5.dp)
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = ColorMuted) } },
+    )
 }

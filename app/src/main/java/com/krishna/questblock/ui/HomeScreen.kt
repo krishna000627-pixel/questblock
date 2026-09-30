@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -39,11 +40,21 @@ class HomeViewModel @Inject constructor(private val repo: GameRepository) : View
     val player       = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
     val tasks        = repo.tasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val achievements = repo.achievements.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    /** +5🪙 the first time the app opens each day. */
+    var loginBonus by mutableStateOf(false)
+        private set
+    init {
+        viewModelScope.launch {
+            repo.settleFocus()
+            loginBonus = repo.claimDailyLogin()
+        }
+    }
+    fun dismissBonus() { loginBonus = false }
     fun complete(task: TaskEntity) = viewModelScope.launch { repo.completeTask(task) }
 }
 
 @Composable
-fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
     val player       by vm.player.collectAsStateWithLifecycle()
     val tasks        by vm.tasks.collectAsStateWithLifecycle()
     val achievements by vm.achievements.collectAsStateWithLifecycle()
@@ -58,10 +69,22 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, vm: HomeViewModel 
 
     LazyColumn(
         Modifier.fillMaxSize().background(ColorBg),
-        contentPadding = PaddingValues(bottom = 80.dp),
+        contentPadding = PaddingValues(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // ── Hero card ──────────────────────────────────────────────────────
-        item { HeroCard(player = player, doneToday = doneToday, total = tasks.size) }
+        item { HeroCard(player = player, doneToday = doneToday, total = tasks.size, onCoinsClick = onOpenShop) }
+
+        // ── Daily login bonus ──────────────────────────────────────────────
+        if (vm.loginBonus) {
+            item {
+                Surface(shape = RoundedCornerShape(12.dp), color = ColorCoin.copy(0.12f),
+                    modifier = Modifier.fillMaxWidth().clickable { vm.dismissBonus() }) {
+                    Text("🎁 Daily login: +$DAILY_LOGIN_COINS🪙", modifier = Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.labelLarge, color = ColorCoin, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
 
         // ── Focus mode shortcut ────────────────────────────────────────────
         item {
@@ -69,7 +92,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, vm: HomeViewModel 
                 isActive = player.isFocusMode(),
                 remainingMs = (player.focusModeUntil - now).coerceAtLeast(0),
                 onClick = onGoFocus,
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier,
             )
         }
 
@@ -79,15 +102,16 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, vm: HomeViewModel 
                 Card(
                     colors = CardDefaults.cardColors(containerColor = ColorDanger.copy(0.12f)),
                     shape  = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically,
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Icon(Icons.Default.Warning, contentDescription = null, tint = ColorDanger, modifier = Modifier.size(20.dp))
-                        Column {
+                        Column(Modifier.weight(1f)) {
                             Text("${overdue.size} overdue quest${if (overdue.size > 1) "s" else ""}",
                                 style = MaterialTheme.typography.labelLarge, color = ColorDanger, fontWeight = FontWeight.Bold)
-                            Text(overdue.first().title, style = MaterialTheme.typography.bodySmall, color = ColorDanger.copy(0.8f))
+                            Text(overdue.first().title, style = MaterialTheme.typography.bodySmall, color = ColorDanger.copy(0.8f),
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
@@ -102,7 +126,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, vm: HomeViewModel 
         }
         if (activePowerUps.isNotEmpty()) {
             item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(activePowerUps) { (label, mins) ->
                         Surface(shape = RoundedCornerShape(20.dp), color = ColorPrimary.copy(0.15f)) {
                             Text("$label ${mins}m", modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -115,7 +139,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, vm: HomeViewModel 
 
         // ── Today's progress ───────────────────────────────────────────────
         item {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            Row(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Today's quests", style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold, color = ColorText)
@@ -143,8 +167,8 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, vm: HomeViewModel 
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
                     shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                    Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("⚔️", fontSize = 40.sp)
                         Text("No quests yet", style = MaterialTheme.typography.titleSmall,
@@ -167,12 +191,11 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, vm: HomeViewModel 
         if (recentAch.isNotEmpty()) {
             item { SubHeader("🏆 Recent Achievements") }
             item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(recentAch) { ach ->
                         Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
                             shape = RoundedCornerShape(14.dp)) {
-                            Column(Modifier.padding(14.dp).width(100.dp),
+                            Column(Modifier.padding(12.dp).width(96.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(ach.emoji, fontSize = 28.sp)
@@ -185,13 +208,12 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, vm: HomeViewModel 
             }
         }
 
-        item { Spacer(Modifier.height(16.dp)) }
     }
 }
 
 // ── Hero card ──────────────────────────────────────────────────────────────
 @Composable
-private fun HeroCard(player: Player, doneToday: Int, total: Int) {
+private fun HeroCard(player: Player, doneToday: Int, total: Int, onCoinsClick: () -> Unit) {
     val level = player.level()
     val xp    = player.xpIntoLevel()
     val frameColor = when (player.equippedFrame) {
@@ -208,9 +230,9 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int) {
 
     Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
         shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 // Avatar
                 Box(contentAlignment = Alignment.Center) {
                     Box(Modifier.size(64.dp).background(
@@ -235,13 +257,14 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int) {
 
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(player.name.ifBlank { "Hero" }, style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black, color = ColorText)
+                        fontWeight = FontWeight.Black, color = ColorText, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("Level $level · ${player.xp} XP total",
                         style = MaterialTheme.typography.bodySmall, color = ColorMuted)
                     if (player.goal.isNotBlank()) {
                         Surface(shape = RoundedCornerShape(6.dp), color = ColorPrimary.copy(0.12f)) {
                             Text("🎯 ${player.goal}", modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                style = MaterialTheme.typography.labelSmall, color = ColorPrimary)
+                                style = MaterialTheme.typography.labelSmall, color = ColorPrimary,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
@@ -249,7 +272,7 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int) {
 
             // Stats chips
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatPill(Modifier.weight(1f), "🪙", "${player.coins}", "coins")
+                StatPill(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable { onCoinsClick() }, "🪙", "${player.coins}", "coins · shop")
                 StatPill(Modifier.weight(1f), "🔥", "${player.streak}d", "streak")
                 StatPill(Modifier.weight(1f), "✅", "$doneToday/$total", "done")
             }
@@ -272,9 +295,9 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int) {
 @Composable
 private fun StatPill(modifier: Modifier, emoji: String, value: String, label: String) {
     Surface(modifier = modifier, shape = RoundedCornerShape(10.dp), color = ColorSurfaceHigh) {
-        Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(emoji, fontSize = 18.sp)
+        Column(Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(emoji, fontSize = 16.sp)
             Text(value, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = ColorText)
             Text(label, style = MaterialTheme.typography.labelSmall, color = ColorMuted)
         }
@@ -289,9 +312,9 @@ private fun FocusShortcut(isActive: Boolean, remainingMs: Long, onClick: () -> U
         containerColor = if (isActive) ColorPrimary.copy(0.15f) else ColorCard),
         shape = RoundedCornerShape(14.dp),
         modifier = modifier.fillMaxWidth().clickable { onClick() }) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically,
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(40.dp).background(
+            Box(Modifier.size(36.dp).background(
                 if (isActive) ColorPrimary.copy(0.2f) else ColorSurfaceHigh, CircleShape),
                 contentAlignment = Alignment.Center) {
                 Text(if (isActive) "🎯" else "⚡", fontSize = 20.sp)
@@ -300,7 +323,7 @@ private fun FocusShortcut(isActive: Boolean, remainingMs: Long, onClick: () -> U
                 Text(if (isActive) "Focus Mode Active" else "Start Focus Mode",
                     style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold,
                     color = if (isActive) ColorPrimary else ColorText)
-                Text(if (isActive) "%02d:%02d remaining".format(mm, ss) else "Block distractions · earn 2× XP",
+                Text(if (isActive) "%02d:%02d remaining".format(mm, ss) else "Timer quests & focus sessions · +${FOCUS_BONUS_COINS}🪙",
                     style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             }
             Icon(Icons.Default.ChevronRight, contentDescription = null, tint = ColorMuted)
@@ -310,7 +333,7 @@ private fun FocusShortcut(isActive: Boolean, remainingMs: Long, onClick: () -> U
 
 @Composable
 private fun SubHeader(text: String) {
-    Text(text, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+    Text(text, modifier = Modifier.padding(top = 4.dp),
         style = MaterialTheme.typography.labelLarge, color = ColorMuted, fontWeight = FontWeight.SemiBold)
 }
 
@@ -322,15 +345,16 @@ private fun HomeQuestRow(task: TaskEntity, now: Long, onComplete: () -> Unit) {
 
     Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp)) {
-        Row(Modifier.fillMaxWidth()) {
+        modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
             Box(Modifier.width(3.dp).fillMaxHeight().background(catColor))
-            Row(Modifier.weight(1f).padding(12.dp),
+            Row(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(task.title, style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold, color = ColorText)
+                        fontWeight = FontWeight.SemiBold, color = ColorText,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Surface(shape = RoundedCornerShape(4.dp), color = catColor.copy(0.15f)) {
                             Text(task.category, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
@@ -339,7 +363,8 @@ private fun HomeQuestRow(task: TaskEntity, now: Long, onComplete: () -> Unit) {
                         if (task.dueAt != null) {
                             Text(sdf.format(Date(task.dueAt)),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (isOverdue) ColorDanger else ColorMuted)
+                                color = if (isOverdue) ColorDanger else ColorMuted,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }

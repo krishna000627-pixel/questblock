@@ -4,7 +4,6 @@ package com.krishna.questblock.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,7 +41,7 @@ class StatsViewModel @Inject constructor(private val repo: GameRepository) : Vie
 private val DATE_FILTERS = listOf("Today", "Week", "Month", "All")
 
 @Composable
-fun StatsScreen(vm: StatsViewModel = hiltViewModel()) {
+fun StatsSection(vm: StatsViewModel = hiltViewModel()) {
     val tasks        by vm.tasks.collectAsStateWithLifecycle()
     val player       by vm.player.collectAsStateWithLifecycle()
     val unlocks      by vm.unlocks.collectAsStateWithLifecycle()
@@ -66,23 +65,20 @@ fun StatsScreen(vm: StatsViewModel = hiltViewModel()) {
     // Weekly XP bar chart data (from player log)
     val weeklyData = buildWeeklyXpData(player.weeklyXpLog)
 
-    LazyColumn(
-        Modifier.fillMaxSize().background(ColorBg),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
+    // Embedded in the Profile page (which already scrolls), so this is a plain Column of blocks.
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // Date filter
         item {
-            Text("Stats", style = MaterialTheme.typography.headlineMedium,
+            Text("📊 Stats", style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold, color = ColorText)
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(DATE_FILTERS) { f ->
                     val sel = dateFilter == f
                     Surface(shape = RoundedCornerShape(20.dp),
                         color = if (sel) ColorPrimary.copy(0.2f) else ColorSurface,
                         modifier = Modifier.clickable { dateFilter = f }) {
-                        Text(f, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        Text(f, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                             color = if (sel) ColorPrimary else ColorMuted,
                             fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
                             style = MaterialTheme.typography.labelMedium)
@@ -93,14 +89,14 @@ fun StatsScreen(vm: StatsViewModel = hiltViewModel()) {
 
         // Summary cards
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SummaryCard(Modifier.weight(1f), "✅", "${filteredDone.size}", "Quests Done")
                 SummaryCard(Modifier.weight(1f), "🔥", "${player.streak}d", "Streak")
                 SummaryCard(Modifier.weight(1f), "⚡", "${player.xp}", "Total XP")
             }
         }
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SummaryCard(Modifier.weight(1f), "🪙", "$studyCoins", "Study Coins")
                 SummaryCard(Modifier.weight(1f), "💸", "$filteredSpent", "Coins Spent")
                 SummaryCard(Modifier.weight(1f), "📚", "${sessions.filter { it.startedAt >= cutoff }.size}", "Study Sessions")
@@ -112,7 +108,7 @@ fun StatsScreen(vm: StatsViewModel = hiltViewModel()) {
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
                     shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("XP This Week", style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold, color = ColorText)
                         XpBarChart(weeklyData)
@@ -126,7 +122,7 @@ fun StatsScreen(vm: StatsViewModel = hiltViewModel()) {
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
                     shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("By Category", style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold, color = ColorText)
                         val bycat = filteredDone.groupBy { it.category }
@@ -154,7 +150,7 @@ fun StatsScreen(vm: StatsViewModel = hiltViewModel()) {
         item {
             Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
                 shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("🏆 Weekly Leaderboard", style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold, color = ColorText)
                     Text("Simulated — based on your XP history",
@@ -186,7 +182,7 @@ fun StatsScreen(vm: StatsViewModel = hiltViewModel()) {
         item {
             Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
                 shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     val unlocked = achievements.count { it.unlockedAt != null }
                     Text("🏅 Achievements ($unlocked/${ACHIEVEMENTS_CATALOG.size})",
                         style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ColorText)
@@ -212,13 +208,17 @@ fun StatsScreen(vm: StatsViewModel = hiltViewModel()) {
     }
 }
 
+/** Keeps the old `item { }` call sites working inside a plain Column. */
+@Composable
+private fun item(content: @Composable () -> Unit) = content()
+
 @Composable
 private fun SummaryCard(modifier: Modifier, emoji: String, value: String, label: String) {
     Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = ColorCard),
         shape = RoundedCornerShape(12.dp)) {
-        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally,
+        Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(emoji, fontSize = 20.sp)
+            Text(emoji, fontSize = 18.sp)
             Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ColorText)
             Text(label, style = MaterialTheme.typography.labelSmall, color = ColorMuted)
         }

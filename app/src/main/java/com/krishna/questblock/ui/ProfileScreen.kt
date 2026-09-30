@@ -2,6 +2,7 @@
 package com.krishna.questblock.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -45,7 +46,7 @@ class ProfileViewModel @Inject constructor(
 }
 
 @Composable
-fun ProfileScreen(vm: ProfileViewModel = hiltViewModel()) {
+fun ProfileScreen(onOpenShop: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
     val player by vm.player.collectAsStateWithLifecycle()
 
     var editMode by remember { mutableStateOf(false) }
@@ -56,14 +57,14 @@ fun ProfileScreen(vm: ProfileViewModel = hiltViewModel()) {
     val snack = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    Scaffold(containerColor = ColorBg, snackbarHost = { SnackbarHost(snack) }) { pad ->
+    Scaffold(containerColor = ColorBg, contentWindowInsets = WindowInsets(0), snackbarHost = { SnackbarHost(snack) }) { pad ->
         Column(
             Modifier
                 .fillMaxSize()
                 .padding(pad)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // ── Avatar section ─────────────────────────────────────────────
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -74,15 +75,15 @@ fun ProfileScreen(vm: ProfileViewModel = hiltViewModel()) {
                     "frame_galaxy" -> androidx.compose.ui.graphics.Color(0xFF9C27B0)
                     else           -> ColorPrimary
                 }
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Box(contentAlignment = Alignment.Center) {
-                        Box(Modifier.size(90.dp).background(
+                        Box(Modifier.size(80.dp).background(
                             Brush.radialGradient(listOf(frameColor.copy(0.5f), frameColor.copy(0.1f))), CircleShape))
                         Box(
-                            Modifier.size(78.dp).clip(CircleShape).background(frameColor.copy(alpha = 0.2f)),
+                            Modifier.size(68.dp).clip(CircleShape).background(frameColor.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("${player.level()}", fontSize = 32.sp,
+                            Text("${player.level()}", fontSize = 28.sp,
                                 fontWeight = FontWeight.Black, color = frameColor)
                         }
                         // Badge overlay
@@ -107,16 +108,34 @@ fun ProfileScreen(vm: ProfileViewModel = hiltViewModel()) {
             }
 
             // ── Stats row ───────────────────────────────────────────────────
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ProfileStatChip(Modifier.weight(1f), "🪙", "${player.coins}", "Coins")
                 ProfileStatChip(Modifier.weight(1f), "🔥", "${player.streak}d", "Streak")
                 ProfileStatChip(Modifier.weight(1f), "⚡", "${player.xp}", "Total XP")
             }
 
+            // ── Shop ────────────────────────────────────────────────────────
+            Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().clickable { onOpenShop() }) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("🛍️", fontSize = 24.sp)
+                    Column(Modifier.weight(1f)) {
+                        Text("Shop & Inventory", style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold, color = ColorText)
+                        Text("Spend coins · power-ups · cosmetics · your own rewards",
+                            style = MaterialTheme.typography.bodySmall, color = ColorMuted,
+                            maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    }
+                    Text("🪙 ${player.coins}", color = ColorCoin, fontWeight = FontWeight.Bold)
+                }
+            }
+
             // ── Info / Edit card ────────────────────────────────────────────
             Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
                 shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically) {
                         Text("Hero info", style = MaterialTheme.typography.titleSmall,
@@ -153,7 +172,7 @@ fun ProfileScreen(vm: ProfileViewModel = hiltViewModel()) {
             if (player.equippedFrame.isNotBlank() || player.equippedBadge.isNotBlank() || player.equippedTheme != "default") {
                 Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
                     shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Equipped", style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold, color = ColorText)
                         if (player.equippedFrame.isNotBlank())
@@ -166,7 +185,10 @@ fun ProfileScreen(vm: ProfileViewModel = hiltViewModel()) {
                 }
             }
 
-            Spacer(Modifier.height(40.dp))
+            // ── Stats (moved here from Vault) ────────────────────────────────
+            StatsSection()
+
+            Spacer(Modifier.height(12.dp))
         }
     }
 }
@@ -175,9 +197,9 @@ fun ProfileScreen(vm: ProfileViewModel = hiltViewModel()) {
 private fun ProfileStatChip(modifier: Modifier, emoji: String, value: String, label: String) {
     Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = ColorSurface),
         shape = RoundedCornerShape(12.dp)) {
-        Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally,
+        Column(Modifier.fillMaxWidth().padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(emoji, fontSize = 20.sp)
+            Text(emoji, fontSize = 18.sp)
             Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ColorText)
             Text(label, style = MaterialTheme.typography.labelSmall, color = ColorMuted)
         }

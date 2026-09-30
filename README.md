@@ -17,6 +17,14 @@ bash termux/setup.sh            # optional arg: repo name (default: questblock)
 `setup.sh` installs git/gh/JDK, generates a keystore in `~/.questblock/`, creates the private GitHub repo,
 uploads the keystore as Actions secrets, pushes, waits for CI, then downloads and opens the signed APK.
 
+## What's new in v7
+
+- **Focus = Timer Quest.** One flow: pick "Quick focus" or a Focus Quest, start, finish. Finishing pays +15🪙 (and completes the quest + its reward). Linked apps unlock for the session.
+- **Vault** is one page: Study Apps section (never lock, 1🪙 / 5 min), locked apps, all apps. Stats now live on the Profile page.
+- **Unlock tiers** on the lock screen: 15m 20🪙 · 30m 35🪙 · 1h 60🪙 · 3h 120🪙 · 10h 300🪙.
+- **Daily login** +5🪙. **Shop** reachable from Profile (or tap the coins on Home); custom items under *My Rewards*.
+- DB migrates 5 -> 6 without wiping data.
+
 ## Every change after that
 
 ```bash

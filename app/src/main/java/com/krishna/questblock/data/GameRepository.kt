@@ -9,21 +9,33 @@ import javax.inject.Singleton
 import kotlin.math.roundToInt
 
 fun baseReward(difficulty: Int): Int = when (difficulty) { 1 -> 10; 2 -> 25; else -> 50 }
+const val FOCUS_BONUS_COINS = 15
+const val DAILY_LOGIN_COINS = 5
+
+data class UnlockTier(val minutes: Int, val cost: Int, val label: String)
+val UNLOCK_TIERS = listOf(
+    UnlockTier(15, 20, "15m"),
+    UnlockTier(30, 35, "30m"),
+    UnlockTier(60, 60, "1h"),
+    UnlockTier(180, 120, "3h"),
+    UnlockTier(600, 300, "10h"),
+)
+
 private fun dayNumber(now: Long): Long = (now + TimeZone.getDefault().getOffset(now)) / 86_400_000L
 
 val ACHIEVEMENTS_CATALOG = listOf(
-    Achievement("first_quest",   "First Step",    "👣", "Complete your first quest"),
-    Achievement("streak_3",      "On Fire",       "🔥", "3-day streak"),
-    Achievement("streak_7",      "Week Warrior",  "⚔️", "7-day streak"),
-    Achievement("streak_30",     "Legend",        "🏆", "30-day streak"),
-    Achievement("quests_10",     "Adventurer",    "🗺️", "Complete 10 quests"),
-    Achievement("quests_50",     "Hero",          "🦸", "Complete 50 quests"),
-    Achievement("quests_100",    "Champion",      "👑", "Complete 100 quests"),
-    Achievement("coins_500",     "Coin Hoarder",  "🪙", "Earn 500 coins total"),
-    Achievement("level_5",       "Level 5",       "⭐", "Reach level 5"),
-    Achievement("level_10",      "Level 10",      "🌟", "Reach level 10"),
-    Achievement("focus_1",       "Focused",       "🎯", "Complete first Focus session"),
-    Achievement("custom_shop_1", "Shopkeeper",    "🛍️", "Create your first custom reward"),
+    Achievement("first_quest",  "First Step",    "👣", "Complete your first quest"),
+    Achievement("streak_3",     "On Fire",       "🔥", "3-day streak"),
+    Achievement("streak_7",     "Week Warrior",  "⚔️", "7-day streak"),
+    Achievement("streak_30",    "Legend",        "🏆", "30-day streak"),
+    Achievement("quests_10",    "Adventurer",    "🗺️", "Complete 10 quests"),
+    Achievement("quests_50",    "Hero",          "🦸", "Complete 50 quests"),
+    Achievement("quests_100",   "Champion",      "👑", "Complete 100 quests"),
+    Achievement("coins_100",    "Coin Hoarder",  "🪙", "Earn 100 coins total"),
+    Achievement("level_5",      "Level 5",       "⭐", "Reach level 5"),
+    Achievement("level_10",     "Level 10",      "🌟", "Reach level 10"),
+    Achievement("focus_1",      "Focused",       "🎯", "Complete first Focus session"),
+    Achievement("timer_quest_1","Timer Master",  "⏱️", "Complete first Timer Quest"),
 )
 
 @Singleton
@@ -33,23 +45,21 @@ class GameRepository @Inject constructor(
     private val subTaskDao: SubTaskDao,
     private val appDao: BlockedAppDao,
     private val playerDao: PlayerDao,
-    private val unlockSessionDao: UnlockSessionDao,
-    private val studySessionDao: StudySessionDao,
+    private val unlockEventDao: UnlockEventDao,
     private val inventoryDao: InventoryDao,
+    private val studySessionDao: StudySessionDao,
     private val achievementDao: AchievementDao,
-    private val customShopDao: CustomShopDao,
-    private val customPurchaseDao: CustomPurchaseDao,
+    private val customRewardDao: CustomRewardDao,
 ) {
-    val tasks          = taskDao.observeAll()
-    val blockedApps    = appDao.observeAll()
-    val recentUnlocks  = unlockSessionDao.observeRecent()
-    val totalSpent     = unlockSessionDao.observeTotalSpent()
-    val inventory      = inventoryDao.observeAll()
-    val studySessions  = studySessionDao.observeRecent()
-    val totalStudyCoins= studySessionDao.observeTotalEarned()
-    val achievements   = achievementDao.observeAll()
-    val customShopItems= customShopDao.observeAll()
-    val customPurchases= customPurchaseDao.observeRecent()
+    val tasks: Flow<List<TaskEntity>> = taskDao.observeAll()
+    val blockedApps: Flow<List<BlockedApp>> = appDao.observeAll()
+    val recentUnlocks: Flow<List<UnlockEvent>> = unlockEventDao.observeRecent()
+    val totalCoinsSpent: Flow<Int?> = unlockEventDao.observeTotalSpent()
+    val inventory: Flow<List<InventoryItem>> = inventoryDao.observeAll()
+    val studySessions: Flow<List<StudySession>> = studySessionDao.observeRecent()
+    val totalStudyCoins: Flow<Int?> = studySessionDao.observeTotalEarned()
+    val achievements: Flow<List<Achievement>> = achievementDao.observeAll()
+    val customRewards: Flow<List<CustomReward>> = customRewardDao.observeAll()
 
     val player: Flow<Player> = playerDao.observe().map { stored ->
         val p = stored ?: Player()
@@ -58,17 +68,7 @@ class GameRepository @Inject constructor(
             p.copy(streak = 0) else p
     }
 
-    fun subTasks(taskId: Long) = subTaskDao.observe(taskId)
-
-    // ── Daily login bonus ─────────────────────────────────────────────────
-    suspend fun claimDailyLogin(): Boolean {
-        val p = playerDao.get() ?: Player()
-        val today = dayNumber(System.currentTimeMillis())
-        if (p.lastLoginDay == today) return false
-        playerDao.upsert(p.copy(coins = p.coins + 5, lastLoginDay = today,
-            totalCoinsEarned = p.totalCoinsEarned + 5))
-        return true
-    }
+    fun subTasks(taskId: Long): Flow<List<SubTask>> = subTaskDao.observe(taskId)
 
     // ── Profile ───────────────────────────────────────────────────────────
     suspend fun saveProfile(name: String, goal: String, dob: String) {
@@ -80,177 +80,251 @@ class GameRepository @Inject constructor(
     suspend fun addTask(
         title: String, difficulty: Int, category: String = "Personal",
         priority: Int = 2, notes: String = "", dueAt: Long? = null,
-        isRecurring: Boolean = false, recurType: String = "daily",
-        linkedApps: String = "", isFocusQuest: Boolean = false,
-        focusDurationMs: Long = 25 * 60_000L,
-    ): Long {
-        val id = taskDao.insert(TaskEntity(
-            title = title.trim(), difficulty = difficulty, category = category,
+        isRecurring: Boolean = false, recurType: String = "",
+        linkedApps: String = "", isTimerQuest: Boolean = false, timerDurationMs: Long = 0L,
+    ): Long = taskDao.insert(
+        TaskEntity(title = title.trim(), difficulty = difficulty, category = category,
             priority = priority, notes = notes, dueAt = dueAt,
             isRecurring = isRecurring, recurType = recurType,
-            linkedApps = linkedApps, isFocusQuest = isFocusQuest,
-            focusDurationMs = focusDurationMs,
-        ))
-        tryUnlock("first_quest")
-        return id
-    }
+            linkedApps = linkedApps, isTimerQuest = isTimerQuest, timerDurationMs = timerDurationMs)
+    )
 
     suspend fun addSubTask(taskId: Long, title: String) =
         subTaskDao.insert(SubTask(taskId = taskId, title = title))
+
     suspend fun toggleSubTask(sub: SubTask) = subTaskDao.update(sub.copy(done = !sub.done))
-    suspend fun deleteTask(task: TaskEntity) { subTaskDao.deleteAll(task.id); taskDao.delete(task) }
-    suspend fun updateTask(task: TaskEntity) = taskDao.update(task)
 
-    suspend fun completeTask(task: TaskEntity) = db.withTransaction {
-        val fresh = taskDao.get(task.id) ?: return@withTransaction
-        if (fresh.done) return@withTransaction
-        val now = System.currentTimeMillis()
-        taskDao.update(fresh.copy(done = true, completedAt = now, focusActive = false))
+    suspend fun deleteTask(task: TaskEntity) {
+        subTaskDao.deleteAll(task.id)
+        taskDao.delete(task)
+    }
 
-        val p = playerDao.get() ?: Player()
-        val today = dayNumber(now)
-        val newStreak = when (p.lastCompletionDay) {
-            today -> p.streak; today - 1 -> p.streak + 1; else -> 1
-        }
-        val base = baseReward(fresh.difficulty)
-        val streakMulti = 1.0 + (newStreak - 1).coerceIn(0, 5) * 0.1
-        val coinMulti   = if (p.hasCoinMultiplier()) 1.5 else 1.0
-        val xpMulti     = if (p.hasXpBoost() || p.isFocusMode()) 2.0 else 1.0
-        val coins = (base * streakMulti * coinMulti).roundToInt()
-        val xp    = (base * xpMulti).roundToInt()
+    suspend fun completeTask(task: TaskEntity) {
+        db.withTransaction {
+            val fresh = taskDao.get(task.id) ?: return@withTransaction
+            if (fresh.done) return@withTransaction
+            val now = System.currentTimeMillis()
+            taskDao.update(fresh.copy(done = true, completedAt = now, timerQuestActive = false))
 
-        val log = p.weeklyXpLog.split(",").filter { it.isNotBlank() }.toMutableList()
-        log.add("${dayNumber(now)}:$xp"); if (log.size > 70) log.removeAt(0)
+            val p = playerDao.get() ?: Player()
+            val today = dayNumber(now)
+            val newStreak = when (p.lastCompletionDay) {
+                today -> p.streak; today - 1 -> p.streak + 1; else -> 1
+            }
+            val base = baseReward(fresh.difficulty)
+            val xpMulti  = if (p.hasXpBoost()) 2.0 else 1.0
+            val coinMulti = if (p.hasCoinMultiplier()) 1.5 else 1.0
+            val streakMulti = 1.0 + (newStreak - 1).coerceIn(0, 5) * 0.1
+            val earned = (base * streakMulti * coinMulti).roundToInt()
+            val xpEarned = (base * xpMulti).roundToInt()
 
-        playerDao.upsert(p.copy(
-            coins = p.coins + coins, xp = p.xp + xp,
-            streak = newStreak, lastCompletionDay = today,
-            totalCoinsEarned = p.totalCoinsEarned + coins,
-            weeklyXpLog = log.joinToString(","),
-        ))
+            // Update weekly XP log
+            val log = p.weeklyXpLog.split(",").filter { it.isNotBlank() }.toMutableList()
+            val todayEntry = "$today:${xpEarned}"
+            log.add(todayEntry)
+            if (log.size > 70) log.removeAt(0)
 
-        // Stop linked apps if focus quest
-        if (fresh.isFocusQuest) {
-            fresh.linkedApps.split(",").filter { it.isNotBlank() }.forEach { pkg ->
-                val app = appDao.get(pkg)
-                if (app != null) appDao.upsert(app.copy(unlockedUntil = 0L))
+            val wasFocusQuest = p.focusQuestId == fresh.id
+            playerDao.upsert(p.copy(
+                coins = p.coins + earned, xp = p.xp + xpEarned,
+                streak = newStreak, lastCompletionDay = today,
+                weeklyXpLog = log.joinToString(","),
+                focusModeUntil = if (wasFocusQuest) 0L else p.focusModeUntil,
+                focusQuestId   = if (wasFocusQuest) -1L else p.focusQuestId,
+                focusTotalMs   = if (wasFocusQuest) 0L else p.focusTotalMs,
+            ))
+            checkAchievements(p.copy(xp = p.xp + xpEarned, streak = newStreak))
+
+            // If recurring, re-create for next period
+            if (fresh.isRecurring && fresh.dueAt != null) {
+                val offset = if (fresh.recurType == "weekly") 7 * 86_400_000L else 86_400_000L
+                taskDao.insert(fresh.copy(id = 0, done = false, completedAt = null,
+                    dueAt = fresh.dueAt + offset, createdAt = now))
             }
         }
+    }
 
-        checkAchievements(newStreak, p.xp + xp)
-        if (fresh.isRecurring && fresh.dueAt != null) {
-            val offset = if (fresh.recurType == "weekly") 7 * 86_400_000L else 86_400_000L
-            taskDao.insert(fresh.copy(id = 0, done = false, completedAt = null,
-                focusActive = false, focusStarted = null,
-                dueAt = fresh.dueAt + offset, createdAt = now))
+    private suspend fun checkAchievements(p: Player) {
+        val done = taskDao.observeAll() // just count from DB indirectly
+        // We do a quick count query inline
+        suspend fun unlock(id: String) {
+            val existing = achievementDao.get(id)
+            val catalog = ACHIEVEMENTS_CATALOG.find { it.id == id } ?: return
+            if (existing?.unlockedAt == null) {
+                achievementDao.upsert(catalog.copy(unlockedAt = System.currentTimeMillis()))
+            }
         }
+        if (p.streak >= 3)  unlock("streak_3")
+        if (p.streak >= 7)  unlock("streak_7")
+        if (p.streak >= 30) unlock("streak_30")
+        if (p.level() >= 5)  unlock("level_5")
+        if (p.level() >= 10) unlock("level_10")
+        if (p.xp >= 100) unlock("coins_100")
     }
 
-    private suspend fun checkAchievements(streak: Int, xp: Int) {
-        if (streak >= 3) tryUnlock("streak_3")
-        if (streak >= 7) tryUnlock("streak_7")
-        if (streak >= 30) tryUnlock("streak_30")
-        if ((xp / 100 + 1) >= 5) tryUnlock("level_5")
-        if ((xp / 100 + 1) >= 10) tryUnlock("level_10")
+    suspend fun unlockFirstQuestAchievement() {
+        val catalog = ACHIEVEMENTS_CATALOG.find { it.id == "first_quest" } ?: return
+        val existing = achievementDao.get("first_quest")
+        if (existing?.unlockedAt == null)
+            achievementDao.upsert(catalog.copy(unlockedAt = System.currentTimeMillis()))
     }
 
-    private suspend fun tryUnlock(id: String) {
-        val ex = achievementDao.get(id); if (ex?.unlockedAt != null) return
-        val cat = ACHIEVEMENTS_CATALOG.find { it.id == id } ?: return
-        achievementDao.upsert(cat.copy(unlockedAt = System.currentTimeMillis()))
-    }
-
-    // ── Focus quest (merged Timer+Focus) ──────────────────────────────────
-    suspend fun startFocusQuest(task: TaskEntity) = db.withTransaction {
-        val now = System.currentTimeMillis()
-        taskDao.update(task.copy(focusActive = true, focusStarted = now))
-        task.linkedApps.split(",").filter { it.isNotBlank() }.forEach { pkg ->
-            val app = appDao.get(pkg) ?: BlockedApp(pkg, pkg)
-            appDao.upsert(app.copy(unlockedUntil = now + task.focusDurationMs))
-        }
-    }
-
-    suspend fun stopFocusQuest(task: TaskEntity) = db.withTransaction {
-        taskDao.update(task.copy(focusActive = false, focusStarted = null))
-        task.linkedApps.split(",").filter { it.isNotBlank() }.forEach { pkg ->
-            val app = appDao.get(pkg); if (app != null) appDao.upsert(app.copy(unlockedUntil = 0L))
-        }
-    }
-
-    suspend fun startGlobalFocus(durationMs: Long) {
+    // ── Daily login ───────────────────────────────────────────────────────
+    /** +5🪙 once per calendar day. Returns true if the bonus was granted. */
+    suspend fun claimDailyLogin(): Boolean = db.withTransaction {
+        val today = dayNumber(System.currentTimeMillis())
         val p = playerDao.get() ?: Player()
-        playerDao.upsert(p.copy(focusModeUntil = System.currentTimeMillis() + durationMs))
-        tryUnlock("focus_1")
-    }
-
-    suspend fun endGlobalFocus() {
-        val p = playerDao.get() ?: Player()
-        // Bonus coins for completing focus
-        playerDao.upsert(p.copy(focusModeUntil = 0L, focusQuestId = -1L,
-            coins = p.coins + 15, totalCoinsEarned = p.totalCoinsEarned + 15))
-    }
-
-    // ── Blocked apps ──────────────────────────────────────────────────────
-    suspend fun getBlockedApp(pkg: String) = appDao.get(pkg)
-
-    suspend fun setBlocked(pkg: String, label: String, blocked: Boolean) {
-        if (blocked) appDao.upsert(appDao.get(pkg) ?: BlockedApp(pkg, label))
-        else appDao.delete(pkg)
-    }
-
-    suspend fun setStudyApp(pkg: String, label: String, study: Boolean) {
-        val ex = appDao.get(pkg)
-        if (study) appDao.upsert((ex ?: BlockedApp(pkg, label)).copy(isStudyApp = true))
-        else if (ex != null) appDao.upsert(ex.copy(isStudyApp = false))
-    }
-
-    // Flexible unlock with chosen duration
-    suspend fun unlockApp(pkg: String, label: String, option: UnlockOption): Boolean = db.withTransaction {
-        val p = playerDao.get() ?: Player()
-        if (p.coins < option.cost) return@withTransaction false
-        val now = System.currentTimeMillis()
-        val expiry = now + option.durationMs
-        playerDao.upsert(p.copy(coins = p.coins - option.cost))
-        val app = appDao.get(pkg) ?: BlockedApp(pkg, label)
-        appDao.upsert(app.copy(unlockedUntil = expiry))
-        unlockSessionDao.insert(UnlockSession(packageName = pkg, label = label,
-            coinsSpent = option.cost, durationMs = option.durationMs, expiresAt = expiry))
+        if (p.lastLoginDay >= today) return@withTransaction false
+        playerDao.upsert(p.copy(coins = p.coins + DAILY_LOGIN_COINS, lastLoginDay = today))
         true
     }
 
-    suspend fun isAppUnlocked(pkg: String): Boolean {
-        val app = appDao.get(pkg) ?: return false
-        return app.unlockedUntil > System.currentTimeMillis() || app.isStudyApp
+    // ── Focus (Focus Mode + Timer Quest are one thing now) ───────────────
+    /**
+     * Starts a focus session. If [task] is a timer quest, its linked apps are unlocked for the
+     * session and the quest is auto-completed when the timer finishes.
+     */
+    suspend fun startFocus(durationMs: Long, task: TaskEntity? = null): Boolean = db.withTransaction {
+        val now = System.currentTimeMillis()
+        val p = playerDao.get() ?: Player()
+        if (p.focusModeUntil > now) return@withTransaction false
+        val end = now + durationMs
+        playerDao.upsert(p.copy(focusModeUntil = end, focusQuestId = task?.id ?: -1L, focusTotalMs = durationMs))
+        val fresh = task?.let { taskDao.get(it.id) }
+        if (fresh != null) {
+            taskDao.update(fresh.copy(timerQuestActive = true, timerQuestStarted = now))
+            fresh.linkedApps.split(",").filter { it.isNotBlank() }.forEach { pkg ->
+                appDao.get(pkg)?.let { appDao.upsert(it.copy(unlockedUntil = end)) }
+            }
+        }
+        true
     }
 
-    // Study coins
-    suspend fun creditStudyCoins(pkg: String, label: String, minutes: Int) = db.withTransaction {
+    /** Ends the running session. [completed] = timer ran out (bonus + quest reward), false = stopped early. */
+    suspend fun finishFocus(completed: Boolean) {
+        var questId = -1L
+        var end = 0L
+        val ended = db.withTransaction {
+            val p = playerDao.get() ?: return@withTransaction false
+            if (p.focusModeUntil == 0L) return@withTransaction false
+            questId = p.focusQuestId
+            end = p.focusModeUntil
+            playerDao.upsert(p.copy(
+                focusModeUntil = 0L, focusQuestId = -1L, focusTotalMs = 0L,
+                coins = p.coins + if (completed) FOCUS_BONUS_COINS else 0,
+            ))
+            true
+        }
+        if (!ended) return
+
+        val task = if (questId > 0) taskDao.get(questId) else null
+        if (task != null) {
+            task.linkedApps.split(",").filter { it.isNotBlank() }.forEach { pkg ->
+                val app = appDao.get(pkg)
+                // only re-lock if nobody bought a longer unlock in the meantime
+                if (app != null && app.unlockedUntil <= end) appDao.upsert(app.copy(unlockedUntil = 0L))
+            }
+            taskDao.get(task.id)?.let { taskDao.update(it.copy(timerQuestActive = false)) }
+        }
+        if (completed) {
+            unlockAchievement("focus_1")
+            if (task != null) {
+                unlockAchievement("timer_quest_1")
+                if (!task.done) completeTask(task)
+            }
+        }
+    }
+
+    /** Call when the app opens / timer hits zero: closes an expired session and pays out. */
+    suspend fun settleFocus() {
+        val p = playerDao.get() ?: return
+        if (p.focusModeUntil > 0L && System.currentTimeMillis() >= p.focusModeUntil) finishFocus(true)
+    }
+
+    private suspend fun unlockAchievement(id: String) {
+        val catalog = ACHIEVEMENTS_CATALOG.find { it.id == id } ?: return
+        if (achievementDao.get(id)?.unlockedAt == null)
+            achievementDao.upsert(catalog.copy(unlockedAt = System.currentTimeMillis()))
+    }
+
+    // ── Apps ──────────────────────────────────────────────────────────────
+    suspend fun getBlockedApp(pkg: String) = appDao.get(pkg)
+    suspend fun setBlocked(pkg: String, label: String, blocked: Boolean) {
+        if (blocked) appDao.upsert((appDao.get(pkg) ?: BlockedApp(packageName = pkg, label = label)).copy(isStudyApp = false))
+        else appDao.delete(pkg)
+    }
+    suspend fun setStudyApp(pkg: String, label: String, isStudy: Boolean) {
+        if (isStudy) appDao.upsert((appDao.get(pkg) ?: BlockedApp(packageName = pkg, label = label))
+            .copy(isStudyApp = true, unlockedUntil = 0L))
+        else appDao.delete(pkg)
+    }
+    suspend fun unlock(pkg: String, tier: UnlockTier): Boolean = db.withTransaction {
+        val app = appDao.get(pkg) ?: return@withTransaction false
         val p = playerDao.get() ?: Player()
-        val earned = ((minutes / 5) * (if (p.hasCoinMultiplier()) 1.5 else 1.0)).roundToInt()
-        if (earned > 0) {
-            playerDao.upsert(p.copy(coins = p.coins + earned, totalCoinsEarned = p.totalCoinsEarned + earned))
-            studySessionDao.insert(StudySession(packageName = pkg, label = label, coinsEarned = earned))
+        if (p.coins < tier.cost) return@withTransaction false
+        val now = System.currentTimeMillis()
+        playerDao.upsert(p.copy(coins = p.coins - tier.cost))
+        // stacking: extend from the current unlock if one is still running
+        val base = maxOf(now, app.unlockedUntil)
+        appDao.upsert(app.copy(unlockedUntil = base + tier.minutes * 60_000L))
+        unlockEventDao.insert(UnlockEvent(packageName = app.packageName, label = app.label, coinsSpent = tier.cost))
+        true
+    }
+
+    // ── Study coins ───────────────────────────────────────────────────────
+    suspend fun startStudySession(pkg: String, label: String) = studySessionDao.insert(StudySession(packageName = pkg, label = label))
+    suspend fun creditStudyCoins(sessionId: Long, minutes: Int) {
+        db.withTransaction {
+            val p = playerDao.get() ?: Player()
+            val earned = ((minutes / 5) * (if (p.hasCoinMultiplier()) 1.5 else 1.0)).roundToInt()
+            if (earned > 0) {
+                playerDao.upsert(p.copy(coins = p.coins + earned))
+                studySessionDao.addEarned(sessionId, earned)
+            }
         }
     }
 
     // ── Shop / Inventory ─────────────────────────────────────────────────
-    suspend fun buyBuiltInItem(item: ShopItem): Boolean = db.withTransaction {
+    suspend fun buyItem(item: ShopItem): Boolean = db.withTransaction {
         val p = playerDao.get() ?: Player()
         if (p.coins < item.price) return@withTransaction false
-        val now = System.currentTimeMillis()
-        val expiry = now + item.durationMs
-        val updated = when (item.id) {
-            "xp_boost_1h","xp_boost_3h"   -> p.copy(xpBoostUntil = expiry)
-            "coin_mult_1h","coin_mult_3h"  -> p.copy(coinMultiplierUntil = expiry)
-            "streak_shield"                -> p.copy(streakShieldUntil = expiry)
-            else -> p
+        playerDao.upsert(p.copy(coins = p.coins - item.price))
+        when (item.category) {
+            "powerup" -> {
+                val now = System.currentTimeMillis(); val expiry = now + item.durationMs
+                val updated = when (item.id) {
+                    "xp_boost_1h","xp_boost_3h"  -> p.copy(xpBoostUntil = expiry, coins = p.coins - item.price)
+                    "coin_mult_1h","coin_mult_3h" -> p.copy(coinMultiplierUntil = expiry, coins = p.coins - item.price)
+                    "streak_shield"               -> p.copy(streakShieldUntil = expiry, coins = p.coins - item.price)
+                    else -> p.copy(coins = p.coins - item.price)
+                }
+                playerDao.upsert(updated)
+                inventoryDao.insert(InventoryItem(itemId = item.id, category = item.category, name = item.name, emoji = item.emoji, usedAt = now))
+            }
+            else -> inventoryDao.insert(InventoryItem(itemId = item.id, category = item.category, name = item.name, emoji = item.emoji))
         }
-        playerDao.upsert(updated.copy(coins = updated.coins - item.price))
-        inventoryDao.insert(InventoryItem(itemId = item.id, category = item.category,
-            name = item.name, emoji = item.emoji,
-            usedAt = if (item.category == "powerup") now else null))
         true
     }
+    // ── Custom rewards (user-made shop items) ────────────────────────────
+    suspend fun addCustomReward(name: String, emoji: String, price: Int, description: String, type: String) {
+        customRewardDao.insert(CustomReward(name = name.trim(), emoji = emoji.trim().ifBlank { "🎁" },
+            price = price.coerceAtLeast(1), description = description.trim(), type = type))
+    }
+    suspend fun deleteCustomReward(r: CustomReward) = customRewardDao.delete(r)
+
+    /** Deducts coins only. "reward" is logged as redeemed straight away; "consumable" waits in My Items. */
+    suspend fun buyCustomReward(r: CustomReward): Boolean = db.withTransaction {
+        val p = playerDao.get() ?: Player()
+        if (p.coins < r.price) return@withTransaction false
+        playerDao.upsert(p.copy(coins = p.coins - r.price))
+        inventoryDao.insert(InventoryItem(
+            itemId = "custom_${r.id}", category = "custom", name = r.name, emoji = r.emoji,
+            usedAt = if (r.type == "reward") System.currentTimeMillis() else null,
+        ))
+        true
+    }
+    suspend fun redeemItem(inv: InventoryItem) =
+        inventoryDao.update(inv.copy(usedAt = System.currentTimeMillis()))
 
     suspend fun equipItem(inv: InventoryItem) = db.withTransaction {
         inventoryDao.unequipAll(inv.category); inventoryDao.equip(inv.id)
@@ -262,21 +336,4 @@ class GameRepository @Inject constructor(
             else -> p
         })
     }
-
-    // Custom shop
-    suspend fun addCustomItem(name: String, emoji: String, desc: String, price: Int) {
-        customShopDao.insert(CustomShopItem(name = name, emoji = emoji, description = desc, price = price))
-        tryUnlock("custom_shop_1")
-    }
-    suspend fun deleteCustomItem(item: CustomShopItem) = customShopDao.delete(item)
-
-    suspend fun buyCustomItem(item: CustomShopItem): Boolean = db.withTransaction {
-        val p = playerDao.get() ?: Player()
-        if (p.coins < item.price) return@withTransaction false
-        playerDao.upsert(p.copy(coins = p.coins - item.price))
-        customPurchaseDao.insert(CustomPurchase(itemId = item.id, itemName = item.name, coinsSpent = item.price))
-        true
-    }
-
-    suspend fun redeemCustomPurchase(p: CustomPurchase) = customPurchaseDao.update(p.copy(redeemed = true))
 }
