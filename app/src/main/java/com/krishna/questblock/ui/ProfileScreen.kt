@@ -1,0 +1,211 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+package com.krishna.questblock.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import com.krishna.questblock.data.GameRepository
+import com.krishna.questblock.data.Player
+import com.krishna.questblock.data.Prefs
+import com.krishna.questblock.data.level
+import com.krishna.questblock.data.xpIntoLevel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class ProfileViewModel @Inject constructor(
+    private val repo: GameRepository,
+    val prefs: Prefs,
+) : ViewModel() {
+    val player = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
+    fun saveProfile(name: String, goal: String, dob: String) =
+        viewModelScope.launch { repo.saveProfile(name, goal, dob) }
+}
+
+@Composable
+fun ProfileScreen(vm: ProfileViewModel = hiltViewModel()) {
+    val player by vm.player.collectAsStateWithLifecycle()
+
+    var editMode by remember { mutableStateOf(false) }
+    var name by remember(player.name) { mutableStateOf(player.name) }
+    var goal by remember(player.goal) { mutableStateOf(player.goal) }
+    var dob  by remember(player.dob)  { mutableStateOf(player.dob) }
+
+    val snack = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    Scaffold(containerColor = ColorBg, snackbarHost = { SnackbarHost(snack) }) { pad ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(pad)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            // ── Avatar section ─────────────────────────────────────────────
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                val frameColor = when (player.equippedFrame) {
+                    "frame_fire"   -> androidx.compose.ui.graphics.Color(0xFFFF6B35)
+                    "frame_ice"    -> androidx.compose.ui.graphics.Color(0xFF64B5F6)
+                    "frame_gold"   -> ColorCoin
+                    "frame_galaxy" -> androidx.compose.ui.graphics.Color(0xFF9C27B0)
+                    else           -> ColorPrimary
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(90.dp).background(
+                            Brush.radialGradient(listOf(frameColor.copy(0.5f), frameColor.copy(0.1f))), CircleShape))
+                        Box(
+                            Modifier.size(78.dp).clip(CircleShape).background(frameColor.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("${player.level()}", fontSize = 32.sp,
+                                fontWeight = FontWeight.Black, color = frameColor)
+                        }
+                        // Badge overlay
+                        if (player.equippedBadge.isNotBlank()) {
+                            val emoji = when (player.equippedBadge) {
+                                "badge_star"   -> "⭐"; "badge_crown" -> "👑"
+                                "badge_sword"  -> "⚔️"; "badge_dragon" -> "🐉"; else -> ""
+                            }
+                            if (emoji.isNotBlank()) {
+                                Box(Modifier.align(Alignment.BottomEnd).size(28.dp)
+                                    .background(ColorSurface, CircleShape), contentAlignment = Alignment.Center) {
+                                    Text(emoji, fontSize = 16.sp)
+                                }
+                            }
+                        }
+                    }
+                    Text(player.name.ifBlank { "Hero" }, style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold, color = ColorText)
+                    Text("Level ${player.level()} · ${player.xpIntoLevel()}/100 XP",
+                        style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                }
+            }
+
+            // ── Stats row ───────────────────────────────────────────────────
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ProfileStatChip(Modifier.weight(1f), "🪙", "${player.coins}", "Coins")
+                ProfileStatChip(Modifier.weight(1f), "🔥", "${player.streak}d", "Streak")
+                ProfileStatChip(Modifier.weight(1f), "⚡", "${player.xp}", "Total XP")
+            }
+
+            // ── Info / Edit card ────────────────────────────────────────────
+            Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
+                shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text("Hero info", style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold, color = ColorText)
+                        TextButton(onClick = {
+                            if (editMode) {
+                                vm.saveProfile(name, goal, dob)
+                                scope.launch { snack.showSnackbar("Profile saved!") }
+                            }
+                            editMode = !editMode
+                        }) { Text(if (editMode) "Save" else "Edit", color = ColorPrimary, fontWeight = FontWeight.Bold) }
+                    }
+
+                    if (editMode) {
+                        ProfileField("Name", name, KeyboardCapitalization.Words) { name = it }
+                        ProfileField("Goal", goal, KeyboardCapitalization.Sentences) { goal = it }
+                        OutlinedTextField(
+                            value = dob, onValueChange = { dob = it },
+                            label = { Text("Date of birth", color = ColorMuted) },
+                            placeholder = { Text("DD/MM/YYYY", color = ColorMuted) },
+                            singleLine = true, modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            colors = profileFieldColors(),
+                        )
+                    } else {
+                        ProfileInfoRow("👤 Name",  player.name.ifBlank { "—" })
+                        ProfileInfoRow("🎯 Goal",  player.goal.ifBlank { "—" })
+                        ProfileInfoRow("🎂 DOB",   player.dob.ifBlank  { "—" })
+                    }
+                }
+            }
+
+            // ── Equipped cosmetics ──────────────────────────────────────────
+            if (player.equippedFrame.isNotBlank() || player.equippedBadge.isNotBlank() || player.equippedTheme != "default") {
+                Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
+                    shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Equipped", style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold, color = ColorText)
+                        if (player.equippedFrame.isNotBlank())
+                            ProfileInfoRow("🖼️ Frame", player.equippedFrame.replace("_", " ").replaceFirstChar { it.uppercase() })
+                        if (player.equippedBadge.isNotBlank())
+                            ProfileInfoRow("🏅 Badge", player.equippedBadge.replace("_", " ").replaceFirstChar { it.uppercase() })
+                        if (player.equippedTheme != "default")
+                            ProfileInfoRow("🎨 Theme", player.equippedTheme.replace("_", " ").replaceFirstChar { it.uppercase() })
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(40.dp))
+        }
+    }
+}
+
+@Composable
+private fun ProfileStatChip(modifier: Modifier, emoji: String, value: String, label: String) {
+    Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = ColorSurface),
+        shape = RoundedCornerShape(12.dp)) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(emoji, fontSize = 20.sp)
+            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ColorText)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+        }
+    }
+}
+
+@Composable
+private fun ProfileInfoRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = ColorText)
+    }
+}
+
+@Composable
+private fun ProfileField(label: String, value: String, cap: KeyboardCapitalization, onChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value, onValueChange = onChange,
+        label = { Text(label, color = ColorMuted) },
+        singleLine = true, modifier = Modifier.fillMaxWidth(),
+        keyboardOptions = KeyboardOptions(capitalization = cap),
+        colors = profileFieldColors(),
+    )
+}
+
+@Composable
+private fun profileFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor   = ColorPrimary, unfocusedBorderColor = ColorSurfaceHigh,
+    cursorColor = ColorPrimary, focusedTextColor = ColorText, unfocusedTextColor = ColorText,
+    focusedLabelColor = ColorPrimary,
+)
