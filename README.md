@@ -17,6 +17,10 @@ bash termux/setup.sh            # optional arg: repo name (default: questblock)
 `setup.sh` installs git/gh/JDK, generates a keystore in `~/.questblock/`, creates the private GitHub repo,
 uploads the keystore as Actions secrets, pushes, waits for CI, then downloads and opens the signed APK.
 
+## What's new in v16
+
+- **Profile:** the Hero info box moved to the top, right under the name and level, and has no button at all. It is edited only from Settings (the Settings button on Profile → Hero info).
+
 ## What's new in v15
 
 - **Cleaner lock screen.** Time and cost on one line (− 15m · 15 🪙 +); the big button just says **Hold to unlock**; coin balance is a small chip in the corner; the app's real icon replaces the letter box; "per 5 min" only shows when the app has its own rate.

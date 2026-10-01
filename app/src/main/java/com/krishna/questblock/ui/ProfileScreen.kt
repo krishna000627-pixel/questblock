@@ -100,6 +100,18 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                 }
             }
 
+            // ── Hero info (read-only; edit it from Settings) ────────────────
+            Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
+                shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Hero info", style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold, color = ColorText)
+                    ProfileInfoRow("👤 Name",  player.name.ifBlank { "—" })
+                    ProfileInfoRow("🎯 Goal",  player.goal.ifBlank { "—" })
+                    ProfileInfoRow("🎂 DOB",   player.dob.ifBlank  { "—" })
+                }
+            }
+
             // ── Stats row ───────────────────────────────────────────────────
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ProfileStatChip(Modifier.weight(1f), "🪙", "${player.coins}", "Coins")
@@ -180,24 +192,6 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                             maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     }
                     Text("›", color = ColorMuted, fontSize = 20.sp)
-                }
-            }
-
-            // ── Hero info (read-only here; edit it in Settings) ─────────────
-            Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
-                shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Text("Hero info", style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold, color = ColorText)
-                        TextButton(onClick = onOpenSettings) {
-                            Text("Edit in Settings", color = ColorPrimary, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    ProfileInfoRow("👤 Name",  player.name.ifBlank { "—" })
-                    ProfileInfoRow("🎯 Goal",  player.goal.ifBlank { "—" })
-                    ProfileInfoRow("🎂 DOB",   player.dob.ifBlank  { "—" })
                 }
             }
 
