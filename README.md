@@ -17,6 +17,10 @@ bash termux/setup.sh            # optional arg: repo name (default: questblock)
 `setup.sh` installs git/gh/JDK, generates a keystore in `~/.questblock/`, creates the private GitHub repo,
 uploads the keystore as Actions secrets, pushes, waits for CI, then downloads and opens the signed APK.
 
+## What's new in v11
+
+- **No more paying twice to open an app.** A second purchase for the same app within 5 s is ignored (no charge); the lock screen submits once, closes itself if the app is already unlocked, and the blocker re-checks the unlock right before showing the lock screen.
+
 ## What's new in v10
 
 - **Days ≠ recurring.** Days only mean "available on these days"; **Recurring** is its own switch. Days only = one-time on those days. Days + Recurring = comes back on the next selected day. Recurring only works as before (a recurring quest with no due time now comes back the next day / week).

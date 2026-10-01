@@ -20,6 +20,7 @@ const val DAILY_LOGIN_COINS = 5
 
 const val DEFAULT_RATE_PER_5 = 5
 const val MAX_UNLOCK_BLOCKS = 144   // 12 h of 5-minute blocks
+private const val DOUBLE_PAY_WINDOW_MS = 5_000L
 
 /** Cost of [blocks] 5-minute blocks: blocks × rate (the app's own rate, else the global one) × price %. */
 fun unlockCost(blocks: Int, globalRate: Int, app: BlockedApp?): Int {
@@ -422,10 +423,19 @@ class GameRepository @Inject constructor(
         app.dailyLimitMin > 0 && used >= app.dailyLimitMin * 60_000L
     }
 
+    // pkg -> uptime of the last charge. Serialised by the DB transaction below.
+    private val lastPaidAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
     /** Buys [blocks] × 5 minutes of access. Cost = blocks × rate. Stacks on an unlock that is still running. */
     suspend fun unlock(pkg: String, blocks: Int): Boolean = db.withTransaction {
         val app = appDao.get(pkg) ?: return@withTransaction false
         val b = blocks.coerceIn(1, MAX_UNLOCK_BLOCKS)
+        // Double-charge guard: a second purchase for the same app moments after the first (double trigger,
+        // two lock screens) is treated as already paid. Nothing is charged and the unlock stays as bought.
+        val up = android.os.SystemClock.elapsedRealtime()
+        val prev = lastPaidAt[pkg]
+        if (prev != null && up - prev < DOUBLE_PAY_WINDOW_MS && app.unlockedUntil > System.currentTimeMillis())
+            return@withTransaction true
         val p = playerDao.get() ?: Player()
         val cost = unlockCost(b, prefs.ratePer5, app)
         if (p.coins < cost) return@withTransaction false
@@ -435,6 +445,7 @@ class GameRepository @Inject constructor(
         appDao.upsert(app.copy(unlockedUntil = base + b * 5 * 60_000L))
         unlockEventDao.insert(UnlockEvent(packageName = app.packageName, label = app.label, coinsSpent = cost))
         logCoin(-cost, "Unlock", "${app.label} · ${fmtBlocks(b)}")
+        lastPaidAt[pkg] = up
         true
     }
 

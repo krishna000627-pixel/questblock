@@ -120,6 +120,7 @@ class BlockActivity : ComponentActivity() {
         setIntent(intent)
         target = intent.getStringExtra(EXTRA_PKG).orEmpty()
         showingFor = target
+        opened = false
     }
 
     // Never linger in the background. A leftover, half-alive lock screen is what ate taps on app icons.
@@ -147,7 +148,11 @@ class BlockActivity : ComponentActivity() {
         finishAndRemoveTask()
     }
 
+    private var opened = false
+
     private fun openTarget() {
+        if (opened) return          // paid + "already unlocked" can both ask; open the app only once
+        opened = true
         packageManager.getLaunchIntentForPackage(target)?.let {
             startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
@@ -208,6 +213,13 @@ fun BlockScreen(
         label = "hold_progress",
     )
     var isHolding by remember { mutableStateOf(false) }
+    var paying by remember(pkg) { mutableStateOf(false) }   // one purchase per lock screen
+
+    // Already unlocked (paid a moment ago, or from another lock screen): never ask to pay again.
+    val unlockedUntil = rule?.unlockedUntil ?: 0L
+    LaunchedEffect(unlockedUntil) {
+        if (unlockedUntil > System.currentTimeMillis()) onUnlocked()
+    }
 
     LaunchedEffect(isHolding) {
         if (isHolding) {
@@ -217,8 +229,9 @@ fun BlockScreen(
                 delay(100L)
                 holdProgress = (it + 1) / steps.toFloat()
             }
-            if (isHolding && rule != null) {
+            if (isHolding && rule != null && !paying) {
                 if (coinsNow >= costNow) {
+                    paying = true
                     // Haptic
                     runCatching {
                         if (android.os.Build.VERSION.SDK_INT >= 31) {
@@ -235,7 +248,10 @@ fun BlockScreen(
                         if (ok) {
                             KeepAlive.start(ctx)   // live tracker lives in the keep-alive service
                             onUnlocked()
-                        } else Toast.makeText(ctx, "Not enough coins", Toast.LENGTH_SHORT).show()
+                        } else {
+                            paying = false
+                            Toast.makeText(ctx, "Not enough coins", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 } else {
                     Toast.makeText(ctx, "Not enough coins — do a quest first", Toast.LENGTH_SHORT).show()

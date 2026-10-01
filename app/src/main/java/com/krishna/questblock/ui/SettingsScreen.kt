@@ -282,7 +282,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, vm: Settin
                 runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
             }
             Text("QuestBlock v$version", color = ColorText, fontWeight = FontWeight.SemiBold)
-            Text("v10: coins per 5 min · live unlock timer · coin log · reliability page · quest types",
+            Text("v11: no double charge on unlock · coins per 5 min · live timer · coin log · reliability · quest types",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
         Spacer(Modifier.height(12.dp))

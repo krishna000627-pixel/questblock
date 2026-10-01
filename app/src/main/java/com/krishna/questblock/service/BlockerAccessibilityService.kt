@@ -132,6 +132,9 @@ class BlockerAccessibilityService : AccessibilityService() {
                 // still the foreground app. Launching the lock screen while the target is still
                 // mid-transition is what left a ghost, tap-eating window over the launcher icons.
                 delay(SETTLE_MS)
+                // Re-read: the unlock may have been bought while we waited (this used to re-lock right after paying)
+                val fresh = repo.getBlockedApp(pkg)
+                if (fresh != null && fresh.unlockedUntil > System.currentTimeMillis()) return
                 if (currentPkg == pkg) showBlock(app)
             }
             return
