@@ -1,6 +1,8 @@
 package com.krishna.questblock.ui
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.os.Bundle
 import android.os.VibrationEffect
@@ -15,6 +17,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -29,12 +33,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -49,8 +55,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -264,6 +272,19 @@ fun BlockScreen(
         }
     }
 
+    // The app's real icon (falls back to its first letter)
+    val iconBitmap = remember(pkg) {
+        runCatching {
+            val d = ctx.packageManager.getApplicationIcon(pkg)
+            val bmp = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888)
+            d.setBounds(0, 0, 128, 128)
+            d.draw(Canvas(bmp))
+            bmp.asImageBitmap()
+        }.getOrNull()
+    }
+    // With too few coins, "Do a quest instead" becomes the main button
+    val questIsPrimary = rule != null && !canAfford
+
     Box(
         Modifier
             .fillMaxSize()
@@ -279,15 +300,20 @@ fun BlockScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            // App icon placeholder
+            // App icon
             Box(
                 Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(16.dp))
                     .background(ColorSurfaceHigh),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(label.firstOrNull()?.uppercase() ?: "?", fontSize = 36.sp, color = ColorText, fontWeight = FontWeight.Bold)
+                if (iconBitmap != null) {
+                    Image(iconBitmap, contentDescription = null, contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize())
+                } else {
+                    Text(label.firstOrNull()?.uppercase() ?: "?", fontSize = 28.sp, color = ColorText, fontWeight = FontWeight.Bold)
+                }
             }
 
             Spacer(Modifier.height(12.dp))
@@ -300,9 +326,8 @@ fun BlockScreen(
                 textAlign = TextAlign.Center,
             )
 
-            Spacer(Modifier.height(6.dp))
-
             if (quotesOn) {
+                Spacer(Modifier.height(6.dp))
                 Text(
                     quote,
                     style = MaterialTheme.typography.bodyMedium,
@@ -311,120 +336,126 @@ fun BlockScreen(
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            // Coin balance
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("🪙", fontSize = 20.sp)
-                Text(
-                    "${player.coins} coins",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = ColorCoin,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(28.dp))
 
             if (rule != null) {
                 val missing = cost - player.coins
 
-                // − / + time picker: 5-minute steps, live cost. Hold a button to repeat.
+                // − time · cost + on ONE line: 5-minute steps, live cost. Hold a button to repeat.
                 Row(
                     Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     StepButton("−", enabled = blocks > 1) { blocks = (blocks - 1).coerceAtLeast(1) }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(fmtBlocks(blocks), fontSize = 32.sp, fontWeight = FontWeight.Black, color = ColorText)
+                    Row(
+                        Modifier.width(190.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.Bottom,
+                    ) {
+                        Text(fmtBlocks(blocks), fontSize = 30.sp, fontWeight = FontWeight.Black, color = ColorText)
                         Text(
-                            "$cost 🪙",
+                            "  ·  $cost 🪙",
+                            modifier = Modifier.padding(bottom = 4.dp),
                             style = MaterialTheme.typography.titleMedium,
                             color = if (canAfford) ColorCoin else ColorDanger,
                             fontWeight = FontWeight.Bold,
                         )
-                        val r = rule.ratePer5.takeIf { it > 0 } ?: rate
-                        Text("$r 🪙 per 5 min", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
                     }
                     StepButton("+", enabled = blocks < MAX_UNLOCK_BLOCKS) {
                         blocks = (blocks + 1).coerceAtMost(MAX_UNLOCK_BLOCKS)
                     }
                 }
-                Spacer(Modifier.height(12.dp))
 
-                // Hold-to-unlock button
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (canAfford) ColorPrimary.copy(alpha = 0.15f) else ColorSurfaceHigh)
-                            .pointerInput(canAfford) {
-                                if (canAfford) {
-                                    detectTapGestures(
-                                        onPress = {
-                                            isHolding = true
-                                            tryAwaitRelease()
-                                            isHolding = false
-                                        }
-                                    )
-                                }
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        // Progress fill
-                        if (animatedHold > 0f) {
-                            Box(
-                                Modifier
-                                    .fillMaxWidth(animatedHold)
-                                    .height(54.dp)
-                                    .background(ColorPrimary.copy(alpha = 0.3f))
-                                    .align(Alignment.CenterStart)
-                            )
-                        }
-                        Text(
-                            if (canAfford) "Hold to unlock · $cost 🪙 · ${fmtBlocks(blocks)}"
-                            else "Need $missing more coins",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = if (canAfford) ColorPrimary else ColorMuted,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-
-                    if (!canAfford) {
-                        Text(
-                            "Complete a quest to earn coins.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = ColorMuted,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
+                // Only shown when this app has its own rate
+                if (rule.ratePer5 > 0) {
+                    Spacer(Modifier.height(4.dp))
+                    Text("Custom rate: ${rule.ratePer5} 🪙 per 5 min",
+                        style = MaterialTheme.typography.labelSmall, color = ColorMuted)
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(20.dp))
+
+                // Hold-to-unlock button: the one big action
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(if (canAfford) ColorPrimary.copy(alpha = 0.22f) else ColorSurfaceHigh)
+                        .pointerInput(canAfford) {
+                            if (canAfford) {
+                                detectTapGestures(
+                                    onPress = {
+                                        isHolding = true
+                                        tryAwaitRelease()
+                                        isHolding = false
+                                    }
+                                )
+                            }
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    // Progress fill
+                    if (animatedHold > 0f) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(animatedHold)
+                                .height(56.dp)
+                                .background(ColorPrimary.copy(alpha = 0.5f))
+                                .align(Alignment.CenterStart)
+                        )
+                    }
+                    Text(
+                        if (canAfford) "Hold to unlock" else "Need $missing more 🪙",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = if (canAfford) ColorPrimary else ColorMuted,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+
+                Spacer(Modifier.height(10.dp))
             }
 
-            Button(
-                onClick = onQuests,
-                modifier = Modifier.fillMaxWidth().height(46.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ColorSurfaceHigh, contentColor = ColorText),
-                shape = RoundedCornerShape(12.dp),
-            ) { Text("Do a quest instead") }
+            if (questIsPrimary) {
+                Button(
+                    onClick = onQuests,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
+                    shape = RoundedCornerShape(14.dp),
+                ) { Text("Do a quest instead", fontWeight = FontWeight.Bold) }
+            } else {
+                OutlinedButton(
+                    onClick = onQuests,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorText),
+                    border = BorderStroke(1.dp, ColorSurfaceHigh),
+                    shape = RoundedCornerShape(14.dp),
+                ) { Text("Do a quest instead") }
+            }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
 
             TextButton(onClick = onHome) {
                 Text("Go home", color = ColorMuted)
             }
+        }
+
+        // Coin balance: small chip in the corner
+        Row(
+            Modifier
+                .align(Alignment.TopEnd)
+                .systemBarsPadding()
+                .padding(16.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(ColorSurfaceHigh)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("🪙", fontSize = 14.sp)
+            Text("${player.coins}", style = MaterialTheme.typography.labelLarge,
+                color = ColorCoin, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -434,7 +465,7 @@ private fun StepButton(symbol: String, enabled: Boolean, onStep: () -> Unit) {
     val step by rememberUpdatedState(onStep)
     Box(
         Modifier
-            .size(56.dp)
+            .size(48.dp)
             .clip(CircleShape)
             .background(if (enabled) ColorPrimary.copy(alpha = 0.18f) else ColorSurfaceHigh)
             .pointerInput(enabled) {

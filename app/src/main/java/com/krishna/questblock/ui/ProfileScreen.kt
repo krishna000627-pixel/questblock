@@ -41,21 +41,14 @@ class ProfileViewModel @Inject constructor(
     val prefs: Prefs,
 ) : ViewModel() {
     val player = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
-    fun saveProfile(name: String, goal: String, dob: String) =
-        viewModelScope.launch { repo.saveProfile(name, goal, dob) }
 }
 
 @Composable
 fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSettings: () -> Unit, onOpenCoins: () -> Unit, onOpenAbout: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
     val player by vm.player.collectAsStateWithLifecycle()
 
-    var editMode by remember { mutableStateOf(false) }
-    var name by remember(player.name) { mutableStateOf(player.name) }
-    var goal by remember(player.goal) { mutableStateOf(player.goal) }
-    var dob  by remember(player.dob)  { mutableStateOf(player.dob) }
 
     val snack = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     Scaffold(containerColor = ColorBg, contentWindowInsets = WindowInsets(0), snackbarHost = { SnackbarHost(snack) }) { pad ->
         Column(
@@ -190,7 +183,7 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                 }
             }
 
-            // ── Info / Edit card ────────────────────────────────────────────
+            // ── Hero info (read-only here; edit it in Settings) ─────────────
             Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
                 shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -198,31 +191,13 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                         verticalAlignment = Alignment.CenterVertically) {
                         Text("Hero info", style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold, color = ColorText)
-                        TextButton(onClick = {
-                            if (editMode) {
-                                vm.saveProfile(name, goal, dob)
-                                scope.launch { snack.showSnackbar("Profile saved!") }
-                            }
-                            editMode = !editMode
-                        }) { Text(if (editMode) "Save" else "Edit", color = ColorPrimary, fontWeight = FontWeight.Bold) }
+                        TextButton(onClick = onOpenSettings) {
+                            Text("Edit in Settings", color = ColorPrimary, fontWeight = FontWeight.Bold)
+                        }
                     }
-
-                    if (editMode) {
-                        ProfileField("Name", name, KeyboardCapitalization.Words) { name = it }
-                        ProfileField("Goal", goal, KeyboardCapitalization.Sentences) { goal = it }
-                        OutlinedTextField(
-                            value = dob, onValueChange = { dob = it },
-                            label = { Text("Date of birth", color = ColorMuted) },
-                            placeholder = { Text("DD/MM/YYYY", color = ColorMuted) },
-                            singleLine = true, modifier = Modifier.fillMaxWidth(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = profileFieldColors(),
-                        )
-                    } else {
-                        ProfileInfoRow("👤 Name",  player.name.ifBlank { "—" })
-                        ProfileInfoRow("🎯 Goal",  player.goal.ifBlank { "—" })
-                        ProfileInfoRow("🎂 DOB",   player.dob.ifBlank  { "—" })
-                    }
+                    ProfileInfoRow("👤 Name",  player.name.ifBlank { "—" })
+                    ProfileInfoRow("🎯 Goal",  player.goal.ifBlank { "—" })
+                    ProfileInfoRow("🎂 DOB",   player.dob.ifBlank  { "—" })
                 }
             }
 
@@ -268,21 +243,3 @@ private fun ProfileInfoRow(label: String, value: String) {
         Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = ColorText)
     }
 }
-
-@Composable
-private fun ProfileField(label: String, value: String, cap: KeyboardCapitalization, onChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = value, onValueChange = onChange,
-        label = { Text(label, color = ColorMuted) },
-        singleLine = true, modifier = Modifier.fillMaxWidth(),
-        keyboardOptions = KeyboardOptions(capitalization = cap),
-        colors = profileFieldColors(),
-    )
-}
-
-@Composable
-private fun profileFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor   = ColorPrimary, unfocusedBorderColor = ColorSurfaceHigh,
-    cursorColor = ColorPrimary, focusedTextColor = ColorText, unfocusedTextColor = ColorText,
-    focusedLabelColor = ColorPrimary,
-)

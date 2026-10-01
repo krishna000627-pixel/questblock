@@ -17,6 +17,16 @@ bash termux/setup.sh            # optional arg: repo name (default: questblock)
 `setup.sh` installs git/gh/JDK, generates a keystore in `~/.questblock/`, creates the private GitHub repo,
 uploads the keystore as Actions secrets, pushes, waits for CI, then downloads and opens the signed APK.
 
+## What's new in v15
+
+- **Cleaner lock screen.** Time and cost on one line (− 15m · 15 🪙 +); the big button just says **Hold to unlock**; coin balance is a small chip in the corner; the app's real icon replaces the letter box; "per 5 min" only shows when the app has its own rate.
+- With too few coins the unlock button greys out ("Need N more 🪙") and **Do a quest instead** becomes the main button.
+- UI only: hold-to-unlock, the charge guards and the unlock logic are unchanged.
+
+## What's new in v14
+
+- **Hero info is edited only in Settings.** Settings → Hero info now has Name, Goal and Date of birth. The Hero info box on Profile is read-only and has an "Edit in Settings" button.
+
 ## What's new in v13
 
 - **Quest add screen** shows only the chosen type (no row of type bubbles). To use another type, go back to the picker.

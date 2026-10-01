@@ -110,16 +110,22 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, vm: Settin
         }
 
         // ── Profile ──────────────────────────────────────────────────────
-        Section("👤 Profile") {
+        Section("👤 Hero info") {
             var name by remember(player.name) { mutableStateOf(player.name) }
             var goal by remember(player.goal) { mutableStateOf(player.goal) }
+            var dob  by remember(player.dob)  { mutableStateOf(player.dob) }
             OutlinedTextField(name, { name = it }, label = { Text("Name", color = ColorMuted) },
                 singleLine = true, modifier = Modifier.fillMaxWidth(), colors = fieldColors())
             OutlinedTextField(goal, { goal = it }, label = { Text("Goal", color = ColorMuted) },
                 singleLine = true, modifier = Modifier.fillMaxWidth(), colors = fieldColors())
-            Button(onClick = { vm.saveProfile(name, goal, player.dob); Toast.makeText(ctx, "Saved", Toast.LENGTH_SHORT).show() },
+            OutlinedTextField(dob, { dob = it }, label = { Text("Date of birth", color = ColorMuted) },
+                placeholder = { Text("DD/MM/YYYY", color = ColorMuted) },
+                singleLine = true, modifier = Modifier.fillMaxWidth(), colors = fieldColors())
+            Button(onClick = { vm.saveProfile(name, goal, dob); Toast.makeText(ctx, "Saved", Toast.LENGTH_SHORT).show() },
                 colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
-                shape = RoundedCornerShape(10.dp)) { Text("Save profile", fontWeight = FontWeight.Bold) }
+                shape = RoundedCornerShape(10.dp)) { Text("Save hero info", fontWeight = FontWeight.Bold) }
+            Text("This is the only place to edit it. Profile just shows it.",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
 
         // ── Look ─────────────────────────────────────────────────────────
