@@ -18,10 +18,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,7 +52,17 @@ class HomeViewModel @Inject constructor(private val repo: GameRepository) : View
         }
     }
     fun dismissBonus() { loginBonus = 0 }
-    fun complete(task: TaskEntity) = viewModelScope.launch { repo.completeTask(task) }
+    /** One-line message shown as a toast (e.g. a Routine with unticked steps). */
+    var notice by mutableStateOf<String?>(null)
+        private set
+    fun clearNotice() { notice = null }
+    fun complete(task: TaskEntity) = viewModelScope.launch {
+        if (task.questType == "routine" && repo.getSubTasks(task.id).any { !it.done }) {
+            notice = "Tick every step first (open it in Quests)"
+            return@launch
+        }
+        repo.completeTask(task)
+    }
 }
 
 @Composable
@@ -59,13 +71,30 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
     val tasks        by vm.tasks.collectAsStateWithLifecycle()
     val achievements by vm.achievements.collectAsStateWithLifecycle()
 
+    val ctx = LocalContext.current
+    LaunchedEffect(vm.notice) {
+        vm.notice?.let { Toast.makeText(ctx, it, Toast.LENGTH_SHORT).show(); vm.clearNotice() }
+    }
+
     val now      = System.currentTimeMillis()
+    val dayStart = startOfToday(now)
+    val dayEnd   = nextRunDayStart(0, now) - 1          // last millisecond of today
     val pending  = tasks.filter { it.isAvailableNow(now) }
-    val overdue  = pending.filter { it.dueAt != null && it.dueAt < now }
-    val upcoming = pending.filter { it.dueAt != null && it.dueAt >= now }.sortedBy { it.dueAt }
-    val noDate   = pending.filter { it.dueAt == null }
-    val doneToday = tasks.count { it.done }
-    val recentAch = achievements.filter { it.unlockedAt != null }.sortedByDescending { it.unlockedAt }.take(3)
+
+    // "For today" = due today / overdue, or a recurring quest (daily, weekly, challenge, repeating routine/focus).
+    // Order: priority first (High → Low), then due time, then quest type order.
+    val todayList = pending.filter { it.isForToday(dayEnd) }.sortedWith(
+        compareBy<TaskEntity> { it.priority }
+            .thenBy { it.dueAt ?: Long.MAX_VALUE }
+            .thenBy { t -> QUEST_TYPES.indexOfFirst { it.id == t.questType } })
+    val rest     = pending.filter { !it.isForToday(dayEnd) }
+    val comingUp = rest.filter { it.dueAt != null }.sortedWith(compareBy<TaskEntity> { it.dueAt ?: Long.MAX_VALUE }.thenBy { it.priority })
+    val noDate   = rest.filter { it.dueAt == null }.sortedBy { it.priority }
+
+    val overdueCount = todayList.count { it.dueAt != null && it.dueAt < now }
+    val doneToday    = tasks.count { it.done && (it.completedAt ?: 0L) >= dayStart }
+    val totalToday   = doneToday + todayList.size
+    val recentAch    = achievements.filter { it.unlockedAt != null }.sortedByDescending { it.unlockedAt }.take(3)
 
     LazyColumn(
         Modifier.fillMaxSize().background(ColorBg),
@@ -73,7 +102,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // ── Hero card ──────────────────────────────────────────────────────
-        item { HeroCard(player = player, doneToday = doneToday, total = tasks.size, onCoinsClick = onOpenShop) }
+        item { HeroCard(player = player, doneToday = doneToday, total = totalToday, onCoinsClick = onOpenShop) }
 
         // ── Daily login bonus ──────────────────────────────────────────────
         if (vm.loginBonus > 0) {
@@ -86,35 +115,70 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
             }
         }
 
-        // ── Focus mode shortcut ────────────────────────────────────────────
+        // ── Today's quests (right under the hero) ──────────────────────────
         item {
-            FocusShortcut(
-                isActive = player.isFocusMode(),
-                remainingMs = (player.focusModeUntil - now).coerceAtLeast(0),
-                onClick = onGoFocus,
-                modifier = Modifier,
-            )
+            Row(Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Today's quests", style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold, color = ColorText)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (overdueCount > 0) Text("⚠ $overdueCount overdue", style = MaterialTheme.typography.labelMedium, color = ColorDanger)
+                    Text("$doneToday/$totalToday done", style = MaterialTheme.typography.labelMedium, color = ColorPrimary)
+                }
+            }
         }
-
-        // ── Overdue banner ─────────────────────────────────────────────────
-        if (overdue.isNotEmpty()) {
+        if (todayList.isEmpty()) {
             item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = ColorDanger.copy(0.12f)),
-                    shape  = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
+                Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
+                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Icon(Icons.Default.Warning, contentDescription = null, tint = ColorDanger, modifier = Modifier.size(20.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text("${overdue.size} overdue quest${if (overdue.size > 1) "s" else ""}",
-                                style = MaterialTheme.typography.labelLarge, color = ColorDanger, fontWeight = FontWeight.Bold)
-                            Text(overdue.first().title, style = MaterialTheme.typography.bodySmall, color = ColorDanger.copy(0.8f),
-                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(if (tasks.isEmpty()) "⚔️" else "🎉", fontSize = 22.sp)
+                        Text(if (tasks.isEmpty()) "No quests yet" else "All clear for today",
+                            style = MaterialTheme.typography.bodyMedium, color = ColorText,
+                            fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        TextButton(onClick = onAddQuest) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Add", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
+            }
+        } else {
+            items(todayList.take(6), key = { "td_${it.id}" }) { task ->
+                HomeQuestRow(task = task, now = now, onComplete = { vm.complete(task) })
+            }
+            if (todayList.size > 6) item {
+                Text("+${todayList.size - 6} more in Quests", style = MaterialTheme.typography.labelMedium, color = ColorMuted)
+            }
+        }
+
+        // ── Next: dated quests, then undated ───────────────────────────────
+        if (comingUp.isNotEmpty()) {
+            item { SubHeader("⏰ Coming up") }
+            items(comingUp.take(3), key = { "up_${it.id}" }) { task ->
+                HomeQuestRow(task = task, now = now, onComplete = { vm.complete(task) })
+            }
+        }
+        if (noDate.isNotEmpty()) {
+            item { SubHeader("📋 No date") }
+            items(noDate.take(3), key = { "nd_${it.id}" }) { task ->
+                HomeQuestRow(task = task, now = now, onComplete = { vm.complete(task) })
+            }
+        }
+
+        // ── Compact shortcuts: Focus + Stats ───────────────────────────────
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FocusShortcut(
+                    isActive = player.isFocusMode(),
+                    remainingMs = (player.focusModeUntil - now).coerceAtLeast(0),
+                    onClick = onGoFocus,
+                    modifier = Modifier.weight(1f),
+                )
+                ShortcutTile("📊", "Stats", "Your progress", false, onOpenStats, Modifier.weight(1f))
             }
         }
 
@@ -131,70 +195,6 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                         Surface(shape = RoundedCornerShape(20.dp), color = ColorPrimary.copy(0.15f)) {
                             Text("$label ${mins}m", modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                 style = MaterialTheme.typography.labelSmall, color = ColorPrimary, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        }
-
-        // ── Stats shortcut ─────────────────────────────────────────────────
-        item {
-            Surface(shape = RoundedCornerShape(14.dp), color = ColorSurface,
-                modifier = Modifier.fillMaxWidth().clickable { onOpenStats() }) {
-                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("📊", fontSize = 20.sp)
-                    Text("Stats & progress", style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold, color = ColorText, modifier = Modifier.weight(1f))
-                    Text("›", color = ColorMuted, fontSize = 20.sp)
-                }
-            }
-        }
-
-        // ── Today's progress ───────────────────────────────────────────────
-        item {
-            Row(Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Today's quests", style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold, color = ColorText)
-                Text("$doneToday/${tasks.size} done", style = MaterialTheme.typography.labelMedium, color = ColorPrimary)
-            }
-        }
-
-        // Upcoming quests (with due dates)
-        if (upcoming.isNotEmpty()) {
-            item { SubHeader("⏰ Upcoming") }
-            items(upcoming.take(3), key = { "up_${it.id}" }) { task ->
-                HomeQuestRow(task = task, now = now, onComplete = { vm.complete(task) })
-            }
-        }
-
-        // No-date quests
-        if (noDate.isNotEmpty()) {
-            item { SubHeader("📋 To Do") }
-            items(noDate.take(3), key = { "nd_${it.id}" }) { task ->
-                HomeQuestRow(task = task, now = now, onComplete = { vm.complete(task) })
-            }
-        }
-
-        if (tasks.isEmpty()) {
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("⚔️", fontSize = 40.sp)
-                        Text("No quests yet", style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold, color = ColorText)
-                        Text("Add your first quest to start your journey!",
-                            style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-                        Button(onClick = onAddQuest,
-                            colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
-                            shape = RoundedCornerShape(20.dp)) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Add Quest", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -221,9 +221,12 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                 }
             }
         }
-
     }
 }
+
+private fun TaskEntity.isForToday(endOfToday: Long): Boolean =
+    (dueAt != null && dueAt <= endOfToday) ||
+        (isRecurring && (dueAt == null || questType == "daily" || questType == "weekly" || questType == "challenge"))
 
 // ── Hero card ──────────────────────────────────────────────────────────────
 @Composable
@@ -322,25 +325,28 @@ private fun StatPill(modifier: Modifier, emoji: String, value: String, label: St
 private fun FocusShortcut(isActive: Boolean, remainingMs: Long, onClick: () -> Unit, modifier: Modifier) {
     val mm = remainingMs / 60_000
     val ss = (remainingMs % 60_000) / 1000
-    Card(colors = CardDefaults.cardColors(
-        containerColor = if (isActive) ColorPrimary.copy(0.15f) else ColorCard),
+    ShortcutTile(
+        emoji = if (isActive) "🎯" else "⚡",
+        title = if (isActive) "Focus active" else "Focus mode",
+        sub = if (isActive) "%02d:%02d left".format(mm, ss) else "Start a session",
+        highlighted = isActive, onClick = onClick, modifier = modifier,
+    )
+}
+
+@Composable
+private fun ShortcutTile(emoji: String, title: String, sub: String, highlighted: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    Card(colors = CardDefaults.cardColors(containerColor = if (highlighted) ColorPrimary.copy(0.15f) else ColorCard),
         shape = RoundedCornerShape(14.dp),
-        modifier = modifier.fillMaxWidth().clickable { onClick() }) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(36.dp).background(
-                if (isActive) ColorPrimary.copy(0.2f) else ColorSurfaceHigh, CircleShape),
-                contentAlignment = Alignment.Center) {
-                Text(if (isActive) "🎯" else "⚡", fontSize = 20.sp)
-            }
+        modifier = modifier.clickable { onClick() }) {
+        Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(emoji, fontSize = 20.sp)
             Column(Modifier.weight(1f)) {
-                Text(if (isActive) "Focus Mode Active" else "Start Focus Mode",
-                    style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold,
-                    color = if (isActive) ColorPrimary else ColorText)
-                Text(if (isActive) "%02d:%02d remaining".format(mm, ss) else "Timer quests & focus sessions",
-                    style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold,
+                    color = if (highlighted) ColorPrimary else ColorText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(sub, style = MaterialTheme.typography.bodySmall, color = ColorMuted,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = ColorMuted)
         }
     }
 }
@@ -356,6 +362,7 @@ private fun HomeQuestRow(task: TaskEntity, now: Long, onComplete: () -> Unit) {
     val catColor  = CatColors[task.category] ?: ColorPrimary
     val isOverdue = task.dueAt != null && task.dueAt < now
     val sdf = remember { SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()) }
+    val tf  = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
 
     Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
         shape = RoundedCornerShape(12.dp),
@@ -370,12 +377,13 @@ private fun HomeQuestRow(task: TaskEntity, now: Long, onComplete: () -> Unit) {
                         fontWeight = FontWeight.SemiBold, color = ColorText,
                         maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(questTypeInfo(task.questType).emoji, fontSize = 12.sp)
                         Surface(shape = RoundedCornerShape(4.dp), color = catColor.copy(0.15f)) {
                             Text(task.category, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                 style = MaterialTheme.typography.labelSmall, color = catColor)
                         }
                         if (task.dueAt != null) {
-                            Text(sdf.format(Date(task.dueAt)),
+                            Text((if (task.isRecurring) tf else sdf).format(Date(task.dueAt)),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (isOverdue) ColorDanger else ColorMuted,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis)

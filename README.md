@@ -17,6 +17,19 @@ bash termux/setup.sh            # optional arg: repo name (default: questblock)
 `setup.sh` installs git/gh/JDK, generates a keystore in `~/.questblock/`, creates the private GitHub repo,
 uploads the keystore as Actions secrets, pushes, waits for CI, then downloads and opens the signed APK.
 
+## What's new in v12
+
+- **One quest form per type.** The type now decides repeat, days and due date, so you can't save a contradictory combination.
+  Daily: optional time of day only (always every day). Weekly: pick days (none preselected). One-time: due date. Challenge: length in days.
+  Routine / Focus: steps or focus session plus one **Repeat: Once / Every day / Chosen days** control. Type can be changed at the top.
+  Notes, category (and due date for repeating-less Routine/Focus) sit under a collapsed **More options**. Difficulty and Priority are compact rows.
+- **Editing old quests.** A one-time quest that was recurring opens as Daily/Weekly; a Daily limited to some days opens as Weekly; a recurring Routine/Focus on some days opens as "Chosen days".
+- **Home.** Today's quests sits directly under the hero card. Today's list = due today/overdue + recurring quests, sorted High → Low priority, then due time, then type. Dated and undated quests follow under Coming up / No date. Focus and Stats are one compact row. Empty state is a single line.
+- **Counters fixed.** "x/y done" now counts quests completed today against today's quests (not all quests ever).
+- **Routine on Home** now tells you to tick every step instead of silently doing nothing.
+- **Quests tab.** Completed shows the 10 newest with Show all; no empty "📅" chip on dailies with a time.
+- No database change (still version 8).
+
 ## What's new in v11
 
 - **No more paying twice to open an app.** A second purchase for the same app within 5 s is ignored (no charge); the lock screen submits once, closes itself if the app is already unlocked, and the blocker re-checks the unlock right before showing the lock screen.

@@ -73,6 +73,7 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
 
     var filterTab by remember { mutableStateOf("All") }
     var filterCat by remember { mutableStateOf("All") }
+    var showAllDone by remember { mutableStateOf(false) }
 
     val filtered = tasks.filter { task ->
         val tabOk = when (filterTab) {
@@ -206,13 +207,20 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
 
             // Completed
             if (done.isNotEmpty()) {
+                val doneSorted = done.sortedByDescending { it.completedAt ?: 0L }
+                val doneShown = if (showAllDone || filterTab == "Done") doneSorted else doneSorted.take(10)
                 item { SectionHeader("Completed (${done.size})") }
-                items(done, key = { it.id }) { task ->
+                items(doneShown, key = { it.id }) { task ->
                     SwipeableQuestCard(task = task, now = now,
                         steps = stepsByTask[task.id].orEmpty(), onToggleStep = {},
                         onComplete = {}, onDelete = { vm.delete(task) }, onEdit = {},
                         onStartFocus = {}, onStopFocus = {},
                     )
+                }
+                if (filterTab != "Done" && doneSorted.size > 10) item {
+                    TextButton(onClick = { showAllDone = !showAllDone }, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (showAllDone) "Show fewer" else "Show all ${doneSorted.size}", color = ColorMuted)
+                    }
                 }
             }
         }
@@ -336,8 +344,8 @@ private fun QuestCard(
                     if (task.questType == "challenge" && task.challengeDays > 0)
                         TagChip("🏆 $streakNow/${task.challengeDays}", ColorWarning)
                     if (isRoutine && steps.isNotEmpty()) TagChip("📋 $stepsDone/${steps.size}", ColorAccent)
-                    if (task.daysMask != 0) TagChip("📅 ${daysLabel(task.daysMask)}", ColorAccent)
-                    if (task.isRecurring && task.questType != "daily" && task.questType != "challenge") TagChip("🔁", ColorMuted)
+                    if (task.daysMask != 0 && task.daysMask != ALL_DAYS_MASK) TagChip("📅 ${daysLabel(task.daysMask)}", ColorAccent)
+                    if (task.isRecurring && task.questType !in listOf("daily", "weekly", "challenge")) TagChip("🔁", ColorMuted)
                 }
 
                 if (task.dueAt != null) {

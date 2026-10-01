@@ -33,6 +33,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.krishna.questblock.data.ALL_DAYS_MASK
+import com.krishna.questblock.data.QUEST_TYPES
+import com.krishna.questblock.data.dowIndex
+import com.krishna.questblock.data.fmtMinute
 import com.krishna.questblock.data.DAY_LABELS
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.QuestDraft
@@ -95,7 +98,23 @@ class QuestCreatorViewModel @Inject constructor(
 private val CATEGORIES = listOf("Study","Work","Health","Personal","Custom")
 private val DIFFICULTIES = listOf("Easy" to 1, "Medium" to 2, "Hard" to 3)
 private val PRIORITIES = listOf("🔴 High" to 1, "🟡 Med" to 2, "🟢 Low" to 3)
-private val RECUR_TYPES = listOf("daily","weekly")
+private val REPEAT_MODES = listOf("once" to "Once", "daily" to "Every day", "days" to "Chosen days")
+
+private fun minuteOfDay(ms: Long): Int {
+    val c = Calendar.getInstance(); c.timeInMillis = ms
+    return c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)
+}
+
+/** Next time the clock shows [minute] (today if still ahead, else tomorrow). */
+private fun nextOccurrence(minute: Int): Long {
+    val c = Calendar.getInstance()
+    c.set(Calendar.HOUR_OF_DAY, minute / 60); c.set(Calendar.MINUTE, minute % 60)
+    c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
+    if (c.timeInMillis < System.currentTimeMillis()) c.add(Calendar.DAY_OF_YEAR, 1)
+    return c.timeInMillis
+}
+
+private data class Choice(val label: String, val sub: String?, val value: Int, val color: Color)
 
 @Composable
 fun QuestCreatorScreen(
@@ -107,50 +126,107 @@ fun QuestCreatorScreen(
 
     val isEdit = vm.editId > 0
     var questType  by remember { mutableStateOf(vm.initialType) }
-    // New quests start with the sensible defaults for the chosen type
-    val t0 = vm.initialType
     var title      by remember { mutableStateOf("") }
     var notes      by remember { mutableStateOf("") }
     var difficulty by remember { mutableIntStateOf(1) }
     var category   by remember { mutableStateOf("Personal") }
     var priority   by remember { mutableIntStateOf(2) }
     var dueAt      by remember { mutableStateOf<Long?>(null) }
-    var isRecurring by remember { mutableStateOf(!isEdit && t0 in listOf("daily", "weekly")) }
-    var recurType  by remember { mutableStateOf(if (t0 == "weekly") "weekly" else "daily") }
-    var timerHours by remember { mutableIntStateOf(if (t0 == "focus") 0 else 1) }
-    var timerMins  by remember { mutableIntStateOf(if (t0 == "focus") 30 else 0) }
+    var origDueAt  by remember { mutableStateOf<Long?>(null) }   // due time of the saved quest (edit mode)
+    var repeat     by remember { mutableStateOf("once") }        // Routine / Focus only: once | daily | days
+    var dailyMinute by remember { mutableStateOf<Int?>(null) }   // Daily only: optional time of day
+    var daysMask   by remember { mutableIntStateOf(0) }          // Weekly, or Routine/Focus with "Chosen days"
+    var timerHours by remember { mutableIntStateOf(if (vm.initialType == "focus") 0 else 1) }
+    var timerMins  by remember { mutableIntStateOf(if (vm.initialType == "focus") 30 else 0) }
     var linkedApps by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showAppPicker by remember { mutableStateOf(false) }
-    var daysMask   by remember { mutableIntStateOf(0) }
     var challengeDays by remember { mutableIntStateOf(7) }
+    var showMore   by remember { mutableStateOf(false) }
     val steps = remember { mutableStateListOf("") }
 
-    // Edit mode: fill the form from the saved quest
+    // Edit mode: fill the form from the saved quest and map old combinations onto the new controls
     LaunchedEffect(Unit) {
         vm.load()?.let { t ->
-            questType = t.questType
+            var type = t.questType
+            val restricted = t.daysMask != 0 && t.daysMask != ALL_DAYS_MASK
+            // A one-time quest that was made recurring is really a Daily / Weekly; a Daily on some days is a Weekly
+            if (type == "onetime" && t.isRecurring) type = if (t.daysMask != 0 || t.recurType == "weekly") "weekly" else "daily"
+            if (type == "daily" && restricted) type = "weekly"
+            questType = type
             title = t.title; notes = t.notes; difficulty = t.difficulty; category = t.category
-            priority = t.priority; dueAt = t.dueAt; daysMask = t.daysMask
-            isRecurring = t.isRecurring            // days and recurring are independent now
-            recurType = if (t.recurType in RECUR_TYPES) t.recurType else "daily"
+            priority = t.priority; dueAt = t.dueAt; origDueAt = t.dueAt
+            val anchorDay = dowIndex(t.dueAt ?: t.createdAt)
+            daysMask = when {
+                t.daysMask != 0 -> t.daysMask
+                t.isRecurring && t.recurType == "weekly" -> 1 shl anchorDay   // old "weekly, no days" = same weekday
+                else -> 0
+            }
+            repeat = when {
+                !t.isRecurring -> "once"
+                restricted || (t.recurType == "weekly" && t.daysMask == 0) -> "days"
+                else -> "daily"
+            }
+            dailyMinute = if (type == "daily" && t.dueAt != null) minuteOfDay(t.dueAt) else null
             timerHours = (t.timerDurationMs / 3_600_000L).toInt()
             timerMins = ((t.timerDurationMs % 3_600_000L) / 60_000L).toInt()
             linkedApps = t.linkedApps.split(",").filter { it.isNotBlank() }.toSet()
             if (t.challengeDays > 0) challengeDays = t.challengeDays
             val saved = vm.loadSteps()
             steps.clear(); steps.addAll(saved.ifEmpty { listOf("") })
+            showMore = t.notes.isNotBlank() || ((type == "routine" || type == "focus") && !t.isRecurring && t.dueAt != null)
         }
     }
 
-    val isFocus = questType == "focus"
-    val isRoutine = questType == "routine"
+    val isDaily = questType == "daily"
+    val isWeekly = questType == "weekly"
+    val isOneTime = questType == "onetime"
     val isChallenge = questType == "challenge"
+    val isRoutine = questType == "routine"
+    val isFocus = questType == "focus"
+    val hasRepeat = isRoutine || isFocus
     val typeInfo = questTypeInfo(questType)
-    val weeklyNeedsDays = questType == "weekly" && daysMask == 0
+    val pickedMask = daysMask and ALL_DAYS_MASK
+    val needsDays = (isWeekly || (hasRepeat && repeat == "days")) && pickedMask == 0
     val routineNeedsSteps = isRoutine && steps.none { it.isNotBlank() }
-    val canSave = title.isNotBlank() && !weeklyNeedsDays && !routineNeedsSteps
+    val canSave = title.isNotBlank() && !needsDays && !routineNeedsSteps
+    val dueInMore = hasRepeat && repeat == "once"      // One-time shows its due date inline instead
 
     val sdf = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
+
+    /** The type decides isRecurring / recurType / daysMask / dueAt, so no inconsistent combination can be saved. */
+    fun buildDraft(): QuestDraft {
+        val durMs = (timerHours * 3600L + timerMins * 60L) * 1000L
+        var rec = false; var rt = ""; var mask = 0; var due: Long? = null
+        when {
+            isDaily -> {
+                rec = true; rt = "daily"
+                val m = dailyMinute
+                if (m != null) {
+                    // all-days mask + a due time = comes back tomorrow at the same time (no repo change needed)
+                    mask = ALL_DAYS_MASK
+                    val keep = origDueAt
+                    due = if (keep != null && minuteOfDay(keep) == m) keep else nextOccurrence(m)
+                }
+            }
+            isWeekly -> { rec = true; rt = "weekly"; mask = pickedMask; due = origDueAt }
+            isChallenge -> { rec = true; rt = "daily" }
+            isOneTime -> { due = dueAt }
+            else -> when (repeat) {
+                "daily" -> { rec = true; rt = "daily" }
+                "days"  -> { rec = true; rt = "daily"; mask = if (pickedMask == ALL_DAYS_MASK) 0 else pickedMask }
+                else    -> { due = dueAt }
+            }
+        }
+        return QuestDraft(
+            title = title, difficulty = difficulty, category = category, priority = priority,
+            notes = notes, dueAt = due, isRecurring = rec, recurType = rt,
+            linkedApps = if (isFocus) linkedApps.joinToString(",") else "",
+            isTimerQuest = isFocus, timerDurationMs = if (isFocus) durMs else 0L,
+            daysMask = mask, questType = questType,
+            challengeDays = if (isChallenge) challengeDays else 0,
+            steps = if (isRoutine) steps.toList() else emptyList(),
+        )
+    }
 
     Scaffold(
         containerColor = ColorBg,
@@ -169,31 +245,10 @@ fun QuestCreatorScreen(
         },
         bottomBar = {
             Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (weeklyNeedsDays) Text("Pick at least one day.", color = ColorWarning, style = MaterialTheme.typography.labelSmall)
+                if (needsDays) Text("Pick at least one day.", color = ColorWarning, style = MaterialTheme.typography.labelSmall)
                 if (routineNeedsSteps) Text("Add at least one step.", color = ColorWarning, style = MaterialTheme.typography.labelSmall)
                 Button(
-                    onClick = {
-                        if (canSave) {
-                            val durMs = (timerHours * 3600L + timerMins * 60L) * 1000L
-                            val mask = if (daysMask == ALL_DAYS_MASK) 0 else daysMask
-                            // days = "available on these days"; Recurring is its own switch (a challenge always repeats daily)
-                            val recurring = if (isChallenge) true else isRecurring
-                            vm.save(
-                                QuestDraft(
-                                    title = title, difficulty = difficulty, category = category, priority = priority,
-                                    notes = notes, dueAt = dueAt,
-                                    isRecurring = recurring,
-                                    recurType = if (questType == "weekly" && mask == 0) "weekly" else recurType,
-                                    linkedApps = if (isFocus) linkedApps.joinToString(",") else "",
-                                    isTimerQuest = isFocus, timerDurationMs = if (isFocus) durMs else 0L,
-                                    daysMask = mask, questType = questType,
-                                    challengeDays = if (isChallenge) challengeDays else 0,
-                                    steps = if (isRoutine) steps.toList() else emptyList(),
-                                ),
-                                onBack,
-                            )
-                        }
-                    },
+                    onClick = { if (canSave) vm.save(buildDraft(), onBack) },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     colors   = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
                     shape    = RoundedCornerShape(14.dp),
@@ -207,15 +262,29 @@ fun QuestCreatorScreen(
             contentPadding = PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // ── Type ───────────────────────────────────────────────────────
+            // ── Type (changeable) ──────────────────────────────────────────
             item {
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ColorSurface).padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(typeInfo.emoji, fontSize = 22.sp)
-                    Column {
-                        Text(typeInfo.name, color = ColorText, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                        Text(typeInfo.blurb, color = ColorMuted, style = MaterialTheme.typography.bodySmall)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(QUEST_TYPES, key = { it.id }) { qt ->
+                            val sel = qt.id == questType
+                            Row(
+                                Modifier.clip(RoundedCornerShape(20.dp))
+                                    .background(if (sel) ColorPrimary.copy(0.22f) else ColorSurface)
+                                    .border(1.dp, if (sel) ColorPrimary else ColorDivider, RoundedCornerShape(20.dp))
+                                    .clickable { questType = qt.id }
+                                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Text(qt.emoji, fontSize = 14.sp)
+                                Text(qt.name, color = if (sel) ColorPrimary else ColorMuted,
+                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                                    style = MaterialTheme.typography.labelLarge)
+                            }
+                        }
                     }
+                    Text(typeInfo.blurb, color = ColorMuted, style = MaterialTheme.typography.bodySmall)
                 }
             }
 
@@ -233,193 +302,38 @@ fun QuestCreatorScreen(
                 )
             }
 
-            // ── Notes ──────────────────────────────────────────────────────
-            item {
-                SectionLabel("Notes (optional)")
-                OutlinedTextField(
-                    value = notes, onValueChange = { notes = it },
-                    placeholder = { Text("Add details…", color = ColorMuted) },
-                    modifier = Modifier.fillMaxWidth().height(80.dp),
-                    maxLines = 3,
-                    colors = creatorFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
-                )
-            }
-
-            // ── Category ───────────────────────────────────────────────────
-            item {
-                SectionLabel("Category")
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(CATEGORIES) { cat ->
-                        val color = CatColors[cat] ?: ColorPrimary
-                        val selected = category == cat
-                        Box(
-                            Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(if (selected) color.copy(0.25f) else ColorSurface)
-                                .border(1.dp, if (selected) color else ColorDivider, RoundedCornerShape(20.dp))
-                                .clickable { category = cat }
-                                .padding(horizontal = 14.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center,
-                        ) { Text(cat, color = if (selected) color else ColorMuted,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            style = MaterialTheme.typography.labelLarge) }
-                    }
-                }
-            }
-
-            // ── Difficulty + Priority ──────────────────────────────────────
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SectionLabel("Difficulty")
-                        DIFFICULTIES.forEach { (label, d) ->
-                            val diffColors = listOf(ColorPrimary, ColorCoin, ColorDanger)
-                            val c = diffColors[d - 1]
-                            val sel = difficulty == d
-                            Row(
-                                Modifier.fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(if (sel) c.copy(0.2f) else ColorSurface)
-                                    .border(1.dp, if (sel) c else ColorDivider, RoundedCornerShape(10.dp))
-                                    .clickable { difficulty = d }
-                                    .padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(label, color = if (sel) c else ColorText,
-                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                                    style = MaterialTheme.typography.bodySmall)
-                                Text("+${com.krishna.questblock.data.baseReward(d)}🪙",
-                                    style = MaterialTheme.typography.labelSmall, color = ColorCoin)
-                            }
-                        }
-                    }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SectionLabel("Priority")
-                        PRIORITIES.forEach { (label, p) ->
-                            val sel = priority == p
-                            Row(
-                                Modifier.fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(if (sel) ColorAccent.copy(0.2f) else ColorSurface)
-                                    .border(1.dp, if (sel) ColorAccent else ColorDivider, RoundedCornerShape(10.dp))
-                                    .clickable { priority = p }
-                                    .padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) { Text(label, color = if (sel) ColorAccent else ColorText,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal) }
-                        }
-                    }
-                }
-            }
-
-            // ── Due Date/Time ──────────────────────────────────────────────
-            item {
-                SectionLabel("Due Date & Time")
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // ── Daily: only an optional time of day ────────────────────────
+            if (isDaily) item {
+                SectionLabel("Time of day (optional)")
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
-                        onClick = { showDateTimePicker(ctx, dueAt) { dueAt = it } },
-                        modifier = Modifier.weight(1f),
-                        border   = ButtonDefaults.outlinedButtonBorder.copy(),
-                        colors   = ButtonDefaults.outlinedButtonColors(contentColor = if (dueAt != null) ColorPrimary else ColorMuted),
-                        shape    = RoundedCornerShape(10.dp),
-                    ) {
-                        Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(if (dueAt != null) sdf.format(Date(dueAt!!)) else "Set due date",
-                            style = MaterialTheme.typography.bodySmall)
-                    }
-                    if (dueAt != null) {
-                        IconButton(onClick = { dueAt = null }) {
+                        onClick = { showTimeOfDayPicker(ctx, dailyMinute) { dailyMinute = it } },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = if (dailyMinute != null) ColorPrimary else ColorMuted),
+                        shape = RoundedCornerShape(10.dp),
+                    ) { Text("⏰ " + (dailyMinute?.let { fmtMinute(it) } ?: "Any time"), style = MaterialTheme.typography.bodySmall) }
+                    if (dailyMinute != null) {
+                        IconButton(onClick = { dailyMinute = null }) {
                             Icon(Icons.Default.Close, contentDescription = "Clear", tint = ColorDanger, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
+                Text("Comes back every day. Miss a day and the streak restarts.",
+                    style = MaterialTheme.typography.bodySmall, color = ColorMuted, modifier = Modifier.padding(top = 4.dp))
             }
 
-            // ── Days of week: availability only ───────────────────────────
-            item {
-                SectionLabel(if (questType == "weekly") "Days (required)" else "Available on days")
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    DAY_LABELS.forEachIndexed { i, d ->
-                        val on = maskHas(daysMask, i)
-                        Box(
-                            Modifier.weight(1f).height(40.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (on) ColorPrimary.copy(0.22f) else ColorSurface)
-                                .border(1.dp, if (on) ColorPrimary else ColorDivider, RoundedCornerShape(10.dp))
-                                .clickable { daysMask = daysMask xor (1 shl i) },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(d, maxLines = 1, style = MaterialTheme.typography.labelSmall,
-                                color = if (on) ColorPrimary else ColorMuted,
-                                fontWeight = if (on) FontWeight.Bold else FontWeight.Normal)
-                        }
-                    }
-                }
-                Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Every day" to 0, "Weekdays" to WEEKDAYS_MASK, "Weekends" to WEEKEND_MASK).forEach { (label, m) ->
-                        FilterChip(
-                            selected = daysMask == m || (m == 0 && daysMask == ALL_DAYS_MASK),
-                            onClick = { daysMask = m },
-                            label = { Text(label) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = ColorPrimary.copy(0.2f),
-                                selectedLabelColor = ColorPrimary,
-                                containerColor = ColorSurface, labelColor = ColorMuted,
-                            ),
-                        )
-                    }
-                }
-                val anyDay = daysMask == 0 || daysMask == ALL_DAYS_MASK
-                Text(
-                    when {
-                        anyDay -> "Available every day"
-                        isRecurring || isChallenge -> "Only on ${daysLabel(daysMask)} · comes back on the next of these days"
-                        else -> "Only on ${daysLabel(daysMask)} · one-time, done for good once finished"
-                    },
-                    style = MaterialTheme.typography.bodySmall, color = ColorMuted,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
+            // ── Weekly: days are the whole point ───────────────────────────
+            if (isWeekly) item {
+                SectionLabel("Repeats on (pick at least one)")
+                DayPicker(daysMask) { daysMask = it }
             }
 
-            // ── Recurring: its own switch (a challenge always repeats daily) ──
-            if (!isChallenge) item {
-                val anyDay = daysMask == 0 || daysMask == ALL_DAYS_MASK
-                CreatorToggleRow(
-                    label = "Recurring",
-                    sub   = when {
-                        !isRecurring -> "One-time quest"
-                        anyDay -> "Repeats $recurType after completion"
-                        else -> "Comes back on the next selected day"
-                    },
-                    emoji = "🔁",
-                    checked = isRecurring,
-                    onToggle = { isRecurring = it },
-                )
-                if (isRecurring && anyDay) {
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        RECUR_TYPES.forEach { rt ->
-                            FilterChip(
-                                selected = recurType == rt,
-                                onClick  = { recurType = rt },
-                                label    = { Text(rt.replaceFirstChar { it.uppercase() }) },
-                                colors   = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = ColorPrimary.copy(0.2f),
-                                    selectedLabelColor     = ColorPrimary,
-                                    containerColor = ColorSurface, labelColor = ColorMuted,
-                                ),
-                            )
-                        }
-                    }
-                }
+            // ── One-time: due date ─────────────────────────────────────────
+            if (isOneTime) item {
+                SectionLabel("Due date & time (optional)")
+                DueDateRow(dueAt, sdf, { showDateTimePicker(ctx, dueAt) { v -> dueAt = v } }, { dueAt = null })
             }
 
-            // ── Challenge length ──────────────────────────────────────────
+            // ── Challenge length ───────────────────────────────────────────
             if (isChallenge) item {
                 SectionLabel("Challenge length")
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -430,7 +344,7 @@ fun QuestCreatorScreen(
                     style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             }
 
-            // ── Routine steps ─────────────────────────────────────────────
+            // ── Routine steps ──────────────────────────────────────────────
             if (isRoutine) item {
                 SectionLabel("Steps")
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -457,7 +371,7 @@ fun QuestCreatorScreen(
                 }
             }
 
-            // ── Focus session ─────────────────────────────────────────────
+            // ── Focus session ──────────────────────────────────────────────
             if (isFocus) item {
                 SectionLabel("Focus session")
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -496,6 +410,73 @@ fun QuestCreatorScreen(
                 }
             }
 
+            // ── Routine / Focus: ONE repeat control ────────────────────────
+            if (hasRepeat) item {
+                RepeatPicker(repeat, { repeat = it }, daysMask) { daysMask = it }
+            }
+
+            // ── Difficulty + Priority (compact rows) ───────────────────────
+            item {
+                SectionLabel("Difficulty")
+                val diffColors = listOf(ColorPrimary, ColorCoin, ColorDanger)
+                ChoiceRow(DIFFICULTIES.map { (l, d) -> Choice(l, "+${com.krishna.questblock.data.baseReward(d)}🪙", d, diffColors[d - 1]) },
+                    difficulty) { difficulty = it }
+            }
+            item {
+                SectionLabel("Priority")
+                ChoiceRow(PRIORITIES.map { (l, p) -> Choice(l, null, p, ColorAccent) }, priority) { priority = it }
+            }
+
+            // ── More options (collapsed) ───────────────────────────────────
+            item {
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ColorSurface)
+                        .clickable { showMore = !showMore }.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("More options", color = ColorText, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+                    Text(if (showMore) "▴" else "▾", color = ColorMuted, fontSize = 16.sp)
+                }
+            }
+            if (showMore) {
+                item {
+                    SectionLabel("Notes (optional)")
+                    OutlinedTextField(
+                        value = notes, onValueChange = { notes = it },
+                        placeholder = { Text("Add details…", color = ColorMuted) },
+                        modifier = Modifier.fillMaxWidth().height(80.dp),
+                        maxLines = 3,
+                        colors = creatorFieldColors(),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                }
+                item {
+                    SectionLabel("Category")
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(CATEGORIES) { cat ->
+                            val color = CatColors[cat] ?: ColorPrimary
+                            val selected = category == cat
+                            Box(
+                                Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(if (selected) color.copy(0.25f) else ColorSurface)
+                                    .border(1.dp, if (selected) color else ColorDivider, RoundedCornerShape(20.dp))
+                                    .clickable { category = cat }
+                                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center,
+                            ) { Text(cat, color = if (selected) color else ColorMuted,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                style = MaterialTheme.typography.labelLarge) }
+                        }
+                    }
+                }
+                if (dueInMore) item {
+                    SectionLabel("Due date & time (optional)")
+                    DueDateRow(dueAt, sdf, { showDateTimePicker(ctx, dueAt) { v -> dueAt = v } }, { dueAt = null })
+                }
+            }
+
             item { Spacer(Modifier.height(48.dp)) }
         }
     }
@@ -512,31 +493,114 @@ fun QuestCreatorScreen(
 }
 
 @Composable
+private fun chipColors() = FilterChipDefaults.filterChipColors(
+    selectedContainerColor = ColorPrimary.copy(0.2f),
+    selectedLabelColor = ColorPrimary,
+    containerColor = ColorSurface, labelColor = ColorMuted,
+)
+
+/** Seven day chips + Weekdays / Weekends shortcuts. No "Every day" shortcut: that isn't a weekly. */
+@Composable
+private fun DayPicker(mask: Int, onChange: (Int) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            DAY_LABELS.forEachIndexed { i, d ->
+                val on = maskHas(mask, i)
+                Box(
+                    Modifier.weight(1f).height(40.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (on) ColorPrimary.copy(0.22f) else ColorSurface)
+                        .border(1.dp, if (on) ColorPrimary else ColorDivider, RoundedCornerShape(10.dp))
+                        .clickable { onChange(mask xor (1 shl i)) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(d, maxLines = 1, style = MaterialTheme.typography.labelSmall,
+                        color = if (on) ColorPrimary else ColorMuted,
+                        fontWeight = if (on) FontWeight.Bold else FontWeight.Normal)
+                }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("Weekdays" to WEEKDAYS_MASK, "Weekends" to WEEKEND_MASK).forEach { (label, m) ->
+                FilterChip(selected = mask == m, onClick = { onChange(m) }, label = { Text(label) }, colors = chipColors())
+            }
+        }
+        val m = mask and ALL_DAYS_MASK
+        if (m != 0) Text(if (m == ALL_DAYS_MASK) "Every day" else daysLabel(m),
+            style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+    }
+}
+
+/** Routine / Focus: Once · Every day · Chosen days. Replaces the old days + Recurring + Daily/Weekly trio. */
+@Composable
+private fun RepeatPicker(repeat: String, onRepeat: (String) -> Unit, mask: Int, onMask: (Int) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionLabel("Repeat")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            REPEAT_MODES.forEach { (id, label) ->
+                FilterChip(selected = repeat == id, onClick = { onRepeat(id) }, label = { Text(label) }, colors = chipColors())
+            }
+        }
+        when (repeat) {
+            "once"  -> Text("Done once, no repeat.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            "daily" -> Text("Comes back every day.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            else    -> {
+                DayPicker(mask, onMask)
+                if ((mask and ALL_DAYS_MASK) == 0) Text("Pick at least one day.", style = MaterialTheme.typography.bodySmall, color = ColorWarning)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DueDateRow(dueAt: Long?, sdf: SimpleDateFormat, onPick: () -> Unit, onClear: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(
+            onClick = onPick,
+            modifier = Modifier.weight(1f),
+            colors   = ButtonDefaults.outlinedButtonColors(contentColor = if (dueAt != null) ColorPrimary else ColorMuted),
+            shape    = RoundedCornerShape(10.dp),
+        ) {
+            Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(if (dueAt != null) sdf.format(Date(dueAt)) else "Set due date", style = MaterialTheme.typography.bodySmall)
+        }
+        if (dueAt != null) {
+            IconButton(onClick = onClear) {
+                Icon(Icons.Default.Close, contentDescription = "Clear", tint = ColorDanger, modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChoiceRow(choices: List<Choice>, selected: Int, onSelect: (Int) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        choices.forEach { c ->
+            val sel = c.value == selected
+            Column(
+                Modifier.weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (sel) c.color.copy(0.2f) else ColorSurface)
+                    .border(1.dp, if (sel) c.color else ColorDivider, RoundedCornerShape(10.dp))
+                    .clickable { onSelect(c.value) }
+                    .padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(c.label, color = if (sel) c.color else ColorText, maxLines = 1,
+                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                    style = MaterialTheme.typography.bodySmall)
+                if (c.sub != null) Text(c.sub, style = MaterialTheme.typography.labelSmall, color = ColorCoin)
+            }
+        }
+    }
+}
+
+@Composable
 private fun SectionLabel(text: String) {
     Text(text, style = MaterialTheme.typography.labelMedium,
         color = ColorMuted, fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(bottom = 4.dp))
-}
-
-@Composable
-private fun CreatorToggleRow(label: String, sub: String, emoji: String, checked: Boolean, onToggle: (Boolean) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(ColorSurface)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(emoji, fontSize = 22.sp)
-        Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.bodyMedium, color = ColorText, fontWeight = FontWeight.SemiBold)
-            Text(sub, style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-        }
-        Switch(checked = checked, onCheckedChange = onToggle,
-            colors = SwitchDefaults.colors(checkedThumbColor = ColorOnPrimary, checkedTrackColor = ColorPrimary,
-                uncheckedThumbColor = ColorMuted, uncheckedTrackColor = ColorSurfaceHigh))
-    }
 }
 
 @Composable
@@ -600,4 +664,9 @@ private fun showDateTimePicker(ctx: Context, initial: Long?, onResult: (Long) ->
             cal.set(y, m, d, h, min, 0); onResult(cal.timeInMillis)
         }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), false).show()
     }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+}
+
+private fun showTimeOfDayPicker(ctx: Context, initial: Int?, onResult: (Int) -> Unit) {
+    val m = initial ?: (8 * 60)
+    TimePickerDialog(ctx, { _, h, min -> onResult(h * 60 + min) }, m / 60, m % 60, false).show()
 }
