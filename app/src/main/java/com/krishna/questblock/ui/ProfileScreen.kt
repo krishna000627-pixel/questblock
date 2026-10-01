@@ -46,7 +46,7 @@ class ProfileViewModel @Inject constructor(
 }
 
 @Composable
-fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSettings: () -> Unit, onOpenCoins: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
+fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSettings: () -> Unit, onOpenCoins: () -> Unit, onOpenAbout: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
     val player by vm.player.collectAsStateWithLifecycle()
 
     var editMode by remember { mutableStateOf(false) }
@@ -169,6 +169,24 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                         Text("Settings", style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold, color = ColorText)
                     }
+                }
+            }
+
+            // ── About me (the developer) ────────────────────────────────────
+            Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().clickable { onOpenAbout() }) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("👨‍💻", fontSize = 24.sp)
+                    Column(Modifier.weight(1f)) {
+                        Text("About me", style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold, color = ColorText)
+                        Text("The developer behind QuestBlock",
+                            style = MaterialTheme.typography.bodySmall, color = ColorMuted,
+                            maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    }
+                    Text("›", color = ColorMuted, fontSize = 20.sp)
                 }
             }
 

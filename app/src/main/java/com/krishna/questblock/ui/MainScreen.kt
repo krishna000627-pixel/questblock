@@ -96,6 +96,7 @@ fun MainScreen() {
                     onOpenStats = { navController.openPage("stats") },
                     onOpenSettings = { navController.openPage("settings") },
                     onOpenCoins = { navController.openPage("coins") },
+                    onOpenAbout = { navController.openPage("about") },
                 )
             }
             composable("quest_types") {
@@ -126,6 +127,7 @@ fun MainScreen() {
             }
             composable("reliability") { ReliabilityScreen(onBack = { navController.popBackStack() }) }
             composable("coins")        { CoinLogScreen(onBack = { navController.popBackStack() }) }
+            composable("about")        { AboutMeScreen(onBack = { navController.popBackStack() }) }
             composable("shop")         { InventoryScreen(onBack = { navController.popBackStack() }) }
         }
     }

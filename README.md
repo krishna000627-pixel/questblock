@@ -17,6 +17,12 @@ bash termux/setup.sh            # optional arg: repo name (default: questblock)
 `setup.sh` installs git/gh/JDK, generates a keystore in `~/.questblock/`, creates the private GitHub repo,
 uploads the keystore as Actions secrets, pushes, waits for CI, then downloads and opens the signed APK.
 
+## What's new in v13
+
+- **Quest add screen** shows only the chosen type (no row of type bubbles). To use another type, go back to the picker.
+- **About me** (Profile → About me): the developer's page with name, bio, why QuestBlock exists, links (GitHub, email) and the app version. Works offline. Its text is in `data/AboutMe.kt`: edit that file and rebuild to change it.
+- No database change (still version 8).
+
 ## What's new in v12
 
 - **One quest form per type.** The type now decides repeat, days and due date, so you can't save a contradictory combination.

@@ -33,7 +33,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.krishna.questblock.data.ALL_DAYS_MASK
-import com.krishna.questblock.data.QUEST_TYPES
 import com.krishna.questblock.data.dowIndex
 import com.krishna.questblock.data.fmtMinute
 import com.krishna.questblock.data.DAY_LABELS
@@ -262,29 +261,15 @@ fun QuestCreatorScreen(
             contentPadding = PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // ── Type (changeable) ──────────────────────────────────────────
+            // ── Type: only the chosen one (to use another type, go back to the picker) ──
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(QUEST_TYPES, key = { it.id }) { qt ->
-                            val sel = qt.id == questType
-                            Row(
-                                Modifier.clip(RoundedCornerShape(20.dp))
-                                    .background(if (sel) ColorPrimary.copy(0.22f) else ColorSurface)
-                                    .border(1.dp, if (sel) ColorPrimary else ColorDivider, RoundedCornerShape(20.dp))
-                                    .clickable { questType = qt.id }
-                                    .padding(horizontal = 12.dp, vertical = 7.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                Text(qt.emoji, fontSize = 14.sp)
-                                Text(qt.name, color = if (sel) ColorPrimary else ColorMuted,
-                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                                    style = MaterialTheme.typography.labelLarge)
-                            }
-                        }
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ColorSurface).padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(typeInfo.emoji, fontSize = 22.sp)
+                    Column {
+                        Text(typeInfo.name, color = ColorText, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                        Text(typeInfo.blurb, color = ColorMuted, style = MaterialTheme.typography.bodySmall)
                     }
-                    Text(typeInfo.blurb, color = ColorMuted, style = MaterialTheme.typography.bodySmall)
                 }
             }
 
