@@ -33,6 +33,7 @@ import javax.inject.Inject
 /** Start / channel helpers for the keep-alive service. */
 object KeepAlive {
     const val CH_KEEPALIVE = "qb_keepalive"
+    const val CH_IDLE = "qb_idle"   // quiet, collapsed: used when nothing is unlocked
     const val CH_ALERTS = "qb_alerts"
 
     /** Safe to call from anywhere: Android refuses foreground-service starts from the background, so failures are swallowed. */
@@ -52,6 +53,10 @@ object KeepAlive {
         nm.createNotificationChannel(
             NotificationChannel(CH_KEEPALIVE, "Blocking & unlock timer", NotificationManager.IMPORTANCE_LOW)
                 .apply { description = "Small persistent notification that keeps QuestBlock alive and shows unlock time left"; setShowBadge(false) }
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CH_IDLE, "Blocking running (quiet)", NotificationManager.IMPORTANCE_MIN)
+                .apply { description = "Hidden-away notification while nothing is unlocked"; setShowBadge(false) }
         )
         nm.createNotificationChannel(
             NotificationChannel(CH_ALERTS, "Unlock & blocking alerts", NotificationManager.IMPORTANCE_HIGH)
@@ -74,8 +79,6 @@ class KeepAliveService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var apps: List<BlockedApp> = emptyList()
-    private val warned = HashMap<String, Long>()    // pkg -> unlockedUntil we already warned about
-    private val expired = HashMap<String, Long>()   // pkg -> unlockedUntil we already announced as expired
     private var started = false
     private var lastTitle = ""
     private var lastText = ""
@@ -94,7 +97,7 @@ class KeepAliveService : Service() {
         if (!started) {
             started = true
             val n = ongoing("QuestBlock is on", "Blocking is active")
-            lastTitle = "QuestBlock is on"; lastText = "Blocking is active"
+            lastTitle = "QuestBlock is on|Blocking is active|-1"; lastText = ""
             if (Build.VERSION.SDK_INT >= 34) {
                 ServiceCompat.startForeground(this, ID_ONGOING, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
             } else {
@@ -124,38 +127,38 @@ class KeepAliveService : Service() {
 
         val active = apps.filter { !it.isStudyApp && it.unlockedUntil > now }.sortedBy { it.unlockedUntil }
 
-        // 1-minute warning (once per unlock)
-        active.forEach { a ->
-            if (a.unlockedUntil - now <= 60_000L && warned[a.packageName] != a.unlockedUntil) {
-                warned[a.packageName] = a.unlockedUntil
-                nm.notify(ID_WARN_BASE + (a.packageName.hashCode() and 0xFFFF), alert(
-                    "⏳ ${a.label}: 1 minute left", "It locks again when the time runs out."))
-            }
-        }
-        // Expired state (once per unlock, shortly after it ends)
-        apps.filter { !it.isStudyApp && it.unlockedUntil in 1..now && now - it.unlockedUntil < 120_000L }.forEach { a ->
-            if (expired[a.packageName] != a.unlockedUntil) {
-                expired[a.packageName] = a.unlockedUntil
-                val id = ID_WARN_BASE + (a.packageName.hashCode() and 0xFFFF)
-                nm.cancel(id)
-                nm.notify(id, alert("⌛ ${a.label}: unlock expired", "Locked again. Open QuestBlock to earn more time."))
-            }
-        }
+        // ONE notification does everything: live countdown, 5-min block tracker, 1-min warning, expired state.
+        val justExpired = apps.filter { !it.isStudyApp && it.unlockedUntil in 1..now && now - it.unlockedUntil < 120_000L }
+            .maxByOrNull { it.unlockedUntil }
+        // Old separate alert notifications are gone; clear any left over from earlier versions.
+        apps.forEach { nm.cancel(ID_WARN_BASE + (it.packageName.hashCode() and 0xFFFF)) }
 
-        // Persistent notification text
         val title: String
         val text: String
-        if (active.isEmpty()) {
-            title = "QuestBlock is on"; text = "Blocking is active"
-        } else {
+        var whenMs = 0L
+        var progress = -1
+        if (active.isNotEmpty()) {
             val first = active.first()
-            title = "${first.label} · ${fmtLeft(first.unlockedUntil - now)} left"
-            text = if (active.size > 1) "+${active.size - 1} more unlocked" else "Unlocked"
+            val left = first.unlockedUntil - now
+            val blockMs = 5 * 60_000L
+            val blocksLeft = ((left + blockMs - 1) / blockMs).toInt().coerceAtLeast(1)
+            val inBlock = left - (blocksLeft - 1) * blockMs            // time left in the current 5-min block
+            val warn = if (left <= 60_000L) "⏳ " else ""
+            title = "$warn${first.label} · ${fmtLeft(left)} left"
+            val extra = if (active.size > 1) " · +${active.size - 1} more unlocked" else ""
+            text = "$blocksLeft × 5 min left · next block ends in ${fmtLeft(inBlock)}$extra"
+            whenMs = first.unlockedUntil
+            progress = (((blockMs - inBlock) * 100) / blockMs).toInt().coerceIn(0, 100)
+        } else if (justExpired != null) {
+            title = "⌛ ${justExpired.label} locked again"; text = "Unlock ran out. Open QuestBlock to earn more time."
+        } else {
+            title = "QuestBlock is on"; text = "Blocking is active"
         }
         val screenOn = getSystemService(PowerManager::class.java).isInteractive
-        if ((title != lastTitle || text != lastText) && (screenOn || active.isEmpty())) {
-            lastTitle = title; lastText = text
-            nm.notify(ID_ONGOING, ongoing(title, text))
+        val key = "$title|$text|${progress / 2}"
+        if (key != lastTitle && (screenOn || active.isEmpty())) {
+            lastTitle = key; lastText = ""
+            nm.notify(ID_ONGOING, ongoing(title, text, whenMs, progress))
         }
 
         // Watchdog (every 20 s, only after setup)
@@ -187,8 +190,8 @@ class KeepAliveService : Service() {
         this, 0, Intent(this, MainActivity::class.java),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
-    private fun ongoing(title: String, text: String): Notification =
-        NotificationCompat.Builder(this, KeepAlive.CH_KEEPALIVE)
+    private fun ongoing(title: String, text: String, countdownTo: Long = 0L, progress: Int = -1): Notification =
+        NotificationCompat.Builder(this, if (countdownTo > 0L) KeepAlive.CH_KEEPALIVE else KeepAlive.CH_IDLE)
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentTitle(title)
             .setContentText(text)
@@ -196,18 +199,14 @@ class KeepAliveService : Service() {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(if (countdownTo > 0L) NotificationCompat.PRIORITY_LOW else NotificationCompat.PRIORITY_MIN)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .build()
-
-    private fun alert(title: String, text: String): Notification =
-        NotificationCompat.Builder(this, KeepAlive.CH_ALERTS)
-            .setSmallIcon(android.R.drawable.ic_lock_lock)
-            .setContentTitle(title)
-            .setContentText(text)
-            .setContentIntent(openApp())
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .apply {
+                if (countdownTo > 0L) {   // system-drawn countdown keeps ticking even if our updates are paused
+                    setWhen(countdownTo); setShowWhen(true); setUsesChronometer(true); setChronometerCountDown(true)
+                }
+                if (progress >= 0) setProgress(100, progress, false)
+            }
             .build()
 
     override fun onDestroy() {
