@@ -90,3 +90,14 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
 
     fun clearAll() = sp.edit().clear().apply()
 }
+
+    // ── v17: Crash-safe unlock session tracking ───────────────────────────
+    /** Package currently being used under an unlock (persists across kills). */
+    var activeUnlockPkg: String
+        get() = sp.getString("active_unlock_pkg", "") ?: ""
+        set(value) = sp.edit().putString("active_unlock_pkg", value).apply()
+
+    /** Timestamp when user entered the currently-active unlocked app. */
+    var activeUnlockEnteredAt: Long
+        get() = sp.getLong("active_unlock_entered_at", 0L)
+        set(value) = sp.edit().putLong("active_unlock_entered_at", value).apply()

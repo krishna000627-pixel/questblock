@@ -12,7 +12,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/** v5 -> v6: daily login, focus total, custom shop rewards. Keeps all existing user data. */
 private val MIGRATION_5_6 = object : Migration(5, 6) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE player ADD COLUMN focusTotalMs INTEGER NOT NULL DEFAULT 0")
@@ -26,7 +25,6 @@ private val MIGRATION_5_6 = object : Migration(5, 6) {
     }
 }
 
-/** v6 -> v7: quest days, per-app options, reward limits, focus history. Keeps all existing user data. */
 private val MIGRATION_6_7 = object : Migration(6, 7) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE tasks ADD COLUMN daysMask INTEGER NOT NULL DEFAULT 0")
@@ -47,14 +45,12 @@ private val MIGRATION_6_7 = object : Migration(6, 7) {
     }
 }
 
-/** v7 -> v8: quest types + per-quest streaks, per-app coin rate, coin log. Keeps all existing user data. */
 private val MIGRATION_7_8 = object : Migration(7, 8) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE tasks ADD COLUMN questType TEXT NOT NULL DEFAULT 'onetime'")
         db.execSQL("ALTER TABLE tasks ADD COLUMN streak INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE tasks ADD COLUMN lastDoneDay INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE tasks ADD COLUMN challengeDays INTEGER NOT NULL DEFAULT 0")
-        // Give every existing quest a type that matches how it already behaves.
         db.execSQL(
             "UPDATE tasks SET questType = CASE " +
                 "WHEN isTimerQuest = 1 THEN 'focus' " +
@@ -73,12 +69,29 @@ private val MIGRATION_7_8 = object : Migration(7, 8) {
     }
 }
 
+/** v8 → v9: unlock_sessions table for tracking real time spent inside unlocked blocked apps. */
+private val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS unlock_sessions (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "packageName TEXT NOT NULL, " +
+                "label TEXT NOT NULL, " +
+                "startedAt INTEGER NOT NULL, " +
+                "endedAt INTEGER, " +
+                "msUsed INTEGER NOT NULL DEFAULT 0, " +
+                "msBought INTEGER NOT NULL DEFAULT 0, " +
+                "coinsSpent INTEGER NOT NULL DEFAULT 0)"
+        )
+    }
+}
+
 @Module @InstallIn(SingletonComponent::class)
 object AppModule {
     @Provides @Singleton
     fun provideDb(@ApplicationContext ctx: Context): AppDatabase =
         Room.databaseBuilder(ctx, AppDatabase::class.java, "questblock.db")
-            .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+            .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
             .fallbackToDestructiveMigration().build()
 
     @Provides fun taskDao(db: AppDatabase) = db.taskDao()
@@ -92,4 +105,5 @@ object AppModule {
     @Provides fun customRewardDao(db: AppDatabase) = db.customRewardDao()
     @Provides fun focusLogDao(db: AppDatabase) = db.focusLogDao()
     @Provides fun coinLogDao(db: AppDatabase) = db.coinLogDao()
+    @Provides fun unlockSessionDao(db: AppDatabase) = db.unlockSessionDao()
 }

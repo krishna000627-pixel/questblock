@@ -65,6 +65,21 @@ import kotlinx.coroutines.flow.Flow
     @Query("UPDATE study_sessions SET coinsEarned = coinsEarned + :coins WHERE id = :id") suspend fun addEarned(id: Long, coins: Int)
 }
 
+/** v17: unlock session DAO — tracks real time spent inside unlocked apps. */
+@Dao interface UnlockSessionDao {
+    @Insert suspend fun insert(session: UnlockSession): Long
+    @Update suspend fun update(session: UnlockSession)
+    @Query("SELECT * FROM unlock_sessions ORDER BY startedAt DESC LIMIT 200") fun observeRecent(): Flow<List<UnlockSession>>
+    @Query("SELECT * FROM unlock_sessions WHERE packageName = :pkg AND endedAt IS NULL LIMIT 1")
+    suspend fun getOpenSession(pkg: String): UnlockSession?
+    @Query("SELECT * FROM unlock_sessions WHERE endedAt IS NULL")
+    suspend fun getAllOpen(): List<UnlockSession>
+    @Query("UPDATE unlock_sessions SET msUsed = :ms WHERE id = :id")
+    suspend fun updateMsUsed(id: Long, ms: Long)
+    @Query("UPDATE unlock_sessions SET endedAt = :endedAt, msUsed = :ms WHERE id = :id")
+    suspend fun close(id: Long, endedAt: Long, ms: Long)
+}
+
 @Dao interface CustomRewardDao {
     @Query("SELECT * FROM custom_rewards ORDER BY createdAt DESC") fun observeAll(): Flow<List<CustomReward>>
     @Insert suspend fun insert(r: CustomReward): Long

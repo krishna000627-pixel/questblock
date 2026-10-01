@@ -1,8 +1,11 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.krishna.questblock.ui
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -69,15 +72,45 @@ class AppsViewModel @Inject constructor(
         apps.filter { it.pkg !in study }.sortedBy { it.label.lowercase() }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** Whether the initial app list has been loaded (prevents flash of empty state). */
+    val isLoaded = MutableStateFlow(false)
+
+    // BroadcastReceiver to refresh on install/uninstall
+    private val pkgReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            loadInstalledApps()
+        }
+    }
+
     init {
+        // Register for package changes
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addDataScheme("package")
+        }
+        ctx.registerReceiver(pkgReceiver, filter)
+        loadInstalledApps()
+    }
+
+    private fun loadInstalledApps() {
         viewModelScope.launch(Dispatchers.IO) {
             val pm = ctx.packageManager
             val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-            installed.value = pm.queryIntentActivities(launcherIntent, 0)
+            val apps = pm.queryIntentActivities(launcherIntent, PackageManager.GET_META_DATA)
                 .map { InstalledApp(it.activityInfo.packageName, it.loadLabel(pm).toString()) }
                 .filter { it.pkg != ctx.packageName }
                 .distinctBy { it.pkg }
+                .sortedBy { it.label.lowercase() }
+            installed.value = apps
+            isLoaded.value = true
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        runCatching { ctx.unregisterReceiver(pkgReceiver) }
     }
 
     fun rate() = repo.ratePer5()
@@ -96,6 +129,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
     val rows by vm.rows.collectAsStateWithLifecycle()
     val query by vm.query.collectAsStateWithLifecycle()
     val candidates by vm.studyCandidates.collectAsStateWithLifecycle()
+    val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
     var showStudyPicker by remember { mutableStateOf(false) }
     var optionsFor by remember { mutableStateOf<AppRow?>(null) }
     val rate = remember { vm.rate() }
@@ -172,11 +206,20 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
                     style = MaterialTheme.typography.labelSmall, color = ColorMuted)
             }
         }
-        if (lockedRows.isEmpty()) {
+        if (lockedRows.isEmpty() && isLoaded) {
             item { Text("Toggle an app below to lock it.", style = MaterialTheme.typography.bodySmall, color = ColorMuted) }
         }
         items(lockedRows, key = { it.app.pkg }) { row ->
             AppCard(row, studyMin, onToggle = { vm.setBlocked(row.app, it) }, onOptions = { optionsFor = row })
+        }
+
+        // ── Loading state ─────────────────────────────────────────────────
+        if (!isLoaded) {
+            item {
+                Box(Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = ColorPrimary, modifier = Modifier.size(28.dp))
+                }
+            }
         }
 
         // ── Everything else ──────────────────────────────────────────────
@@ -188,7 +231,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
             }
         }
 
-        if (rows.isEmpty() && query.isBlank()) {
+        if (rows.isEmpty() && query.isBlank() && isLoaded) {
             item {
                 Column(Modifier.fillMaxWidth().padding(vertical = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -225,7 +268,6 @@ private fun AppCard(row: AppRow, studyMin: Int, onToggle: (Boolean) -> Unit, onO
     val isOn = rule != null
     val isStudy = rule?.isStudyApp == true
 
-    // Live countdown: ticks every second while an unlock is running (or just ran out), idle otherwise.
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val unlockEnd = if (rule != null && !isStudy) rule.unlockedUntil else 0L
     LaunchedEffect(unlockEnd) {

@@ -50,16 +50,20 @@ class BlockerAccessibilityService : AccessibilityService() {
     private var studyStartTime: Long = 0L
     private var studyMinutesCredited: Int = 0
 
+    // v17: tracking which unlocked app is currently in foreground
+    private var trackedUnlockPkg: String? = null
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
         prefs.lastActiveAt = System.currentTimeMillis()
         KeepAlive.start(this)
+        // Recover any sessions from a previous run that ended unexpectedly
+        scope.launch { repo.recoverUnlockSessions() }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         event ?: return
-        // Heartbeat for the watchdog / Settings "last active" (throttled)
         val t = SystemClock.elapsedRealtime()
         if (t - lastBeat > 30_000L) { lastBeat = t; prefs.lastActiveAt = System.currentTimeMillis() }
         val pkg = event.packageName?.toString() ?: return
@@ -69,6 +73,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         if (pkg in GUARDED_PKGS) {
             if (isWindowChange) {
                 stopStudyTimer()
+                recordLeaveIfNeeded(pkg)
                 markForeground(pkg)
             }
             guardSettings()
@@ -76,14 +81,26 @@ class BlockerAccessibilityService : AccessibilityService() {
         }
         if (!isWindowChange || pkg in IGNORED_PKGS || pkg == imePackage()) return
 
+        recordLeaveIfNeeded(pkg)
         markForeground(pkg)
         scope.launch { evaluateApp(pkg) }
+    }
+
+    /**
+     * If we're moving away from an app we were tracking as "user inside unlocked app",
+     * flush the time to the DB.
+     */
+    private fun recordLeaveIfNeeded(newPkg: String) {
+        val tracked = trackedUnlockPkg
+        if (tracked != null && tracked != newPkg) {
+            trackedUnlockPkg = null
+            scope.launch { repo.onLeaveUnlockedApp(tracked) }
+        }
     }
 
     private fun markForeground(pkg: String) {
         if (currentPkg != pkg) {
             stopUsageTimer()
-            // App switched — if leaving a study app, stop timer
             if (activeStudyPkg != null && pkg != activeStudyPkg) {
                 stopStudyTimer()
             }
@@ -95,20 +112,17 @@ class BlockerAccessibilityService : AccessibilityService() {
     private suspend fun evaluateApp(pkg: String) {
         val app = repo.getBlockedApp(pkg)
 
-        // Blocked (non-study) app
         if (app != null && !app.isStudyApp) {
             stopStudyTimer()
             val cal = Calendar.getInstance()
             val minuteOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
 
-            // Outside its lock schedule (e.g. only locked 09:00–17:00) -> free to use
             if (!app.enforcedAt(minuteOfDay)) {
                 stopUsageTimer()
                 logFree(pkg, app.label, "Free · outside lock hours")
                 return
             }
 
-            // Daily-limit mode: free until today's allowance is used up
             if (app.dailyLimitMin > 0) {
                 val used = if (app.usedDay == dayNumber(System.currentTimeMillis())) app.usedTodayMs else 0L
                 if (used < app.dailyLimitMin * 60_000L) {
@@ -122,17 +136,23 @@ class BlockerAccessibilityService : AccessibilityService() {
             val now = System.currentTimeMillis()
             if (app.unlockedUntil > now) {
                 if (repo.focusUnlockedPkg(pkg)) logFree(pkg, app.label, "Free · Focus Quest")
+                // v17: user is now inside a paid-unlock app — track entry time
+                if (trackedUnlockPkg != pkg) {
+                    trackedUnlockPkg = pkg
+                    repo.onEnterUnlockedApp(pkg)
+                }
                 expiryJob?.cancel()
                 expiryJob = scope.launch {
                     delay(app.unlockedUntil - now + 250)
-                    if (currentPkg == pkg) evaluateApp(pkg)
+                    if (currentPkg == pkg) {
+                        // Unlock expired while user was inside — flush usage and re-evaluate
+                        trackedUnlockPkg = null
+                        repo.onLeaveUnlockedApp(pkg)
+                        evaluateApp(pkg)
+                    }
                 }
             } else {
-                // Let the app's own launch animation / splash windows settle, then make sure it is
-                // still the foreground app. Launching the lock screen while the target is still
-                // mid-transition is what left a ghost, tap-eating window over the launcher icons.
                 delay(SETTLE_MS)
-                // Re-read: the unlock may have been bought while we waited (this used to re-lock right after paying)
                 val fresh = repo.getBlockedApp(pkg)
                 if (fresh != null && fresh.unlockedUntil > System.currentTimeMillis()) return
                 if (currentPkg == pkg) showBlock(app)
@@ -141,7 +161,6 @@ class BlockerAccessibilityService : AccessibilityService() {
         }
 
         stopUsageTimer()
-        // Study app -> earn coins while inside it
         if (app != null && app.isStudyApp) {
             logFree(pkg, app.label, "Free · study app")
             startStudyTimer(pkg, app.label)
@@ -158,10 +177,9 @@ class BlockerAccessibilityService : AccessibilityService() {
             while (true) {
                 delay(USAGE_TICK_MS)
                 if (currentPkg != pkg) break
-                if (!pm.isInteractive) continue          // screen off: don't count
-                if (repo.addUsage(pkg, USAGE_TICK_MS)) {  // limit reached -> lock now
+                if (!pm.isInteractive) continue
+                if (repo.addUsage(pkg, USAGE_TICK_MS)) {
                     usagePkg = null
-                    // separate coroutine: evaluateApp stops this very timer job
                     scope.launch { evaluateApp(pkg) }
                     break
                 }
@@ -169,7 +187,6 @@ class BlockerAccessibilityService : AccessibilityService() {
         }
     }
 
-    /** Records "this open cost 0 coins, and here's why" in the coin log (at most once per app+reason per 10 min). */
     private fun logFree(pkg: String, detail: String, reason: String) {
         val key = "$pkg|$reason"
         val now = SystemClock.elapsedRealtime()
@@ -185,9 +202,9 @@ class BlockerAccessibilityService : AccessibilityService() {
         usagePkg = null
     }
 
-    // ── Study timer (coins per N minutes — see Settings) ────────────────
+    // ── Study timer ──────────────────────────────────────────────────────
     private fun startStudyTimer(pkg: String, label: String) {
-        if (activeStudyPkg == pkg && studyTimerJob?.isActive == true) return // already running
+        if (activeStudyPkg == pkg && studyTimerJob?.isActive == true) return
         stopStudyTimer()
         activeStudyPkg = pkg
         studyStartTime = System.currentTimeMillis()
@@ -196,10 +213,9 @@ class BlockerAccessibilityService : AccessibilityService() {
         scope.launch {
             val sessionId = repo.startStudySession(pkg, label)
             activeStudySessionId = sessionId
-            // Tick every minute; award 1 coin every 5 min
             var minutesTicked = 0
             while (true) {
-                delay(60_000L) // 1 minute
+                delay(60_000L)
                 if (currentPkg != pkg) break
                 minutesTicked++
                 val perCoin = prefs.studyMinPerCoin
@@ -221,7 +237,6 @@ class BlockerAccessibilityService : AccessibilityService() {
 
     private fun showBlock(app: BlockedApp) {
         val now = SystemClock.uptimeMillis()
-        // Already on screen for this app, or we just launched it: don't stack another one.
         if (BlockActivity.showingFor == app.packageName) return
         if (lastBlockPkg == app.packageName && now - lastBlockAt < RELAUNCH_GUARD_MS) return
         lastBlockPkg = app.packageName
@@ -268,6 +283,13 @@ class BlockerAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         if (instance === this) instance = null
+        // Flush unlock tracking before dying
+        val tracked = trackedUnlockPkg
+        if (tracked != null) {
+            trackedUnlockPkg = null
+            // Write enteredAt to prefs (already done on enter) so it survives
+            // The next service start will call recoverUnlockSessions()
+        }
         stopStudyTimer()
         stopUsageTimer()
         scope.cancel()
@@ -277,7 +299,6 @@ class BlockerAccessibilityService : AccessibilityService() {
     companion object {
         @Volatile var instance: BlockerAccessibilityService? = null
 
-        /** Opens the system Recents screen (used by the Reliability page). False if the blocker isn't running. */
         fun openRecents(): Boolean = instance?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS) ?: false
 
         private const val SETTLE_MS = 180L

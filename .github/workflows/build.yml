@@ -50,5 +50,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: QuestBlock build ${{ github.run_number }}
+          name: QuestBlock v17 build ${{ github.run_number }}
           files: app/build/outputs/apk/release/*.apk

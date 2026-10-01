@@ -83,6 +83,7 @@ class GameRepository @Inject constructor(
     private val customRewardDao: CustomRewardDao,
     private val focusLogDao: FocusLogDao,
     private val coinLogDao: CoinLogDao,
+    private val unlockSessionDao: UnlockSessionDao,
     private val prefs: Prefs,
     @ApplicationContext private val ctx: Context,
 ) {
@@ -98,6 +99,7 @@ class GameRepository @Inject constructor(
     val focusLogs: Flow<List<FocusLog>> = focusLogDao.observeRecent()
     val coinLog: Flow<List<CoinLog>> = coinLogDao.observeRecent()
     val allSubTasks: Flow<List<SubTask>> = subTaskDao.observeAll()
+    val unlockSessions: Flow<List<UnlockSession>> = unlockSessionDao.observeRecent()
 
     // ── Settings shortcuts ────────────────────────────────────────────────
     fun ratePer5(): Int = prefs.ratePer5
@@ -164,7 +166,6 @@ class GameRepository @Inject constructor(
             daysMask = d.daysMask, questType = d.questType, challengeDays = d.challengeDays,
         )
         taskDao.update(updated)
-        // Steps: keep the ticked state of steps whose text didn't change
         val old = subTaskDao.getAll(id)
         subTaskDao.deleteAll(id)
         if (d.questType == "routine") {
@@ -205,13 +206,10 @@ class GameRepository @Inject constructor(
             val fresh = taskDao.get(task.id) ?: return@withTransaction
             if (fresh.done) return@withTransaction
             val now = System.currentTimeMillis()
-            // Scheduled quests can only be completed on their days (no farming ahead of time)
             if (!fresh.isAvailableNow(now)) return@withTransaction
-            // Routines need every step ticked
             if (fresh.questType == "routine" && subTaskDao.getAll(fresh.id).any { !it.done }) return@withTransaction
 
             val today = dayNumber(now)
-            // This quest's own streak (dailies, challenges): +1 if no scheduled day was missed, else restart at 1
             val qStreak = when {
                 fresh.lastDoneDay == today -> fresh.streak
                 streakContinues(fresh.daysMask, fresh.lastDoneDay, today) -> fresh.streak + 1
@@ -232,7 +230,6 @@ class GameRepository @Inject constructor(
             val earned = (base * streakMulti * coinMulti).roundToInt()
             val xpEarned = (base * xpMulti).roundToInt()
 
-            // Update weekly XP log
             val log = p.weeklyXpLog.split(",").filter { it.isNotBlank() }.toMutableList()
             val todayEntry = "$today:${xpEarned}"
             log.add(todayEntry)
@@ -250,9 +247,6 @@ class GameRepository @Inject constructor(
             logCoin(earned, "Quest", fresh.title)
             checkAchievements(p.copy(xp = p.xp + xpEarned, streak = newStreak))
 
-            // Recurring: bring the quest back for the next period.
-            //   days + recurring -> next selected day      · recurring only -> as before (+1 day / +7 days)
-            //   days only        -> one-time, no copy      · challenge      -> comes back daily until N days are done
             val challengeDone = fresh.questType == "challenge" && fresh.challengeDays > 0 && qStreak >= fresh.challengeDays
             if (fresh.isRecurring && !challengeDone) {
                 when {
@@ -265,7 +259,6 @@ class GameRepository @Inject constructor(
                         spawnNext(fresh, fresh.dueAt + offset, 0L, now, qStreak, today)
                     }
                     else -> {
-                        // no due time: show it again from the next day (weekly = same weekday next week)
                         val mask = if (fresh.recurType == "weekly") 1 shl dowIndex(now) else 0
                         spawnNext(fresh, null, nextRunDayStart(mask, now), now, qStreak, today)
                     }
@@ -283,8 +276,6 @@ class GameRepository @Inject constructor(
     }
 
     private suspend fun checkAchievements(p: Player) {
-        val done = taskDao.observeAll() // just count from DB indirectly
-        // We do a quick count query inline
         suspend fun unlock(id: String) {
             val existing = achievementDao.get(id)
             val catalog = ACHIEVEMENTS_CATALOG.find { it.id == id } ?: return
@@ -308,7 +299,6 @@ class GameRepository @Inject constructor(
     }
 
     // ── Daily login ───────────────────────────────────────────────────────
-    /** Daily login coins, once per calendar day. Returns the coins granted (0 = none / disabled). */
     suspend fun claimDailyLogin(): Int = db.withTransaction {
         if (!prefs.dailyLoginEnabled) return@withTransaction 0
         val today = dayNumber(System.currentTimeMillis())
@@ -320,11 +310,7 @@ class GameRepository @Inject constructor(
         coins
     }
 
-    // ── Focus (Focus Mode + Timer Quest are one thing now) ───────────────
-    /**
-     * Starts a focus session. If [task] is a timer quest, its linked apps are unlocked for the
-     * session and the quest is auto-completed when the timer finishes.
-     */
+    // ── Focus ─────────────────────────────────────────────────────────────
     suspend fun startFocus(durationMs: Long, task: TaskEntity? = null): Boolean = db.withTransaction {
         val now = System.currentTimeMillis()
         val p = playerDao.get() ?: Player()
@@ -341,7 +327,6 @@ class GameRepository @Inject constructor(
         true
     }
 
-    /** Ends the running session. [completed] = timer ran out (bonus + quest reward), false = stopped early. */
     suspend fun finishFocus(completed: Boolean) {
         var questId = -1L
         var end = 0L
@@ -371,7 +356,6 @@ class GameRepository @Inject constructor(
         if (task != null) {
             task.linkedApps.split(",").filter { it.isNotBlank() }.forEach { pkg ->
                 val app = appDao.get(pkg)
-                // only re-lock if nobody bought a longer unlock in the meantime
                 if (app != null && app.unlockedUntil <= end) appDao.upsert(app.copy(unlockedUntil = 0L))
             }
             taskDao.get(task.id)?.let { taskDao.update(it.copy(timerQuestActive = false)) }
@@ -385,7 +369,6 @@ class GameRepository @Inject constructor(
         }
     }
 
-    /** Call when the app opens / timer hits zero: closes an expired session and pays out. */
     suspend fun settleFocus() {
         val p = playerDao.get() ?: return
         if (p.focusModeUntil > 0L && System.currentTimeMillis() >= p.focusModeUntil) finishFocus(true)
@@ -414,7 +397,6 @@ class GameRepository @Inject constructor(
             schedEnd = schedEnd, priceMult = priceMult, ratePer5 = ratePer5.coerceAtLeast(0)))
     }
 
-    /** Adds foreground time for a daily-limit app. Returns true once today's limit is used up. */
     suspend fun addUsage(pkg: String, ms: Long): Boolean = db.withTransaction {
         val app = appDao.get(pkg) ?: return@withTransaction false
         val today = dayNumber(System.currentTimeMillis())
@@ -423,15 +405,16 @@ class GameRepository @Inject constructor(
         app.dailyLimitMin > 0 && used >= app.dailyLimitMin * 60_000L
     }
 
-    // pkg -> uptime of the last charge. Serialised by the DB transaction below.
     private val lastPaidAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
-    /** Buys [blocks] × 5 minutes of access. Cost = blocks × rate. Stacks on an unlock that is still running. */
+    /**
+     * Buys [blocks] × 5 minutes of access. Cost = blocks × rate.
+     * Also opens an UnlockSession to track actual time spent.
+     * Returns true on success.
+     */
     suspend fun unlock(pkg: String, blocks: Int): Boolean = db.withTransaction {
         val app = appDao.get(pkg) ?: return@withTransaction false
         val b = blocks.coerceIn(1, MAX_UNLOCK_BLOCKS)
-        // Double-charge guard: a second purchase for the same app moments after the first (double trigger,
-        // two lock screens) is treated as already paid. Nothing is charged and the unlock stays as bought.
         val up = android.os.SystemClock.elapsedRealtime()
         val prev = lastPaidAt[pkg]
         if (prev != null && up - prev < DOUBLE_PAY_WINDOW_MS && app.unlockedUntil > System.currentTimeMillis())
@@ -442,11 +425,81 @@ class GameRepository @Inject constructor(
         val now = System.currentTimeMillis()
         playerDao.upsert(p.copy(coins = p.coins - cost))
         val base = maxOf(now, app.unlockedUntil)
-        appDao.upsert(app.copy(unlockedUntil = base + b * 5 * 60_000L))
+        val msBought = b * 5 * 60_000L
+        appDao.upsert(app.copy(unlockedUntil = base + msBought))
         unlockEventDao.insert(UnlockEvent(packageName = app.packageName, label = app.label, coinsSpent = cost))
         logCoin(-cost, "Unlock", "${app.label} · ${fmtBlocks(b)}")
         lastPaidAt[pkg] = up
+        // Close any open session for this app (e.g. stacking more time), then open a fresh one
+        closeUnlockSession(pkg)
+        unlockSessionDao.insert(UnlockSession(
+            packageName = pkg, label = app.label,
+            startedAt = now, msBought = msBought, coinsSpent = cost,
+        ))
         true
+    }
+
+    // ── Unlock session tracking (v17) ────────────────────────────────────
+
+    /** Call from the accessibility service when the user enters an unlocked blocked app. */
+    suspend fun onEnterUnlockedApp(pkg: String) {
+        // persist entry time in prefs for crash recovery
+        prefs.activeUnlockPkg = pkg
+        prefs.activeUnlockEnteredAt = System.currentTimeMillis()
+    }
+
+    /** Call from the accessibility service when the user leaves an unlocked blocked app (or it locks). */
+    suspend fun onLeaveUnlockedApp(pkg: String) {
+        val enteredAt = prefs.activeUnlockEnteredAt
+        val activePkg = prefs.activeUnlockPkg
+        if (activePkg != pkg || enteredAt <= 0L) return
+        prefs.activeUnlockPkg = ""
+        prefs.activeUnlockEnteredAt = 0L
+        val spent = System.currentTimeMillis() - enteredAt
+        if (spent <= 0L) return
+        // Find the open session and accumulate
+        val session = unlockSessionDao.getOpenSession(pkg) ?: return
+        val totalMs = session.msUsed + spent
+        unlockSessionDao.updateMsUsed(session.id, totalMs)
+    }
+
+    /** Close any open session for [pkg] and record endedAt. */
+    private suspend fun closeUnlockSession(pkg: String) {
+        val session = unlockSessionDao.getOpenSession(pkg) ?: return
+        // If there's an in-progress visit, flush it first
+        val enteredAt = prefs.activeUnlockEnteredAt
+        val activePkg = prefs.activeUnlockPkg
+        val now = System.currentTimeMillis()
+        val extraMs = if (activePkg == pkg && enteredAt > 0L) (now - enteredAt).coerceAtLeast(0L) else 0L
+        unlockSessionDao.close(session.id, now, session.msUsed + extraMs)
+        if (activePkg == pkg) {
+            prefs.activeUnlockPkg = ""
+            prefs.activeUnlockEnteredAt = 0L
+        }
+    }
+
+    /** Recover partial session after app/service restart. Call from service onConnected. */
+    suspend fun recoverUnlockSessions() {
+        val now = System.currentTimeMillis()
+        // Close any sessions whose unlockedUntil has already passed
+        unlockSessionDao.getAllOpen().forEach { session ->
+            val app = appDao.get(session.packageName)
+            if (app == null || app.unlockedUntil <= now) {
+                // Recover time from prefs if this was the active session
+                val extraMs = if (prefs.activeUnlockPkg == session.packageName && prefs.activeUnlockEnteredAt > 0L)
+                    (now - prefs.activeUnlockEnteredAt).coerceAtLeast(0L) else 0L
+                unlockSessionDao.close(session.id, now, session.msUsed + extraMs)
+            }
+        }
+        // Reset stale prefs
+        val activePkg = prefs.activeUnlockPkg
+        if (activePkg.isNotEmpty()) {
+            val app = appDao.get(activePkg)
+            if (app == null || app.unlockedUntil <= now) {
+                prefs.activeUnlockPkg = ""
+                prefs.activeUnlockEnteredAt = 0L
+            }
+        }
     }
 
     // ── Study coins ───────────────────────────────────────────────────────
@@ -485,7 +538,7 @@ class GameRepository @Inject constructor(
         }
         true
     }
-    // ── Custom rewards (user-made shop items) ────────────────────────────
+
     suspend fun addCustomReward(name: String, emoji: String, price: Int, description: String, type: String, oncePerDay: Boolean) {
         customRewardDao.insert(CustomReward(name = name.trim(), emoji = emoji.trim().ifBlank { "🎁" },
             price = price.coerceAtLeast(1), description = description.trim(), type = type, oncePerDay = oncePerDay))
@@ -495,7 +548,6 @@ class GameRepository @Inject constructor(
         description = r.description.trim()))
     suspend fun deleteCustomReward(r: CustomReward) = customRewardDao.delete(r)
 
-    /** 0 = bought, 1 = not enough coins, 2 = already bought today (once-per-day rewards). */
     suspend fun buyCustomReward(r: CustomReward): Int = db.withTransaction {
         val p = playerDao.get() ?: Player()
         if (r.oncePerDay && inventoryDao.countSince("custom_${r.id}", startOfToday()) > 0) return@withTransaction 2

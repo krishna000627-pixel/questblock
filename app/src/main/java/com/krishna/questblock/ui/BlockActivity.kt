@@ -48,6 +48,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -72,6 +73,7 @@ import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Player
 import com.krishna.questblock.data.MAX_UNLOCK_BLOCKS
 import com.krishna.questblock.data.fmtBlocks
+import com.krishna.questblock.data.fmtLeft
 import com.krishna.questblock.data.unlockCost
 import com.krishna.questblock.service.KeepAlive
 import dagger.hilt.android.AndroidEntryPoint
@@ -101,6 +103,8 @@ class BlockViewModel @Inject constructor(private val repo: GameRepository) : Vie
 class BlockActivity : ComponentActivity() {
 
     private var target by mutableStateOf("")
+    /** True once we've decided to open the target app — prevents finishAndRemoveTask in onStop. */
+    private var launching = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -128,13 +132,18 @@ class BlockActivity : ComponentActivity() {
         setIntent(intent)
         target = intent.getStringExtra(EXTRA_PKG).orEmpty()
         showingFor = target
+        launching = false
         opened = false
     }
 
-    // Never linger in the background. A leftover, half-alive lock screen is what ate taps on app icons.
     override fun onStop() {
         super.onStop()
-        if (!isChangingConfigurations && !isFinishing) finishAndRemoveTask()
+        // Only self-destruct when we're backgrounded without the user actively launching the target.
+        // `launching` is set to true just before we call startActivity so we don't kill ourselves
+        // in the same frame. Config changes are excluded via isChangingConfigurations.
+        if (!isChangingConfigurations && !isFinishing && !launching) {
+            finishAndRemoveTask()
+        }
     }
 
     override fun onDestroy() {
@@ -159,8 +168,9 @@ class BlockActivity : ComponentActivity() {
     private var opened = false
 
     private fun openTarget() {
-        if (opened) return          // paid + "already unlocked" can both ask; open the app only once
+        if (opened) return
         opened = true
+        launching = true       // ← tell onStop not to destroy us mid-launch
         packageManager.getLaunchIntentForPackage(target)?.let {
             startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
@@ -169,7 +179,6 @@ class BlockActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_PKG = "target_pkg"
-        /** Package the lock screen is currently showing for ("" = not visible). Read by the accessibility service. */
         @Volatile var showingFor: String = ""
     }
 }
@@ -205,7 +214,6 @@ fun BlockScreen(
     val holdSteps = remember { vm.holdSeconds() * 10 }
     val quotesOn = remember { vm.showQuotes() }
 
-    // Unlock time in 5-minute blocks (3 = 15 min). Cost = blocks × rate.
     var blocks by remember { mutableIntStateOf(3) }
     val cost = unlockCost(blocks, rate, rule)
     val canAfford = player.coins >= cost
@@ -221,13 +229,23 @@ fun BlockScreen(
         label = "hold_progress",
     )
     var isHolding by remember { mutableStateOf(false) }
-    var paying by remember(pkg) { mutableStateOf(false) }   // one purchase per lock screen
+    var paying by remember(pkg) { mutableStateOf(false) }
 
-    // Already unlocked (paid a moment ago, or from another lock screen): never ask to pay again.
+    // Already unlocked: exit immediately — single tap scenario covered here too
     val unlockedUntil = rule?.unlockedUntil ?: 0L
     LaunchedEffect(unlockedUntil) {
         if (unlockedUntil > System.currentTimeMillis()) onUnlocked()
     }
+
+    // Live unlock-timer countdown (shown when currently unlocked)
+    var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(unlockedUntil) {
+        while (unlockedUntil > System.currentTimeMillis()) {
+            nowMs = System.currentTimeMillis()
+            delay(1000L)
+        }
+    }
+    val unlockLeftMs = if (unlockedUntil > nowMs) unlockedUntil - nowMs else 0L
 
     LaunchedEffect(isHolding) {
         if (isHolding) {
@@ -240,7 +258,6 @@ fun BlockScreen(
             if (isHolding && rule != null && !paying) {
                 if (coinsNow >= costNow) {
                     paying = true
-                    // Haptic
                     runCatching {
                         if (android.os.Build.VERSION.SDK_INT >= 31) {
                             (ctx.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)
@@ -254,7 +271,7 @@ fun BlockScreen(
                     }
                     vm.unlock(pkg, blocksNow) { ok ->
                         if (ok) {
-                            KeepAlive.start(ctx)   // live tracker lives in the keep-alive service
+                            KeepAlive.start(ctx)
                             onUnlocked()
                         } else {
                             paying = false
@@ -272,7 +289,6 @@ fun BlockScreen(
         }
     }
 
-    // The app's real icon (falls back to its first letter)
     val iconBitmap = remember(pkg) {
         runCatching {
             val d = ctx.packageManager.getApplicationIcon(pkg)
@@ -282,15 +298,12 @@ fun BlockScreen(
             bmp.asImageBitmap()
         }.getOrNull()
     }
-    // With too few coins, "Do a quest instead" becomes the main button
     val questIsPrimary = rule != null && !canAfford
 
     Box(
         Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(listOf(ColorBg, ColorSurface))
-            )
+            .background(Brush.verticalGradient(listOf(ColorBg, ColorSurface)))
     ) {
         Column(
             Modifier
@@ -302,10 +315,7 @@ fun BlockScreen(
         ) {
             // App icon
             Box(
-                Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(ColorSurfaceHigh),
+                Modifier.size(64.dp).clip(RoundedCornerShape(16.dp)).background(ColorSurfaceHigh),
                 contentAlignment = Alignment.Center,
             ) {
                 if (iconBitmap != null) {
@@ -328,12 +338,7 @@ fun BlockScreen(
 
             if (quotesOn) {
                 Spacer(Modifier.height(6.dp))
-                Text(
-                    quote,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ColorMuted,
-                    textAlign = TextAlign.Center,
-                )
+                Text(quote, style = MaterialTheme.typography.bodyMedium, color = ColorMuted, textAlign = TextAlign.Center)
             }
 
             Spacer(Modifier.height(28.dp))
@@ -341,7 +346,7 @@ fun BlockScreen(
             if (rule != null) {
                 val missing = cost - player.coins
 
-                // − time · cost + on ONE line: 5-minute steps, live cost. Hold a button to repeat.
+                // Time selector row
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -367,54 +372,91 @@ fun BlockScreen(
                     }
                 }
 
-                // Only shown when this app has its own rate
                 if (rule.ratePer5 > 0) {
                     Spacer(Modifier.height(4.dp))
                     Text("Custom rate: ${rule.ratePer5} 🪙 per 5 min",
                         style = MaterialTheme.typography.labelSmall, color = ColorMuted)
                 }
 
-                Spacer(Modifier.height(20.dp))
-
-                // Hold-to-unlock button: the one big action
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(if (canAfford) ColorPrimary.copy(alpha = 0.22f) else ColorSurfaceHigh)
-                        .pointerInput(canAfford) {
-                            if (canAfford) {
-                                detectTapGestures(
-                                    onPress = {
-                                        isHolding = true
-                                        tryAwaitRelease()
-                                        isHolding = false
-                                    }
-                                )
-                            }
-                        },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    // Progress fill
-                    if (animatedHold > 0f) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth(animatedHold)
-                                .height(56.dp)
-                                .background(ColorPrimary.copy(alpha = 0.5f))
-                                .align(Alignment.CenterStart)
-                        )
+                // ── Unlock timer: show time remaining if currently unlocked ──
+                if (unlockLeftMs > 0L) {
+                    Spacer(Modifier.height(10.dp))
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(ColorCoin.copy(alpha = 0.12f))
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                "⏱ ${fmtLeft(unlockLeftMs)} remaining",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (unlockLeftMs <= 60_000L) ColorDanger else ColorCoin,
+                            )
+                            Text(
+                                "Tap go to use it now, or add more time below",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = ColorMuted,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                     }
-                    Text(
-                        if (canAfford) "Hold to unlock" else "Need $missing more 🪙",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = if (canAfford) ColorPrimary else ColorMuted,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Spacer(Modifier.height(8.dp))
+                    // One-tap "Open now" when already unlocked
+                    Button(
+                        onClick = onUnlocked,
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = ColorCoin, contentColor = ColorBg),
+                        shape = RoundedCornerShape(14.dp),
+                    ) { Text("Open ${label}", fontWeight = FontWeight.Bold) }
+                    Spacer(Modifier.height(10.dp))
                 }
 
-                Spacer(Modifier.height(10.dp))
+                if (unlockLeftMs == 0L) {
+                    Spacer(Modifier.height(20.dp))
+
+                    // Hold-to-unlock button
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (canAfford) ColorPrimary.copy(alpha = 0.22f) else ColorSurfaceHigh)
+                            .pointerInput(canAfford) {
+                                if (canAfford) {
+                                    detectTapGestures(
+                                        onPress = {
+                                            isHolding = true
+                                            tryAwaitRelease()
+                                            isHolding = false
+                                        }
+                                    )
+                                }
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (animatedHold > 0f) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth(animatedHold)
+                                    .height(56.dp)
+                                    .background(ColorPrimary.copy(alpha = 0.5f))
+                                    .align(Alignment.CenterStart)
+                            )
+                        }
+                        Text(
+                            if (canAfford) "Hold to unlock" else "Need $missing more 🪙",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = if (canAfford) ColorPrimary else ColorMuted,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+                }
             }
 
             if (questIsPrimary) {
@@ -441,7 +483,7 @@ fun BlockScreen(
             }
         }
 
-        // Coin balance: small chip in the corner
+        // Coin balance chip
         Row(
             Modifier
                 .align(Alignment.TopEnd)
@@ -474,7 +516,6 @@ private fun StepButton(symbol: String, enabled: Boolean, onStep: () -> Unit) {
                         onPress = {
                             step()
                             coroutineScope {
-                                // keep stepping while the finger stays down
                                 val repeater = launch {
                                     delay(400L)
                                     while (true) { step(); delay(90L) }

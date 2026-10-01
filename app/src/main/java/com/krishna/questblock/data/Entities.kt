@@ -119,6 +119,23 @@ data class StudySession(
     val coinsEarned: Int = 0,
 )
 
+/**
+ * v17: Tracks the actual time a user spends inside an unlocked blocked app.
+ * Created when unlock is purchased; endedAt set when lock re-engages or user leaves.
+ * If the app is killed before endedAt is set, the partial time is recovered from startedAt + msUsed.
+ */
+@Entity(tableName = "unlock_sessions")
+data class UnlockSession(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val packageName: String,
+    val label: String,
+    val startedAt: Long = System.currentTimeMillis(),
+    val endedAt: Long? = null,
+    val msUsed: Long = 0L,            // time actually spent in the app (updated live in Prefs for crash safety)
+    val msBought: Long = 0L,          // total unlock window purchased
+    val coinsSpent: Int = 0,
+)
+
 @Entity(tableName = "custom_rewards")
 data class CustomReward(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
