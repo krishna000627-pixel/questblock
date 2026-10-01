@@ -17,6 +17,10 @@ bash termux/setup.sh            # optional arg: repo name (default: questblock)
 `setup.sh` installs git/gh/JDK, generates a keystore in `~/.questblock/`, creates the private GitHub repo,
 uploads the keystore as Actions secrets, pushes, waits for CI, then downloads and opens the signed APK.
 
+## What's new in v18
+
+- **Build fix.** v17 failed to compile: its two new crash-safe unlock-tracking settings (`activeUnlockPkg`, `activeUnlockEnteredAt`) were written after the closing brace of `Prefs`, outside the class. They are now inside it. No other change.
+
 ## What's new in v16
 
 - **Profile:** the Hero info box moved to the top, right under the name and level, and has no button at all. It is edited only from Settings (the Settings button on Profile → Hero info).

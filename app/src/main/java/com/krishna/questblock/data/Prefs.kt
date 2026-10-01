@@ -88,9 +88,6 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         get() = sp.getLong("keepalive_beat", 0L)
         set(value) = sp.edit().putLong("keepalive_beat", value).apply()
 
-    fun clearAll() = sp.edit().clear().apply()
-}
-
     // ── v17: Crash-safe unlock session tracking ───────────────────────────
     /** Package currently being used under an unlock (persists across kills). */
     var activeUnlockPkg: String
@@ -101,3 +98,6 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     var activeUnlockEnteredAt: Long
         get() = sp.getLong("active_unlock_entered_at", 0L)
         set(value) = sp.edit().putLong("active_unlock_entered_at", value).apply()
+
+    fun clearAll() = sp.edit().clear().apply()
+}
