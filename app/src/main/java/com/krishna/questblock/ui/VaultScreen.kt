@@ -31,7 +31,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.krishna.questblock.data.BlockedApp
 import com.krishna.questblock.data.GameRepository
+import com.krishna.questblock.data.fmtLeft
 import com.krishna.questblock.data.fmtMinute
+import kotlinx.coroutines.delay
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -78,10 +80,10 @@ class AppsViewModel @Inject constructor(
         }
     }
 
-    fun tiers() = repo.unlockTiers()
+    fun rate() = repo.ratePer5()
     fun studyMin() = repo.studyMinPerCoin()
-    fun setOptions(pkg: String, limit: Int, start: Int, end: Int, mult: Int) =
-        viewModelScope.launch { repo.setAppOptions(pkg, limit, start, end, mult) }
+    fun setOptions(pkg: String, limit: Int, start: Int, end: Int, mult: Int, rate: Int) =
+        viewModelScope.launch { repo.setAppOptions(pkg, limit, start, end, mult, rate) }
     fun setQuery(q: String) { query.value = q }
     fun setBlocked(app: InstalledApp, on: Boolean) =
         viewModelScope.launch { repo.setBlocked(app.pkg, app.label, on) }
@@ -96,10 +98,9 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
     val candidates by vm.studyCandidates.collectAsStateWithLifecycle()
     var showStudyPicker by remember { mutableStateOf(false) }
     var optionsFor by remember { mutableStateOf<AppRow?>(null) }
-    val tiers = remember { vm.tiers() }
+    val rate = remember { vm.rate() }
     val studyMin = remember { vm.studyMin() }
 
-    val now = System.currentTimeMillis()
     val studyRows  = rows.filter { it.rule?.isStudyApp == true }
     val lockedRows = rows.filter { it.rule != null && it.rule.isStudyApp == false }
     val freeRows   = rows.filter { it.rule == null }
@@ -159,7 +160,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
             }
         }
         items(studyRows, key = { "s_${it.app.pkg}" }) { row ->
-            AppCard(row, now, studyMin, onToggle = { vm.setStudyApp(row.app, it) })
+            AppCard(row, studyMin, onToggle = { vm.setStudyApp(row.app, it) })
         }
 
         // ── Locked apps ──────────────────────────────────────────────────
@@ -167,7 +168,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
             Column {
                 Text("🔒 Locked apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
                     fontWeight = FontWeight.SemiBold)
-                Text("Unlock: " + tiers.joinToString(" · ") { "${it.label} ${it.cost}🪙" } + "  ·  ⚙ per-app limits & schedule",
+                Text("Unlock: $rate🪙 per 5 min  ·  ⚙ per-app rate, limits & schedule",
                     style = MaterialTheme.typography.labelSmall, color = ColorMuted)
             }
         }
@@ -175,7 +176,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
             item { Text("Toggle an app below to lock it.", style = MaterialTheme.typography.bodySmall, color = ColorMuted) }
         }
         items(lockedRows, key = { it.app.pkg }) { row ->
-            AppCard(row, now, studyMin, onToggle = { vm.setBlocked(row.app, it) }, onOptions = { optionsFor = row })
+            AppCard(row, studyMin, onToggle = { vm.setBlocked(row.app, it) }, onOptions = { optionsFor = row })
         }
 
         // ── Everything else ──────────────────────────────────────────────
@@ -183,7 +184,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
             item { Text("All apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
                 fontWeight = FontWeight.SemiBold) }
             items(freeRows, key = { "u_${it.app.pkg}" }) { row ->
-                AppCard(row, now, studyMin, onToggle = { vm.setBlocked(row.app, it) })
+                AppCard(row, studyMin, onToggle = { vm.setBlocked(row.app, it) })
             }
         }
 
@@ -202,8 +203,8 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
     optionsFor?.let { row ->
         AppOptionsDialog(
             row = row,
-            onSave = { limit, start, end, mult ->
-                vm.setOptions(row.app.pkg, limit, start, end, mult); optionsFor = null
+            onSave = { limit, start, end, mult, rate ->
+                vm.setOptions(row.app.pkg, limit, start, end, mult, rate); optionsFor = null
             },
             onDismiss = { optionsFor = null },
         )
@@ -219,11 +220,25 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun AppCard(row: AppRow, now: Long, studyMin: Int, onToggle: (Boolean) -> Unit, onOptions: (() -> Unit)? = null) {
+private fun AppCard(row: AppRow, studyMin: Int, onToggle: (Boolean) -> Unit, onOptions: (() -> Unit)? = null) {
     val rule = row.rule
     val isOn = rule != null
     val isStudy = rule?.isStudyApp == true
-    val unlockedLeft = if (rule != null && !isStudy && rule.unlockedUntil > now) (rule.unlockedUntil - now) / 1000 else 0L
+
+    // Live countdown: ticks every second while an unlock is running (or just ran out), idle otherwise.
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    val unlockEnd = if (rule != null && !isStudy) rule.unlockedUntil else 0L
+    LaunchedEffect(unlockEnd) {
+        if (unlockEnd > 0L) {
+            while (true) {
+                now = System.currentTimeMillis()
+                if (now > unlockEnd + EXPIRED_SHOW_MS) break
+                delay(1000L)
+            }
+        }
+    }
+    val leftMs = if (unlockEnd > now) unlockEnd - now else 0L
+    val justExpired = unlockEnd in 1..now && now - unlockEnd < EXPIRED_SHOW_MS
 
     Card(colors = CardDefaults.cardColors(containerColor = if (isOn) ColorSurface else ColorSurface.copy(alpha = 0.6f)),
         shape = RoundedCornerShape(12.dp)) {
@@ -247,8 +262,11 @@ private fun AppCard(row: AppRow, now: Long, studyMin: Int, onToggle: (Boolean) -
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 when {
                     isStudy -> Text("Earning 1🪙 / $studyMin min", style = MaterialTheme.typography.labelSmall, color = ColorPrimary)
-                    unlockedLeft > 0 -> Text("Unlocked · %02d:%02d left".format(unlockedLeft / 60, unlockedLeft % 60),
-                        style = MaterialTheme.typography.labelSmall, color = ColorCoin)
+                    leftMs > 0 -> Text("Unlocked · ${fmtLeft(leftMs)} left",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (leftMs <= 60_000L) ColorWarning else ColorCoin)
+                    justExpired -> Text("⌛ Expired · locked again",
+                        style = MaterialTheme.typography.labelSmall, color = ColorDanger)
                     isOn && rule != null -> Text(lockSummary(rule), style = MaterialTheme.typography.labelSmall, color = ColorMuted,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
@@ -290,10 +308,13 @@ private fun StudyPickerDialog(apps: List<InstalledApp>, onPick: (InstalledApp) -
     )
 }
 
+private const val EXPIRED_SHOW_MS = 10 * 60_000L
+
 private fun lockSummary(rule: BlockedApp): String {
     val parts = mutableListOf(if (rule.dailyLimitMin > 0) "Limit ${rule.dailyLimitMin}m/day" else "Locked")
     if (rule.schedStart >= 0 && rule.schedEnd >= 0 && rule.schedStart != rule.schedEnd)
         parts += "${fmtMinute(rule.schedStart)}–${fmtMinute(rule.schedEnd)}"
+    if (rule.ratePer5 > 0) parts += "${rule.ratePer5}🪙/5m"
     if (rule.priceMult != 100) parts += "price ${rule.priceMult}%"
     return parts.joinToString(" · ")
 }
@@ -328,13 +349,14 @@ private fun HourStepper(label: String, hour: Int, onChange: (Int) -> Unit) {
 }
 
 @Composable
-private fun AppOptionsDialog(row: AppRow, onSave: (Int, Int, Int, Int) -> Unit, onDismiss: () -> Unit) {
+private fun AppOptionsDialog(row: AppRow, onSave: (Int, Int, Int, Int, Int) -> Unit, onDismiss: () -> Unit) {
     val rule = row.rule
     var limit by remember { mutableIntStateOf(rule?.dailyLimitMin ?: 0) }
     var schedOn by remember { mutableStateOf((rule?.schedStart ?: -1) >= 0 && (rule?.schedEnd ?: -1) >= 0) }
     var startH by remember { mutableIntStateOf(rule?.schedStart?.takeIf { it >= 0 }?.div(60) ?: 9) }
     var endH by remember { mutableIntStateOf(rule?.schedEnd?.takeIf { it >= 0 }?.div(60) ?: 17) }
     var mult by remember { mutableIntStateOf(rule?.priceMult ?: 100) }
+    var rateOv by remember { mutableIntStateOf(rule?.ratePer5 ?: 0) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -365,7 +387,19 @@ private fun AppOptionsDialog(row: AppRow, onSave: (Int, Int, Int, Int) -> Unit, 
                     HourStepper("Until", endH) { endH = it }
                 }
 
-                Text("Unlock price", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
+                Text("Coins per 5 min", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { rateOv = (rateOv - 1).coerceAtLeast(0) }, contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.size(34.dp)) { Text("−") }
+                    Text(if (rateOv == 0) "Default" else "$rateOv 🪙", color = ColorText, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.width(80.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    OutlinedButton(onClick = { rateOv = (rateOv + 1).coerceAtMost(100) }, contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.size(34.dp)) { Text("+") }
+                }
+                Text(if (rateOv == 0) "Uses the rate from Settings." else "Only for this app.",
+                    style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+
+                Text("Price multiplier", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(PRICE_OPTIONS) { m -> OptionChip("$m%", mult == m) { mult = m } }
                 }
@@ -373,7 +407,7 @@ private fun AppOptionsDialog(row: AppRow, onSave: (Int, Int, Int, Int) -> Unit, 
         },
         confirmButton = {
             TextButton(onClick = {
-                onSave(limit, if (schedOn) startH * 60 else -1, if (schedOn) endH * 60 else -1, mult)
+                onSave(limit, if (schedOn) startH * 60 else -1, if (schedOn) endH * 60 else -1, mult, rateOv)
             }) { Text("Save", color = ColorPrimary, fontWeight = FontWeight.Bold) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = ColorMuted) } },

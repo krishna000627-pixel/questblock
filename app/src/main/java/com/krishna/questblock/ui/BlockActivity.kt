@@ -41,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -61,10 +62,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Player
-import com.krishna.questblock.data.costFor
-import com.krishna.questblock.data.UnlockTier
+import com.krishna.questblock.data.MAX_UNLOCK_BLOCKS
+import com.krishna.questblock.data.fmtBlocks
+import com.krishna.questblock.data.unlockCost
+import com.krishna.questblock.service.KeepAlive
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
+import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -76,11 +81,11 @@ class BlockViewModel @Inject constructor(private val repo: GameRepository) : Vie
     val blocked = repo.blockedApps.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val player = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
 
-    fun tiers(): List<UnlockTier> = repo.unlockTiers()
+    fun rate(): Int = repo.ratePer5()
     fun holdSeconds(): Int = repo.holdSeconds()
     fun showQuotes(): Boolean = repo.showQuotes()
-    fun unlock(pkg: String, tier: UnlockTier, onResult: (Boolean) -> Unit) {
-        viewModelScope.launch { onResult(repo.unlock(pkg, tier)) }
+    fun unlock(pkg: String, blocks: Int, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch { onResult(repo.unlock(pkg, blocks)) }
     }
 }
 
@@ -183,13 +188,17 @@ fun BlockScreen(
         }.getOrDefault(pkg)
     }
     val quote = remember(pkg) { MOTIVATIONAL_LINES.random() }
-    val tiers = remember { vm.tiers() }
+    val rate = remember { vm.rate() }
     val holdSteps = remember { vm.holdSeconds() * 10 }
     val quotesOn = remember { vm.showQuotes() }
 
-    var tierIdx by remember { mutableStateOf(0) }
-    val tier = tiers[tierIdx]
-    val tierCost = tier.costFor(rule)
+    // Unlock time in 5-minute blocks (3 = 15 min). Cost = blocks × rate.
+    var blocks by remember { mutableIntStateOf(3) }
+    val cost = unlockCost(blocks, rate, rule)
+    val canAfford = player.coins >= cost
+    val blocksNow by rememberUpdatedState(blocks)
+    val costNow by rememberUpdatedState(cost)
+    val coinsNow by rememberUpdatedState(player.coins)
 
     // Hold-to-unlock state
     var holdProgress by remember { mutableFloatStateOf(0f) }
@@ -209,8 +218,7 @@ fun BlockScreen(
                 holdProgress = (it + 1) / steps.toFloat()
             }
             if (isHolding && rule != null) {
-                val canAfford = player.coins >= tierCost
-                if (canAfford) {
+                if (coinsNow >= costNow) {
                     // Haptic
                     runCatching {
                         if (android.os.Build.VERSION.SDK_INT >= 31) {
@@ -223,9 +231,11 @@ fun BlockScreen(
                     }.getOrNull()?.let { vib ->
                         vib.vibrate(VibrationEffect.createOneShot(80, VibrationEffect.DEFAULT_AMPLITUDE))
                     }
-                    vm.unlock(pkg, tier) { ok ->
-                        if (ok) onUnlocked()
-                        else Toast.makeText(ctx, "Not enough coins", Toast.LENGTH_SHORT).show()
+                    vm.unlock(pkg, blocksNow) { ok ->
+                        if (ok) {
+                            KeepAlive.start(ctx)   // live tracker lives in the keep-alive service
+                            onUnlocked()
+                        } else Toast.makeText(ctx, "Not enough coins", Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     Toast.makeText(ctx, "Not enough coins — do a quest first", Toast.LENGTH_SHORT).show()
@@ -304,13 +314,28 @@ fun BlockScreen(
             Spacer(Modifier.height(16.dp))
 
             if (rule != null) {
-                val canAfford = player.coins >= tierCost
-                val missing = tierCost - player.coins
+                val missing = cost - player.coins
 
-                // Unlock length: 15m / 30m / 1h / 3h / 10h
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    tiers.forEachIndexed { i, t ->
-                        TierChip(t, cost = t.costFor(rule), selected = i == tierIdx, affordable = player.coins >= t.costFor(rule)) { tierIdx = i }
+                // − / + time picker: 5-minute steps, live cost. Hold a button to repeat.
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    StepButton("−", enabled = blocks > 1) { blocks = (blocks - 1).coerceAtLeast(1) }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(fmtBlocks(blocks), fontSize = 32.sp, fontWeight = FontWeight.Black, color = ColorText)
+                        Text(
+                            "$cost 🪙",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = if (canAfford) ColorCoin else ColorDanger,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        val r = rule.ratePer5.takeIf { it > 0 } ?: rate
+                        Text("$r 🪙 per 5 min", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+                    }
+                    StepButton("+", enabled = blocks < MAX_UNLOCK_BLOCKS) {
+                        blocks = (blocks + 1).coerceAtMost(MAX_UNLOCK_BLOCKS)
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -350,7 +375,7 @@ fun BlockScreen(
                             )
                         }
                         Text(
-                            if (canAfford) "Hold to unlock · ${tierCost} 🪙 · ${tier.label}"
+                            if (canAfford) "Hold to unlock · $cost 🪙 · ${fmtBlocks(blocks)}"
                             else "Need $missing more coins",
                             style = MaterialTheme.typography.labelLarge,
                             color = if (canAfford) ColorPrimary else ColorMuted,
@@ -389,19 +414,34 @@ fun BlockScreen(
 }
 
 @Composable
-private fun RowScope.TierChip(tier: UnlockTier, cost: Int, selected: Boolean, affordable: Boolean, onClick: () -> Unit) {
-    Column(
+private fun StepButton(symbol: String, enabled: Boolean, onStep: () -> Unit) {
+    val step by rememberUpdatedState(onStep)
+    Box(
         Modifier
-            .weight(1f)
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) ColorPrimary.copy(alpha = 0.2f) else ColorSurfaceHigh)
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .size(56.dp)
+            .clip(CircleShape)
+            .background(if (enabled) ColorPrimary.copy(alpha = 0.18f) else ColorSurfaceHigh)
+            .pointerInput(enabled) {
+                if (enabled) {
+                    detectTapGestures(
+                        onPress = {
+                            step()
+                            coroutineScope {
+                                // keep stepping while the finger stays down
+                                val repeater = launch {
+                                    delay(400L)
+                                    while (true) { step(); delay(90L) }
+                                }
+                                tryAwaitRelease()
+                                repeater.cancel()
+                            }
+                        }
+                    )
+                }
+            },
+        contentAlignment = Alignment.Center,
     ) {
-        Text(tier.label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
-            color = if (selected) ColorPrimary else ColorText)
-        Text("${cost}🪙", style = MaterialTheme.typography.labelSmall,
-            color = if (affordable) ColorCoin else ColorMuted)
+        Text(symbol, fontSize = 28.sp, fontWeight = FontWeight.Bold,
+            color = if (enabled) ColorPrimary else ColorMuted)
     }
 }

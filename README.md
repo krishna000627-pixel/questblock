@@ -17,6 +17,18 @@ bash termux/setup.sh            # optional arg: repo name (default: questblock)
 `setup.sh` installs git/gh/JDK, generates a keystore in `~/.questblock/`, creates the private GitHub repo,
 uploads the keystore as Actions secrets, pushes, waits for CI, then downloads and opens the signed APK.
 
+## What's new in v10
+
+- **Days ≠ recurring.** Days only mean "available on these days"; **Recurring** is its own switch. Days only = one-time on those days. Days + Recurring = comes back on the next selected day. Recurring only works as before (a recurring quest with no due time now comes back the next day / week).
+- **Tabs fixed.** Tapping a tab always opens its main page (Add Quest no longer comes back). Sub-pages highlight the tab you opened them from.
+- **Coins per 5 min** (Settings, optional per-app rate in Vault ⚙) replaces the fixed tiers. Lock screen has a − / + time picker (hold to repeat) with live cost, then hold to buy.
+- **Live tracker.** Vault countdown ticks every second; ongoing notification "Instagram · 12:30 left"; warning at 1 minute; Expired state.
+- **Coin log** (Profile → Coin log): every earn and spend, plus zero-coin "free" opens with the reason (daily limit, study app, Focus Quest, outside lock hours).
+- **Reliability page** (Settings → Reliability): battery, per-brand autostart, lock-in-recents guide, keep-alive switch.
+- **Keep-alive service + watchdog:** small persistent notification; "Blocking is off, tap to fix" if the blocker stops; Settings shows when the blocker was last active.
+- **Quest types:** + opens a type picker (Daily, Weekly, Challenge, Routine, Focus, One-time). Quests are grouped by type, dailies on top with "3/5 dailies done today" and a streak on each daily.
+- DB migrates 7 -> 8 without wiping data.
+
 ## What's new in v9
 
 - **Quest days:** pick Mon–Sun (or Weekdays / Weekends). The quest only shows and can only be completed on those days, then comes back on the next one. Quests can now be **edited** (pencil icon).
@@ -31,7 +43,7 @@ uploads the keystore as Actions secrets, pushes, waits for CI, then downloads an
 
 - **Focus = Timer Quest.** One flow: pick "Quick focus" or a Focus Quest, start, finish. Finishing pays +15🪙 (and completes the quest + its reward). Linked apps unlock for the session.
 - **Vault** is one page: Study Apps section (never lock, 1🪙 / 5 min), locked apps, all apps. Stats now live on the Profile page.
-- **Unlock tiers** on the lock screen: 15m 20🪙 · 30m 35🪙 · 1h 60🪙 · 3h 120🪙 · 10h 300🪙.
+- **Unlock time** is bought in 5-minute steps on the lock screen (v10: coins per 5 min).
 - **Daily login** +5🪙. **Shop** reachable from Profile (or tap the coins on Home); custom items under *My Rewards*.
 - DB migrates 5 -> 6 without wiping data.
 

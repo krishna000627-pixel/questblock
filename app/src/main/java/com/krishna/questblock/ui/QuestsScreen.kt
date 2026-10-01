@@ -30,12 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import com.krishna.questblock.data.GameRepository
-import com.krishna.questblock.data.Player
-import com.krishna.questblock.data.TaskEntity
-import com.krishna.questblock.data.baseReward
-import com.krishna.questblock.data.daysLabel
-import com.krishna.questblock.data.isAvailableNow
+import com.krishna.questblock.data.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -48,6 +43,8 @@ import javax.inject.Inject
 class QuestsViewModel @Inject constructor(private val repo: GameRepository) : ViewModel() {
     val tasks  = repo.tasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val player = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
+    val subs   = repo.allSubTasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    fun toggleStep(step: SubTask) = viewModelScope.launch { repo.toggleSubTask(step) }
     fun add(title: String, difficulty: Int) = viewModelScope.launch { repo.addTask(title, difficulty) }
     fun complete(task: TaskEntity) = viewModelScope.launch { repo.completeTask(task) }
     fun delete(task: TaskEntity)   = viewModelScope.launch { repo.deleteTask(task) }
@@ -64,7 +61,15 @@ private val FILTER_TABS = listOf("All", "Today", "Active", "Done", "Overdue")
 @Composable
 fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocus: () -> Unit, vm: QuestsViewModel = hiltViewModel()) {
     val tasks by vm.tasks.collectAsStateWithLifecycle()
+    val subs  by vm.subs.collectAsStateWithLifecycle()
+    val stepsByTask = remember(subs) { subs.groupBy { it.taskId } }
     val now   = System.currentTimeMillis()
+
+    // "3/5 dailies done today": dailies finished since midnight + dailies still open today
+    val dayStart = startOfToday(now)
+    val dailies = tasks.filter { it.questType == "daily" }
+    val dailyDone = dailies.count { it.done && (it.completedAt ?: 0L) >= dayStart }
+    val dailyTotal = dailyDone + dailies.count { it.isAvailableNow(now) }
 
     var filterTab by remember { mutableStateOf("All") }
     var filterCat by remember { mutableStateOf("All") }
@@ -162,17 +167,40 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
                 }
             }
 
-            // Pending quests
-            if (pending.isNotEmpty()) {
-                item { SectionHeader("Active (${pending.size})") }
-                items(pending, key = { it.id }) { task ->
-                    SwipeableQuestCard(task = task, now = now,
-                        onComplete = { vm.complete(task) },
-                        onDelete   = { vm.delete(task) },
-                        onEdit     = { onEditQuest(task.id) },
-                        onStartFocus = { vm.startFocus(task); onOpenFocus() },
-                        onStopFocus  = { vm.stopFocus() },
-                    )
+            // Pending quests, grouped by type (dailies first)
+            QUEST_TYPES.forEach { type ->
+                val group = pending.filter { (if (questTypeInfo(it.questType).id == it.questType) it.questType else "onetime") == type.id }
+                if (group.isNotEmpty()) {
+                    item(key = "hdr_${type.id}") {
+                        if (type.id == "daily") {
+                            Column(Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("${type.emoji} Dailies", style = MaterialTheme.typography.labelLarge,
+                                        color = ColorText, fontWeight = FontWeight.Bold)
+                                    Text("$dailyDone/$dailyTotal dailies done today",
+                                        style = MaterialTheme.typography.labelMedium, color = ColorPrimary)
+                                }
+                                LinearProgressIndicator(
+                                    progress = { if (dailyTotal == 0) 0f else dailyDone / dailyTotal.toFloat() },
+                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp).height(6.dp).clip(CircleShape),
+                                    color = ColorPrimary, trackColor = ColorSurfaceHigh,
+                                )
+                            }
+                        } else {
+                            SectionHeader("${type.emoji} ${type.name} (${group.size})")
+                        }
+                    }
+                    items(group, key = { it.id }) { task ->
+                        SwipeableQuestCard(task = task, now = now,
+                            steps = stepsByTask[task.id].orEmpty(),
+                            onToggleStep = { vm.toggleStep(it) },
+                            onComplete = { vm.complete(task) },
+                            onDelete   = { vm.delete(task) },
+                            onEdit     = { onEditQuest(task.id) },
+                            onStartFocus = { vm.startFocus(task); onOpenFocus() },
+                            onStopFocus  = { vm.stopFocus() },
+                        )
+                    }
                 }
             }
 
@@ -181,6 +209,7 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
                 item { SectionHeader("Completed (${done.size})") }
                 items(done, key = { it.id }) { task ->
                     SwipeableQuestCard(task = task, now = now,
+                        steps = stepsByTask[task.id].orEmpty(), onToggleStep = {},
                         onComplete = {}, onDelete = { vm.delete(task) }, onEdit = {},
                         onStartFocus = {}, onStopFocus = {},
                     )
@@ -198,7 +227,7 @@ private fun SectionHeader(label: String) {
 
 @Composable
 private fun SwipeableQuestCard(
-    task: TaskEntity, now: Long,
+    task: TaskEntity, now: Long, steps: List<SubTask>, onToggleStep: (SubTask) -> Unit,
     onComplete: () -> Unit, onDelete: () -> Unit, onEdit: () -> Unit,
     onStartFocus: () -> Unit, onStopFocus: () -> Unit,
 ) {
@@ -206,7 +235,12 @@ private fun SwipeableQuestCard(
         confirmValueChange = { value ->
             when (value) {
                 EndToStart -> { onDelete(); true }
-                StartToEnd -> { if (!task.done) onComplete(); true }
+                StartToEnd -> {
+                    // only swipe-complete when it can really be completed (right day, routine steps all ticked)
+                    val ok = !task.done && task.isAvailableNow(now) && steps.all { it.done }
+                    if (ok) onComplete()
+                    ok
+                }
                 else -> false
             }
         }
@@ -235,7 +269,7 @@ private fun SwipeableQuestCard(
         },
         modifier = Modifier.padding(horizontal = 12.dp, vertical = 3.dp),
     ) {
-        QuestCard(task = task, now = now,
+        QuestCard(task = task, now = now, steps = steps, onToggleStep = onToggleStep,
             onComplete = onComplete, onDelete = onDelete, onEdit = onEdit,
             onStartFocus = onStartFocus, onStopFocus = onStopFocus)
     }
@@ -243,11 +277,15 @@ private fun SwipeableQuestCard(
 
 @Composable
 private fun QuestCard(
-    task: TaskEntity, now: Long,
+    task: TaskEntity, now: Long, steps: List<SubTask>, onToggleStep: (SubTask) -> Unit,
     onComplete: () -> Unit, onDelete: () -> Unit, onEdit: () -> Unit,
     onStartFocus: () -> Unit, onStopFocus: () -> Unit,
 ) {
     val availableNow = task.isAvailableNow(now)
+    val isRoutine = task.questType == "routine"
+    val stepsDone = steps.count { it.done }
+    val canComplete = availableNow && (!isRoutine || steps.all { it.done })
+    val streakNow = task.streakNow(dayNumber(now))
     val diffColor  = DIFF_COLORS.getOrElse(task.difficulty - 1) { ColorPrimary }
     val catColor   = CatColors[task.category] ?: ColorPrimary
     val isOverdue  = !task.done && task.dueAt != null && task.dueAt < now
@@ -270,7 +308,7 @@ private fun QuestCard(
                         maxLines = 2, overflow = TextOverflow.Ellipsis,
                         textDecoration = if (task.done) TextDecoration.LineThrough else TextDecoration.None)
 
-                    if (!task.done && availableNow) {
+                    if (!task.done && canComplete) {
                         IconButton(onClick = onComplete, modifier = Modifier.size(28.dp)) {
                             Icon(Icons.Default.CheckCircle, contentDescription = "Complete",
                                 tint = ColorPrimary, modifier = Modifier.size(20.dp))
@@ -294,8 +332,12 @@ private fun QuestCard(
                     TagChip(task.category, catColor)
                     TagChip("+${baseReward(task.difficulty)}🪙", ColorCoin)
                     if (task.isTimerQuest) TagChip("⏱️", ColorAccent)
+                    if (task.questType == "daily" && streakNow > 0) TagChip("🔥 $streakNow", ColorWarning)
+                    if (task.questType == "challenge" && task.challengeDays > 0)
+                        TagChip("🏆 $streakNow/${task.challengeDays}", ColorWarning)
+                    if (isRoutine && steps.isNotEmpty()) TagChip("📋 $stepsDone/${steps.size}", ColorAccent)
                     if (task.daysMask != 0) TagChip("📅 ${daysLabel(task.daysMask)}", ColorAccent)
-                    else if (task.isRecurring) TagChip("🔁", ColorMuted)
+                    if (task.isRecurring && task.questType != "daily" && task.questType != "challenge") TagChip("🔁", ColorMuted)
                 }
 
                 if (task.dueAt != null) {
@@ -316,6 +358,21 @@ private fun QuestCard(
                         if (task.availableFrom > now) "💤 Back on ${SimpleDateFormat("EEE d MMM", Locale.getDefault()).format(Date(task.availableFrom))}"
                         else "💤 Not scheduled today",
                         style = MaterialTheme.typography.labelSmall, color = ColorAccent)
+                }
+
+                // Routine checklist
+                if (isRoutine && !task.done) {
+                    steps.forEach { step ->
+                        Row(Modifier.fillMaxWidth().clickable(enabled = availableNow) { onToggleStep(step) }.padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(if (step.done) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+                                contentDescription = null, modifier = Modifier.size(18.dp),
+                                tint = if (step.done) ColorPrimary else ColorMuted)
+                            Text(step.title, style = MaterialTheme.typography.bodySmall,
+                                color = if (step.done) ColorMuted else ColorText,
+                                textDecoration = if (step.done) TextDecoration.LineThrough else TextDecoration.None)
+                        }
+                    }
                 }
 
                 if (task.notes.isNotBlank()) {

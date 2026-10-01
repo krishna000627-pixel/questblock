@@ -41,6 +41,8 @@ class BlockerAccessibilityService : AccessibilityService() {
     private var lastGuard = 0L
     private var lastBlockPkg: String? = null
     private var lastBlockAt = 0L
+    private var lastBeat = 0L
+    private val freeLogAt = HashMap<String, Long>()
 
     // Study-session tracking
     private var activeStudyPkg: String? = null
@@ -48,8 +50,18 @@ class BlockerAccessibilityService : AccessibilityService() {
     private var studyStartTime: Long = 0L
     private var studyMinutesCredited: Int = 0
 
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        instance = this
+        prefs.lastActiveAt = System.currentTimeMillis()
+        KeepAlive.start(this)
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         event ?: return
+        // Heartbeat for the watchdog / Settings "last active" (throttled)
+        val t = SystemClock.elapsedRealtime()
+        if (t - lastBeat > 30_000L) { lastBeat = t; prefs.lastActiveAt = System.currentTimeMillis() }
         val pkg = event.packageName?.toString() ?: return
         if (pkg == packageName) return
         val isWindowChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
@@ -90,17 +102,26 @@ class BlockerAccessibilityService : AccessibilityService() {
             val minuteOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
 
             // Outside its lock schedule (e.g. only locked 09:00–17:00) -> free to use
-            if (!app.enforcedAt(minuteOfDay)) { stopUsageTimer(); return }
+            if (!app.enforcedAt(minuteOfDay)) {
+                stopUsageTimer()
+                logFree(pkg, app.label, "Free · outside lock hours")
+                return
+            }
 
             // Daily-limit mode: free until today's allowance is used up
             if (app.dailyLimitMin > 0) {
                 val used = if (app.usedDay == dayNumber(System.currentTimeMillis())) app.usedTodayMs else 0L
-                if (used < app.dailyLimitMin * 60_000L) { startUsageTimer(pkg); return }
+                if (used < app.dailyLimitMin * 60_000L) {
+                    logFree(pkg, "${app.label} · ${used / 60_000L}/${app.dailyLimitMin} min used", "Free · daily limit")
+                    startUsageTimer(pkg)
+                    return
+                }
             }
             stopUsageTimer()
 
             val now = System.currentTimeMillis()
             if (app.unlockedUntil > now) {
+                if (repo.focusUnlockedPkg(pkg)) logFree(pkg, app.label, "Free · Focus Quest")
                 expiryJob?.cancel()
                 expiryJob = scope.launch {
                     delay(app.unlockedUntil - now + 250)
@@ -118,7 +139,10 @@ class BlockerAccessibilityService : AccessibilityService() {
 
         stopUsageTimer()
         // Study app -> earn coins while inside it
-        if (app != null && app.isStudyApp) startStudyTimer(pkg, app.label) else stopStudyTimer()
+        if (app != null && app.isStudyApp) {
+            logFree(pkg, app.label, "Free · study app")
+            startStudyTimer(pkg, app.label)
+        } else stopStudyTimer()
     }
 
     // ── Daily-limit usage timer ──────────────────────────────────────────
@@ -140,6 +164,16 @@ class BlockerAccessibilityService : AccessibilityService() {
                 }
             }
         }
+    }
+
+    /** Records "this open cost 0 coins, and here's why" in the coin log (at most once per app+reason per 10 min). */
+    private fun logFree(pkg: String, detail: String, reason: String) {
+        val key = "$pkg|$reason"
+        val now = SystemClock.elapsedRealtime()
+        val last = freeLogAt[key]
+        if (last != null && now - last < FREE_LOG_GAP_MS) return
+        freeLogAt[key] = now
+        scope.launch { repo.logFreeAccess(reason, detail) }
     }
 
     private fun stopUsageTimer() {
@@ -167,7 +201,7 @@ class BlockerAccessibilityService : AccessibilityService() {
                 minutesTicked++
                 val perCoin = prefs.studyMinPerCoin
                 if (minutesTicked % perCoin == 0) {
-                    repo.creditStudyCoins(sessionId, perCoin)
+                    repo.creditStudyCoins(sessionId, perCoin, label)
                     studyMinutesCredited += perCoin
                 }
             }
@@ -230,24 +264,31 @@ class BlockerAccessibilityService : AccessibilityService() {
     override fun onInterrupt() = Unit
 
     override fun onDestroy() {
+        if (instance === this) instance = null
         stopStudyTimer()
         stopUsageTimer()
         scope.cancel()
         super.onDestroy()
     }
 
-    private companion object {
-        const val SETTLE_MS = 180L
-        const val RELAUNCH_GUARD_MS = 800L
-        const val USAGE_TICK_MS = 15_000L
-        val GUARDED_PKGS = setOf(
+    companion object {
+        @Volatile var instance: BlockerAccessibilityService? = null
+
+        /** Opens the system Recents screen (used by the Reliability page). False if the blocker isn't running. */
+        fun openRecents(): Boolean = instance?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS) ?: false
+
+        private const val SETTLE_MS = 180L
+        private const val RELAUNCH_GUARD_MS = 800L
+        private const val USAGE_TICK_MS = 15_000L
+        private const val FREE_LOG_GAP_MS = 10 * 60_000L
+        private val GUARDED_PKGS = setOf(
             "com.android.settings",
             "com.samsung.android.settings",
             "com.android.packageinstaller",
             "com.google.android.packageinstaller",
             "com.google.android.permissioncontroller",
         )
-        val IGNORED_PKGS = setOf(
+        private val IGNORED_PKGS = setOf(
             "com.android.systemui",
             "android",
         )

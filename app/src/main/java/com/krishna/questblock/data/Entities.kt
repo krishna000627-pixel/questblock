@@ -28,6 +28,11 @@ data class TaskEntity(
     @ColumnInfo(defaultValue = "0") val daysMask: Int = 0,
     // Hidden from "today" until this time (used after a scheduled quest is completed)
     @ColumnInfo(defaultValue = "0") val availableFrom: Long = 0L,
+    // v10: quest type ("daily" "weekly" "onetime" "focus" "routine" "challenge"), per-quest streak, challenge length
+    @ColumnInfo(defaultValue = "'onetime'") val questType: String = "onetime",
+    @ColumnInfo(defaultValue = "0") val streak: Int = 0,
+    @ColumnInfo(defaultValue = "0") val lastDoneDay: Long = 0L,
+    @ColumnInfo(defaultValue = "0") val challengeDays: Int = 0,
 )
 
 @Entity(tableName = "subtasks")
@@ -53,6 +58,8 @@ data class BlockedApp(
     @ColumnInfo(defaultValue = "100") val priceMult: Int = 100,       // unlock price in percent
     @ColumnInfo(defaultValue = "-1")  val schedStart: Int = -1,       // minutes from midnight, -1 = lock all day
     @ColumnInfo(defaultValue = "-1")  val schedEnd: Int = -1,
+    // v10: coins per 5 minutes for this app. 0 = use the global rate from Settings.
+    @ColumnInfo(defaultValue = "0")   val ratePer5: Int = 0,
 )
 
 @Entity(tableName = "player")
@@ -131,6 +138,16 @@ data class FocusLog(
     val minutes: Int,
     val completed: Boolean,
     val questTitle: String = "",
+)
+
+/** One line in the coin log. amount > 0 earned, < 0 spent, 0 = free access (source says why). */
+@Entity(tableName = "coin_log")
+data class CoinLog(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val timestamp: Long = System.currentTimeMillis(),
+    val amount: Int,
+    val source: String,
+    val detail: String = "",
 )
 
 @Entity(tableName = "achievements")

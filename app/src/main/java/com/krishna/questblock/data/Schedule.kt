@@ -68,3 +68,40 @@ fun BlockedApp.enforcedAt(minuteOfDay: Int): Boolean {
 }
 
 fun fmtMinute(m: Int): String = "%02d:%02d".format(m / 60, m % 60)
+
+// ── v10: streaks, quest types, time formatting ──────────────────────────────
+
+/** Monday = 0 … Sunday = 6 for a [dayNumber]. (Day 0 = 1970-01-01, a Thursday.) */
+fun dowOfDay(day: Long): Int = (((day + 3) % 7 + 7) % 7).toInt()
+
+/**
+ * True if a streak last extended on [lastDoneDay] is still alive on [today]: no scheduled day
+ * (per [mask], 0 = every day) went by without it being done.
+ */
+fun streakContinues(mask: Int, lastDoneDay: Long, today: Long): Boolean {
+    if (lastDoneDay <= 0L) return false
+    if (lastDoneDay >= today) return true
+    for (d in (lastDoneDay + 1) until today) if (mask == 0 || maskHas(mask, dowOfDay(d))) return false
+    return true
+}
+
+/** Streak to show right now (0 once a scheduled day has been missed). */
+fun TaskEntity.streakNow(today: Long): Int =
+    if (streak > 0 && streakContinues(daysMask, lastDoneDay, today)) streak else 0
+
+/** "12:30" under an hour, "1:05:30" over. */
+fun fmtLeft(ms: Long): String {
+    val s = (ms.coerceAtLeast(0L) + 999L) / 1000L   // round up so it never shows 00:00 while still unlocked
+    val h = s / 3600; val m = (s % 3600) / 60; val sec = s % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%02d:%02d".format(m, sec)
+}
+
+fun agoText(ms: Long): String {
+    val m = ms / 60_000L
+    return when {
+        m < 1 -> "just now"
+        m < 60 -> "$m min ago"
+        m < 60 * 24 -> "${m / 60} h ago"
+        else -> "${m / (60 * 24)} d ago"
+    }
+}

@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao interface SubTaskDao {
     @Query("SELECT * FROM subtasks WHERE taskId = :taskId") fun observe(taskId: Long): Flow<List<SubTask>>
+    @Query("SELECT * FROM subtasks") fun observeAll(): Flow<List<SubTask>>
+    @Query("SELECT * FROM subtasks WHERE taskId = :taskId ORDER BY id ASC") suspend fun getAll(taskId: Long): List<SubTask>
     @Insert suspend fun insert(sub: SubTask): Long
     @Update suspend fun update(sub: SubTask)
     @Delete suspend fun delete(sub: SubTask)
@@ -73,6 +75,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao interface FocusLogDao {
     @Insert suspend fun insert(l: FocusLog): Long
     @Query("SELECT * FROM focus_log ORDER BY startedAt DESC LIMIT 500") fun observeRecent(): Flow<List<FocusLog>>
+}
+
+@Dao interface CoinLogDao {
+    @Insert suspend fun insert(l: CoinLog): Long
+    @Query("SELECT * FROM coin_log ORDER BY timestamp DESC, id DESC LIMIT 500") fun observeRecent(): Flow<List<CoinLog>>
 }
 
 @Dao interface AchievementDao {

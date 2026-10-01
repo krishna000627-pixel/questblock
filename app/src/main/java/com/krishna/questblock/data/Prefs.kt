@@ -68,12 +68,25 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         get() = sp.getLong("accent", 0xFF00E5A0)
         set(value) = sp.edit().putLong("accent", value).apply()
 
-    fun unlockTiers(): List<UnlockTier> {
-        val saved = sp.getString("tier_costs", "")?.split(",")?.mapNotNull { it.trim().toIntOrNull() }.orEmpty()
-        return UNLOCK_TIERS.mapIndexed { i, t -> t.copy(cost = saved.getOrNull(i)?.takeIf { it > 0 } ?: t.cost) }
-    }
+    /** Coins per 5-minute block of unlock time (apps can override it). */
+    var ratePer5: Int
+        get() = sp.getInt("rate_per_5", DEFAULT_RATE_PER_5).coerceIn(1, 100)
+        set(value) = sp.edit().putInt("rate_per_5", value.coerceIn(1, 100)).apply()
 
-    fun setTierCosts(costs: List<Int>) = sp.edit().putString("tier_costs", costs.joinToString(",")).apply()
+    // ── Reliability (v10) ────────────────────────────────────────────────
+    var keepAlive: Boolean
+        get() = sp.getBoolean("keepalive", true)
+        set(value) = sp.edit().putBoolean("keepalive", value).apply()
+
+    /** Last time the blocker (accessibility service) reported in. */
+    var lastActiveAt: Long
+        get() = sp.getLong("blocker_last_active", 0L)
+        set(value) = sp.edit().putLong("blocker_last_active", value).apply()
+
+    /** Heartbeat of the keep-alive service. */
+    var keepAliveBeat: Long
+        get() = sp.getLong("keepalive_beat", 0L)
+        set(value) = sp.edit().putLong("keepalive_beat", value).apply()
 
     fun clearAll() = sp.edit().clear().apply()
 }

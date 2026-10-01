@@ -46,7 +46,7 @@ class ProfileViewModel @Inject constructor(
 }
 
 @Composable
-fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSettings: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
+fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSettings: () -> Unit, onOpenCoins: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
     val player by vm.player.collectAsStateWithLifecycle()
 
     var editMode by remember { mutableStateOf(false) }
@@ -129,6 +129,24 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                             maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     }
                     Text("🪙 ${player.coins}", color = ColorCoin, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            // ── Coin log ────────────────────────────────────────────────────
+            Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().clickable { onOpenCoins() }) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("🧾", fontSize = 24.sp)
+                    Column(Modifier.weight(1f)) {
+                        Text("Coin log", style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold, color = ColorText)
+                        Text("Every earn and spend, and why an app was free",
+                            style = MaterialTheme.typography.bodySmall, color = ColorMuted,
+                            maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    }
+                    Text("›", color = ColorMuted, fontSize = 20.sp)
                 }
             }
 

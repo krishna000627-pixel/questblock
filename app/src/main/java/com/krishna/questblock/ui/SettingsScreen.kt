@@ -38,6 +38,7 @@ import com.krishna.questblock.data.AppDatabase
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Player
 import com.krishna.questblock.data.Prefs
+import com.krishna.questblock.data.agoText
 import com.krishna.questblock.util.Backup
 import com.krishna.questblock.util.Perms
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -87,7 +88,7 @@ class SettingsViewModel @Inject constructor(
 }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     val ctx = LocalContext.current
     val prefs = vm.prefs
     val player by vm.player.collectAsStateWithLifecycle()
@@ -142,15 +143,11 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) 
 
         // ── Economy ──────────────────────────────────────────────────────
         Section("💰 Economy") {
-            Text("Unlock prices", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
-            var costs by remember { mutableStateOf(prefs.unlockTiers().map { it.cost }) }
-            val labels = remember { prefs.unlockTiers().map { it.label } }
-            costs.forEachIndexed { i, c ->
-                StepperRow("Unlock ${labels[i]}", c, 5..1000, 5, "🪙") { v ->
-                    costs = costs.toMutableList().also { it[i] = v }
-                    prefs.setTierCosts(costs)
-                }
-            }
+            var rate by remember { mutableIntStateOf(prefs.ratePer5) }
+            StepperRow("Unlock cost", rate, 1..100, 1, "🪙 / 5 min") { rate = it; prefs.ratePer5 = it }
+            Text("Unlock time is bought in 5-minute steps on the lock screen: cost = blocks × this rate. " +
+                "Any app can have its own rate (Vault → ⚙).",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             HorizontalDivider(color = ColorDivider)
             var focusBonus by remember { mutableIntStateOf(prefs.focusBonus) }
             StepperRow("Focus session bonus", focusBonus, 0..100, 5, "🪙") { focusBonus = it; prefs.focusBonus = it }
@@ -194,6 +191,14 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) 
             }
         }
 
+        // ── Reliability ──────────────────────────────────────────────────
+        Section("🛠️ Reliability") {
+            Text("Battery, autostart and keep-alive shortcuts so the blocker isn't killed in the background.",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            OutlinedButton(onClick = onOpenReliability, shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth()) { Text("Open Reliability page") }
+        }
+
         // ── Strictness ───────────────────────────────────────────────────
         Section("🛡️ Strict mode") {
             var strict by remember { mutableStateOf(prefs.strictMode) }
@@ -232,12 +237,15 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) 
                         .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, Perms.adminComponent(ctx))
                 )
             }
-            val notifOk = Build.VERSION.SDK_INT < 33 ||
-                ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-            PermRow("Notifications", "For quest reminders", notifOk) {
+            val notifOk = Perms.notificationsOk(ctx)
+            PermRow("Notifications", "Reminders, unlock timer, alerts", notifOk) {
                 ctx.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                     .putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName))
             }
+            val lastActive = prefs.lastActiveAt
+            Text("Blocker last active: " +
+                (if (lastActive == 0L) "never" else agoText(System.currentTimeMillis() - lastActive)),
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
 
         // ── Data ─────────────────────────────────────────────────────────
@@ -274,7 +282,7 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) 
                 runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
             }
             Text("QuestBlock v$version", color = ColorText, fontWeight = FontWeight.SemiBold)
-            Text("v9: quest days · reminders · per-app limits & schedules · stats · settings · gift for me",
+            Text("v10: coins per 5 min · live unlock timer · coin log · reliability page · quest types",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
         Spacer(Modifier.height(12.dp))

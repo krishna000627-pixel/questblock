@@ -47,12 +47,38 @@ private val MIGRATION_6_7 = object : Migration(6, 7) {
     }
 }
 
+/** v7 -> v8: quest types + per-quest streaks, per-app coin rate, coin log. Keeps all existing user data. */
+private val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE tasks ADD COLUMN questType TEXT NOT NULL DEFAULT 'onetime'")
+        db.execSQL("ALTER TABLE tasks ADD COLUMN streak INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE tasks ADD COLUMN lastDoneDay INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE tasks ADD COLUMN challengeDays INTEGER NOT NULL DEFAULT 0")
+        // Give every existing quest a type that matches how it already behaves.
+        db.execSQL(
+            "UPDATE tasks SET questType = CASE " +
+                "WHEN isTimerQuest = 1 THEN 'focus' " +
+                "WHEN daysMask != 0 THEN 'weekly' " +
+                "WHEN isRecurring = 1 AND recurType = 'weekly' THEN 'weekly' " +
+                "WHEN isRecurring = 1 THEN 'daily' " +
+                "ELSE 'onetime' END"
+        )
+        db.execSQL("ALTER TABLE blocked_apps ADD COLUMN ratePer5 INTEGER NOT NULL DEFAULT 0")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS coin_log (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "timestamp INTEGER NOT NULL, amount INTEGER NOT NULL, " +
+                "source TEXT NOT NULL, detail TEXT NOT NULL)"
+        )
+    }
+}
+
 @Module @InstallIn(SingletonComponent::class)
 object AppModule {
     @Provides @Singleton
     fun provideDb(@ApplicationContext ctx: Context): AppDatabase =
         Room.databaseBuilder(ctx, AppDatabase::class.java, "questblock.db")
-            .addMigrations(MIGRATION_5_6, MIGRATION_6_7)
+            .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             .fallbackToDestructiveMigration().build()
 
     @Provides fun taskDao(db: AppDatabase) = db.taskDao()
@@ -65,4 +91,5 @@ object AppModule {
     @Provides fun achievementDao(db: AppDatabase) = db.achievementDao()
     @Provides fun customRewardDao(db: AppDatabase) = db.customRewardDao()
     @Provides fun focusLogDao(db: AppDatabase) = db.focusLogDao()
+    @Provides fun coinLogDao(db: AppDatabase) = db.coinLogDao()
 }
