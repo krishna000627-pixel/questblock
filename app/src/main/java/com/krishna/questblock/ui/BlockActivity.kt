@@ -94,8 +94,16 @@ class BlockViewModel @Inject constructor(private val repo: GameRepository) : Vie
     fun rate(): Int = repo.ratePer5()
     fun holdSeconds(): Int = repo.holdSeconds()
     fun showQuotes(): Boolean = repo.showQuotes()
-    fun unlock(pkg: String, blocks: Int, onResult: (Boolean) -> Unit) {
-        viewModelScope.launch { onResult(repo.unlock(pkg, blocks)) }
+    /** onResult(ok, error): error is non-null only when something actually threw, so it can be shown on screen. */
+    fun unlock(pkg: String, blocks: Int, onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            runCatching { repo.unlock(pkg, blocks) }
+                .onSuccess { onResult(it, null) }
+                .onFailure {
+                    android.util.Log.e("QuestBlock", "unlock failed", it)
+                    onResult(false, "${it.javaClass.simpleName}: ${it.message}")
+                }
+        }
     }
 }
 
@@ -269,13 +277,17 @@ fun BlockScreen(
                     }.getOrNull()?.let { vib ->
                         vib.vibrate(VibrationEffect.createOneShot(80, VibrationEffect.DEFAULT_AMPLITUDE))
                     }
-                    vm.unlock(pkg, blocksNow) { ok ->
+                    vm.unlock(pkg, blocksNow) { ok, err ->
                         if (ok) {
                             KeepAlive.start(ctx)
                             onUnlocked()
                         } else {
                             paying = false
-                            Toast.makeText(ctx, "Not enough coins", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                ctx,
+                                if (err != null) "Unlock failed — $err" else "Not enough coins",
+                                Toast.LENGTH_LONG,
+                            ).show()
                         }
                     }
                 } else {
