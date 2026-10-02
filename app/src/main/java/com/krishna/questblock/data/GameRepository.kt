@@ -430,12 +430,14 @@ class GameRepository @Inject constructor(
             val app = appDao.get(pkg) ?: error("$pkg is not in the blocked list")
             val prev = lastPaidAt[pkg]
             if (prev != null && up - prev < DOUBLE_PAY_WINDOW_MS && app.unlockedUntil > System.currentTimeMillis()) {
+                com.krishna.questblock.util.DebugLog.d("repo.unlock: double-pay guard hit, NOT charging")
                 result = UnlockResult(ok = true, charged = false)
                 return@withTransaction
             }
             val p = playerDao.get() ?: Player().also { playerDao.upsert(it) }
             val cost = unlockCost(b, prefs.ratePer5, app)
             // atomic UPDATE ... WHERE coins >= cost: no read-modify-write, can't be overwritten by a stale copy
+            com.krishna.questblock.util.DebugLog.d("repo.unlock: pkg=$pkg blocks=$b cost=$cost coins=${p.coins}")
             if (playerDao.spend(cost) == 0) { result = UnlockResult(ok = false, cost = cost, before = p.coins, after = p.coins); return@withTransaction }
             val now = System.currentTimeMillis()
             val msBought = b * 5 * 60_000L

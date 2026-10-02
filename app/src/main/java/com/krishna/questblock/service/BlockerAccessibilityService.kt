@@ -126,6 +126,7 @@ class BlockerAccessibilityService : AccessibilityService() {
             if (app.dailyLimitMin > 0) {
                 val used = if (app.usedDay == dayNumber(System.currentTimeMillis())) app.usedTodayMs else 0L
                 if (used < app.dailyLimitMin * 60_000L) {
+                    com.krishna.questblock.util.DebugLog.d("service: $pkg FREE via daily limit (${used / 60_000L}/${app.dailyLimitMin} min)")
                     logFree(pkg, "${app.label} · ${used / 60_000L}/${app.dailyLimitMin} min used", "Free · daily limit")
                     startUsageTimer(pkg)
                     return
@@ -135,6 +136,7 @@ class BlockerAccessibilityService : AccessibilityService() {
 
             val now = System.currentTimeMillis()
             if (app.unlockedUntil > now) {
+                com.krishna.questblock.util.DebugLog.d("service: $pkg is unlocked, left=${app.unlockedUntil - now}ms")
                 if (repo.focusUnlockedPkg(pkg)) logFree(pkg, app.label, "Free · Focus Quest")
                 // v17: user is now inside a paid-unlock app — track entry time
                 if (trackedUnlockPkg != pkg) {
@@ -242,6 +244,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         lastBlockPkg = app.packageName
         lastBlockAt = now
 
+        com.krishna.questblock.util.DebugLog.d("service.showBlock pkg=${app.packageName} unlockLeft=${app.unlockedUntil - System.currentTimeMillis()}ms")
         val intent = Intent(this, BlockActivity::class.java)
             .putExtra(BlockActivity.EXTRA_PKG, app.packageName)
             .addFlags(

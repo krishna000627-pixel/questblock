@@ -126,6 +126,7 @@ class BlockActivity : ComponentActivity() {
         )
         target = intent.getStringExtra(EXTRA_PKG).orEmpty()
         showingFor = target
+        com.krishna.questblock.util.DebugLog.d("BlockActivity.onCreate pkg=$target")
         onBackPressedDispatcher.addCallback(this) { goHome() }
         setContent {
             QuestTheme {
@@ -148,6 +149,7 @@ class BlockActivity : ComponentActivity() {
         launching = false
         opened = false
         nonce++
+        com.krishna.questblock.util.DebugLog.d("BlockActivity.onNewIntent pkg=$target")
     }
 
     override fun onStop() {
@@ -255,7 +257,11 @@ fun BlockScreen(
     val unlockedUntil = rule?.unlockedUntil ?: 0L
     LaunchedEffect(unlockedUntil) {
         // while we are paying we show the receipt first and exit ourselves
-        if (unlockedUntil > System.currentTimeMillis() && !paying) onUnlocked()
+        com.krishna.questblock.util.DebugLog.d("page: pkg=$pkg rule=${rule != null} unlockLeft=${unlockedUntil - System.currentTimeMillis()}ms paying=$paying coins=${player.coins}")
+        if (unlockedUntil > System.currentTimeMillis() && !paying) {
+            com.krishna.questblock.util.DebugLog.d("AUTO-EXIT: app already unlocked (no payment happened on this page)")
+            onUnlocked()
+        }
     }
 
     // Live unlock-timer countdown (shown when currently unlocked)
@@ -277,6 +283,7 @@ fun BlockScreen(
                 holdProgress = (it + 1) / steps.toFloat()
             }
             if (isHolding) {
+                com.krishna.questblock.util.DebugLog.d("hold complete: rule=${rule != null} paying=$paying coins=$coinsNow cost=$costNow blocks=$blocksNow")
                 when {
                     rule == null -> status = "\u26A0 $label isn't in your blocked list (Vault)"
                     paying -> status = "Already processing\u2026"
@@ -296,6 +303,7 @@ fun BlockScreen(
                             vib.vibrate(VibrationEffect.createOneShot(80, VibrationEffect.DEFAULT_AMPLITUDE))
                         }
                         vm.unlock(pkg, blocksNow) { res, err ->
+                            com.krishna.questblock.util.DebugLog.d("unlock result: ok=${res.ok} charged=${res.charged} cost=${res.cost} ${res.before}->${res.after} err=$err")
                             if (res.ok) {
                                 status = if (res.charged) {
                                     val bad = res.after != res.before - res.cost
@@ -462,6 +470,7 @@ fun BlockScreen(
                                 if (canAfford) {
                                     detectTapGestures(
                                         onPress = {
+                                            com.krishna.questblock.util.DebugLog.d("hold: finger down")
                                             if (!paying) status = "Holding\u2026 keep your finger down"
                                             isHolding = true
                                             val released = tryAwaitRelease()

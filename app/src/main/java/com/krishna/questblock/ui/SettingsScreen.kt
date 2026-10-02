@@ -292,6 +292,21 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, vm: Settin
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
         Spacer(Modifier.height(12.dp))
+        Section("\uD83D\uDC1E Debug log") {
+            var logText by remember { mutableStateOf(com.krishna.questblock.util.DebugLog.read()) }
+            Text(if (logText.isBlank()) "(empty \u2014 try an unlock, then come back and tap Refresh)" else logText.takeLast(2500),
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { logText = com.krishna.questblock.util.DebugLog.read() }) { Text("Refresh") }
+                OutlinedButton(onClick = {
+                    val cm = ctx.getSystemService(android.content.ClipboardManager::class.java)
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("QuestBlock log", com.krishna.questblock.util.DebugLog.read()))
+                    android.widget.Toast.makeText(ctx, "Log copied", android.widget.Toast.LENGTH_SHORT).show()
+                }) { Text("Copy") }
+                OutlinedButton(onClick = { com.krishna.questblock.util.DebugLog.clear(); logText = "" }) { Text("Clear") }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
     }
 
     if (confirmReset) {

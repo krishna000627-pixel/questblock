@@ -8,6 +8,7 @@ import dagger.hilt.android.HiltAndroidApp
 class QuestApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        com.krishna.questblock.util.DebugLog.init(this)
         Reminders.ensureChannel(this)
     }
 }
