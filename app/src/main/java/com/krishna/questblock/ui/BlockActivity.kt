@@ -113,6 +113,8 @@ class BlockViewModel @Inject constructor(private val repo: GameRepository) : Vie
 class BlockActivity : ComponentActivity() {
 
     private var target by mutableStateOf("")
+    /** Bumped on every re-launch so a stale 'paying' / status from an earlier attempt can't freeze the new lock page. */
+    private var nonce by mutableIntStateOf(0)
     /** True once we've decided to open the target app — prevents finishAndRemoveTask in onStop. */
     private var launching = false
 
@@ -129,6 +131,7 @@ class BlockActivity : ComponentActivity() {
             QuestTheme {
                 BlockScreen(
                     pkg = target,
+                    nonce = nonce,
                     onHome = ::goHome,
                     onQuests = ::openQuests,
                     onUnlocked = ::openTarget,
@@ -144,6 +147,7 @@ class BlockActivity : ComponentActivity() {
         showingFor = target
         launching = false
         opened = false
+        nonce++
     }
 
     override fun onStop() {
@@ -205,6 +209,7 @@ private val MOTIVATIONAL_LINES = listOf(
 @Composable
 fun BlockScreen(
     pkg: String,
+    nonce: Int = 0,
     onHome: () -> Unit,
     onQuests: () -> Unit,
     onUnlocked: () -> Unit,
@@ -239,11 +244,12 @@ fun BlockScreen(
         label = "hold_progress",
     )
     var isHolding by remember { mutableStateOf(false) }
-    var paying by remember(pkg) { mutableStateOf(false) }
+    var paying by remember(pkg, nonce) { mutableStateOf(false) }
     // On-screen status: toasts get hidden on some phones (notifications off), so show everything here.
-    var status by remember { mutableStateOf("") }
+    var status by remember(pkg, nonce) { mutableStateOf("") }
     val uiScope = rememberCoroutineScope()
     val notifOk = remember { com.krishna.questblock.util.Perms.notificationsOk(ctx) }
+    val buildVer = remember { runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?" }
 
     // Already unlocked: exit immediately — single tap scenario covered here too
     val unlockedUntil = rule?.unlockedUntil ?: 0L
@@ -503,6 +509,7 @@ fun BlockScreen(
                         color = ColorDanger, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(8.dp))
                 }
+                Text("build $buildVer", color = ColorMuted, style = MaterialTheme.typography.labelSmall)
             if (questIsPrimary) {
                 Button(
                     onClick = onQuests,
