@@ -72,6 +72,7 @@ import androidx.lifecycle.viewModelScope
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Player
 import com.krishna.questblock.data.MAX_UNLOCK_BLOCKS
+import com.krishna.questblock.data.UnlockResult
 import com.krishna.questblock.data.fmtBlocks
 import com.krishna.questblock.data.fmtLeft
 import com.krishna.questblock.data.unlockCost
@@ -95,13 +96,13 @@ class BlockViewModel @Inject constructor(private val repo: GameRepository) : Vie
     fun holdSeconds(): Int = repo.holdSeconds()
     fun showQuotes(): Boolean = repo.showQuotes()
     /** onResult(ok, error): error is non-null only when something actually threw, so it can be shown on screen. */
-    fun unlock(pkg: String, blocks: Int, onResult: (Boolean, String?) -> Unit) {
+    fun unlock(pkg: String, blocks: Int, onResult: (UnlockResult, String?) -> Unit) {
         viewModelScope.launch {
             runCatching { repo.unlock(pkg, blocks) }
                 .onSuccess { onResult(it, null) }
                 .onFailure {
                     android.util.Log.e("QuestBlock", "unlock failed", it)
-                    onResult(false, "${it.javaClass.simpleName}: ${it.message}")
+                    onResult(UnlockResult(ok = false), "${it.javaClass.simpleName}: ${it.message}")
                 }
         }
     }
@@ -277,8 +278,17 @@ fun BlockScreen(
                     }.getOrNull()?.let { vib ->
                         vib.vibrate(VibrationEffect.createOneShot(80, VibrationEffect.DEFAULT_AMPLITUDE))
                     }
-                    vm.unlock(pkg, blocksNow) { ok, err ->
-                        if (ok) {
+                    vm.unlock(pkg, blocksNow) { res, err ->
+                        if (res.ok) {
+                            if (res.charged) {
+                                val bad = res.after != res.before - res.cost
+                                Toast.makeText(
+                                    ctx,
+                                    "-${res.cost} \uD83E\uDE99  (${res.before} \u2192 ${res.after})  +${res.minutes} min" +
+                                        if (bad) "\n\u26A0 balance mismatch: another writer changed coins" else "",
+                                    Toast.LENGTH_LONG,
+                                ).show()
+                            }
                             KeepAlive.start(ctx)
                             onUnlocked()
                         } else {

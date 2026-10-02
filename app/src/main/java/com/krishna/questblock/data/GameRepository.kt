@@ -1,5 +1,6 @@
 package com.krishna.questblock.data
 
+import kotlinx.coroutines.sync.withLock
 import android.content.Context
 import androidx.room.withTransaction
 import com.krishna.questblock.service.Reminders
@@ -19,6 +20,11 @@ const val FOCUS_BONUS_COINS = 15
 const val DAILY_LOGIN_COINS = 5
 
 const val DEFAULT_RATE_PER_5 = 5
+data class UnlockResult(
+    val ok: Boolean, val charged: Boolean = false, val cost: Int = 0,
+    val before: Int = 0, val after: Int = 0, val minutes: Int = 0, val msBought: Long = 0L,
+)
+
 const val MAX_UNLOCK_BLOCKS = 144   // 12 h of 5-minute blocks
 private const val DOUBLE_PAY_WINDOW_MS = 5_000L
 
@@ -412,42 +418,47 @@ class GameRepository @Inject constructor(
      * Also opens an UnlockSession to track actual time spent.
      * Returns true on success.
      */
-    suspend fun unlock(pkg: String, blocks: Int): Boolean {
+    private val unlockMutex = kotlinx.coroutines.sync.Mutex()
+
+    suspend fun unlock(pkg: String, blocks: Int): UnlockResult = unlockMutex.withLock {
         val b = blocks.coerceIn(1, MAX_UNLOCK_BLOCKS)
         val up = android.os.SystemClock.elapsedRealtime()
-        // CRITICAL part: take coins + save unlock time. Nothing optional lives in here, so a
-        // bookkeeping failure can never roll back the payment or the unlock.
-        var paid = 0
         var label = ""
-        var msBought = 0L
-        val ok = db.withTransaction {
+        var result = UnlockResult(ok = false)
+        // CRITICAL part: take coins + save unlock time. Nothing optional lives in here.
+        db.withTransaction {
             val app = appDao.get(pkg) ?: error("$pkg is not in the blocked list")
             val prev = lastPaidAt[pkg]
-            if (prev != null && up - prev < DOUBLE_PAY_WINDOW_MS && app.unlockedUntil > System.currentTimeMillis())
-                return@withTransaction true
-            val p = playerDao.get() ?: Player()
+            if (prev != null && up - prev < DOUBLE_PAY_WINDOW_MS && app.unlockedUntil > System.currentTimeMillis()) {
+                result = UnlockResult(ok = true, charged = false)
+                return@withTransaction
+            }
+            val p = playerDao.get() ?: Player().also { playerDao.upsert(it) }
             val cost = unlockCost(b, prefs.ratePer5, app)
-            if (p.coins < cost) return@withTransaction false
+            // atomic UPDATE ... WHERE coins >= cost: no read-modify-write, can't be overwritten by a stale copy
+            if (playerDao.spend(cost) == 0) { result = UnlockResult(ok = false, cost = cost, before = p.coins, after = p.coins); return@withTransaction }
             val now = System.currentTimeMillis()
-            playerDao.upsert(p.copy(coins = p.coins - cost))
-            val base = maxOf(now, app.unlockedUntil)
-            msBought = b * 5 * 60_000L
-            appDao.upsert(app.copy(unlockedUntil = base + msBought))
+            val msBought = b * 5 * 60_000L
+            appDao.upsert(app.copy(unlockedUntil = maxOf(now, app.unlockedUntil) + msBought))
             unlockEventDao.insert(UnlockEvent(packageName = app.packageName, label = app.label, coinsSpent = cost))
             logCoin(-cost, "Unlock", "${app.label} \u00b7 ${fmtBlocks(b)}")
             lastPaidAt[pkg] = up
-            paid = cost; label = app.label
-            true
+            label = app.label
+            result = UnlockResult(ok = true, charged = true, cost = cost, before = p.coins, after = p.coins - cost, minutes = b * 5, msBought = msBought)
         }
-        // OPTIONAL part: usage-session tracking. Wrapped so it can never break an unlock.
-        if (ok && paid > 0) runCatching {
-            closeUnlockSession(pkg)
-            unlockSessionDao.insert(UnlockSession(
-                packageName = pkg, label = label,
-                startedAt = System.currentTimeMillis(), msBought = msBought, coinsSpent = paid,
-            ))
-        }.onFailure { android.util.Log.e("QuestBlock", "unlock session tracking failed", it) }
-        return ok
+        // Re-read the real balance so the confirmation shows what is actually stored.
+        if (result.ok && result.charged) {
+            val real = playerDao.get()?.coins ?: result.after
+            result = result.copy(after = real)
+            runCatching {
+                closeUnlockSession(pkg)
+                unlockSessionDao.insert(UnlockSession(
+                    packageName = pkg, label = label,
+                    startedAt = System.currentTimeMillis(), msBought = result.msBought, coinsSpent = result.cost,
+                ))
+            }.onFailure { android.util.Log.e("QuestBlock", "unlock session tracking failed", it) }
+        }
+        result
     }
 
     // ── Unlock session tracking (v17) ────────────────────────────────────

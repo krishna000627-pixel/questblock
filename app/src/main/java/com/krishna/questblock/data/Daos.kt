@@ -38,6 +38,8 @@ import kotlinx.coroutines.flow.Flow
     @Query("SELECT * FROM player WHERE id = 1") fun observe(): Flow<Player?>
     @Query("SELECT * FROM player WHERE id = 1") suspend fun get(): Player?
     @Upsert suspend fun upsert(player: Player)
+    /** Atomic: subtract coins only if the balance covers it. Returns rows changed (0 = not enough). */
+    @Query("UPDATE player SET coins = coins - :cost WHERE id = 1 AND coins >= :cost") suspend fun spend(cost: Int): Int
 }
 
 @Dao interface UnlockEventDao {
