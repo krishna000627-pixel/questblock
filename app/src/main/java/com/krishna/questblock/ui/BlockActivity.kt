@@ -80,6 +80,7 @@ import com.krishna.questblock.service.KeepAlive
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -239,11 +240,16 @@ fun BlockScreen(
     )
     var isHolding by remember { mutableStateOf(false) }
     var paying by remember(pkg) { mutableStateOf(false) }
+    // On-screen status: toasts get hidden on some phones (notifications off), so show everything here.
+    var status by remember { mutableStateOf("") }
+    val uiScope = rememberCoroutineScope()
+    val notifOk = remember { com.krishna.questblock.util.Perms.notificationsOk(ctx) }
 
     // Already unlocked: exit immediately — single tap scenario covered here too
     val unlockedUntil = rule?.unlockedUntil ?: 0L
     LaunchedEffect(unlockedUntil) {
-        if (unlockedUntil > System.currentTimeMillis()) onUnlocked()
+        // while we are paying we show the receipt first and exit ourselves
+        if (unlockedUntil > System.currentTimeMillis() && !paying) onUnlocked()
     }
 
     // Live unlock-timer countdown (shown when currently unlocked)
@@ -264,44 +270,43 @@ fun BlockScreen(
                 delay(100L)
                 holdProgress = (it + 1) / steps.toFloat()
             }
-            if (isHolding && rule != null && !paying) {
-                if (coinsNow >= costNow) {
-                    paying = true
-                    runCatching {
-                        if (android.os.Build.VERSION.SDK_INT >= 31) {
-                            (ctx.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)
-                                ?.defaultVibrator
-                        } else {
-                            @Suppress("DEPRECATION")
-                            ctx.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator
-                        }
-                    }.getOrNull()?.let { vib ->
-                        vib.vibrate(VibrationEffect.createOneShot(80, VibrationEffect.DEFAULT_AMPLITUDE))
-                    }
-                    vm.unlock(pkg, blocksNow) { res, err ->
-                        if (res.ok) {
-                            if (res.charged) {
-                                val bad = res.after != res.before - res.cost
-                                Toast.makeText(
-                                    ctx,
-                                    "-${res.cost} \uD83E\uDE99  (${res.before} \u2192 ${res.after})  +${res.minutes} min" +
-                                        if (bad) "\n\u26A0 balance mismatch: another writer changed coins" else "",
-                                    Toast.LENGTH_LONG,
-                                ).show()
+            if (isHolding) {
+                when {
+                    rule == null -> status = "\u26A0 $label isn't in your blocked list (Vault)"
+                    paying -> status = "Already processing\u2026"
+                    coinsNow < costNow -> status = "Not enough coins: have $coinsNow, need $costNow"
+                    else -> {
+                        paying = true
+                        status = "Paying $costNow \uD83E\uDE99\u2026"
+                        runCatching {
+                            if (android.os.Build.VERSION.SDK_INT >= 31) {
+                                (ctx.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)
+                                    ?.defaultVibrator
+                            } else {
+                                @Suppress("DEPRECATION")
+                                ctx.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator
                             }
-                            KeepAlive.start(ctx)
-                            onUnlocked()
-                        } else {
-                            paying = false
-                            Toast.makeText(
-                                ctx,
-                                if (err != null) "Unlock failed — $err" else "Not enough coins",
-                                Toast.LENGTH_LONG,
-                            ).show()
+                        }.getOrNull()?.let { vib ->
+                            vib.vibrate(VibrationEffect.createOneShot(80, VibrationEffect.DEFAULT_AMPLITUDE))
+                        }
+                        vm.unlock(pkg, blocksNow) { res, err ->
+                            if (res.ok) {
+                                status = if (res.charged) {
+                                    val bad = res.after != res.before - res.cost
+                                    "\u2705 -${res.cost} \uD83E\uDE99  (${res.before} \u2192 ${res.after})  +${res.minutes} min" +
+                                        if (bad) "\n\u26A0 balance mismatch: another writer changed coins" else ""
+                                } else "\u2705 Already unlocked"
+                                KeepAlive.start(ctx)
+                                uiScope.launch {
+                                    delay(if (res.charged) 1600L else 300L)
+                                    onUnlocked()
+                                }
+                            } else {
+                                paying = false
+                                status = if (err != null) "\u274C Unlock failed: $err" else "Not enough coins"
+                            }
                         }
                     }
-                } else {
-                    Toast.makeText(ctx, "Not enough coins — do a quest first", Toast.LENGTH_SHORT).show()
                 }
                 holdProgress = 0f
                 isHolding = false
@@ -451,8 +456,13 @@ fun BlockScreen(
                                 if (canAfford) {
                                     detectTapGestures(
                                         onPress = {
+                                            if (!paying) status = "Holding\u2026 keep your finger down"
                                             isHolding = true
-                                            tryAwaitRelease()
+                                            val released = tryAwaitRelease()
+                                            if (isHolding && !paying) {
+                                                status = if (released) "Released too early \u2014 hold until the bar fills"
+                                                         else "Press got cancelled \u2014 hold still, don't slide"
+                                            }
                                             isHolding = false
                                         }
                                     )
@@ -481,6 +491,18 @@ fun BlockScreen(
                 }
             }
 
+                if (status.isNotEmpty()) {
+                    Text(status, color = ColorText, style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                }
+                if (!notifOk) {
+                    Text("\uD83D\uDD14 Notifications are OFF for QuestBlock \u2014 turn them on in phone Settings > Apps > QuestBlock. " +
+                        "That's why the unlock timer notification (and popups) don't show.",
+                        color = ColorDanger, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(8.dp))
+                }
             if (questIsPrimary) {
                 Button(
                     onClick = onQuests,
