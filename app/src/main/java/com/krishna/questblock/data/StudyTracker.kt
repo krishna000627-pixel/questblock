@@ -64,3 +64,22 @@ object StudyTracker {
         Status(activeLabel, activeCarry, unitMs)
     }
 }
+
+/**
+ * Instant signal from the accessibility service: "a study app is on screen right now".
+ * It never pays coins. It only (1) lets the notification show the study line and bar at once and
+ * (2) wakes the usage-record check on enter/leave so coins are settled right away.
+ */
+object StudySignal {
+    @Volatile var pkg: String? = null
+    @Volatile var label: String = ""
+    @Volatile var since: Long = 0L
+    val pokes = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
+
+    fun enter(p: String, l: String) {
+        if (pkg != p) { pkg = p; label = l; since = System.currentTimeMillis(); pokes.trySend(Unit) }
+    }
+    fun leave() {
+        if (pkg != null) { pkg = null; pokes.trySend(Unit) }
+    }
+}

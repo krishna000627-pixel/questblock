@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 import com.krishna.questblock.data.BlockedApp
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Prefs
+import com.krishna.questblock.data.StudySignal
 import com.krishna.questblock.data.StudyTracker
 import com.krishna.questblock.data.fmtLeft
 import com.krishna.questblock.data.frozenAt
@@ -31,6 +32,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /** Start / channel helpers for the keep-alive service. */
@@ -115,13 +117,14 @@ class KeepAliveService : Service() {
                     val st = runCatching { StudyTracker.sweep(applicationContext, repo, prefs) }.getOrNull()
                     study = st; studyAt = System.currentTimeMillis()
                     render()
-                    delay(20_000L)
+                    // quicker while a study app is open; enter/leave from the accessibility service wakes it at once
+                    withTimeoutOrNull(if (StudySignal.pkg != null) 10_000L else 20_000L) { StudySignal.pokes.receive() }
                 }
             }
             scope.launch {
                 while (true) {
                     render()
-                    delay(if (hasActiveUnlock()) 1000L else 5000L)
+                    delay(if (hasActiveUnlock() || StudySignal.pkg != null) 1000L else 5000L)
                 }
             }
         }
@@ -156,18 +159,21 @@ class KeepAliveService : Service() {
         var progress = -1
         var visible = false
         // Priority: a study app on screen -> study line. Otherwise (unlocked app open, or nothing) -> unlock line.
-        val st = study
-        val studyOpen = st != null && st.activeLabel != null && now - studyAt < 45_000L
-        if (studyOpen && st != null) {
-            val toGo = (st.unitMs - st.carryMs).coerceAtLeast(1_000L)
+        val sigPkg = StudySignal.pkg
+        if (sigPkg != null) {
+            // live progress: stored carry + time since the last check (or since the app opened, if later)
+            val unitMs = prefs.studyMinPerCoin.coerceAtLeast(1) * 60_000L
+            val live = prefs.studyCarryMs(sigPkg) + (now - maxOf(prefs.studyCheckpoint, StudySignal.since)).coerceAtLeast(0L)
+            val carry = live % unitMs
+            val toGo = (unitMs - carry).coerceAtLeast(1_000L)
             val unlockHint = active.firstOrNull()?.let { a ->
                 val aw = prefs.awayAt(a.packageName)
-                " · ${a.label} ${fmtLeft(a.leftMs(aw, now))} ${if (a.frozenAt(aw, now)) "saved" else "left"}"
+                " · ${a.label} ${(a.leftMs(aw, now) + 59_999L) / 60_000L} min ${if (a.frozenAt(aw, now)) "saved" else "left"}"
             } ?: ""
-            title = "📚 ${st.activeLabel} · studying"
-            text = "Next coin in ${fmtLeft(toGo - (now - studyAt))}$unlockHint"
-            whenMs = studyAt + toGo
-            progress = ((st.carryMs * 100) / st.unitMs).toInt().coerceIn(0, 100)
+            title = "📚 ${StudySignal.label} · studying"
+            text = "1 \uD83E\uDE99 every ${prefs.studyMinPerCoin} min$unlockHint"
+            whenMs = now + toGo
+            progress = ((carry * 100) / unitMs).toInt().coerceIn(0, 100)
         } else if (active.isNotEmpty()) {
             val first = active.first()
             val away = prefs.awayAt(first.packageName)
@@ -183,8 +189,10 @@ class KeepAliveService : Service() {
                 visible = true
             } else {
                 val warn = if (left <= 60_000L) "⏳ " else ""
-                title = "$warn${first.label} · ${fmtLeft(left)} left"
-                text = "$blocksLeft × 5 min left · next block ends in ${fmtLeft(inBlock)}$extra"
+                // The ONLY clock is the system countdown in the header (it ticks by itself, exact to the second).
+                // A second clock in the text always disagreed with it by up to a second.
+                title = "$warn${first.label} · unlocked"
+                text = "$blocksLeft × 5 min block${if (blocksLeft > 1) "s" else ""} left$extra"
                 whenMs = first.unlockedUntil
                 progress = (((blockMs - inBlock) * 100) / blockMs).toInt().coerceIn(0, 100)
             }

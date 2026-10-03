@@ -17,6 +17,7 @@ import com.krishna.questblock.data.enforcedAt
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.StudySession
+import com.krishna.questblock.data.StudySignal
 import com.krishna.questblock.util.DebugLog
 import com.krishna.questblock.data.UsageTracker
 import com.krishna.questblock.ui.BlockActivity
@@ -62,8 +63,10 @@ class BlockerAccessibilityService : AccessibilityService() {
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context?, i: Intent?) {
             when (i?.action) {
-                Intent.ACTION_SCREEN_OFF ->
+                Intent.ACTION_SCREEN_OFF -> {
                     trackedUnlockPkg?.let { prefs.setAwayAt(it, System.currentTimeMillis()) }
+                    StudySignal.leave()
+                }
                 Intent.ACTION_USER_PRESENT ->
                     currentPkg?.let { p -> scope.launch { evaluateApp(p) } }
             }
@@ -153,6 +156,7 @@ class BlockerAccessibilityService : AccessibilityService() {
 
         if (app != null && !app.isStudyApp) {
             stopStudyTimer()
+            StudySignal.leave()
             val cal = Calendar.getInstance()
             val minuteOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
 
@@ -205,7 +209,11 @@ class BlockerAccessibilityService : AccessibilityService() {
         if (app != null && app.isStudyApp) {
             logFree(pkg, app.label, "Free · study app")
             startStudyTimer(pkg, app.label)
-        } else stopStudyTimer()
+            if (UsageTracker.hasAccess(this)) StudySignal.enter(pkg, app.label) else StudySignal.leave()
+        } else {
+            stopStudyTimer()
+            StudySignal.leave()
+        }
     }
 
     // ── Daily-limit usage timer ──────────────────────────────────────────
@@ -327,6 +335,7 @@ class BlockerAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         runCatching { unregisterReceiver(screenReceiver) }
+        StudySignal.leave()
         if (instance === this) instance = null
         // Flush unlock tracking before dying
         val tracked = trackedUnlockPkg
