@@ -128,6 +128,7 @@ class BlockActivity : ComponentActivity() {
         showingFor = target
         com.krishna.questblock.util.DebugLog.d("BlockActivity.onCreate pkg=$target")
         onBackPressedDispatcher.addCallback(this) { goHome() }
+        loadThemeMode(this)
         setContent {
             QuestTheme {
                 BlockScreen(

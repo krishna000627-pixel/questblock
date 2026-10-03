@@ -130,6 +130,22 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, vm: Settin
 
         // ── Look ─────────────────────────────────────────────────────────
         Section("🎨 Look") {
+            Text("Theme", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
+            val sysDark = androidx.compose.foundation.isSystemInDarkTheme()
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("\uD83C\uDF19 Dark" to 0, "\u2600\uFE0F Light" to 1, "\uD83D\uDCF1 System" to 2).forEach { (label, m) ->
+                    val sel = ThemeMode == m
+                    Box(
+                        Modifier
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                            .background(if (sel) ColorPrimary.copy(alpha = 0.18f) else ColorSurfaceHigh)
+                            .clickable { prefs.themeMode = m; applyThemeMode(m, sysDark) }
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(label, color = if (sel) ColorPrimary else ColorText, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal) }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
             Text("Accent colour", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
             var accent by remember { mutableLongStateOf(prefs.accentArgb) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

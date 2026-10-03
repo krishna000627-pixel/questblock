@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
         onboardingDone = prefs.onboardingDone
         if (onboardingDone) KeepAlive.start(this)
         ColorPrimary = ComposeColor(prefs.accentArgb)
+        loadThemeMode(this)
         enableEdgeToEdge(
             statusBarStyle     = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),

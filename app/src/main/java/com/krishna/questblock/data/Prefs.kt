@@ -9,6 +9,11 @@ import javax.inject.Singleton
 class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     private val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
 
+    /** 0 = dark, 1 = light, 2 = follow system */
+    var themeMode: Int
+        get() = sp.getInt("theme_mode", 0)
+        set(value) = sp.edit().putInt("theme_mode", value).apply()
+
     var strictMode: Boolean
         get() = sp.getBoolean("strict", false)
         set(value) = sp.edit().putBoolean("strict", value).apply()
