@@ -25,6 +25,9 @@ object UsageTracker {
     private const val EV_SHUTDOWN = 26      // DEVICE_SHUTDOWN
     private const val EV_STARTUP = 27       // DEVICE_STARTUP
     private const val LOOKBACK_MS = 3 * 60 * 60_000L
+    // If the whole phone logs no event at all for this long, the app was not really being used
+    // (phone left on a screen / screen-off event missing); stop counting after this much.
+    private const val STUCK_GAP_MS = 60 * 60_000L
 
     class Result(val perPkg: Map<String, Long>, val openPkg: String?)
 
@@ -54,6 +57,7 @@ object UsageTracker {
         // Activities currently resumed in the foreground package (only one package at a time).
         var fgPkg: String? = null
         val fgActs = HashSet<String>()
+        var lastEv = 0L
 
         fun close(at: Long) {
             val p = open ?: return
@@ -71,11 +75,28 @@ object UsageTracker {
             }
         }
 
+        // QuestBlock's own screen on/off record (exact, even when Android's event log skips them)
+        val scr = com.krishna.questblock.util.ScreenLog.between(ctx, from - LOOKBACK_MS, to)
+        var si = 0
+        fun applyScreen(upTo: Long) {
+            while (si < scr.size && scr[si].t <= upTo) {
+                val e = scr[si++]
+                if (e.on) { screenOn = true; sync(e.t) } else { screenOn = false; clearAll(e.t) }
+                lastEv = e.t
+            }
+        }
+
         while (events.hasNextEvent()) {
             events.getNextEvent(ev)
             val t = ev.timeStamp
+            applyScreen(t)
             val pkg = ev.packageName ?: ""
             val cls = ev.className ?: ""
+            if (open != null && lastEv > 0 && t - lastEv > STUCK_GAP_MS) {
+                // long silence while an app looked "open": it was really left behind
+                clearAll(lastEv + STUCK_GAP_MS)
+            }
+            lastEv = t
             when (ev.eventType) {
                 EV_RESUMED -> {
                     if (fgPkg != pkg) { fgActs.clear(); fgPkg = pkg }
@@ -92,6 +113,8 @@ object UsageTracker {
             }
         }
 
+        applyScreen(to)
+        if (open != null && lastEv > 0 && to - lastEv > STUCK_GAP_MS) clearAll(lastEv + STUCK_GAP_MS)
         val openAtEnd = if (screenOn) open else null
         if (openAtEnd != null) {
             val s = maxOf(since, from)
