@@ -118,13 +118,17 @@ fun MainScreen() {
                     navArgument("type") { type = NavType.StringType; defaultValue = "" },
                 ),
             ) { QuestCreatorScreen(onBack = { navController.popBackStack() }) }
-            composable("stats")    { StatsScreen(onBack = { navController.popBackStack() }) }
+            composable("stats")    { StatsScreen(onBack = { navController.popBackStack() }, onOpenUsage = { navController.openPage("usage") }) }
             composable("settings") {
                 SettingsScreen(
                     onBack = { navController.popBackStack() },
                     onOpenReliability = { navController.openPage("reliability") },
+                    onOpenCategories = { navController.openPage("categories") },
+                    onOpenUsage = { navController.openPage("usage") },
                 )
             }
+            composable("usage") { UsageScreen(onBack = { navController.popBackStack() }, onOpenCategories = { navController.openPage("categories") }) }
+            composable("categories") { CategoriesScreen(onBack = { navController.popBackStack() }) }
             composable("reliability") { ReliabilityScreen(onBack = { navController.popBackStack() }) }
             composable("coins")        { CoinLogScreen(onBack = { navController.popBackStack() }) }
             composable("about")        { AboutMeScreen(onBack = { navController.popBackStack() }) }

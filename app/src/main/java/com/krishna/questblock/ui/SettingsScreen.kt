@@ -88,7 +88,7 @@ class SettingsViewModel @Inject constructor(
 }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCategories: () -> Unit, onOpenUsage: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     val ctx = LocalContext.current
     val prefs = vm.prefs
     val player by vm.player.collectAsStateWithLifecycle()
@@ -213,6 +213,16 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, vm: Settin
             }
         }
 
+        // ── Apps ─────────────────────────────────────────────────────────
+        Section("\uD83D\uDCF1 Apps") {
+            Text("Sort your apps into Study, Coding, Neutral and Fun, and see how long you use each one.",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            OutlinedButton(onClick = onOpenCategories, shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth()) { Text("App categories") }
+            OutlinedButton(onClick = onOpenUsage, shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth()) { Text("Daily app usage") }
+        }
+
         // ── Reliability ──────────────────────────────────────────────────
         Section("🛠️ Reliability") {
             Text("Battery, autostart and keep-alive shortcuts so the blocker isn't killed in the background.",
@@ -258,6 +268,9 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, vm: Settin
                     Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
                         .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, Perms.adminComponent(ctx))
                 )
+            }
+            PermRow("Usage access", "Study coins and the App usage page", com.krishna.questblock.data.UsageTracker.hasAccess(ctx)) {
+                ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
             }
             val notifOk = Perms.notificationsOk(ctx)
             PermRow("Notifications", "Reminders, unlock timer, alerts", notifOk) {

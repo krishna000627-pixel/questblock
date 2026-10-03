@@ -105,3 +105,11 @@ fun agoText(ms: Long): String {
         else -> "${m / (60 * 24)} d ago"
     }
 }
+
+/** Unlock carry-over: true while the user is away from an app that still had unlock time left (same day). */
+fun BlockedApp.frozenAt(awayAt: Long, now: Long): Boolean =
+    awayAt > 0L && unlockedUntil > awayAt && dayNumber(awayAt) == dayNumber(now)
+
+/** Unlock time left; frozen at the moment the user left while they are away. */
+fun BlockedApp.leftMs(awayAt: Long, now: Long): Long =
+    if (frozenAt(awayAt, now)) unlockedUntil - awayAt else (unlockedUntil - now).coerceAtLeast(0L)

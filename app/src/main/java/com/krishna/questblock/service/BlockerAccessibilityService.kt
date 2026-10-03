@@ -1,7 +1,10 @@
 package com.krishna.questblock.service
 
 import android.accessibilityservice.AccessibilityService
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
@@ -14,6 +17,8 @@ import com.krishna.questblock.data.enforcedAt
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.StudySession
+import com.krishna.questblock.util.DebugLog
+import com.krishna.questblock.data.UsageTracker
 import com.krishna.questblock.ui.BlockActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -53,9 +58,26 @@ class BlockerAccessibilityService : AccessibilityService() {
     // v17: tracking which unlocked app is currently in foreground
     private var trackedUnlockPkg: String? = null
 
+    // Unlock carry-over: remember when the phone sleeps / wakes so time spent away is not charged
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context?, i: Intent?) {
+            when (i?.action) {
+                Intent.ACTION_SCREEN_OFF ->
+                    trackedUnlockPkg?.let { prefs.setAwayAt(it, System.currentTimeMillis()) }
+                Intent.ACTION_USER_PRESENT ->
+                    currentPkg?.let { p -> scope.launch { evaluateApp(p) } }
+            }
+        }
+    }
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
+        runCatching {
+            registerReceiver(screenReceiver, IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_USER_PRESENT)
+            })
+        }
         prefs.lastActiveAt = System.currentTimeMillis()
         KeepAlive.start(this)
         // Recover any sessions from a previous run that ended unexpectedly
@@ -94,6 +116,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         val tracked = trackedUnlockPkg
         if (tracked != null && tracked != newPkg) {
             trackedUnlockPkg = null
+            prefs.setAwayAt(tracked, System.currentTimeMillis())   // carry-over: time away is not charged
             scope.launch { repo.onLeaveUnlockedApp(tracked) }
         }
     }
@@ -109,8 +132,24 @@ class BlockerAccessibilityService : AccessibilityService() {
         expiryJob?.cancel()
     }
 
+    /**
+     * Carry-over: if the user left this app while it still had unlock time, push the deadline forward by the
+     * time they were away, so only minutes actually spent inside the app are used up.
+     */
+    private suspend fun applyCarryOver(app: BlockedApp): BlockedApp {
+        val away = prefs.awayAt(app.packageName)
+        if (away <= 0L) return app
+        prefs.clearAway(app.packageName)
+        val n = System.currentTimeMillis()
+        if (app.isStudyApp || app.unlockedUntil <= away || dayNumber(away) != dayNumber(n)) return app
+        val extended = app.unlockedUntil + (n - away)
+        repo.setUnlockedUntil(app.packageName, extended)
+        DebugLog.d("carry-over: ${app.packageName} was away ${(n - away) / 1000}s, left=${(app.unlockedUntil - away) / 1000}s kept")
+        return app.copy(unlockedUntil = extended)
+    }
+
     private suspend fun evaluateApp(pkg: String) {
-        val app = repo.getBlockedApp(pkg)
+        val app = repo.getBlockedApp(pkg)?.let { applyCarryOver(it) }
 
         if (app != null && !app.isStudyApp) {
             stopStudyTimer()
@@ -206,6 +245,8 @@ class BlockerAccessibilityService : AccessibilityService() {
 
     // ── Study timer ──────────────────────────────────────────────────────
     private fun startStudyTimer(pkg: String, label: String) {
+        // With Usage access, coins come from Android's usage record (StudyTracker), not from this timer.
+        if (UsageTracker.hasAccess(this)) return
         if (activeStudyPkg == pkg && studyTimerJob?.isActive == true) return
         stopStudyTimer()
         activeStudyPkg = pkg
@@ -285,6 +326,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     override fun onInterrupt() = Unit
 
     override fun onDestroy() {
+        runCatching { unregisterReceiver(screenReceiver) }
         if (instance === this) instance = null
         // Flush unlock tracking before dying
         val tracked = trackedUnlockPkg

@@ -18,7 +18,10 @@ import androidx.core.content.ContextCompat
 import com.krishna.questblock.data.BlockedApp
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Prefs
+import com.krishna.questblock.data.StudyTracker
 import com.krishna.questblock.data.fmtLeft
+import com.krishna.questblock.data.frozenAt
+import com.krishna.questblock.data.leftMs
 import com.krishna.questblock.ui.MainActivity
 import com.krishna.questblock.util.Perms
 import dagger.hilt.android.AndroidEntryPoint
@@ -85,6 +88,8 @@ class KeepAliveService : Service() {
     private var lastBeatWrite = 0L
     private var lastWatchdog = 0L
     private var offShown = false
+    private var study: StudyTracker.Status? = null
+    private var studyAt = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -104,6 +109,15 @@ class KeepAliveService : Service() {
                 startForeground(ID_ONGOING, n)
             }
             scope.launch { repo.blockedApps.collect { apps = it; render() } }
+            // Study coins come from Android's usage record; sweep every 20 s (also catches up after the service was killed)
+            scope.launch {
+                while (true) {
+                    val st = runCatching { StudyTracker.sweep(applicationContext, repo, prefs) }.getOrNull()
+                    study = st; studyAt = System.currentTimeMillis()
+                    render()
+                    delay(20_000L)
+                }
+            }
             scope.launch {
                 while (true) {
                     render()
@@ -116,7 +130,7 @@ class KeepAliveService : Service() {
 
     private fun hasActiveUnlock(): Boolean {
         val now = System.currentTimeMillis()
-        return apps.any { !it.isStudyApp && it.unlockedUntil > now }
+        return apps.any { !it.isStudyApp && it.unlockedUntil > now && !it.frozenAt(prefs.awayAt(it.packageName), now) }
     }
 
     private fun render() {
@@ -125,10 +139,13 @@ class KeepAliveService : Service() {
 
         if (now - lastBeatWrite > 5000L) { prefs.keepAliveBeat = now; lastBeatWrite = now }
 
-        val active = apps.filter { !it.isStudyApp && it.unlockedUntil > now }.sortedBy { it.unlockedUntil }
+        // an app counts as unlocked while time is running, or while it is paused (user away) with time saved
+        val active = apps.filter { !it.isStudyApp && (it.unlockedUntil > now || it.frozenAt(prefs.awayAt(it.packageName), now)) }
+            .sortedBy { it.leftMs(prefs.awayAt(it.packageName), now) }
 
         // ONE notification does everything: live countdown, 5-min block tracker, 1-min warning, expired state.
-        val justExpired = apps.filter { !it.isStudyApp && it.unlockedUntil in 1..now && now - it.unlockedUntil < 120_000L }
+        val justExpired = apps.filter { !it.isStudyApp && it.unlockedUntil in 1..now && now - it.unlockedUntil < 120_000L &&
+                !it.frozenAt(prefs.awayAt(it.packageName), now) }
             .maxByOrNull { it.unlockedUntil }
         // Old separate alert notifications are gone; clear any left over from earlier versions.
         apps.forEach { nm.cancel(ID_WARN_BASE + (it.packageName.hashCode() and 0xFFFF)) }
@@ -137,18 +154,40 @@ class KeepAliveService : Service() {
         val text: String
         var whenMs = 0L
         var progress = -1
-        if (active.isNotEmpty()) {
+        var visible = false
+        // Priority: a study app on screen -> study line. Otherwise (unlocked app open, or nothing) -> unlock line.
+        val st = study
+        val studyOpen = st != null && st.activeLabel != null && now - studyAt < 45_000L
+        if (studyOpen && st != null) {
+            val toGo = (st.unitMs - st.carryMs).coerceAtLeast(1_000L)
+            val unlockHint = active.firstOrNull()?.let { a ->
+                val aw = prefs.awayAt(a.packageName)
+                " · ${a.label} ${fmtLeft(a.leftMs(aw, now))} ${if (a.frozenAt(aw, now)) "saved" else "left"}"
+            } ?: ""
+            title = "📚 ${st.activeLabel} · studying"
+            text = "Next coin in ${fmtLeft(toGo - (now - studyAt))}$unlockHint"
+            whenMs = studyAt + toGo
+            progress = ((st.carryMs * 100) / st.unitMs).toInt().coerceIn(0, 100)
+        } else if (active.isNotEmpty()) {
             val first = active.first()
-            val left = first.unlockedUntil - now
+            val away = prefs.awayAt(first.packageName)
+            val paused = first.frozenAt(away, now)
+            val left = first.leftMs(away, now)
             val blockMs = 5 * 60_000L
             val blocksLeft = ((left + blockMs - 1) / blockMs).toInt().coerceAtLeast(1)
             val inBlock = left - (blocksLeft - 1) * blockMs            // time left in the current 5-min block
-            val warn = if (left <= 60_000L) "⏳ " else ""
-            title = "$warn${first.label} · ${fmtLeft(left)} left"
             val extra = if (active.size > 1) " · +${active.size - 1} more unlocked" else ""
-            text = "$blocksLeft × 5 min left · next block ends in ${fmtLeft(inBlock)}$extra"
-            whenMs = first.unlockedUntil
-            progress = (((blockMs - inBlock) * 100) / blockMs).toInt().coerceIn(0, 100)
+            if (paused) {
+                title = "⏸ ${first.label} · ${fmtLeft(left)} saved"
+                text = "Paused while you're away$extra"
+                visible = true
+            } else {
+                val warn = if (left <= 60_000L) "⏳ " else ""
+                title = "$warn${first.label} · ${fmtLeft(left)} left"
+                text = "$blocksLeft × 5 min left · next block ends in ${fmtLeft(inBlock)}$extra"
+                whenMs = first.unlockedUntil
+                progress = (((blockMs - inBlock) * 100) / blockMs).toInt().coerceIn(0, 100)
+            }
         } else if (justExpired != null) {
             title = "⌛ ${justExpired.label} locked again"; text = "Unlock ran out. Open QuestBlock to earn more time."
         } else {
@@ -158,7 +197,7 @@ class KeepAliveService : Service() {
         val key = "$title|$text|${progress / 2}"
         if (key != lastTitle && (screenOn || active.isEmpty())) {
             lastTitle = key; lastText = ""
-            nm.notify(ID_ONGOING, ongoing(title, text, whenMs, progress))
+            nm.notify(ID_ONGOING, ongoing(title, text, whenMs, progress, visible))
         }
 
         // Watchdog (every 20 s, only after setup)
@@ -190,8 +229,8 @@ class KeepAliveService : Service() {
         this, 0, Intent(this, MainActivity::class.java),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
-    private fun ongoing(title: String, text: String, countdownTo: Long = 0L, progress: Int = -1): Notification =
-        NotificationCompat.Builder(this, if (countdownTo > 0L) KeepAlive.CH_KEEPALIVE else KeepAlive.CH_IDLE)
+    private fun ongoing(title: String, text: String, countdownTo: Long = 0L, progress: Int = -1, visible: Boolean = countdownTo > 0L): Notification =
+        NotificationCompat.Builder(this, if (visible || countdownTo > 0L) KeepAlive.CH_KEEPALIVE else KeepAlive.CH_IDLE)
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentTitle(title)
             .setContentText(text)
@@ -199,7 +238,7 @@ class KeepAliveService : Service() {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
-            .setPriority(if (countdownTo > 0L) NotificationCompat.PRIORITY_LOW else NotificationCompat.PRIORITY_MIN)
+            .setPriority(if (visible || countdownTo > 0L) NotificationCompat.PRIORITY_LOW else NotificationCompat.PRIORITY_MIN)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .apply {
                 if (countdownTo > 0L) {   // system-drawn countdown keeps ticking even if our updates are paused

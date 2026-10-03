@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao interface BlockedAppDao {
     @Query("SELECT * FROM blocked_apps ORDER BY label COLLATE NOCASE") fun observeAll(): Flow<List<BlockedApp>>
     @Query("SELECT * FROM blocked_apps WHERE isStudyApp = 1") fun observeStudyApps(): Flow<List<BlockedApp>>
+    @Query("SELECT * FROM blocked_apps WHERE isStudyApp = 1") suspend fun studyAppsOnce(): List<BlockedApp>
     @Query("SELECT * FROM blocked_apps WHERE packageName = :pkg") suspend fun get(pkg: String): BlockedApp?
     @Upsert suspend fun upsert(app: BlockedApp)
     @Query("DELETE FROM blocked_apps WHERE packageName = :pkg") suspend fun delete(pkg: String)

@@ -286,13 +286,16 @@ private fun buildLeaderboard(player: Player, weeklyData: List<Pair<String, Int>>
 
 // ── Dedicated Stats screen ─────────────────────────────────────────────────
 @Composable
-fun StatsScreen(onBack: () -> Unit, vm: StatsViewModel = hiltViewModel()) {
+fun StatsScreen(onBack: () -> Unit, onOpenUsage: () -> Unit, vm: StatsViewModel = hiltViewModel()) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
             Text("Stats", style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold, color = ColorText)
+        }
+        OutlinedButton(onClick = onOpenUsage, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+            Text("\uD83D\uDCF1 Daily app usage")
         }
         StatsSection(vm)
         StatsExtras(vm)

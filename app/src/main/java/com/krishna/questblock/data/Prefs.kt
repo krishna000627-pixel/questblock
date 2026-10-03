@@ -14,6 +14,40 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         get() = sp.getInt("theme_mode", 0)
         set(value) = sp.edit().putInt("theme_mode", value).apply()
 
+    // ── App categories (manual choices), one "package=category" per line ──
+    fun categoryMap(): Map<String, String> =
+        (sp.getString("app_categories", "") ?: "").lineSequence()
+            .mapNotNull { line ->
+                val i = line.indexOf('=')
+                if (i > 0) line.substring(0, i) to line.substring(i + 1) else null
+            }
+            .toMap()
+
+    fun categoryOverride(pkg: String): String? = categoryMap()[pkg]
+
+    fun setCategory(pkg: String, cat: String?) {
+        val m = categoryMap().toMutableMap()
+        if (cat == null) m.remove(pkg) else m[pkg] = cat
+        sp.edit().putString("app_categories", m.entries.joinToString("\n") { "${it.key}=${it.value}" }).apply()
+    }
+
+    // ── Unlock carry-over: when the user left an unlocked app (0 = inside / not set) ──
+    fun awayAt(pkg: String): Long = sp.getLong("away_$pkg", 0L)
+    fun setAwayAt(pkg: String, t: Long) { sp.edit().putLong("away_$pkg", t).apply() }
+    fun clearAway(pkg: String) { sp.edit().remove("away_$pkg").apply() }
+
+    // ── Study tracking via Usage access ──
+    var studyCheckpoint: Long
+        get() = sp.getLong("study_checkpoint", 0L)
+        set(value) = sp.edit().putLong("study_checkpoint", value).apply()
+    fun studyCarryMs(pkg: String): Long = sp.getLong("study_carry_$pkg", 0L)
+    fun setStudyCarryMs(pkg: String, v: Long) { sp.edit().putLong("study_carry_$pkg", v).apply() }
+    fun studySessionId(pkg: String): Long = sp.getLong("study_sid_$pkg", -1L)
+    fun studySessionAt(pkg: String): Long = sp.getLong("study_sat_$pkg", 0L)
+    fun setStudySession(pkg: String, id: Long, at: Long) {
+        sp.edit().putLong("study_sid_$pkg", id).putLong("study_sat_$pkg", at).apply()
+    }
+
     var strictMode: Boolean
         get() = sp.getBoolean("strict", false)
         set(value) = sp.edit().putBoolean("strict", value).apply()

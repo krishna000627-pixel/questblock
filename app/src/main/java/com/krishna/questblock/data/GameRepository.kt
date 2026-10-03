@@ -527,6 +527,16 @@ class GameRepository @Inject constructor(
     }
 
     // ── Study coins ───────────────────────────────────────────────────────
+    suspend fun studyAppsOnce(): List<BlockedApp> = appDao.studyAppsOnce()
+
+    /** Unlock carry-over: move an app's unlock deadline (used when the user comes back to it). */
+    suspend fun setUnlockedUntil(pkg: String, until: Long) {
+        db.withTransaction {
+            val a = appDao.get(pkg) ?: return@withTransaction
+            appDao.upsert(a.copy(unlockedUntil = until))
+        }
+    }
+
     suspend fun startStudySession(pkg: String, label: String) = studySessionDao.insert(StudySession(packageName = pkg, label = label))
     suspend fun creditStudyCoins(sessionId: Long, minutes: Int, label: String = "") {
         db.withTransaction {
