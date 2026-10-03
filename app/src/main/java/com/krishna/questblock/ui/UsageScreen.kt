@@ -86,7 +86,8 @@ class UsageViewModel @Inject constructor(
                 val (from, to) = UsageTracker.rangeFor(range)
                 val pm = ctx.packageManager
                 val hidden = UsageTracker.hiddenPackages(ctx)
-                val raw = UsageTracker.foreground(ctx, from, to).perPkg
+                val sys = UsageTracker.systemTotals(ctx, from, to)
+                val raw = if (sys.isNotEmpty()) sys else UsageTracker.foreground(ctx, from, to).perPkg
                 val apps = raw.entries
                     .filter { it.key !in hidden && it.value >= 30_000L && pm.getLaunchIntentForPackage(it.key) != null }
                     .map { AppUse(it.key, UsageTracker.labelOf(pm, it.key), it.value, AppCategorizer.categoryOf(prefs, pm, it.key)) }

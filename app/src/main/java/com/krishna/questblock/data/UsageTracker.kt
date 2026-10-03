@@ -100,6 +100,25 @@ object UsageTracker {
         return Result(out, openAtEnd)
     }
 
+    /**
+     * Android's own pre-computed daily totals (the same numbers Digital Wellbeing is built on).
+     * Used for the App usage page so it matches the phone's own screen time.
+     */
+    fun systemTotals(ctx: Context, from: Long, to: Long): Map<String, Long> {
+        val usm = ctx.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+            ?: return emptyMap()
+        val list = runCatching { usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, from - 60 * 60_000L, to) }
+            .getOrNull() ?: return emptyMap()
+        val out = HashMap<String, Long>()
+        for (u in list) {
+            if (u.firstTimeStamp < from - 60 * 60_000L || u.firstTimeStamp >= to) continue
+            if (u.firstTimeStamp + 24 * 60 * 60_000L <= from) continue
+            val t = u.totalTimeInForeground
+            if (t > 0) out[u.packageName] = (out[u.packageName] ?: 0L) + t
+        }
+        return out
+    }
+
     /** 00:00 of the day [daysAgo] days back. */
     fun dayStart(daysAgo: Int): Long {
         val c = Calendar.getInstance()
