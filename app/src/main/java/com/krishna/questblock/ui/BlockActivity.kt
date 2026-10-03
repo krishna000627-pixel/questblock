@@ -258,9 +258,10 @@ fun BlockScreen(
     LaunchedEffect(unlockedUntil) {
         // while we are paying we show the receipt first and exit ourselves
         com.krishna.questblock.util.DebugLog.d("page: pkg=$pkg rule=${rule != null} unlockLeft=${unlockedUntil - System.currentTimeMillis()}ms paying=$paying coins=${player.coins}")
-        if (unlockedUntil > System.currentTimeMillis() && !paying) {
-            com.krishna.questblock.util.DebugLog.d("AUTO-EXIT: app already unlocked (no payment happened on this page)")
-            onUnlocked()
+        // No auto-open: the page switches to the "Open now" panel and waits for the user to tap Open.
+        if (unlockedUntil > System.currentTimeMillis()) {
+            com.krishna.questblock.util.DebugLog.d("page: app is unlocked, waiting for user to tap Open")
+            paying = false
         }
     }
 
@@ -313,10 +314,8 @@ fun BlockScreen(
                                         if (bad) "\n\u26A0 balance mismatch: another writer changed coins" else ""
                                 } else "\u2705 Already unlocked"
                                 KeepAlive.start(ctx)
-                                uiScope.launch {
-                                    delay(if (res.charged) 1600L else 300L)
-                                    onUnlocked()
-                                }
+                                // stay on the page: the "Open now" panel appears, the app opens only when tapped
+                                paying = false
                             } else {
                                 paying = false
                                 status = if (err != null) "\u274C Unlock failed: $err" else "Not enough coins"
