@@ -300,7 +300,9 @@ fun BlockScreen(
                                 ctx.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator
                             }
                         }.getOrNull()?.let { vib ->
-                            vib.vibrate(VibrationEffect.createOneShot(80, VibrationEffect.DEFAULT_AMPLITUDE))
+                            // never let a haptic failure (e.g. missing permission) crash the unlock
+                            runCatching { vib.vibrate(VibrationEffect.createOneShot(80, VibrationEffect.DEFAULT_AMPLITUDE)) }
+                                .onFailure { com.krishna.questblock.util.DebugLog.d("vibrate failed (ignored): ${it.message}") }
                         }
                         vm.unlock(pkg, blocksNow) { res, err ->
                             com.krishna.questblock.util.DebugLog.d("unlock result: ok=${res.ok} charged=${res.charged} cost=${res.cost} ${res.before}->${res.after} err=$err")
