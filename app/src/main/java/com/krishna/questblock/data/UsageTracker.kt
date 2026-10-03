@@ -21,6 +21,9 @@ object UsageTracker {
     private const val EV_SCREEN_ON = 15     // SCREEN_INTERACTIVE
     private const val EV_SCREEN_OFF = 16    // SCREEN_NON_INTERACTIVE
     private const val EV_KEYGUARD_SHOWN = 17
+    private const val EV_STOPPED = 23       // ACTIVITY_STOPPED
+    private const val EV_SHUTDOWN = 26      // DEVICE_SHUTDOWN
+    private const val EV_STARTUP = 27       // DEVICE_STARTUP
     private const val LOOKBACK_MS = 3 * 60 * 60_000L
 
     class Result(val perPkg: Map<String, Long>, val openPkg: String?)
@@ -48,6 +51,9 @@ object UsageTracker {
         var open: String? = null
         var since = 0L
         var screenOn = true
+        // Activities currently resumed in the foreground package (only one package at a time).
+        var fgPkg: String? = null
+        val fgActs = HashSet<String>()
 
         fun close(at: Long) {
             val p = open ?: return
@@ -56,22 +62,33 @@ object UsageTracker {
             if (e > s) out[p] = (out[p] ?: 0L) + (e - s)
             open = null
         }
+        fun clearAll(at: Long) { close(at); fgPkg = null; fgActs.clear() }
+        fun sync(at: Long) {
+            val want = if (screenOn && fgActs.isNotEmpty()) fgPkg else null
+            if (want != open) {
+                close(at)
+                if (want != null) { open = want; since = at }
+            }
+        }
 
         while (events.hasNextEvent()) {
             events.getNextEvent(ev)
             val t = ev.timeStamp
+            val pkg = ev.packageName ?: ""
+            val cls = ev.className ?: ""
             when (ev.eventType) {
                 EV_RESUMED -> {
-                    val p = ev.packageName
-                    if (open != p) {
-                        close(t)
-                        if (screenOn) { open = p; since = t }
-                    }
+                    if (fgPkg != pkg) { fgActs.clear(); fgPkg = pkg }
+                    fgActs += cls
+                    sync(t)
                 }
-                EV_PAUSED -> if (open == ev.packageName) close(t)
-                EV_SCREEN_OFF -> { close(t); screenOn = false }
-                EV_SCREEN_ON -> screenOn = true
-                EV_KEYGUARD_SHOWN -> close(t)
+                EV_PAUSED, EV_STOPPED -> if (fgPkg == pkg) {
+                    fgActs -= cls
+                    sync(t)
+                }
+                EV_SCREEN_OFF -> { screenOn = false; clearAll(t) }
+                EV_SCREEN_ON -> { screenOn = true; sync(t) }
+                EV_KEYGUARD_SHOWN, EV_SHUTDOWN, EV_STARTUP -> clearAll(t)
             }
         }
 
