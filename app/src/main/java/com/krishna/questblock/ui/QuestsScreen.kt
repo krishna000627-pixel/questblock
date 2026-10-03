@@ -52,6 +52,11 @@ class QuestsViewModel @Inject constructor(private val repo: GameRepository) : Vi
         repo.startFocus(if (task.timerDurationMs > 0) task.timerDurationMs else 60 * 60_000L, task)
     }
     fun stopFocus() = viewModelScope.launch { repo.finishFocus(completed = false) }
+    /** Turns a suggestion into a real quest due today. */
+    fun addSuggestion(q: StarterQuest) = viewModelScope.launch {
+        val dueToday = nextRunDayStart(0, System.currentTimeMillis()) - 1
+        repo.addTask(QuestDraft(title = q.title, difficulty = q.difficulty, category = "Study", notes = q.note, dueAt = dueToday))
+    }
 }
 
 private val DIFF_COLORS: List<androidx.compose.ui.graphics.Color> get() = listOf(ColorPrimary, ColorCoin, ColorDanger)
@@ -155,14 +160,13 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
                 }
             }
 
-            // Empty state
-            if (filtered.isEmpty()) {
+            // Empty state (no quests at all -> the suggestions card below takes its place)
+            if (filtered.isEmpty() && tasks.isNotEmpty()) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(60.dp), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("🗺️", fontSize = 48.sp)
-                            Text("No quests", style = MaterialTheme.typography.titleMedium, color = ColorText)
-                            Text("Tap + to add one", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                            Text("Nothing here", style = MaterialTheme.typography.titleMedium, color = ColorText)
                         }
                     }
                 }
@@ -200,6 +204,18 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
                             onEdit     = { onEditQuest(task.id) },
                             onStartFocus = { vm.startFocus(task); onOpenFocus() },
                             onStopFocus  = { vm.stopFocus() },
+                        )
+                    }
+                }
+            }
+
+            // Suggestions (not shown on the Done / Overdue tabs)
+            if (filterTab == "All" || filterTab == "Today" || filterTab == "Active") {
+                item(key = "suggested") {
+                    Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        SuggestedQuests(
+                            onAdd = { vm.addSuggestion(it) },
+                            title = if (tasks.isEmpty()) "Suggested to start" else "\uD83D\uDCA1 Suggested quests",
                         )
                     }
                 }
