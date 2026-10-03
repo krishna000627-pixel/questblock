@@ -30,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.krishna.questblock.data.*
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -52,6 +53,11 @@ class HomeViewModel @Inject constructor(private val repo: GameRepository) : View
         }
     }
     fun dismissBonus() { loginBonus = 0 }
+    /** Turns a suggestion into a real quest due today. */
+    fun addSuggestion(q: StarterQuest) = viewModelScope.launch {
+        val dueToday = nextRunDayStart(0, System.currentTimeMillis()) - 1
+        repo.addTask(QuestDraft(title = q.title, difficulty = q.difficulty, category = "Study", notes = q.note, dueAt = dueToday))
+    }
     /** One-line message shown as a toast (e.g. a Routine with unticked steps). */
     var notice by mutableStateOf<String?>(null)
         private set
@@ -123,11 +129,13 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                     fontWeight = FontWeight.Bold, color = ColorText)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (overdueCount > 0) Text("⚠ $overdueCount overdue", style = MaterialTheme.typography.labelMedium, color = ColorDanger)
-                    Text("$doneToday/$totalToday done", style = MaterialTheme.typography.labelMedium, color = ColorPrimary)
+                    if (totalToday > 0) Text("$doneToday/$totalToday done", style = MaterialTheme.typography.labelMedium, color = ColorPrimary)
                 }
             }
         }
-        if (todayList.isEmpty()) {
+        if (todayList.isEmpty() && tasks.isEmpty()) {
+            item { SuggestedStart(onAdd = { vm.addSuggestion(it) }, onAddOwn = onAddQuest) }
+        } else if (todayList.isEmpty()) {
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
                     shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
@@ -169,16 +177,11 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
             }
         }
 
-        // ── Compact shortcuts: Focus + Stats ───────────────────────────────
+        // ── Slim shortcuts: Shop + Stats ───────────────────────────────────
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FocusShortcut(
-                    isActive = player.isFocusMode(),
-                    remainingMs = (player.focusModeUntil - now).coerceAtLeast(0),
-                    onClick = onGoFocus,
-                    modifier = Modifier.weight(1f),
-                )
-                ShortcutTile("📊", "Stats", "Your progress", false, onOpenStats, Modifier.weight(1f))
+                SlimPill("\uD83D\uDED2 Shop", false, onOpenShop, Modifier.weight(1f))
+                SlimPill("\uD83D\uDCCA Stats", false, onOpenStats, Modifier.weight(1f))
             }
         }
 
@@ -347,6 +350,62 @@ private fun ShortcutTile(emoji: String, title: String, sub: String, highlighted:
                 Text(sub, style = MaterialTheme.typography.bodySmall, color = ColorMuted,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+        }
+    }
+}
+
+@Composable
+private fun SlimPill(text: String, highlighted: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    Box(
+        modifier
+            .height(40.dp)
+            .clip(RoundedCornerShape(50))
+            .background(if (highlighted) ColorPrimary.copy(0.15f) else ColorSurfaceHigh)
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
+            color = if (highlighted) ColorPrimary else ColorText)
+    }
+}
+
+@Composable
+private fun SuggestedStart(onAdd: (StarterQuest) -> Unit, onAddOwn: () -> Unit) {
+    var seed by remember { mutableIntStateOf(0) }
+    val picks = remember(seed) { STARTER_QUESTS.shuffled().take(3) }
+    Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                Column(Modifier.weight(1f)) {
+                    Text("Suggested to start", style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold, color = ColorText)
+                    Text("Class 12 Boards + JEE \u00b7 basics first. Tap + to add one.",
+                        style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                }
+                TextButton(onClick = { seed++ }) { Text("\uD83D\uDD00 Shuffle", fontWeight = FontWeight.Bold) }
+            }
+            picks.forEach { q ->
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(ColorSurfaceHigh).padding(start = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(q.emoji, fontSize = 22.sp)
+                    Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+                        Text(q.title, style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold, color = ColorText)
+                        Text(q.note, style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                    }
+                    IconButton(onClick = { onAdd(q) }) {
+                        Icon(Icons.Default.Add, contentDescription = "Add quest", tint = ColorPrimary)
+                    }
+                }
+            }
+            TextButton(onClick = onAddOwn) { Text("+ Write my own quest", fontWeight = FontWeight.Bold) }
         }
     }
 }

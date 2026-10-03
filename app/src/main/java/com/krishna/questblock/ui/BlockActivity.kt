@@ -206,7 +206,6 @@ private val MOTIVATIONAL_LINES = listOf(
     "Focus is a superpower. Use it.",
     "Real quests don't pause for reels.",
     "Close it. You don't need it right now.",
-    "Stay locked in. You're on a streak.",
 )
 
 @Composable
@@ -227,10 +226,14 @@ fun BlockScreen(
             ctx.packageManager.getApplicationLabel(ctx.packageManager.getApplicationInfo(pkg, 0)).toString()
         }.getOrDefault(pkg)
     }
-    val quote = remember(pkg) { MOTIVATIONAL_LINES.random() }
     val rate = remember { vm.rate() }
     val holdSteps = remember { vm.holdSeconds() * 10 }
     val quotesOn = remember { vm.showQuotes() }
+    // the streak line only appears when there really is a streak
+    val quote = remember(pkg, player.streak) {
+        val pool = if (player.streak > 0) MOTIVATIONAL_LINES + "Stay locked in. You're on a ${player.streak}-day streak." else MOTIVATIONAL_LINES
+        pool.random()
+    }
 
     var blocks by remember { mutableIntStateOf(3) }
     val cost = unlockCost(blocks, rate, rule)
@@ -252,7 +255,6 @@ fun BlockScreen(
     var status by remember(pkg, nonce) { mutableStateOf("") }
     val uiScope = rememberCoroutineScope()
     val notifOk = remember { com.krishna.questblock.util.Perms.notificationsOk(ctx) }
-    val buildVer = remember { runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?" }
 
     // Already unlocked: exit immediately — single tap scenario covered here too
     val unlockedUntil = rule?.unlockedUntil ?: 0L
@@ -389,36 +391,39 @@ fun BlockScreen(
             if (rule != null) {
                 val missing = cost - player.coins
 
-                // Time selector row
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    StepButton("−", enabled = blocks > 1) { blocks = (blocks - 1).coerceAtLeast(1) }
+                // Time selector: hidden while a timer is running (nothing to buy until it ends)
+                if (unlockLeftMs == 0L) {
+                    // Time selector row
                     Row(
-                        Modifier.width(190.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.Bottom,
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(fmtBlocks(blocks), fontSize = 30.sp, fontWeight = FontWeight.Black, color = ColorText)
-                        Text(
-                            "  ·  $cost 🪙",
-                            modifier = Modifier.padding(bottom = 4.dp),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (canAfford) ColorCoin else ColorDanger,
-                            fontWeight = FontWeight.Bold,
-                        )
+                        StepButton("−", enabled = blocks > 1) { blocks = (blocks - 1).coerceAtLeast(1) }
+                        Row(
+                            Modifier.width(190.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.Bottom,
+                        ) {
+                            Text(fmtBlocks(blocks), fontSize = 30.sp, fontWeight = FontWeight.Black, color = ColorText)
+                            Text(
+                                "  ·  $cost 🪙",
+                                modifier = Modifier.padding(bottom = 4.dp),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = if (canAfford) ColorCoin else ColorDanger,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        StepButton("+", enabled = blocks < MAX_UNLOCK_BLOCKS) {
+                            blocks = (blocks + 1).coerceAtMost(MAX_UNLOCK_BLOCKS)
+                        }
                     }
-                    StepButton("+", enabled = blocks < MAX_UNLOCK_BLOCKS) {
-                        blocks = (blocks + 1).coerceAtMost(MAX_UNLOCK_BLOCKS)
-                    }
-                }
 
-                if (rule.ratePer5 > 0) {
-                    Spacer(Modifier.height(4.dp))
-                    Text("Custom rate: ${rule.ratePer5} 🪙 per 5 min",
-                        style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+                    if (rule.ratePer5 > 0) {
+                        Spacer(Modifier.height(4.dp))
+                        Text("Custom rate: ${rule.ratePer5} 🪙 per 5 min",
+                            style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+                    }
                 }
 
                 // ── Unlock timer: show time remaining if currently unlocked ──
@@ -440,7 +445,7 @@ fun BlockScreen(
                                 color = if (unlockLeftMs <= 60_000L) ColorDanger else ColorCoin,
                             )
                             Text(
-                                "Tap go to use it now, or add more time below",
+                                "Time is running \u2014 tap Open to use it",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = ColorMuted,
                                 textAlign = TextAlign.Center,
@@ -452,7 +457,7 @@ fun BlockScreen(
                     Button(
                         onClick = onUnlocked,
                         modifier = Modifier.fillMaxWidth().height(52.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = ColorCoin, contentColor = ColorBg),
+                        colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
                         shape = RoundedCornerShape(14.dp),
                     ) { Text("Open ${label}", fontWeight = FontWeight.Bold) }
                     Spacer(Modifier.height(10.dp))
@@ -520,7 +525,6 @@ fun BlockScreen(
                         color = ColorDanger, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(8.dp))
                 }
-                Text("build $buildVer", color = ColorMuted, style = MaterialTheme.typography.labelSmall)
             if (questIsPrimary) {
                 Button(
                     onClick = onQuests,
