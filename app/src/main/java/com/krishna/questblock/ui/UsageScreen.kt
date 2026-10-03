@@ -86,6 +86,7 @@ class UsageViewModel @Inject constructor(
                 val (from, to) = UsageTracker.rangeFor(range)
                 val pm = ctx.packageManager
                 val hidden = UsageTracker.hiddenPackages(ctx)
+                runCatching { com.krishna.questblock.util.DebugLog.d(UsageTracker.diagnose(ctx, from, to)) }
                 val sys = UsageTracker.systemTotals(ctx, from, to)
                 val raw = if (sys.isNotEmpty()) sys else UsageTracker.foreground(ctx, from, to).perPkg
                 val apps = raw.entries

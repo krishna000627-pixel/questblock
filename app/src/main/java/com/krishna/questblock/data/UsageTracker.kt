@@ -132,6 +132,25 @@ object UsageTracker {
         return out
     }
 
+    /** Debug dump: raw system records and event totals for [from]..[to], biggest first. */
+    fun diagnose(ctx: Context, from: Long, to: Long): String {
+        val usm = ctx.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+            ?: return "no usm"
+        val fmt = java.text.SimpleDateFormat("dd HH:mm", java.util.Locale.US)
+        val sb = StringBuilder("USAGE-DIAG range ${fmt.format(from)}..${fmt.format(to)}\n")
+        val recs = runCatching { usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, from - 36 * 60 * 60_000L, to) }
+            .getOrNull().orEmpty().filter { it.totalTimeInForeground > 0 }
+            .sortedByDescending { it.totalTimeInForeground }
+        sb.append("system records=${recs.size} sum=${recs.sumOf { it.totalTimeInForeground } / 60_000}m\n")
+        recs.take(12).forEach {
+            sb.append("  SYS ${it.packageName} start=${fmt.format(it.firstTimeStamp)} end=${fmt.format(it.lastTimeStamp)} fg=${it.totalTimeInForeground / 60_000}m\n")
+        }
+        val ev = foreground(ctx, from, to).perPkg.entries.sortedByDescending { it.value }
+        sb.append("events sum=${ev.sumOf { it.value } / 60_000}m\n")
+        ev.take(12).forEach { sb.append("  EVT ${it.key} ${it.value / 60_000}m\n") }
+        return sb.toString()
+    }
+
     /** 00:00 of the day [daysAgo] days back. */
     fun dayStart(daysAgo: Int): Long {
         val c = Calendar.getInstance()
