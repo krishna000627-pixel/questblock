@@ -107,15 +107,28 @@ object UsageTracker {
     fun systemTotals(ctx: Context, from: Long, to: Long): Map<String, Long> {
         val usm = ctx.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
             ?: return emptyMap()
-        val list = runCatching { usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, from - 60 * 60_000L, to) }
+        val list = runCatching { usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, from - 36 * 60 * 60_000L, to) }
             .getOrNull() ?: return emptyMap()
-        val out = HashMap<String, Long>()
+        val tz = java.util.TimeZone.getDefault()
+        val day = 24 * 60 * 60_000L
+        // Local calendar day number of a timestamp. Buckets can start a bit off midnight, so
+        // classify each one by the day its middle falls in, not by its start.
+        fun dayNo(t: Long) = Math.floorDiv(t + tz.getOffset(t), day)
+        val firstDay = dayNo(from)
+        val lastDay = dayNo(to - 1)
+        // Android can hold several overlapping records for the same app and day.
+        // Take the biggest one per app per day instead of adding them together.
+        val perDay = HashMap<Pair<String, Long>, Long>()
         for (u in list) {
-            if (u.firstTimeStamp < from - 60 * 60_000L || u.firstTimeStamp >= to) continue
-            if (u.firstTimeStamp + 24 * 60 * 60_000L <= from) continue
             val t = u.totalTimeInForeground
-            if (t > 0) out[u.packageName] = (out[u.packageName] ?: 0L) + t
+            if (t <= 0) continue
+            val d = dayNo(u.firstTimeStamp + 12 * 60 * 60_000L)
+            if (d < firstDay || d > lastDay) continue
+            val k = u.packageName to d
+            if (t > (perDay[k] ?: 0L)) perDay[k] = t
         }
+        val out = HashMap<String, Long>()
+        for ((k, t) in perDay) out[k.first] = (out[k.first] ?: 0L) + t
         return out
     }
 
