@@ -133,17 +133,15 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                 }
             }
         }
-        if (todayList.isEmpty() && tasks.isEmpty()) {
-            item { SuggestedQuests(onAdd = { vm.addSuggestion(it) }, onAddOwn = onAddQuest) }
-        } else if (todayList.isEmpty()) {
+        if (todayList.isEmpty()) {
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
                     shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(if (tasks.isEmpty()) "⚔️" else "🎉", fontSize = 22.sp)
-                        Text(if (tasks.isEmpty()) "No quests yet" else "All clear for today",
+                        Text(if (doneToday > 0) "\uD83C\uDF89" else "\uD83D\uDCDD", fontSize = 22.sp)
+                        Text(if (doneToday > 0) "All done for today" else "Nothing planned for today",
                             style = MaterialTheme.typography.bodyMedium, color = ColorText,
                             fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                         TextButton(onClick = onAddQuest) {
@@ -154,6 +152,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                     }
                 }
             }
+            item { SuggestedQuests(onAdd = { vm.addSuggestion(it) }, title = "\uD83D\uDCA1 Suggested for today") }
         } else {
             items(todayList.take(6), key = { "td_${it.id}" }) { task ->
                 HomeQuestRow(task = task, now = now, onComplete = { vm.complete(task) })
@@ -227,7 +226,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
     }
 }
 
-private fun TaskEntity.isForToday(endOfToday: Long): Boolean =
+fun TaskEntity.isForToday(endOfToday: Long): Boolean =
     (dueAt != null && dueAt <= endOfToday) ||
         (isRecurring && (dueAt == null || questType == "daily" || questType == "weekly" || questType == "challenge"))
 

@@ -36,6 +36,8 @@ fun loadThemeMode(ctx: Context) {
     val mode = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getInt("theme_mode", 0)
     val sysDark = (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
     applyThemeMode(mode, sysDark)
+    // paint the chosen background before the first frame so the XML window colour never shows
+    (ctx as? Activity)?.window?.setBackgroundDrawable(ColorDrawable(ColorBg.toArgb()))
 }
 
 private fun pick(dark: Long, light: Long) = Color(if (LightMode) light else dark)

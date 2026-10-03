@@ -1,8 +1,12 @@
 package com.krishna.questblock.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,6 +23,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -83,6 +88,56 @@ fun SuggestedQuests(
             if (onAddOwn != null) {
                 TextButton(onClick = onAddOwn) { Text("+ Write my own quest", fontWeight = FontWeight.Bold) }
             }
+        }
+    }
+}
+
+/** Full "💡 Suggested" tab: subject chips + a longer shuffled list. */
+@Composable
+fun SuggestedPage(header: String, onAdd: (StarterQuest) -> Unit) {
+    val subjects = listOf("All", "Physics", "Chemistry", "Maths", "Boards")
+    var subject by remember { mutableStateOf("All") }
+    var seed by remember { mutableIntStateOf(0) }
+    val picks = remember(subject, seed) {
+        STARTER_QUESTS.filter { subject == "All" || it.subject == subject }.shuffled().take(6)
+    }
+    Column(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(header, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ColorText)
+        Text("Class 12 Boards + JEE \u00b7 basics first", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(subjects) { sub ->
+                val sel = subject == sub
+                Box(
+                    Modifier.clip(RoundedCornerShape(50))
+                        .background(if (sel) ColorPrimary.copy(0.2f) else ColorSurfaceHigh)
+                        .clickable { subject = sub }
+                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                ) {
+                    Text(sub, color = if (sel) ColorPrimary else ColorMuted,
+                        fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                        style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+        picks.forEach { q ->
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ColorCard).padding(start = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(q.emoji, fontSize = 24.sp)
+                Column(Modifier.weight(1f).padding(vertical = 10.dp)) {
+                    Text(q.title, style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold, color = ColorText)
+                    Text(q.note, style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                }
+                IconButton(onClick = { onAdd(q) }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add quest", tint = ColorPrimary)
+                }
+            }
+        }
+        TextButton(onClick = { seed++ }, modifier = Modifier.fillMaxWidth()) {
+            Text("\uD83D\uDD00 Shuffle", fontWeight = FontWeight.Bold)
         }
     }
 }

@@ -61,7 +61,7 @@ class QuestsViewModel @Inject constructor(private val repo: GameRepository) : Vi
 
 private val DIFF_COLORS: List<androidx.compose.ui.graphics.Color> get() = listOf(ColorPrimary, ColorCoin, ColorDanger)
 private val DIFF_NAMES  = listOf("Easy", "Medium", "Hard")
-private val FILTER_TABS = listOf("All", "Today", "Active", "Done", "Overdue")
+private val FILTER_TABS = listOf("All", "Today", "Active", "Done", "Overdue", "Suggested")
 
 @Composable
 fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocus: () -> Unit, vm: QuestsViewModel = hiltViewModel()) {
@@ -80,12 +80,19 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
     var filterCat by remember { mutableStateOf("All") }
     var showAllDone by remember { mutableStateOf(false) }
 
+    // Nothing planned for today (or all finished) -> land on the Suggested tab
+    val dayEnd = nextRunDayStart(0, now) - 1
+    val todayOpen = tasks.count { it.isAvailableNow(now) && it.isForToday(dayEnd) }
+    val doneToday = tasks.count { it.done && (it.completedAt ?: 0L) >= dayStart }
+    LaunchedEffect(todayOpen == 0) { if (todayOpen == 0) filterTab = "Suggested" }
+
     val filtered = tasks.filter { task ->
         val tabOk = when (filterTab) {
             "Today"   -> task.isAvailableNow(now)
             "Active"  -> !task.done
             "Done"    -> task.done
             "Overdue" -> !task.done && task.dueAt != null && task.dueAt < now
+            "Suggested" -> false
             else      -> true
         }
         val catOk = filterCat == "All" || task.category == filterCat
@@ -124,15 +131,15 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
                                 color = if (sel) ColorPrimary.copy(0.2f) else ColorSurface,
                                 modifier = Modifier.clickable { filterTab = tab },
                             ) {
-                                Text(tab, modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                                Text(if (tab == "Suggested") "\uD83D\uDCA1 Suggested" else tab, modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
                                     color = if (sel) ColorPrimary else ColorMuted,
                                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
                                     style = MaterialTheme.typography.labelMedium)
                             }
                         }
                     }
-                    // Category filter
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Category filter (the Suggested tab has its own subject chips)
+                    if (filterTab != "Suggested") LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         item {
                             val sel = filterCat == "All"
                             Surface(shape = RoundedCornerShape(16.dp),
@@ -161,7 +168,15 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
             }
 
             // Empty state (no quests at all -> the suggestions card below takes its place)
-            if (filtered.isEmpty() && tasks.isNotEmpty()) {
+            if (filterTab == "Suggested") {
+                item(key = "suggested_page") {
+                    SuggestedPage(
+                        header = if (doneToday > 0) "All done \uD83C\uDF89 Pick your next one" else "Nothing planned today \u2014 pick one",
+                        onAdd = { vm.addSuggestion(it) },
+                    )
+                }
+            }
+            if (filtered.isEmpty() && tasks.isNotEmpty() && filterTab != "Suggested") {
                 item {
                     Box(Modifier.fillMaxWidth().padding(60.dp), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -204,18 +219,6 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
                             onEdit     = { onEditQuest(task.id) },
                             onStartFocus = { vm.startFocus(task); onOpenFocus() },
                             onStopFocus  = { vm.stopFocus() },
-                        )
-                    }
-                }
-            }
-
-            // Suggestions (not shown on the Done / Overdue tabs)
-            if (filterTab == "All" || filterTab == "Today" || filterTab == "Active") {
-                item(key = "suggested") {
-                    Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                        SuggestedQuests(
-                            onAdd = { vm.addSuggestion(it) },
-                            title = if (tasks.isEmpty()) "Suggested to start" else "\uD83D\uDCA1 Suggested quests",
                         )
                     }
                 }
