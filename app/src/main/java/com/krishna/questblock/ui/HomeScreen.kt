@@ -39,7 +39,10 @@ import java.util.*
 import javax.inject.Inject
 
 @HiltViewModel
-class HomeViewModel @Inject constructor(private val repo: GameRepository) : ViewModel() {
+class HomeViewModel @Inject constructor(
+    private val repo: GameRepository,
+    private val autoVerifier: com.krishna.questblock.engine.AutoVerifier,
+) : ViewModel() {
     val player       = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
     val tasks        = repo.tasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val achievements = repo.achievements.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -50,6 +53,7 @@ class HomeViewModel @Inject constructor(private val repo: GameRepository) : View
         viewModelScope.launch {
             repo.settleFocus()
             loginBonus = repo.claimDailyLogin()
+            runCatching { autoVerifier.run() }
         }
     }
     fun dismissBonus() { loginBonus = 0 }
@@ -72,7 +76,7 @@ class HomeViewModel @Inject constructor(private val repo: GameRepository) : View
 }
 
 @Composable
-fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> Unit, onOpenStats: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenHub: () -> Unit, vm: HomeViewModel = hiltViewModel()) {
     val player       by vm.player.collectAsStateWithLifecycle()
     val tasks        by vm.tasks.collectAsStateWithLifecycle()
     val achievements by vm.achievements.collectAsStateWithLifecycle()
@@ -181,6 +185,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SlimPill("\uD83D\uDED2 Shop", false, onOpenShop, Modifier.weight(1f))
                 SlimPill("\uD83D\uDCCA Stats", false, onOpenStats, Modifier.weight(1f))
+                SlimPill("\uD83E\uDDED Hub", false, onOpenHub, Modifier.weight(1f))
             }
         }
 

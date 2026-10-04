@@ -79,6 +79,7 @@ fun MainScreen() {
                     onGoFocus  = { navController.goTab("focus") },
                     onOpenShop = { navController.openPage("shop") },
                     onOpenStats = { navController.openPage("stats") },
+                    onOpenHub = { navController.openPage("hub") },
                 )
             }
             composable("quests") {
@@ -133,6 +134,7 @@ fun MainScreen() {
             composable("coins")        { CoinLogScreen(onBack = { navController.popBackStack() }) }
             composable("about")        { AboutMeScreen(onBack = { navController.popBackStack() }) }
             composable("shop")         { InventoryScreen(onBack = { navController.popBackStack() }) }
+            composable("hub")          { PlayerHubScreen(onBack = { navController.popBackStack() }) }
         }
     }
 }

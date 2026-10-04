@@ -51,7 +51,7 @@ class QuestsViewModel @Inject constructor(private val repo: GameRepository) : Vi
     fun startFocus(task: TaskEntity) = viewModelScope.launch {
         repo.startFocus(if (task.timerDurationMs > 0) task.timerDurationMs else 60 * 60_000L, task)
     }
-    fun stopFocus() = viewModelScope.launch { repo.finishFocus(completed = false) }
+    fun stopFocus() = viewModelScope.launch { repo.abandonFocus() }
     /** Turns a suggestion into a real quest due today. */
     fun addSuggestion(q: StarterQuest) = viewModelScope.launch {
         val dueToday = nextRunDayStart(0, System.currentTimeMillis()) - 1

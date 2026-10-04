@@ -156,5 +156,39 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         get() = sp.getLong("active_unlock_entered_at", 0L)
         set(value) = sp.edit().putLong("active_unlock_entered_at", value).apply()
 
+    // ── v44: player hub ──────────────────────────────────────────────────
+    var autoVerify: Boolean
+        get() = sp.getBoolean("auto_verify", true)
+        set(value) = sp.edit().putBoolean("auto_verify", value).apply()
+    var examMode: Boolean
+        get() = sp.getBoolean("exam_mode", false)
+        set(value) = sp.edit().putBoolean("exam_mode", value).apply()
+    /** Fun & Games limit used on Saturday and Sunday. 0 = same as the normal limit. */
+    var weekendFunLimitMin: Int
+        get() = sp.getInt("weekend_fun_limit", 0)
+        set(value) = sp.edit().putInt("weekend_fun_limit", value).apply()
+    /** The limit actually enforced today: weekend value, then exam mode, on top of the normal limit. */
+    val effectiveFunLimitMin: Int get() {
+        var l = funLimitMin
+        val dow = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK)
+        if ((dow == java.util.Calendar.SATURDAY || dow == java.util.Calendar.SUNDAY) && weekendFunLimitMin > 0) l = weekendFunLimitMin
+        if (examMode) l = if (l > 0) minOf(l, EXAM_FUN_LIMIT_MIN) else EXAM_FUN_LIMIT_MIN
+        return l
+    }
+    /** Study minutes already used by auto quest verification today, so one study minute is never paid twice. */
+    fun autoStudyUsed(day: Long): Int = if (sp.getLong("auto_study_day", 0L) == day) sp.getInt("auto_study_used", 0) else 0
+    fun setAutoStudyUsed(day: Long, min: Int) { sp.edit().putLong("auto_study_day", day).putInt("auto_study_used", min).apply() }
+    var seasonStartDay: Long
+        get() = sp.getLong("season_start", 0L)
+        set(value) = sp.edit().putLong("season_start", value).apply()
+    /** Coins lost for giving up a focus session after its first minute. 0 = no penalty. */
+    var focusExitPenalty: Int
+        get() = sp.getInt("focus_exit_penalty", 10)
+        set(value) = sp.edit().putInt("focus_exit_penalty", value.coerceIn(0, 100)).apply()
+    fun isClaimed(key: String): Boolean = sp.getBoolean("claimed_$key", false)
+    fun setClaimed(key: String) { sp.edit().putBoolean("claimed_$key", true).apply() }
+
     fun clearAll() = sp.edit().clear().apply()
 }
+
+const val EXAM_FUN_LIMIT_MIN = 45

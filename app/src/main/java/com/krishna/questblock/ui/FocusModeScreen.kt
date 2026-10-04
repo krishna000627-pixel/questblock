@@ -50,7 +50,8 @@ class FocusViewModel @Inject constructor(private val repo: GameRepository) : Vie
 
     fun bonus(): Int = repo.focusBonus()
     fun start(durationMs: Long, quest: TaskEntity?) = viewModelScope.launch { repo.startFocus(durationMs, quest) }
-    fun end()    = viewModelScope.launch { repo.finishFocus(completed = false) }
+    fun end()    = viewModelScope.launch { repo.abandonFocus() }
+    fun penalty(): Int = repo.focusPenalty()
     fun settle() = viewModelScope.launch { repo.settleFocus() }
 }
 
@@ -89,11 +90,14 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
                 remainingMs = remaining, totalMs = player.focusTotalMs,
                 questTitle = activeQuest?.title,
                 appCount = activeQuest?.linkedApps?.split(",")?.count { it.isNotBlank() } ?: 0,
+                penalty = vm.penalty(),
                 onStop = { vm.end() },
             )
         } else {
             Setup(timerQuests = timerQuests, bonus = vm.bonus(), onStart = { dur, quest -> vm.start(dur, quest) })
+            BreakNudge(logs = logs, now = now)
             TodayStrip(logs = logs, now = now)
+            FocusStats(logs = logs, now = now)
             RecentSessions(logs = logs)
         }
     }
@@ -129,6 +133,12 @@ private fun Setup(timerQuests: List<TaskEntity>, bonus: Int, onStart: (Long, Tas
     }
 
     if (selected == null) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            item { PickChip("\uD83E\uDDE0 Deep 60", minutes == 60, ColorPrimary) { minutes = 60 } }
+            item { PickChip("\uD83D\uDCDA Study 45", minutes == 45, ColorPrimary) { minutes = 45 } }
+            item { PickChip("\uD83D\uDCD6 Reading 30", minutes == 30, ColorPrimary) { minutes = 30 } }
+            item { PickChip("\u270F\uFE0F Custom (use + / \u2212)", minutes !in listOf(30, 45, 60), ColorPrimary) { } }
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             DURATIONS.forEach { m ->
                 val sel = minutes == m
@@ -263,7 +273,7 @@ private fun PickChip(text: String, selected: Boolean, color: androidx.compose.ui
 }
 
 @Composable
-private fun ActiveFocus(remainingMs: Long, totalMs: Long, questTitle: String?, appCount: Int, onStop: () -> Unit) {
+private fun ActiveFocus(remainingMs: Long, totalMs: Long, questTitle: String?, appCount: Int, penalty: Int, onStop: () -> Unit) {
     val totalSec = (remainingMs / 1000).coerceAtLeast(0)
     val frac = if (totalMs > 0) (remainingMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
 
@@ -298,6 +308,37 @@ private fun ActiveFocus(remainingMs: Long, totalMs: Long, questTitle: String?, a
     ) {
         Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
-        Text("Give up (no reward)", fontWeight = FontWeight.SemiBold)
+        Text(if (penalty > 0) "Give up (no reward, \u2212$penalty\uD83E\uDE99 after 1 min)" else "Give up (no reward)", fontWeight = FontWeight.SemiBold)
+    }
+}
+
+// ── Focus streak, score and break nudge ──────────────────────────────────────
+@Composable
+private fun FocusStats(logs: List<FocusLog>, now: Long) {
+    val todayNo = dayNumber(now)
+    val doneDays = logs.filter { it.completed }.map { dayNumber(it.startedAt) }.toSet()
+    var streak = 0
+    var d = if (todayNo in doneDays) todayNo else todayNo - 1
+    while (d in doneDays) { streak++; d-- }
+    val recent = logs.filter { it.startedAt >= now - 14 * 86_400_000L }
+    val score = if (recent.isEmpty()) 0 else {
+        val rate = recent.count { it.completed }.toDouble() / recent.size
+        val mins = recent.filter { it.completed }.sumOf { it.minutes }
+        (rate * 60 + minOf(40.0, mins * 40.0 / 300.0)).toInt().coerceIn(0, 100)
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        StripCell("Focus streak", "$streak d", Modifier.weight(1f))
+        StripCell("Focus score", "$score", Modifier.weight(1f))
+        StripCell("Focus XP", "+1 / 5 min", Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun BreakNudge(logs: List<FocusLog>, now: Long) {
+    val last = logs.firstOrNull { it.completed } ?: return
+    val endedAt = last.startedAt + last.minutes * 60_000L
+    if (now - endedAt in 0L..(5 * 60_000L)) {
+        Text("\u2615 Nice session. Take a 5 min break before the next one.",
+            style = MaterialTheme.typography.bodyMedium, color = ColorAccent, fontWeight = FontWeight.SemiBold)
     }
 }

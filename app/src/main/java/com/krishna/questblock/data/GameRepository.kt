@@ -241,9 +241,15 @@ class GameRepository @Inject constructor(
             log.add(todayEntry)
             if (log.size > 70) log.removeAt(0)
 
+            // Risk/reward: streak milestones pay a bonus; 3 hard quests in a day switch on an hour of XP boost.
+            val milestoneXp = if (newStreak > p.streak) when (newStreak) { 7 -> 100; 14 -> 200; 30 -> 500; else -> 0 } else 0
+            val hardCount = if (fresh.difficulty == 3) taskDao.hardDoneSince(startOfToday(now)) else 0
+            val hardBoost = if (hardCount == 3) maxOf(p.xpBoostUntil, now + 3_600_000L) else p.xpBoostUntil
+
             val wasFocusQuest = p.focusQuestId == fresh.id
             playerDao.upsert(p.copy(
-                coins = p.coins + earned, xp = p.xp + xpEarned,
+                coins = p.coins + earned + milestoneXp / 5, xp = p.xp + xpEarned + milestoneXp,
+                xpBoostUntil = hardBoost,
                 streak = newStreak, lastCompletionDay = today,
                 weeklyXpLog = log.joinToString(","),
                 focusModeUntil = if (wasFocusQuest) 0L else p.focusModeUntil,
@@ -251,6 +257,7 @@ class GameRepository @Inject constructor(
                 focusTotalMs   = if (wasFocusQuest) 0L else p.focusTotalMs,
             ))
             logCoin(earned, "Quest", fresh.title)
+            if (milestoneXp > 0) logCoin(milestoneXp / 5, "Streak bonus", "$newStreak-day streak")
             checkAchievements(p.copy(xp = p.xp + xpEarned, streak = newStreak))
 
             val challengeDone = fresh.questType == "challenge" && fresh.challengeDays > 0 && qStreak >= fresh.challengeDays
@@ -316,6 +323,13 @@ class GameRepository @Inject constructor(
         coins
     }
 
+    /** Reward for a finished challenge. */
+    suspend fun grantBonus(coins: Int, xp: Int, source: String, detail: String = "") = db.withTransaction {
+        val p = playerDao.get() ?: Player()
+        playerDao.upsert(p.copy(coins = p.coins + coins, xp = p.xp + xp))
+        logCoin(coins, source, detail)
+    }
+
     // ── Focus ─────────────────────────────────────────────────────────────
     suspend fun startFocus(durationMs: Long, task: TaskEntity? = null): Boolean = db.withTransaction {
         val now = System.currentTimeMillis()
@@ -346,6 +360,7 @@ class GameRepository @Inject constructor(
             playerDao.upsert(p.copy(
                 focusModeUntil = 0L, focusQuestId = -1L, focusTotalMs = 0L,
                 coins = p.coins + if (completed) prefs.focusBonus else 0,
+                xp = p.xp + if (completed) (p.focusTotalMs / 300_000L).toInt().coerceIn(0, 30) else 0,
             ))
             if (completed && prefs.focusBonus > 0) logCoin(prefs.focusBonus, "Focus bonus")
             true
@@ -372,6 +387,27 @@ class GameRepository @Inject constructor(
                 unlockAchievement("timer_quest_1")
                 if (!task.done) completeTask(task)
             }
+        }
+    }
+
+    fun focusPenalty(): Int = prefs.focusExitPenalty
+
+    /** Giving up a running session. Free in the first minute, then costs [Prefs.focusExitPenalty] coins (never below 0). Returns coins lost. */
+    suspend fun abandonFocus(): Int {
+        val p0 = playerDao.get() ?: return 0
+        val now = System.currentTimeMillis()
+        val running = p0.focusModeUntil > now
+        val elapsed = now - (p0.focusModeUntil - p0.focusTotalMs)
+        finishFocus(completed = false)
+        if (!running || elapsed < 60_000L || prefs.focusExitPenalty <= 0) return 0
+        return db.withTransaction {
+            val p = playerDao.get() ?: return@withTransaction 0
+            val pen = minOf(p.coins, prefs.focusExitPenalty)
+            if (pen > 0) {
+                playerDao.upsert(p.copy(coins = p.coins - pen))
+                logCoin(-pen, "Focus exit", "Gave up early")
+            }
+            pen
         }
     }
 

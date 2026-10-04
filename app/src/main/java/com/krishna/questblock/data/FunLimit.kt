@@ -25,7 +25,7 @@ object FunLimit {
 
     /** Today's fun time. Cached for 45 s unless [force]. Without Usage access the limit is simply off. */
     suspend fun state(ctx: Context, prefs: Prefs, force: Boolean = false): State {
-        val limitMs = prefs.funLimitMin * 60_000L
+        val limitMs = prefs.effectiveFunLimitMin * 60_000L
         val now = System.currentTimeMillis()
         val c = last
         if (!force && c != null && c.limitMs == limitMs && now - c.at < 45_000L && dayNumber(c.at) == dayNumber(now)) return c

@@ -81,7 +81,7 @@ object UsageTracker {
         fun applyScreen(upTo: Long) {
             while (si < scr.size && scr[si].t <= upTo) {
                 val e = scr[si++]
-                if (e.on) { screenOn = true; sync(e.t) } else { screenOn = false; clearAll(e.t) }
+                screenOn = e.on; sync(e.t)
                 lastEv = e.t
             }
         }
@@ -107,7 +107,7 @@ object UsageTracker {
                     fgActs -= cls
                     sync(t)
                 }
-                EV_SCREEN_OFF -> { screenOn = false; clearAll(t) }
+                EV_SCREEN_OFF -> { screenOn = false; sync(t) }
                 EV_SCREEN_ON -> { screenOn = true; sync(t) }
                 EV_KEYGUARD_SHOWN, EV_SHUTDOWN, EV_STARTUP -> clearAll(t)
             }

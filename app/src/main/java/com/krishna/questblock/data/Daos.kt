@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.Flow
     @Delete suspend fun delete(task: TaskEntity)
     @Query("SELECT * FROM tasks WHERE isTimerQuest = 1 AND timerQuestActive = 1 LIMIT 1")
     suspend fun getActiveTimerQuest(): TaskEntity?
+    @Query("SELECT COUNT(*) FROM tasks WHERE done = 1 AND difficulty = 3 AND completedAt >= :from")
+    suspend fun hardDoneSince(from: Long): Int
     @Query("SELECT * FROM tasks WHERE done = 0 AND dueAt IS NOT NULL AND dueAt < :now")
     suspend fun getOverdue(now: Long): List<TaskEntity>
 }

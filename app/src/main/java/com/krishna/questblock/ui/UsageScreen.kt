@@ -86,7 +86,6 @@ class UsageViewModel @Inject constructor(
                 val (from, to) = UsageTracker.rangeFor(range)
                 val pm = ctx.packageManager
                 val hidden = UsageTracker.hiddenPackages(ctx)
-                runCatching { com.krishna.questblock.util.DebugLog.d(UsageTracker.diagnose(ctx, from, to)) }
                 val raw = UsageTracker.foreground(ctx, from, to).perPkg
                 val apps = raw.entries
                     .filter { it.key !in hidden && it.value >= 30_000L && pm.getLaunchIntentForPackage(it.key) != null }

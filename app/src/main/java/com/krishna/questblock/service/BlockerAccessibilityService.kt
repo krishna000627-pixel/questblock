@@ -176,7 +176,7 @@ class BlockerAccessibilityService : AccessibilityService() {
      *   with a 5 minute window to come back to a game already under way (notification glance, phone lock)
      */
     private suspend fun checkFunLimit(pkg: String): Boolean {
-        if (prefs.funLimitMin <= 0 || AppCategorizer.categoryOf(prefs, packageManager, pkg) != "fun") {
+        if (prefs.effectiveFunLimitMin <= 0 || AppCategorizer.categoryOf(prefs, packageManager, pkg) != "fun") {
             FunSignal.leave()
             return false
         }
