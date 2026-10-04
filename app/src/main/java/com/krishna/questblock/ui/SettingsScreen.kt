@@ -221,6 +221,14 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                 modifier = Modifier.fillMaxWidth()) { Text("App categories") }
             OutlinedButton(onClick = onOpenUsage, shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth()) { Text("Daily app usage") }
+            var funMin by remember { mutableIntStateOf(prefs.funLimitMin) }
+            Text("\uD83C\uDFAE Fun time limit", color = ColorText, fontWeight = FontWeight.SemiBold)
+            Text(
+                if (funMin == 0) "Off. Set a daily cap for Fun & Games apps."
+                else "Fun & Games apps lock when you reach it. Apps marked \uD83D\uDEE1 (Free Fire) are never cut mid-use; they lock the next time you open them. Needs Usage access.",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted,
+            )
+            StepperRow("Daily limit", funMin, 0..360, 15, if (funMin == 0) "off" else "min") { funMin = it; prefs.funLimitMin = it }
         }
 
         // ── Reliability ──────────────────────────────────────────────────

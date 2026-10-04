@@ -66,6 +66,14 @@ class CategoriesViewModel @Inject constructor(
     private val _chosen = MutableStateFlow(prefs.categoryMap())
     /** package -> category picked by hand */
     val chosen: StateFlow<Map<String, String>> = _chosen
+    private val _safe = MutableStateFlow(prefs.funSafeSet())
+    /** fun apps that are never cut mid-use */
+    val safe: StateFlow<Set<String>> = _safe
+    fun toggleSafe(pkg: String) {
+        prefs.setFunSafe(pkg, pkg !in _safe.value)
+        _safe.value = prefs.funSafeSet()
+    }
+
     private val _loaded = MutableStateFlow(false)
     val loaded: StateFlow<Boolean> = _loaded
 
@@ -97,6 +105,7 @@ fun CategoriesScreen(onBack: () -> Unit, vm: CategoriesViewModel = hiltViewModel
     val apps by vm.apps.collectAsStateWithLifecycle()
     val chosen by vm.chosen.collectAsStateWithLifecycle()
     val loaded by vm.loaded.collectAsStateWithLifecycle()
+    val safeSet by vm.safe.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf("all") }
 
@@ -155,6 +164,16 @@ fun CategoriesScreen(onBack: () -> Unit, vm: CategoriesViewModel = hiltViewModel
                         Text(a.label, maxLines = 1, overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = ColorText)
                         Text(if (manual) "set by you" else "automatic", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+                        if (eff == "fun") {
+                            val isSafe = a.pkg in safeSet
+                            Text(
+                                if (isSafe) "\uD83D\uDEE1 Never cut mid-use" else "Cut when fun limit hits",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isSafe) ColorPrimary else ColorMuted,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { vm.toggleSafe(a.pkg) }.padding(vertical = 2.dp),
+                            )
+                        }
                     }
                     USAGE_CATEGORIES.forEach { c ->
                         val sel = eff == c.id

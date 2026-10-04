@@ -48,6 +48,24 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         sp.edit().putLong("study_sid_$pkg", id).putLong("study_sat_$pkg", at).apply()
     }
 
+    // ── Fun & Games daily limit ──
+    /** Minutes allowed per day in the Fun & Games category. 0 = off. */
+    var funLimitMin: Int
+        get() = sp.getInt("fun_limit_min", 0)
+        set(value) = sp.edit().putInt("fun_limit_min", value).apply()
+
+    /** Apps that are never cut in the middle of use (locked only the next time they are opened). Free Fire by default. */
+    fun funSafeSet(): Set<String> {
+        val raw = sp.getString("fun_safe", null) ?: return setOf("com.dts.freefireth", "com.dts.freefiremax")
+        return raw.split('\n').filter { it.isNotBlank() }.toSet()
+    }
+    fun isFunSafe(pkg: String): Boolean = pkg in funSafeSet()
+    fun setFunSafe(pkg: String, on: Boolean) {
+        val s = funSafeSet().toMutableSet()
+        if (on) s += pkg else s -= pkg
+        sp.edit().putString("fun_safe", s.joinToString("\n")).apply()
+    }
+
     var strictMode: Boolean
         get() = sp.getBoolean("strict", false)
         set(value) = sp.edit().putBoolean("strict", value).apply()

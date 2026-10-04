@@ -16,6 +16,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.krishna.questblock.data.BlockedApp
+import com.krishna.questblock.data.FunLimit
+import com.krishna.questblock.data.FunSignal
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.StudySignal
@@ -24,6 +26,7 @@ import com.krishna.questblock.data.fmtLeft
 import com.krishna.questblock.data.frozenAt
 import com.krishna.questblock.data.leftMs
 import com.krishna.questblock.ui.MainActivity
+import com.krishna.questblock.ui.fmtDur
 import com.krishna.questblock.util.Perms
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -124,7 +127,7 @@ class KeepAliveService : Service() {
             scope.launch {
                 while (true) {
                     render()
-                    delay(if (hasActiveUnlock() || StudySignal.pkg != null) 1000L else 5000L)
+                    delay(if (hasActiveUnlock() || StudySignal.pkg != null || FunSignal.pkg != null) 1000L else 5000L)
                 }
             }
         }
@@ -174,6 +177,26 @@ class KeepAliveService : Service() {
             text = "1 \uD83E\uDE99 every ${prefs.studyMinPerCoin} min$unlockHint"
             whenMs = now + toGo
             progress = ((carry * 100) / unitMs).toInt().coerceIn(0, 100)
+        } else if (FunSignal.pkg != null && FunLimit.last?.enabled == true) {
+            // a fun app is on screen and a daily limit is set: show how much is left
+            val fs = FunLimit.last!!
+            val usedNow = fs.usedMs + (now - fs.at).coerceAtLeast(0L)
+            val leftFun = fs.limitMs - usedNow
+            val pct = (usedNow * 100 / fs.limitMs).toInt().coerceIn(0, 100)
+            val funHint = active.firstOrNull()?.let { a ->
+                val aw = prefs.awayAt(a.packageName)
+                " · ${a.label} ${(a.leftMs(aw, now) + 59_999L) / 60_000L} min ${if (a.frozenAt(aw, now)) "saved" else "left"}"
+            } ?: ""
+            if (leftFun > 0L) {
+                title = "${if (pct >= 80) "⏳ " else ""}🎮 Fun ${fmtDur(usedNow)} of ${fmtDur(fs.limitMs)}"
+                text = "Fun time left today$funHint"
+                whenMs = now + leftFun
+                progress = pct
+            } else {
+                title = "🎮 Fun limit reached"
+                text = "This session can finish. It locks the next time you open it."
+                visible = true
+            }
         } else if (active.isNotEmpty()) {
             val first = active.first()
             val away = prefs.awayAt(first.packageName)

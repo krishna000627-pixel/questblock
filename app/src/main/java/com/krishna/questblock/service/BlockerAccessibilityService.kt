@@ -17,6 +17,9 @@ import com.krishna.questblock.data.enforcedAt
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.StudySession
+import com.krishna.questblock.data.AppCategorizer
+import com.krishna.questblock.data.FunLimit
+import com.krishna.questblock.data.FunSignal
 import com.krishna.questblock.data.StudySignal
 import com.krishna.questblock.util.DebugLog
 import com.krishna.questblock.data.UsageTracker
@@ -40,6 +43,16 @@ class BlockerAccessibilityService : AccessibilityService() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var expiryJob: Job? = null
+
+    // ── Fun-time limit ──
+    private var funCutJob: Job? = null
+    private var funCutPkg: String? = null
+    /** Safe app (e.g. Free Fire) we are inside right now: never cut mid-use. */
+    private var safeSession: String? = null
+    /** Safe apps we let in while still under the limit. */
+    private val safeOk = HashSet<String>()
+    /** When the user last left (or locked the phone away from) a safe app. */
+    private val safeLeftAt = HashMap<String, Long>()
     private var studyTimerJob: Job? = null
     private var usageJob: Job? = null
     private var usagePkg: String? = null
@@ -66,6 +79,9 @@ class BlockerAccessibilityService : AccessibilityService() {
                 Intent.ACTION_SCREEN_OFF -> {
                     trackedUnlockPkg?.let { prefs.setAwayAt(it, System.currentTimeMillis()) }
                     StudySignal.leave()
+                    FunSignal.leave()
+                    safeSession?.let { safeLeftAt[it] = System.currentTimeMillis() }
+                    safeSession = null
                 }
                 Intent.ACTION_USER_PRESENT ->
                     currentPkg?.let { p -> scope.launch { evaluateApp(p) } }
@@ -126,6 +142,8 @@ class BlockerAccessibilityService : AccessibilityService() {
 
     private fun markForeground(pkg: String) {
         if (currentPkg != pkg) {
+            funCutJob?.cancel(); funCutPkg = null
+            safeSession?.let { if (it != pkg) { safeLeftAt[it] = System.currentTimeMillis(); safeSession = null } }
             stopUsageTimer()
             if (activeStudyPkg != null && pkg != activeStudyPkg) {
                 stopStudyTimer()
@@ -151,7 +169,83 @@ class BlockerAccessibilityService : AccessibilityService() {
         return app.copy(unlockedUntil = extended)
     }
 
+    /**
+     * Daily Fun & Games limit. Returns true when the app was locked.
+     * - normal fun apps are cut the moment the limit is reached (a timer is set while they are open)
+     * - "safe" apps (Free Fire) are never cut mid-use; they are locked the next time they are opened,
+     *   with a 5 minute window to come back to a game already under way (notification glance, phone lock)
+     */
+    private suspend fun checkFunLimit(pkg: String): Boolean {
+        if (prefs.funLimitMin <= 0 || AppCategorizer.categoryOf(prefs, packageManager, pkg) != "fun") {
+            FunSignal.leave()
+            return false
+        }
+        val safe = prefs.isFunSafe(pkg)
+        if (safe && safeSession == pkg) { FunSignal.enter(pkg); return false }       // inside the same session
+        val st = FunLimit.state(this, prefs)
+        if (!st.enabled) { FunSignal.leave(); return false }                        // no limit / no usage access
+        if (!st.reached) {
+            if (safe) { safeSession = pkg; safeOk += pkg } else scheduleFunCut(pkg)
+            FunSignal.enter(pkg)
+            return false
+        }
+        val left = safeLeftAt[pkg] ?: 0L
+        if (safe && pkg in safeOk && System.currentTimeMillis() - left < SAFE_REJOIN_MS) {
+            safeSession = pkg
+            FunSignal.enter(pkg)
+            return false
+        }
+        safeOk -= pkg
+        safeSession = null
+        FunSignal.leave()
+        showFunLimit(pkg)
+        return true
+    }
+
+    private fun scheduleFunCut(pkg: String) {
+        if (funCutPkg == pkg && funCutJob?.isActive == true) return
+        funCutJob?.cancel()
+        funCutPkg = pkg
+        funCutJob = scope.launch {
+            while (true) {
+                val st = FunLimit.state(this@BlockerAccessibilityService, prefs, force = true)
+                if (!st.enabled) return@launch
+                val left = st.limitMs - st.usedMs
+                if (left <= 0L) break
+                // look again at least once a minute: time with the screen off does not count
+                delay(minOf(left, 60_000L).coerceAtLeast(1_000L))
+                if (currentPkg != pkg) return@launch
+            }
+            if (currentPkg == pkg) {
+                com.krishna.questblock.util.DebugLog.d("service: fun limit reached, cutting $pkg")
+                FunSignal.leave()
+                showFunLimit(pkg)
+            }
+        }
+    }
+
+    private fun showFunLimit(pkg: String) {
+        val now = SystemClock.uptimeMillis()
+        if (BlockActivity.showingFor == pkg) return
+        if (lastBlockPkg == pkg && now - lastBlockAt < RELAUNCH_GUARD_MS) return
+        lastBlockPkg = pkg
+        lastBlockAt = now
+        com.krishna.questblock.util.DebugLog.d("service.showFunLimit pkg=$pkg")
+        startActivity(
+            Intent(this, BlockActivity::class.java)
+                .putExtra(BlockActivity.EXTRA_PKG, pkg)
+                .putExtra(BlockActivity.EXTRA_FUN_LIMIT, true)
+                .addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                        Intent.FLAG_ACTIVITY_NO_ANIMATION or
+                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+                )
+        )
+    }
+
     private suspend fun evaluateApp(pkg: String) {
+        if (checkFunLimit(pkg)) return
         val app = repo.getBlockedApp(pkg)?.let { applyCarryOver(it) }
 
         if (app != null && !app.isStudyApp) {
@@ -357,6 +451,7 @@ class BlockerAccessibilityService : AccessibilityService() {
 
         private const val SETTLE_MS = 180L
         private const val RELAUNCH_GUARD_MS = 800L
+        private const val SAFE_REJOIN_MS = 5 * 60_000L
         private const val USAGE_TICK_MS = 15_000L
         private const val FREE_LOG_GAP_MS = 10 * 60_000L
         private val GUARDED_PKGS = setOf(

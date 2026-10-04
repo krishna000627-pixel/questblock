@@ -31,8 +31,8 @@ android {
         applicationId = "com.krishna.questblock"
         minSdk = 26
         targetSdk = 35
-        versionCode = 42
-        versionName = "42.0.0"
+        versionCode = 43
+        versionName = "43.0.0"
     }
 
     signingConfigs {

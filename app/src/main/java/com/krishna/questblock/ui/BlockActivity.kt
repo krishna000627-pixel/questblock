@@ -115,6 +115,8 @@ class BlockActivity : ComponentActivity() {
     private var target by mutableStateOf("")
     /** Bumped on every re-launch so a stale 'paying' / status from an earlier attempt can't freeze the new lock page. */
     private var nonce by mutableIntStateOf(0)
+    /** True when the daily fun limit (not an unlock) is why this page is showing. */
+    private var funLimit by mutableStateOf(false)
     /** True once we've decided to open the target app — prevents finishAndRemoveTask in onStop. */
     private var launching = false
 
@@ -125,8 +127,9 @@ class BlockActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         target = intent.getStringExtra(EXTRA_PKG).orEmpty()
+        funLimit = intent.getBooleanExtra(EXTRA_FUN_LIMIT, false)
         showingFor = target
-        com.krishna.questblock.util.DebugLog.d("BlockActivity.onCreate pkg=$target")
+        com.krishna.questblock.util.DebugLog.d("BlockActivity.onCreate pkg=$target funLimit=$funLimit")
         onBackPressedDispatcher.addCallback(this) { goHome() }
         loadThemeMode(this)
         setContent {
@@ -134,6 +137,7 @@ class BlockActivity : ComponentActivity() {
                 BlockScreen(
                     pkg = target,
                     nonce = nonce,
+                    funLimit = funLimit,
                     onHome = ::goHome,
                     onQuests = ::openQuests,
                     onUnlocked = ::openTarget,
@@ -146,6 +150,7 @@ class BlockActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         target = intent.getStringExtra(EXTRA_PKG).orEmpty()
+        funLimit = intent.getBooleanExtra(EXTRA_FUN_LIMIT, false)
         showingFor = target
         launching = false
         opened = false
@@ -196,6 +201,7 @@ class BlockActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_PKG = "target_pkg"
+        const val EXTRA_FUN_LIMIT = "fun_limit"
         @Volatile var showingFor: String = ""
     }
 }
@@ -212,11 +218,16 @@ private val MOTIVATIONAL_LINES = listOf(
 fun BlockScreen(
     pkg: String,
     nonce: Int = 0,
+    funLimit: Boolean = false,
     onHome: () -> Unit,
     onQuests: () -> Unit,
     onUnlocked: () -> Unit,
     vm: BlockViewModel = hiltViewModel(),
 ) {
+    if (funLimit) {
+        FunLimitPage(pkg = pkg, onHome = onHome, onQuests = onQuests)
+        return
+    }
     val ctx = LocalContext.current
     val blocked by vm.blocked.collectAsStateWithLifecycle()
     val player by vm.player.collectAsStateWithLifecycle()
