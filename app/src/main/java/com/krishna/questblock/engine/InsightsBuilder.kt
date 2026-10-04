@@ -23,7 +23,7 @@ class InsightsBuilder @Inject constructor(
     private val repo: GameRepository,
     private val prefs: Prefs,
 ) {
-    suspend fun build(): Snapshot = withContext(Dispatchers.IO) {
+    suspend fun build(withUsage: Boolean = true): Snapshot = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val player = repo.player.first()
         val tasks = repo.tasks.first()
@@ -36,7 +36,7 @@ class InsightsBuilder @Inject constructor(
             val from = UsageTracker.dayStart(i)
             val end = from + 86_400_000L
             var st = 0; var co = 0; var ne = 0; var fu = 0
-            if (access) {
+            if (access && withUsage) {
                 val to = if (i == 0) now else end
                 UsageTracker.foreground(ctx, from, to).perPkg.forEach { (pkg, ms) ->
                     val m = (ms / 60_000L).toInt()

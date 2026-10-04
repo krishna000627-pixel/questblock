@@ -42,6 +42,7 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val repo: GameRepository,
     private val autoVerifier: com.krishna.questblock.engine.AutoVerifier,
+    private val hubStore: com.krishna.questblock.engine.HubStore,
 ) : ViewModel() {
     val player       = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
     val tasks        = repo.tasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -54,6 +55,7 @@ class HomeViewModel @Inject constructor(
             repo.settleFocus()
             loginBonus = repo.claimDailyLogin()
             runCatching { autoVerifier.run() }
+            hubStore.refresh()
         }
     }
     fun dismissBonus() { loginBonus = 0 }

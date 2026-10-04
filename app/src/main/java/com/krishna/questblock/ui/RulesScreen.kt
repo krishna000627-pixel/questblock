@@ -63,34 +63,28 @@ fun RulesScreen(onBack: () -> Unit, vm: RulesViewModel = hiltViewModel()) {
         item {
             HubCard {
                 Text("🤖 Automation", fontWeight = FontWeight.Bold, color = ColorPrimary, style = MaterialTheme.typography.titleSmall)
-                SwitchRow("Auto-complete quests",
-                    "A Study quest with a time in its name (\"Physics 45 min\") or a coding quest ticks itself from app time. \"Keep Fun under 60 min\" ticks after 22:00 if you stayed under.",
-                    vm.autoVerifyOn) { vm.updateAutoVerify(it) }
+                SwitchRow("Auto-complete quests", "Study and coding quests with a time in the name", vm.autoVerifyOn) { vm.updateAutoVerify(it) }
             }
         }
         item {
             HubCard {
                 Text("📚 Exam mode", fontWeight = FontWeight.Bold, color = ColorPrimary, style = MaterialTheme.typography.titleSmall)
-                SwitchRow("Exam mode",
-                    "Fun limit capped at $EXAM_FUN_LIMIT_MIN min, study target 6 h, 4 focus sessions, 8 quests, and Fun & Games apps locked 08:00–20:00 (or your study hours).",
-                    vm.examOn) { vm.updateExam(it) }
+                SwitchRow("Exam mode", "Fun max $EXAM_FUN_LIMIT_MIN min, locked 08:00–20:00", vm.examOn) { vm.updateExam(it) }
             }
         }
         item {
             HubCard {
                 Text("🔒 Lock windows", fontWeight = FontWeight.Bold, color = ColorPrimary, style = MaterialTheme.typography.titleSmall)
-                SwitchRow("Quiet hours", "Fun & Games apps stay locked in this window, for example at night.", vm.quietEnabledOn) { vm.updateQuietEnabled(it) }
+                SwitchRow("Quiet hours", "Fun apps locked", vm.quietEnabledOn) { vm.updateQuietEnabled(it) }
                 if (vm.quietEnabledOn) {
                     StepRow("From", hhmm(vm.quietFrom), { vm.updateQuietFrom(vm.quietFrom - 30) }, { vm.updateQuietFrom(vm.quietFrom + 30) })
                     StepRow("Until", hhmm(vm.quietUntil), { vm.updateQuietUntil(vm.quietUntil - 30) }, { vm.updateQuietUntil(vm.quietUntil + 30) })
                 }
-                SwitchRow("Study hours", "Fun & Games apps stay locked in this window.", vm.studyEnabledOn) { vm.updateStudyEnabled(it) }
+                SwitchRow("Study hours", "Fun apps locked", vm.studyEnabledOn) { vm.updateStudyEnabled(it) }
                 if (vm.studyEnabledOn) {
                     StepRow("From", hhmm(vm.studyFrom), { vm.updateStudyFrom(vm.studyFrom - 30) }, { vm.updateStudyFrom(vm.studyFrom + 30) })
                     StepRow("Until", hhmm(vm.studyUntil), { vm.updateStudyUntil(vm.studyUntil - 30) }, { vm.updateStudyUntil(vm.studyUntil + 30) })
                 }
-                Text("A game already open is not cut when a window starts; it is locked the next time you open it.",
-                    style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             }
         }
         item {
@@ -98,10 +92,8 @@ fun RulesScreen(onBack: () -> Unit, vm: RulesViewModel = hiltViewModel()) {
                 Text("⚖️ Limits and penalties", fontWeight = FontWeight.Bold, color = ColorPrimary, style = MaterialTheme.typography.titleSmall)
                 StepRow("Weekend fun limit", if (vm.weekendMin == 0) "same" else "${vm.weekendMin} min",
                     { vm.updateWeekend(vm.weekendMin - 15) }, { vm.updateWeekend(vm.weekendMin + 15) })
-                StepRow("Focus give-up penalty", if (vm.penaltyCoins == 0) "off" else "${vm.penaltyCoins} \uD83E\uDE99",
+                StepRow("Focus give-up cost", if (vm.penaltyCoins == 0) "off" else "${vm.penaltyCoins} \uD83E\uDE99",
                     { vm.updatePenalty(vm.penaltyCoins - 5) }, { vm.updatePenalty(vm.penaltyCoins + 5) })
-                Text("The penalty is only charged after the first minute of a focus session.",
-                    style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             }
         }
     }

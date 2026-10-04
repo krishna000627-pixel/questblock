@@ -136,9 +136,13 @@ fun MainScreen() {
             composable("shop")         { InventoryScreen(onBack = { navController.popBackStack() }) }
             composable("hub")          { PlayerHubScreen(
                 onBack = { navController.popBackStack() },
+                onOpenGoals = { navController.openPage("hub_goals") },
+                onOpenReports = { navController.openPage("hub_reports") },
                 onOpenBadges = { navController.openPage("hub_badges") },
                 onOpenRules = { navController.openPage("hub_rules") },
             ) }
+            composable("hub_goals")    { GoalsScreen(onBack = { navController.popBackStack() }) }
+            composable("hub_reports")  { ReportsScreen(onBack = { navController.popBackStack() }) }
             composable("hub_badges")   { BadgesScreen(onBack = { navController.popBackStack() }) }
             composable("hub_rules")    { RulesScreen(onBack = { navController.popBackStack() }) }
         }

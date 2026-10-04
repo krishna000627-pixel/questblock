@@ -48,11 +48,6 @@ data class Snapshot(
     }
 }
 
-data class Mission(val headline: String, val steps: List<String>, val suggestions: List<SuggestedQuest>, val source: String, val availableMin: Int = 0)
-
-/** A quest the engine proposes. The user taps + to add it. */
-data class SuggestedQuest(val title: String, val difficulty: Int, val category: String, val note: String = "")
-
 data class WeeklyReport(
     val lines: List<String>,
     val bestDay: String,
@@ -67,12 +62,10 @@ data class WeeklyReport(
  * `FallbackAdvisor(GeminiAdvisor(key), RulesAdvisor)` from [AdvisorProvider.get]. Nothing else changes.
  */
 interface Advisor {
-    suspend fun mission(s: Snapshot): Mission
     suspend fun weekly(s: Snapshot): WeeklyReport
 }
 
 class FallbackAdvisor(private val primary: Advisor, private val fallback: Advisor) : Advisor {
-    override suspend fun mission(s: Snapshot): Mission = runCatching { primary.mission(s) }.getOrElse { fallback.mission(s) }
     override suspend fun weekly(s: Snapshot): WeeklyReport = runCatching { primary.weekly(s) }.getOrElse { fallback.weekly(s) }
 }
 

@@ -103,11 +103,11 @@ object Progression {
     fun challenges(s: Snapshot): List<Challenge> {
         val out = ArrayList<Challenge>()
         val limit = if (s.funLimitMin > 0) s.funLimitMin else 60
-        out += Challenge("fun_diet", "7-Day Distraction Diet", "Fun & Games under $limit min a day",
+        out += Challenge("fun_diet", "Fun under $limit min × 7 days", "",
             minOf(7, runLength(s.days) { it.funMin <= limit && it.screenMin > 0 }), 7, 100, 500)
-        out += Challenge("study_streak", "Study Streak", "45+ min of study a day",
+        out += Challenge("study_streak", "Study 45+ min × 5 days", "",
             minOf(5, runLength(s.days) { it.studyMin >= 45 }), 5, 60, 300)
-        out += Challenge("focus_week", "Focus Habit", "25+ min of focus a day",
+        out += Challenge("focus_week", "Focus 25+ min × 3 days", "",
             minOf(3, runLength(s.days) { it.focusMin >= 25 }), 3, 40, 200)
         return out
     }
@@ -122,11 +122,11 @@ object Progression {
 
     /** Season missions and XP milestones. Each can be claimed once per season. */
     fun seasonGoals(xp: Int, questsDone: Int, focusMin: Int, streak: Int): List<Challenge> = listOf(
-        Challenge("sq", "Season quests", "Finish 30 quests this season", minOf(30, questsDone), 30, 100, 300),
-        Challenge("sf", "Season focus", "300 focus minutes this season", minOf(300, focusMin), 300, 60, 200),
-        Challenge("ss", "Season streak", "Reach a 14-day streak", minOf(14, streak), 14, 80, 250),
-        Challenge("x500", "XP milestone 500", "Earn 500 quest XP this season", minOf(500, xp), 500, 50, 0),
-        Challenge("x1500", "XP milestone 1500", "Earn 1500 quest XP this season", minOf(1500, xp), 1500, 120, 0),
+        Challenge("sq", "30 quests", "", minOf(30, questsDone), 30, 100, 300),
+        Challenge("sf", "300 focus min", "", minOf(300, focusMin), 300, 60, 200),
+        Challenge("ss", "14-day streak", "", minOf(14, streak), 14, 80, 250),
+        Challenge("x500", "500 quest XP", "", minOf(500, xp), 500, 50, 0),
+        Challenge("x1500", "1500 quest XP", "", minOf(1500, xp), 1500, 120, 0),
     )
 
     fun seasonKey(season: SeasonInfo, c: Challenge): String = "s${season.number}_${c.id}"

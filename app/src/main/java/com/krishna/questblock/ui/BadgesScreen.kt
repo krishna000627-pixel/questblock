@@ -16,42 +16,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.engine.Badge
-import com.krishna.questblock.engine.InsightsBuilder
-import com.krishna.questblock.engine.Progression
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import javax.inject.Inject
-
-@HiltViewModel
-class BadgesViewModel @Inject constructor(
-    private val builder: InsightsBuilder,
-    val prefs: Prefs,
-) : ViewModel() {
-    var badges by mutableStateOf<List<Badge>?>(null)
-        private set
-
-    init {
-        viewModelScope.launch {
-            badges = Progression.badgesRemembered(builder.build(), prefs)
-        }
-    }
-
-    fun unlockedOn(b: Badge): String? {
-        val t = prefs.badgeAt(b.id)
-        return if (b.unlocked && t > 0L) SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(t)) else null
-    }
-}
 
 @Composable
-fun BadgesScreen(onBack: () -> Unit, vm: BadgesViewModel = hiltViewModel()) {
-    val list = vm.badges
+fun BadgesScreen(onBack: () -> Unit, vm: HubViewModel = hiltViewModel()) {
+    LaunchedEffect(Unit) { vm.store.refresh() }
+    val list = vm.store.state.badges
     LazyColumn(
         Modifier.fillMaxSize().background(ColorBg),
         contentPadding = PaddingValues(12.dp),
@@ -63,17 +33,12 @@ fun BadgesScreen(onBack: () -> Unit, vm: BadgesViewModel = hiltViewModel()) {
                 Text("Badges", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
             }
         }
-        if (list == null) {
-            item { HubCard { Text("Loading…", color = ColorMuted) } }
-            return@LazyColumn
-        }
+        if (list.isEmpty()) return@LazyColumn
         val got = list.count { it.unlocked }
         item {
             HubCard {
                 Text("$got of ${list.size} unlocked", fontWeight = FontWeight.Bold, color = ColorText, style = MaterialTheme.typography.titleMedium)
                 Bar(got.toFloat() / list.size.coerceAtLeast(1), Modifier.fillMaxWidth())
-                Text("Badges stay unlocked once you earn them. Hidden ones show up when you unlock them.",
-                    style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             }
         }
         items(list.sortedWith(compareByDescending<Badge> { it.unlocked }.thenBy { it.hidden })) { b ->
@@ -83,12 +48,11 @@ fun BadgesScreen(onBack: () -> Unit, vm: BadgesViewModel = hiltViewModel()) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(if (b.unlocked) b.emoji else "🔒", fontSize = 30.sp)
                     Column(Modifier.weight(1f)) {
-                        Text(if (shown) b.name else "Hidden badge", fontWeight = FontWeight.Bold,
+                        Text(if (shown) b.name else "???", fontWeight = FontWeight.Bold,
                             color = if (b.unlocked) ColorText else ColorMuted)
-                        Text(if (shown) b.desc else "Keep playing to find out what it needs.",
-                            style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-                        vm.unlockedOn(b)?.let {
-                            Text("Unlocked $it", style = MaterialTheme.typography.labelSmall, color = ColorPrimary)
+                        if (shown) Text(b.desc, style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                        vm.store.unlockedOn(b)?.let {
+                            Text(it, style = MaterialTheme.typography.labelSmall, color = ColorPrimary)
                         }
                     }
                 }
