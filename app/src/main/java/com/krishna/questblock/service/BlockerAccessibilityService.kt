@@ -176,6 +176,18 @@ class BlockerAccessibilityService : AccessibilityService() {
      *   with a 5 minute window to come back to a game already under way (notification glance, phone lock)
      */
     private suspend fun checkFunLimit(pkg: String): Boolean {
+        // Quiet hours / study hours / exam mode: fun apps are locked. A game already under way is not cut (same rule as the daily limit).
+        if (prefs.funBlockedNow() && AppCategorizer.categoryOf(prefs, packageManager, pkg) == "fun") {
+            val safeNow = prefs.isFunSafe(pkg)
+            if (safeNow && safeSession == pkg) { FunSignal.enter(pkg); return false }
+            safeOk -= pkg
+            safeSession = null
+            FunSignal.leave()
+            FunSignal.quiet = true
+            showFunLimit(pkg)
+            return true
+        }
+        FunSignal.quiet = false
         if (prefs.effectiveFunLimitMin <= 0 || AppCategorizer.categoryOf(prefs, packageManager, pkg) != "fun") {
             FunSignal.leave()
             return false

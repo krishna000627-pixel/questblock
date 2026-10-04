@@ -175,9 +175,41 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         if (examMode) l = if (l > 0) minOf(l, EXAM_FUN_LIMIT_MIN) else EXAM_FUN_LIMIT_MIN
         return l
     }
-    /** Study minutes already used by auto quest verification today, so one study minute is never paid twice. */
-    fun autoStudyUsed(day: Long): Int = if (sp.getLong("auto_study_day", 0L) == day) sp.getInt("auto_study_used", 0) else 0
-    fun setAutoStudyUsed(day: Long, min: Int) { sp.edit().putLong("auto_study_day", day).putInt("auto_study_used", min).apply() }
+    /** Minutes of a category already used by auto quest verification today, so one minute is never paid twice. */
+    fun autoUsed(day: Long, cat: String): Int = if (sp.getLong("auto_${cat}_day", 0L) == day) sp.getInt("auto_${cat}_used", 0) else 0
+    fun setAutoUsed(day: Long, cat: String, min: Int) { sp.edit().putLong("auto_${cat}_day", day).putInt("auto_${cat}_used", min).apply() }
+
+    // ── Context-aware locking: quiet hours and study hours lock Fun & Games apps ──
+    var quietEnabled: Boolean
+        get() = sp.getBoolean("quiet_on", false)
+        set(value) = sp.edit().putBoolean("quiet_on", value).apply()
+    var quietStartMin: Int
+        get() = sp.getInt("quiet_start", 22 * 60)
+        set(value) = sp.edit().putInt("quiet_start", ((value % 1440) + 1440) % 1440).apply()
+    var quietEndMin: Int
+        get() = sp.getInt("quiet_end", 6 * 60)
+        set(value) = sp.edit().putInt("quiet_end", ((value % 1440) + 1440) % 1440).apply()
+    var studyBlockEnabled: Boolean
+        get() = sp.getBoolean("studyblock_on", false)
+        set(value) = sp.edit().putBoolean("studyblock_on", value).apply()
+    var studyStartMin: Int
+        get() = sp.getInt("studyblock_start", 8 * 60)
+        set(value) = sp.edit().putInt("studyblock_start", ((value % 1440) + 1440) % 1440).apply()
+    var studyEndMin: Int
+        get() = sp.getInt("studyblock_end", 20 * 60)
+        set(value) = sp.edit().putInt("studyblock_end", ((value % 1440) + 1440) % 1440).apply()
+
+    /** True while Fun & Games apps must stay locked: quiet hours, study hours, or exam mode (08:00-20:00 unless study hours are set). */
+    fun funBlockedNow(): Boolean {
+        val cal = java.util.Calendar.getInstance()
+        val m = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
+        fun inWin(s: Int, e: Int) = if (s == e) false else if (s < e) m in s until e else (m >= s || m < e)
+        if (quietEnabled && inWin(quietStartMin, quietEndMin)) return true
+        return if (studyBlockEnabled) inWin(studyStartMin, studyEndMin) else examMode && inWin(8 * 60, 20 * 60)
+    }
+
+    fun badgeAt(id: String): Long = sp.getLong("badge_$id", 0L)
+    fun setBadgeAt(id: String, t: Long) { sp.edit().putLong("badge_$id", t).apply() }
     var seasonStartDay: Long
         get() = sp.getLong("season_start", 0L)
         set(value) = sp.edit().putLong("season_start", value).apply()

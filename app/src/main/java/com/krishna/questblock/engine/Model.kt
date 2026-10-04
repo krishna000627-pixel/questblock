@@ -48,7 +48,7 @@ data class Snapshot(
     }
 }
 
-data class Mission(val headline: String, val steps: List<String>, val suggestions: List<SuggestedQuest>, val source: String)
+data class Mission(val headline: String, val steps: List<String>, val suggestions: List<SuggestedQuest>, val source: String, val availableMin: Int = 0)
 
 /** A quest the engine proposes. The user taps + to add it. */
 data class SuggestedQuest(val title: String, val difficulty: Int, val category: String, val note: String = "")

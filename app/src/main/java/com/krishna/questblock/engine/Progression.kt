@@ -4,9 +4,9 @@ import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.dayNumber
 
 class Attr(val name: String, val emoji: String, val level: Int, val into: Int, val per: Int)
-class Badge(val id: String, val name: String, val emoji: String, val desc: String, val unlocked: Boolean, val hidden: Boolean)
+data class Badge(val id: String, val name: String, val emoji: String, val desc: String, val unlocked: Boolean, val hidden: Boolean)
 class Challenge(val id: String, val title: String, val desc: String, val progress: Int, val target: Int, val coins: Int, val xp: Int)
-class SeasonInfo(val number: Int, val name: String, val dayIn: Int, val length: Int)
+class SeasonInfo(val number: Int, val name: String, val dayIn: Int, val length: Int, val startDay: Long)
 
 object Progression {
 
@@ -58,7 +58,7 @@ object Progression {
         if (prefs.seasonStartDay <= 0L) prefs.seasonStartDay = today
         val since = (today - prefs.seasonStartDay).toInt().coerceAtLeast(0)
         val n = since / 30 + 1
-        return SeasonInfo(n, SEASON_NAMES[(n - 1) % SEASON_NAMES.size], since % 30 + 1, 30)
+        return SeasonInfo(n, SEASON_NAMES[(n - 1) % SEASON_NAMES.size], since % 30 + 1, 30, prefs.seasonStartDay + (n - 1) * 30L)
     }
 
     /** Badges worked out from the last 14 days, so they are not stored anywhere. */
@@ -97,6 +97,25 @@ object Progression {
             minOf(3, runLength(s.days) { it.focusMin >= 25 }), 3, 40, 200)
         return out
     }
+
+    /** XP earned from quests since the season started (read from the player's XP log "day:xp,..."). */
+    fun seasonXp(log: String, startDay: Long): Int = log.split(",").sumOf { part ->
+        val a = part.split(":")
+        val d = a.getOrNull(0)?.toLongOrNull()
+        val x = a.getOrNull(1)?.toIntOrNull()
+        if (d != null && x != null && d >= startDay) x else 0
+    }
+
+    /** Season missions and XP milestones. Each can be claimed once per season. */
+    fun seasonGoals(xp: Int, questsDone: Int, focusMin: Int, streak: Int): List<Challenge> = listOf(
+        Challenge("sq", "Season quests", "Finish 30 quests this season", minOf(30, questsDone), 30, 100, 300),
+        Challenge("sf", "Season focus", "300 focus minutes this season", minOf(300, focusMin), 300, 60, 200),
+        Challenge("ss", "Season streak", "Reach a 14-day streak", minOf(14, streak), 14, 80, 250),
+        Challenge("x500", "XP milestone 500", "Earn 500 quest XP this season", minOf(500, xp), 500, 50, 0),
+        Challenge("x1500", "XP milestone 1500", "Earn 1500 quest XP this season", minOf(1500, xp), 1500, 120, 0),
+    )
+
+    fun seasonKey(season: SeasonInfo, c: Challenge): String = "s${season.number}_${c.id}"
 
     /** A reward can be taken once per challenge per week. */
     fun claimKey(c: Challenge, now: Long = System.currentTimeMillis()): String = "${c.id}_${dayNumber(now) / 7}"

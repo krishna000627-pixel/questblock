@@ -7,6 +7,8 @@ import kotlinx.coroutines.withContext
 /** Which fun app is on screen right now (set by the accessibility service). Used for the notification line. */
 object FunSignal {
     @Volatile var pkg: String? = null
+    /** True when the lock page is shown because of quiet/study hours (not because the daily limit ran out). */
+    @Volatile var quiet: Boolean = false
     fun enter(p: String) { pkg = p }
     fun leave() { pkg = null }
 }

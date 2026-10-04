@@ -44,11 +44,13 @@ fun FunLimitPage(pkg: String, onHome: () -> Unit, onQuests: () -> Unit) {
         Text("$label is locked", style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold, color = ColorText, textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
-        Text("\uD83C\uDFAE Fun limit reached", style = MaterialTheme.typography.titleMedium,
+        Text(if (com.krishna.questblock.data.FunSignal.quiet) "\uD83D\uDD12 Fun apps are locked right now" else "\uD83C\uDFAE Fun limit reached", style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold, color = ColorWarning)
         Spacer(Modifier.height(8.dp))
         Text(
-            if (st != null && st.enabled)
+            if (com.krishna.questblock.data.FunSignal.quiet)
+                "Quiet hours, study hours or exam mode are on. Fun apps open again when they end."
+            else if (st != null && st.enabled)
                 "You've had ${fmtDur(st.usedMs)} of ${fmtDur(st.limitMs)} fun time today. It resets at midnight."
             else "You've used today's fun time. It resets at midnight.",
             style = MaterialTheme.typography.bodyMedium, color = ColorMuted, textAlign = TextAlign.Center,
