@@ -13,14 +13,16 @@ object Progression {
     private fun attr(name: String, emoji: String, value: Int, per: Int) =
         Attr(name, emoji, value / per, value % per, per)
 
+    /** Levels come only from finished quests. */
     fun attributes(s: Snapshot): List<Attr> {
-        val daysUnderFun = if (s.funLimitMin > 0) s.days.drop(1).count { it.funMin <= s.funLimitMin } else 0
+        val q = s.quests
         return listOf(
-            attr("Focus", "🎯", s.totalFocusMin, 60),
-            attr("Knowledge", "📚", s.days.sumOf { it.studyMin }, 120),
-            attr("Discipline", "🛡️", daysUnderFun, 2),
-            attr("Consistency", "🔥", s.streak, 3),
-            attr("Productivity", "⚡", s.totalQuestsDone, 5),
+            attr("Knowledge", "📚", q.study, 5),       // Study quests
+            attr("Productivity", "⚡", q.work, 5),     // Work quests
+            attr("Fitness", "💪", q.health, 5),        // Health quests
+            attr("Discipline", "🛡️", q.hard, 3),      // Hard quests
+            attr("Focus", "🎯", q.timer, 3),           // Timer / focus quests
+            attr("Consistency", "🔥", q.activeDays, 3), // Days with a finished quest
         )
     }
 
@@ -35,20 +37,15 @@ object Progression {
         return RANKS[i].second to next?.let { it.first - points }
     }
 
-    /** 0..100 from this week: quests, focus, study, fun control, streak. */
+    /** 0..100 from this week's quests: done, hard ones, active days, streak, focus time. */
     fun disciplineScore(s: Snapshot): Int {
-        val w = s.thisWeek
-        val quests = minOf(25.0, w.sumOf { it.questsDone } * 2.5)
-        val focus = minOf(20.0, w.sumOf { it.focusMin } * 20.0 / 150.0)
-        val study = minOf(25.0, w.sumOf { it.studyMin } * 25.0 / (if (s.examMode) 1200.0 else 300.0))
-        val fun_ = if (s.funLimitMin > 0) {
-            20.0 * w.count { it.funMin <= s.funLimitMin } / w.size.coerceAtLeast(1)
-        } else {
-            val share = w.sumOf { it.funMin }.toDouble() / w.sumOf { it.screenMin }.coerceAtLeast(1)
-            20.0 * (1.0 - minOf(1.0, share / 0.6))
-        }
-        val streak = minOf(10.0, s.streak * 10.0 / 7.0)
-        return (quests + focus + study + fun_ + streak).toInt().coerceIn(0, 100)
+        val q = s.quests
+        val done = minOf(35.0, q.weekDone * 5.0)
+        val hard = minOf(15.0, q.weekHard * 5.0)
+        val days = q.weekActiveDays * 15.0 / 7.0
+        val streak = minOf(15.0, s.streak * 15.0 / 7.0)
+        val focus = minOf(20.0, s.thisWeek.sumOf { it.focusMin } * 20.0 / 150.0)
+        return (done + hard + days + streak + focus).toInt().coerceIn(0, 100)
     }
 
     private val SEASON_NAMES = listOf("Awakening", "Ascension", "Resolve", "Dominion", "Eclipse", "Zenith")

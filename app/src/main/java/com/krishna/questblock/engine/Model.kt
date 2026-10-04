@@ -11,6 +11,19 @@ data class DayStats(
     val focusMin: Int,
 ) { val screenMin: Int get() = studyMin + codingMin + neutralMin + funMin }
 
+/** Everything about finished quests. Levels and the score on the Hub come from these, not from screen time. */
+data class QuestStats(
+    val study: Int = 0,
+    val work: Int = 0,
+    val health: Int = 0,
+    val hard: Int = 0,
+    val timer: Int = 0,
+    val activeDays: Int = 0,
+    val weekDone: Int = 0,
+    val weekHard: Int = 0,
+    val weekActiveDays: Int = 0,
+)
+
 data class QuestBrief(val title: String, val category: String, val difficulty: Int, val overdue: Boolean)
 
 /** Everything the offline engine (and later an AI advisor) is allowed to see. Totals only, no app names. */
@@ -28,6 +41,7 @@ data class Snapshot(
     val usageAccess: Boolean,
     /** Completion rate per difficulty (1..3) from finished vs overdue quests; -1 = not enough data. */
     val difficultyRate: Map<Int, Double>,
+    val quests: QuestStats = QuestStats(),
 ) {
     val today: DayStats get() = days.first()
     val thisWeek: List<DayStats> get() = days.take(7)

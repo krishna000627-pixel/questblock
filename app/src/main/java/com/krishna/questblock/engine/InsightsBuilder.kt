@@ -6,6 +6,7 @@ import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.UsageTracker
 import com.krishna.questblock.data.isAvailableNow
+import com.krishna.questblock.data.dayNumber
 import com.krishna.questblock.data.level
 import com.krishna.questblock.data.nextRunDayStart
 import com.krishna.questblock.ui.isForToday
@@ -63,6 +64,20 @@ class InsightsBuilder @Inject constructor(
             .map { QuestBrief(it.title, it.category, it.difficulty, it.dueAt != null && it.dueAt < now) }
         val doneFocus = focus.filter { it.completed }
 
+        val doneTasks = tasks.filter { it.done }
+        val weekFrom = UsageTracker.dayStart(6)
+        val quests = QuestStats(
+            study = doneTasks.count { it.category == "Study" },
+            work = doneTasks.count { it.category == "Work" },
+            health = doneTasks.count { it.category == "Health" },
+            hard = doneTasks.count { it.difficulty == 3 },
+            timer = doneTasks.count { it.isTimerQuest },
+            activeDays = doneTasks.map { dayNumber(it.completedAt ?: 0L) }.toSet().size,
+            weekDone = days.take(7).sumOf { it.questsDone },
+            weekHard = doneTasks.count { it.difficulty == 3 && (it.completedAt ?: 0L) >= weekFrom },
+            weekActiveDays = days.take(7).count { it.questsDone > 0 },
+        )
+
         Snapshot(
             days = days,
             streak = player.streak,
@@ -76,6 +91,7 @@ class InsightsBuilder @Inject constructor(
             examMode = prefs.examMode,
             usageAccess = access,
             difficultyRate = rate,
+            quests = quests,
         )
     }
 }
