@@ -116,7 +116,8 @@ class HubViewModel @Inject constructor(
         }
     }
 
-    fun setAutoVerify(v: Boolean) { prefs.autoVerify = v; autoVerify = v }
+    // not named setAutoVerify: the property above already has a (private) setter with that JVM name
+    fun updateAutoVerify(v: Boolean) { prefs.autoVerify = v; autoVerify = v }
     fun setExam(v: Boolean) { prefs.examMode = v; examMode = v; refresh() }
     fun setWeekend(v: Int) { prefs.weekendFunLimitMin = v; weekendLimit = v }
     fun setPenalty(v: Int) { prefs.focusExitPenalty = v; exitPenalty = prefs.focusExitPenalty }
@@ -269,7 +270,7 @@ fun PlayerHubScreen(onBack: () -> Unit, vm: HubViewModel = hiltViewModel()) {
                         Text("A Study quest with a time in its name (e.g. \"Physics 45 min\") ticks itself from study app time.",
                             style = MaterialTheme.typography.bodySmall, color = ColorMuted)
                     }
-                    Switch(checked = vm.autoVerify, onCheckedChange = { vm.setAutoVerify(it) })
+                    Switch(checked = vm.autoVerify, onCheckedChange = { vm.updateAutoVerify(it) })
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
