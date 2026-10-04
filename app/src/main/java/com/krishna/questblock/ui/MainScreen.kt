@@ -134,7 +134,13 @@ fun MainScreen() {
             composable("coins")        { CoinLogScreen(onBack = { navController.popBackStack() }) }
             composable("about")        { AboutMeScreen(onBack = { navController.popBackStack() }) }
             composable("shop")         { InventoryScreen(onBack = { navController.popBackStack() }) }
-            composable("hub")          { PlayerHubScreen(onBack = { navController.popBackStack() }) }
+            composable("hub")          { PlayerHubScreen(
+                onBack = { navController.popBackStack() },
+                onOpenBadges = { navController.openPage("hub_badges") },
+                onOpenRules = { navController.openPage("hub_rules") },
+            ) }
+            composable("hub_badges")   { BadgesScreen(onBack = { navController.popBackStack() }) }
+            composable("hub_rules")    { RulesScreen(onBack = { navController.popBackStack() }) }
         }
     }
 }

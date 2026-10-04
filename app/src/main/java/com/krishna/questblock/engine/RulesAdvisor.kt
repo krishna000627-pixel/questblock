@@ -65,11 +65,7 @@ object RulesAdvisor : Advisor {
                 sugg += SuggestedQuest("Keep Fun under $lim min", 2, "Personal", "Ticks itself after 22:00 if you stay under")
             }
         }
-        val head = when {
-            s.examMode -> "Exam mode mission"
-            s.streak > 0 -> "Protect your ${s.streak}-day streak"
-            else -> "Start a streak today"
-        }
+        val head = if (s.examMode) "Exam mode mission" else "Today's mission"
         return Mission(head, steps, sugg, "Offline rules", availableMin)
     }
 

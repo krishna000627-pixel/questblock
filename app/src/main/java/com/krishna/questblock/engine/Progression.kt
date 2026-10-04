@@ -75,8 +75,22 @@ object Progression {
             Badge("ghost", "Ghost Mode", "👻", "A day with zero Fun & Games and 60+ min study",
                 d.any { it.funMin == 0 && it.studyMin >= 60 && it.screenMin > 0 }, true),
             Badge("unbroken", "Unbroken", "💎", "Reach a 14-day streak", s.streak >= 14, true),
+            Badge("streak7", "Week Streak", "🔥", "Reach a 7-day streak", s.streak >= 7, false),
+            Badge("streak30", "Month Streak", "🌋", "Reach a 30-day streak", s.streak >= 30, false),
+            Badge("hundred", "Hundred Club", "💯", "Finish 100 quests in total", s.totalQuestsDone >= 100, false),
+            Badge("focus10", "Ten Hours Deep", "⏳", "10 hours of focus sessions in total", s.totalFocusMin >= 600, false),
+            Badge("coder", "Coder", "💻", "5 hours of coding apps in one week", s.thisWeek.sumOf { it.codingMin } >= 300, false),
+            Badge("balanced", "Balanced Day", "⚖️", "A day with more study than fun (1 h+ study)",
+                d.any { it.studyMin >= 60 && it.studyMin > it.funMin }, true),
         )
     }
+
+    /** Badges that stay unlocked once earned, with the day they were first seen unlocked. */
+    fun badgesRemembered(s: Snapshot, prefs: Prefs, now: Long = System.currentTimeMillis()): List<Badge> =
+        badges(s).map { b ->
+            if (b.unlocked && prefs.badgeAt(b.id) == 0L) prefs.setBadgeAt(b.id, now)
+            if (!b.unlocked && prefs.badgeAt(b.id) > 0L) b.copy(unlocked = true) else b
+        }
 
     private fun runLength(days: List<DayStats>, ok: (DayStats) -> Boolean): Int {
         var n = 0

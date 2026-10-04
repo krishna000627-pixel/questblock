@@ -2,6 +2,7 @@
 package com.krishna.questblock.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,7 +20,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.krishna.questblock.data.EXAM_FUN_LIMIT_MIN
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.QuestDraft
@@ -64,18 +64,7 @@ class HubViewModel @Inject constructor(
 ) : ViewModel() {
     var state by mutableStateOf(HubState())
         private set
-    var autoVerify by mutableStateOf(prefs.autoVerify); private set
-    var examMode by mutableStateOf(prefs.examMode); private set
-    var weekendLimit by mutableIntStateOf(prefs.weekendFunLimitMin); private set
-    var exitPenalty by mutableIntStateOf(prefs.focusExitPenalty); private set
-    var quietOn by mutableStateOf(prefs.quietEnabled); private set
-    var quietStart by mutableIntStateOf(prefs.quietStartMin); private set
-    var quietEnd by mutableIntStateOf(prefs.quietEndMin); private set
-    var studyOn by mutableStateOf(prefs.studyBlockEnabled); private set
-    var studyStart by mutableIntStateOf(prefs.studyStartMin); private set
-    var studyEnd by mutableIntStateOf(prefs.studyEndMin); private set
 
-    init { refresh() }
 
     fun refresh() {
         viewModelScope.launch {
@@ -90,11 +79,7 @@ class HubViewModel @Inject constructor(
 
             val ch = Progression.challenges(snap).map { Goal(it, Progression.claimKey(it)) }
 
-            // badges: once unlocked they stay unlocked
-            val badges = Progression.badges(snap).map { b ->
-                if (b.unlocked && prefs.badgeAt(b.id) == 0L) prefs.setBadgeAt(b.id, now)
-                if (!b.unlocked && prefs.badgeAt(b.id) > 0L) b.copy(unlocked = true) else b
-            }
+            val badges = Progression.badgesRemembered(snap, prefs, now)
 
             // season
             val player = repo.player.first()
@@ -147,21 +132,12 @@ class HubViewModel @Inject constructor(
         }
     }
 
-    fun changeAutoVerify(v: Boolean) { prefs.autoVerify = v; autoVerify = v }
-    fun setExam(v: Boolean) { prefs.examMode = v; examMode = v; refresh() }
-    fun setWeekend(v: Int) { prefs.weekendFunLimitMin = v; weekendLimit = v }
-    fun setPenalty(v: Int) { prefs.focusExitPenalty = v; exitPenalty = prefs.focusExitPenalty }
-    fun changeQuietOn(v: Boolean) { prefs.quietEnabled = v; quietOn = v }
-    fun changeQuietStart(v: Int) { prefs.quietStartMin = v; quietStart = prefs.quietStartMin }
-    fun changeQuietEnd(v: Int) { prefs.quietEndMin = v; quietEnd = prefs.quietEndMin }
-    fun changeStudyOn(v: Boolean) { prefs.studyBlockEnabled = v; studyOn = v }
-    fun changeStudyStart(v: Int) { prefs.studyStartMin = v; studyStart = prefs.studyStartMin }
-    fun changeStudyEnd(v: Int) { prefs.studyEndMin = v; studyEnd = prefs.studyEndMin }
 }
 
 @Composable
-fun PlayerHubScreen(onBack: () -> Unit, vm: HubViewModel = hiltViewModel()) {
+fun PlayerHubScreen(onBack: () -> Unit, onOpenBadges: () -> Unit, onOpenRules: () -> Unit, vm: HubViewModel = hiltViewModel()) {
     val st = vm.state
+    LaunchedEffect(Unit) { vm.refresh() }
     LazyColumn(
         Modifier.fillMaxSize().background(ColorBg),
         contentPadding = PaddingValues(12.dp),
@@ -298,53 +274,17 @@ fun PlayerHubScreen(onBack: () -> Unit, vm: HubViewModel = hiltViewModel()) {
             }
         }
 
-        // ── Badges ──────────────────────────────────────────────────────
+        // ── Pages ───────────────────────────────────────────────────────
         item {
-            HubCard {
-                Text("🏆 Badges", fontWeight = FontWeight.Bold, color = ColorText, style = MaterialTheme.typography.titleSmall)
-                st.badges.forEach { b ->
-                    val shown = b.unlocked || !b.hidden
-                    Text(
-                        if (shown) "${if (b.unlocked) b.emoji else "🔒"} ${b.name} — ${b.desc}" else "🔒 ??? — hidden badge",
-                        color = if (b.unlocked) ColorText else ColorMuted, style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
+            NavCard("🏆 Badges", "${st.badges.count { it.unlocked }} of ${st.badges.size} unlocked", onOpenBadges)
         }
-
-        // ── Rules ───────────────────────────────────────────────────────
         item {
-            HubCard {
-                Text("⚙️ Rules", fontWeight = FontWeight.Bold, color = ColorText, style = MaterialTheme.typography.titleSmall)
-                SwitchRow("Auto-complete quests",
-                    "A Study quest with a time in its name (\"Physics 45 min\") or a coding quest ticks itself from app time. \"Keep Fun under 60 min\" ticks after 22:00 if you stayed under.",
-                    vm.autoVerify) { vm.changeAutoVerify(it) }
-                SwitchRow("Exam mode",
-                    "Fun limit capped at $EXAM_FUN_LIMIT_MIN min, study target 6 h, 4 focus sessions, 8 quests, and Fun & Games apps locked 08:00–20:00 (or your study hours).",
-                    vm.examMode) { vm.setExam(it) }
-                SwitchRow("Quiet hours lock", "Fun & Games apps stay locked in this window (for example at night).", vm.quietOn) { vm.changeQuietOn(it) }
-                if (vm.quietOn) {
-                    TimeRow("From", vm.quietStart) { vm.changeQuietStart(it) }
-                    TimeRow("Until", vm.quietEnd) { vm.changeQuietEnd(it) }
-                }
-                SwitchRow("Study hours lock", "Fun & Games apps stay locked in this window.", vm.studyOn) { vm.changeStudyOn(it) }
-                if (vm.studyOn) {
-                    TimeRow("From", vm.studyStart) { vm.changeStudyStart(it) }
-                    TimeRow("Until", vm.studyEnd) { vm.changeStudyEnd(it) }
-                }
-                Text("A game already open is not cut when a window starts; it is locked the next time you open it.",
-                    style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-                StepRow("Weekend fun limit", if (vm.weekendLimit == 0) "same" else "${vm.weekendLimit} min",
-                    { vm.setWeekend((vm.weekendLimit - 15).coerceIn(0, 360)) }, { vm.setWeekend((vm.weekendLimit + 15).coerceIn(0, 360)) })
-                StepRow("Focus give-up penalty", if (vm.exitPenalty == 0) "off" else "${vm.exitPenalty} \uD83E\uDE99",
-                    { vm.setPenalty(vm.exitPenalty - 5) }, { vm.setPenalty(vm.exitPenalty + 5) })
-            }
+            NavCard("⚙️ Rules", "Auto-complete, exam mode, quiet hours, limits", onOpenRules)
         }
     }
 }
 
 private fun fmtMin(m: Int) = if (m >= 60) "${m / 60}h ${m % 60}m" else "${m}m"
-private fun hhmm(m: Int) = "%02d:%02d".format(m / 60, m % 60)
 
 @Composable
 private fun Glance(emoji: String, value: String) {
@@ -373,33 +313,7 @@ private fun GoalRow(g: Goal, claimed: Boolean, onClaim: () -> Unit) {
 }
 
 @Composable
-private fun SwitchRow(title: String, sub: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(title, color = ColorText)
-            Text(sub, style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-        }
-        Switch(checked = checked, onCheckedChange = onChange)
-    }
-}
-
-@Composable
-private fun TimeRow(label: String, minutes: Int, onChange: (Int) -> Unit) =
-    StepRow("   $label", hhmm(minutes), { onChange(minutes - 30) }, { onChange(minutes + 30) })
-
-@Composable
-private fun StepRow(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(label, color = ColorText, modifier = Modifier.weight(1f))
-        OutlinedButton(onClick = onMinus, contentPadding = PaddingValues(0.dp), modifier = Modifier.size(34.dp)) { Text("−") }
-        Text(value, color = ColorText, fontWeight = FontWeight.Bold,
-            modifier = Modifier.widthIn(min = 70.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
-        OutlinedButton(onClick = onPlus, contentPadding = PaddingValues(0.dp), modifier = Modifier.size(34.dp)) { Text("+") }
-    }
-}
-
-@Composable
-private fun HubCard(content: @Composable ColumnScope.() -> Unit) {
+internal fun HubCard(content: @Composable ColumnScope.() -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp),
         modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
@@ -407,9 +321,23 @@ private fun HubCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun Bar(frac: Float, modifier: Modifier) {
+internal fun Bar(frac: Float, modifier: Modifier) {
     val f = frac.coerceIn(0f, 1f)
     Box(modifier.height(8.dp).clip(RoundedCornerShape(4.dp)).background(ColorSurfaceHigh)) {
         Box(Modifier.fillMaxWidth(f).fillMaxHeight().background(ColorPrimary))
+    }
+}
+
+@Composable
+private fun NavCard(title: String, sub: String, onClick: () -> Unit) {
+    Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.Bold, color = ColorText, style = MaterialTheme.typography.titleSmall)
+                Text(sub, style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            }
+            Text("›", fontSize = 24.sp, color = ColorMuted)
+        }
     }
 }
