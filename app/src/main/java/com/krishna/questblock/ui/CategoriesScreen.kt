@@ -54,6 +54,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** Fun rules are a commitment: loosening one waits until midnight. */
+fun commitToast(ctx: Context) {
+    android.widget.Toast.makeText(ctx, "\uD83D\uDD12 Fun rules are a commitment: this applies at midnight", android.widget.Toast.LENGTH_LONG).show()
+}
+
 data class CatApp(val pkg: String, val label: String, val auto: String)
 
 @HiltViewModel
@@ -69,9 +74,11 @@ class CategoriesViewModel @Inject constructor(
     private val _safe = MutableStateFlow(prefs.funSafeSet())
     /** fun apps that are never cut mid-use */
     val safe: StateFlow<Set<String>> = _safe
-    fun toggleSafe(pkg: String) {
-        prefs.setFunSafe(pkg, pkg !in _safe.value)
+    /** Returns true if applied now, false if it waits until midnight (fun rules are a commitment). */
+    fun toggleSafe(pkg: String): Boolean {
+        val applied = prefs.changeFunSafe(pkg, pkg !in _safe.value)
         _safe.value = prefs.funSafeSet()
+        return applied
     }
 
     private val _loaded = MutableStateFlow(false)
@@ -90,13 +97,15 @@ class CategoriesViewModel @Inject constructor(
     }
 
     /** Tap a category: pick it. Tap the picked one again: back to automatic. */
-    fun pick(app: CatApp, cat: String) {
+    fun pick(app: CatApp, cat: String): Boolean {
         val current = _chosen.value[app.pkg] ?: app.auto
         val hasOverride = _chosen.value.containsKey(app.pkg)
-        if (current == cat && hasOverride) prefs.setCategory(app.pkg, null)
-        else if (current == cat) return
-        else prefs.setCategory(app.pkg, cat)
+        val applied: Boolean
+        if (current == cat && hasOverride) applied = prefs.changeCategory(app.pkg, null, current, app.auto)
+        else if (current == cat) return true
+        else applied = prefs.changeCategory(app.pkg, cat, current, cat)
         _chosen.value = prefs.categoryMap()
+        return applied
     }
 }
 
@@ -106,6 +115,7 @@ fun CategoriesScreen(onBack: () -> Unit, vm: CategoriesViewModel = hiltViewModel
     val chosen by vm.chosen.collectAsStateWithLifecycle()
     val loaded by vm.loaded.collectAsStateWithLifecycle()
     val safeSet by vm.safe.collectAsStateWithLifecycle()
+    val toastCtx = androidx.compose.ui.platform.LocalContext.current
     var query by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf("all") }
 
@@ -171,7 +181,7 @@ fun CategoriesScreen(onBack: () -> Unit, vm: CategoriesViewModel = hiltViewModel
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (isSafe) ColorPrimary else ColorMuted,
                                 fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { vm.toggleSafe(a.pkg) }.padding(vertical = 2.dp),
+                                modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { if (!vm.toggleSafe(a.pkg)) commitToast(toastCtx) }.padding(vertical = 2.dp),
                             )
                         }
                     }
@@ -180,7 +190,7 @@ fun CategoriesScreen(onBack: () -> Unit, vm: CategoriesViewModel = hiltViewModel
                         Box(
                             Modifier.size(38.dp).clip(CircleShape)
                                 .background(if (sel) ColorPrimary.copy(alpha = 0.22f) else ColorSurfaceHigh)
-                                .clickable { vm.pick(a, c.id) },
+                                .clickable { if (!vm.pick(a, c.id)) commitToast(toastCtx) },
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(c.emoji, fontSize = 17.sp)

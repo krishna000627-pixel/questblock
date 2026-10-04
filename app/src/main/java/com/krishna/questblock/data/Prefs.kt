@@ -15,7 +15,7 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         set(value) = sp.edit().putInt("theme_mode", value).apply()
 
     // ── App categories (manual choices), one "package=category" per line ──
-    fun categoryMap(): Map<String, String> =
+    private fun readCats(): Map<String, String> =
         (sp.getString("app_categories", "") ?: "").lineSequence()
             .mapNotNull { line ->
                 val i = line.indexOf('=')
@@ -23,10 +23,12 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
             }
             .toMap()
 
+    fun categoryMap(): Map<String, String> { applyDue(); return readCats() }
+
     fun categoryOverride(pkg: String): String? = categoryMap()[pkg]
 
     fun setCategory(pkg: String, cat: String?) {
-        val m = categoryMap().toMutableMap()
+        val m = readCats().toMutableMap()
         if (cat == null) m.remove(pkg) else m[pkg] = cat
         sp.edit().putString("app_categories", m.entries.joinToString("\n") { "${it.key}=${it.value}" }).apply()
     }
@@ -48,20 +50,169 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         sp.edit().putLong("study_sid_$pkg", id).putLong("study_sat_$pkg", at).apply()
     }
 
+    // ── Commitment: for fun rules, tightening applies at once, loosening waits until the next midnight ──
+    private fun today(): Long = dayNumber(System.currentTimeMillis())
+
+    /** key -> (new value, first day it applies). Stored as "key<TAB>value<TAB>day" lines. */
+    private fun readPending(): MutableMap<String, Pair<String, Long>> {
+        val raw = sp.getString("commit_pending", "") ?: ""
+        val out = LinkedHashMap<String, Pair<String, Long>>()
+        raw.lineSequence().forEach { line ->
+            val p = line.split('\t')
+            if (p.size == 3) p[2].toLongOrNull()?.let { out[p[0]] = p[1] to it }
+        }
+        return out
+    }
+    private fun writePending(m: Map<String, Pair<String, Long>>) {
+        sp.edit().putString("commit_pending", m.entries.joinToString("\n") { "${it.key}\t${it.value.first}\t${it.value.second}" }).apply()
+    }
+
+    /** Apply every change whose day has come. Cheap when nothing is waiting. */
+    fun applyDue() {
+        if ((sp.getString("commit_pending", "") ?: "").isEmpty()) return
+        val m = readPending()
+        val t = today()
+        var changed = false
+        val it = m.entries.iterator()
+        while (it.hasNext()) {
+            val e = it.next()
+            if (e.value.second <= t) { applyRaw(e.key, e.value.first); it.remove(); changed = true }
+        }
+        if (changed) writePending(m)
+    }
+
+    private fun applyRaw(key: String, v: String) {
+        when {
+            key == "limit" -> sp.edit().putInt("fun_limit_min", v.toIntOrNull() ?: 0).apply()
+            key == "weekend" -> sp.edit().putInt("weekend_fun_limit", v.toIntOrNull() ?: 0).apply()
+            key == "exam" -> sp.edit().putBoolean("exam_mode", v == "1").apply()
+            key == "quiet" -> sp.edit().putBoolean("quiet_on", v == "1").apply()
+            key == "study" -> sp.edit().putBoolean("studyblock_on", v == "1").apply()
+            key.startsWith("cat:") -> setCategory(key.removePrefix("cat:"), v.ifEmpty { null })
+            key.startsWith("safe:") -> setFunSafe(key.removePrefix("safe:"), v == "1")
+        }
+    }
+
+    /** What is waiting for midnight for this key (raw text), or null. */
+    fun pendingValue(key: String): String? { applyDue(); return readPending()[key]?.first }
+    fun pendingInt(key: String): Int? = pendingValue(key)?.toIntOrNull()
+    fun pendingFlag(key: String): Boolean? = pendingValue(key)?.let { it == "1" }
+
+    /** One line for the UI, empty when nothing is waiting. */
+    fun pendingSummary(): String {
+        applyDue()
+        val m = readPending()
+        if (m.isEmpty()) return ""
+        val parts = m.map { (k, v) ->
+            when {
+                k == "limit" -> "fun limit \u2192 " + (v.first.toIntOrNull()?.takeIf { it > 0 }?.let { "$it min" } ?: "off")
+                k == "weekend" -> "weekend limit \u2192 " + (v.first.toIntOrNull()?.takeIf { it > 0 }?.let { "$it min" } ?: "same as normal")
+                k == "exam" -> "exam mode \u2192 " + if (v.first == "1") "on" else "off"
+                k == "quiet" -> "quiet hours \u2192 " + if (v.first == "1") "on" else "off"
+                k == "study" -> "study hours \u2192 " + if (v.first == "1") "on" else "off"
+                k.startsWith("cat:") -> "an app leaves Fun & Games"
+                k.startsWith("safe:") -> "a \uD83D\uDEE1 switch turns on"
+                else -> k
+            }
+        }
+        return "Waiting for midnight: " + parts.joinToString(", ")
+    }
+
+    /** Larger number = looser. 0 means "off" = loosest. */
+    private fun looseness(v: Int): Int = if (v <= 0) Int.MAX_VALUE else v
+
+    private fun commitLimit(key: String, spKey: String, new: Int) {
+        val cur = sp.getInt(spKey, 0)
+        val m = readPending()
+        // weekend 0 means "use the normal limit", so compare what actually applies
+        val normal = sp.getInt("fun_limit_min", 0)
+        fun eff(v: Int) = if (key == "weekend" && v <= 0) normal else v
+        val looser = looseness(eff(new)) > looseness(eff(cur))
+        if (new == cur) {
+            if (m.remove(key) != null) writePending(m)
+        } else if (looser) {
+            m[key] = new.toString() to today() + 1
+            writePending(m)
+        } else {
+            sp.edit().putInt(spKey, new).apply()
+            if (m.remove(key) != null) writePending(m)
+        }
+    }
+
+    /** Switches: turning a fun rule OFF is loosening, turning it ON applies at once. */
+    private fun commitFlag(key: String, spKey: String, new: Boolean) {
+        val cur = sp.getBoolean(spKey, false)
+        val m = readPending()
+        if (new == cur) {
+            if (m.remove(key) != null) writePending(m)
+        } else if (!new) {
+            m[key] = "0" to today() + 1
+            writePending(m)
+        } else {
+            sp.edit().putBoolean(spKey, true).apply()
+            if (m.remove(key) != null) writePending(m)
+        }
+    }
+
+    /** Any fun rule in force? Then loosening one is a commitment break. */
+    val funRulesActive: Boolean get() = effectiveFunLimitMin > 0 || quietEnabled || studyBlockEnabled || examMode
+
+    /** Change an app's category. Moving a fun app OUT of Fun & Games waits until tomorrow while fun rules are on. Returns true if applied now. */
+    fun changeCategory(pkg: String, cat: String?, oldCat: String, newCat: String): Boolean {
+        val m = readPending()
+        if (oldCat == "fun" && newCat != "fun" && funRulesActive) {
+            m["cat:$pkg"] = (cat ?: "") to today() + 1
+            writePending(m)
+            return false
+        }
+        setCategory(pkg, cat)
+        if (m.remove("cat:$pkg") != null) writePending(m)
+        return true
+    }
+
+    /** Turn the "never cut mid-use" shield on/off. Turning it ON waits until tomorrow while fun rules are on. Returns true if applied now. */
+    fun changeFunSafe(pkg: String, on: Boolean): Boolean {
+        val m = readPending()
+        if (on && pkg !in readSafe() && funRulesActive) {
+            m["safe:$pkg"] = "1" to today() + 1
+            writePending(m)
+            return false
+        }
+        setFunSafe(pkg, on)
+        if (m.remove("safe:$pkg") != null) writePending(m)
+        return true
+    }
+
+    // ── Backup 2.0 / focus breaks ──
+    var lastAutoBackupDay: Long
+        get() = sp.getLong("auto_backup_day", 0L)
+        set(value) = sp.edit().putLong("auto_backup_day", value).apply()
+    /** When the current focus break ends (0 = no break) and whether it is the long one. */
+    var breakUntil: Long
+        get() = sp.getLong("break_until", 0L)
+        set(value) = sp.edit().putLong("break_until", value).apply()
+    var breakIsLong: Boolean
+        get() = sp.getBoolean("break_long", false)
+        set(value) = sp.edit().putBoolean("break_long", value).apply()
+    /** Finished focus sessions today (used to give a long break after every 4th). */
+    fun focusDoneToday(day: Long): Int = if (sp.getLong("focus_done_day", 0L) == day) sp.getInt("focus_done_n", 0) else 0
+    fun setFocusDoneToday(day: Long, n: Int) { sp.edit().putLong("focus_done_day", day).putInt("focus_done_n", n).apply() }
+
     // ── Fun & Games daily limit ──
     /** Minutes allowed per day in the Fun & Games category. 0 = off. */
     var funLimitMin: Int
-        get() = sp.getInt("fun_limit_min", 0)
-        set(value) = sp.edit().putInt("fun_limit_min", value).apply()
+        get() { applyDue(); return sp.getInt("fun_limit_min", 0) }
+        set(value) { commitLimit("limit", "fun_limit_min", value) }
 
     /** Apps that are never cut in the middle of use (locked only the next time they are opened). Free Fire by default. */
-    fun funSafeSet(): Set<String> {
+    private fun readSafe(): Set<String> {
         val raw = sp.getString("fun_safe", null) ?: return setOf("com.dts.freefireth", "com.dts.freefiremax")
         return raw.split('\n').filter { it.isNotBlank() }.toSet()
     }
+    fun funSafeSet(): Set<String> { applyDue(); return readSafe() }
     fun isFunSafe(pkg: String): Boolean = pkg in funSafeSet()
     fun setFunSafe(pkg: String, on: Boolean) {
-        val s = funSafeSet().toMutableSet()
+        val s = readSafe().toMutableSet()
         if (on) s += pkg else s -= pkg
         sp.edit().putString("fun_safe", s.joinToString("\n")).apply()
     }
@@ -161,12 +312,12 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         get() = sp.getBoolean("auto_verify", true)
         set(value) = sp.edit().putBoolean("auto_verify", value).apply()
     var examMode: Boolean
-        get() = sp.getBoolean("exam_mode", false)
-        set(value) = sp.edit().putBoolean("exam_mode", value).apply()
+        get() { applyDue(); return sp.getBoolean("exam_mode", false) }
+        set(value) { commitFlag("exam", "exam_mode", value) }
     /** Fun & Games limit used on Saturday and Sunday. 0 = same as the normal limit. */
     var weekendFunLimitMin: Int
-        get() = sp.getInt("weekend_fun_limit", 0)
-        set(value) = sp.edit().putInt("weekend_fun_limit", value).apply()
+        get() { applyDue(); return sp.getInt("weekend_fun_limit", 0) }
+        set(value) { commitLimit("weekend", "weekend_fun_limit", value) }
     /** The limit actually enforced today: weekend value, then exam mode, on top of the normal limit. */
     val effectiveFunLimitMin: Int get() {
         var l = funLimitMin
@@ -181,8 +332,8 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
 
     // ── Context-aware locking: quiet hours and study hours lock Fun & Games apps ──
     var quietEnabled: Boolean
-        get() = sp.getBoolean("quiet_on", false)
-        set(value) = sp.edit().putBoolean("quiet_on", value).apply()
+        get() { applyDue(); return sp.getBoolean("quiet_on", false) }
+        set(value) { commitFlag("quiet", "quiet_on", value) }
     var quietStartMin: Int
         get() = sp.getInt("quiet_start", 22 * 60)
         set(value) = sp.edit().putInt("quiet_start", ((value % 1440) + 1440) % 1440).apply()
@@ -190,8 +341,8 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         get() = sp.getInt("quiet_end", 6 * 60)
         set(value) = sp.edit().putInt("quiet_end", ((value % 1440) + 1440) % 1440).apply()
     var studyBlockEnabled: Boolean
-        get() = sp.getBoolean("studyblock_on", false)
-        set(value) = sp.edit().putBoolean("studyblock_on", value).apply()
+        get() { applyDue(); return sp.getBoolean("studyblock_on", false) }
+        set(value) { commitFlag("study", "studyblock_on", value) }
     var studyStartMin: Int
         get() = sp.getInt("studyblock_start", 8 * 60)
         set(value) = sp.edit().putInt("studyblock_start", ((value % 1440) + 1440) % 1440).apply()

@@ -43,6 +43,7 @@ class HomeViewModel @Inject constructor(
     private val repo: GameRepository,
     private val autoVerifier: com.krishna.questblock.engine.AutoVerifier,
     private val hubStore: com.krishna.questblock.engine.HubStore,
+    val prefs: com.krishna.questblock.data.Prefs,
 ) : ViewModel() {
     val player       = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
     val tasks        = repo.tasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -108,11 +109,20 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
     val totalToday   = doneToday + todayList.size
     val recentAch    = achievements.filter { it.unlockedAt != null }.sortedByDescending { it.unlockedAt }.take(3)
 
+    val healthCtx = LocalContext.current
+    var problems by remember { mutableStateOf(listOf<com.krishna.questblock.util.Health.Problem>()) }
+    LaunchedEffect(Unit) {
+        while (true) { problems = com.krishna.questblock.util.Health.problems(healthCtx, vm.prefs); delay(5000L) }
+    }
+
     LazyColumn(
         Modifier.fillMaxSize().background(ColorBg),
         contentPadding = PaddingValues(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // ── Protection warning (Accessibility / Usage access / battery) ─────
+        if (problems.isNotEmpty()) item { HealthBanner(problems.first(), problems.size) }
+
         // ── Hero card ──────────────────────────────────────────────────────
         item { HeroCard(player = player, doneToday = doneToday, total = totalToday, onCoinsClick = onOpenShop) }
 
@@ -357,6 +367,25 @@ private fun ShortcutTile(emoji: String, title: String, sub: String, highlighted:
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
+    }
+}
+
+@Composable
+private fun HealthBanner(p: com.krishna.questblock.util.Health.Problem, count: Int) {
+    val ctx = LocalContext.current
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(ColorDanger.copy(alpha = 0.14f)).padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text("\u26A0\uFE0F", fontSize = 22.sp)
+        Column(Modifier.weight(1f)) {
+            Text(p.title, fontWeight = FontWeight.Bold, color = ColorDanger)
+            Text(p.text + if (count > 1) " (+${count - 1} more)" else "", style = MaterialTheme.typography.bodySmall, color = ColorText)
+        }
+        TextButton(onClick = {
+            runCatching { ctx.startActivity(android.content.Intent(p.action).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        }) { Text("Fix", fontWeight = FontWeight.Bold, color = ColorDanger) }
     }
 }
 

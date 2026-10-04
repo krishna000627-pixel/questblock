@@ -48,6 +48,10 @@ class InventoryViewModel @Inject constructor(private val repo: GameRepository) :
         private set
 
     fun buy(item: ShopItem) = viewModelScope.launch {
+        if (item.id == "streak_repair" && !repo.canRepairStreak()) {
+            buyResult = "No broken streak to repair (only within 3 days, and not while a shield is on)"
+            return@launch
+        }
         val ok = repo.buyItem(item)
         buyResult = if (ok) "Bought ${item.emoji} ${item.name}!" else "Not enough coins 🪙"
     }

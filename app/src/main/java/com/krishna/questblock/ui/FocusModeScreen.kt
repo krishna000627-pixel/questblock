@@ -49,6 +49,9 @@ class FocusViewModel @Inject constructor(private val repo: GameRepository) : Vie
     init { settle() }
 
     fun bonus(): Int = repo.focusBonus()
+    fun breakUntil(): Long = repo.breakUntil()
+    fun breakIsLong(): Boolean = repo.breakIsLong()
+    fun skipBreak() = repo.skipBreak()
     fun start(durationMs: Long, quest: TaskEntity?) = viewModelScope.launch { repo.startFocus(durationMs, quest) }
     fun end()    = viewModelScope.launch { repo.abandonFocus() }
     fun penalty(): Int = repo.focusPenalty()
@@ -94,8 +97,11 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
                 onStop = { vm.end() },
             )
         } else {
+            val breakLeft = vm.breakUntil() - now
+            if (breakLeft > 0L) {
+                BreakCard(leftMs = breakLeft, long = vm.breakIsLong(), onSkip = { vm.skipBreak() })
+            }
             Setup(timerQuests = timerQuests, bonus = vm.bonus(), onStart = { dur, quest -> vm.start(dur, quest) })
-            BreakNudge(logs = logs, now = now)
             TodayStrip(logs = logs, now = now)
             FocusStats(logs = logs, now = now)
             RecentSessions(logs = logs)
@@ -334,11 +340,20 @@ private fun FocusStats(logs: List<FocusLog>, now: Long) {
 }
 
 @Composable
-private fun BreakNudge(logs: List<FocusLog>, now: Long) {
-    val last = logs.firstOrNull { it.completed } ?: return
-    val endedAt = last.startedAt + last.minutes * 60_000L
-    if (now - endedAt in 0L..(5 * 60_000L)) {
-        Text("\u2615 Nice session. Take a 5 min break before the next one.",
-            style = MaterialTheme.typography.bodyMedium, color = ColorAccent, fontWeight = FontWeight.SemiBold)
+private fun BreakCard(leftMs: Long, long: Boolean, onSkip: () -> Unit) {
+    val sec = (leftMs / 1000).coerceAtLeast(0)
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(ColorAccent.copy(alpha = 0.14f)).padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text("\u2615", fontSize = 26.sp)
+        Column(Modifier.weight(1f)) {
+            Text(if (long) "Long break" else "Short break",
+                fontWeight = FontWeight.Bold, color = ColorAccent)
+            Text("%02d:%02d left \u00b7 stretch, drink water, no phone".format(sec / 60, sec % 60),
+                style = MaterialTheme.typography.bodySmall, color = ColorText)
+        }
+        TextButton(onClick = onSkip) { Text("Skip", color = ColorMuted, fontWeight = FontWeight.Bold) }
     }
 }

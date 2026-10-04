@@ -98,9 +98,14 @@ class UsageViewModel @Inject constructor(
         }
     }
 
-    fun setCategory(pkg: String, cat: String?, range: Int) {
-        prefs.setCategory(pkg, cat)
+    /** Returns true if applied now, false if it waits until midnight (fun rules are a commitment). */
+    fun setCategory(pkg: String, cat: String?, range: Int): Boolean {
+        val pm = ctx.packageManager
+        val old = AppCategorizer.categoryOf(prefs, pm, pkg)
+        val new = cat ?: AppCategorizer.autoCategory(pm, pkg)
+        val applied = prefs.changeCategory(pkg, cat, old, new)
         load(range)
+        return applied
     }
 }
 
@@ -238,7 +243,7 @@ fun UsageScreen(onBack: () -> Unit, onOpenCategories: () -> Unit, vm: UsageViewM
                     USAGE_CATEGORIES.forEach { c ->
                         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                             .background(if (app.cat == c.id) ColorPrimary.copy(alpha = 0.18f) else ColorSurfaceHigh)
-                            .clickable { vm.setCategory(app.pkg, c.id, range); editing = null }.padding(12.dp)) {
+                            .clickable { if (!vm.setCategory(app.pkg, c.id, range)) commitToast(ctx); editing = null }.padding(12.dp)) {
                             Text("${c.emoji}  ${c.label}", fontWeight = FontWeight.SemiBold, color = ColorText)
                         }
                     }

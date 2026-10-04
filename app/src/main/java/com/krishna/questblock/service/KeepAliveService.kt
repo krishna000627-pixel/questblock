@@ -16,16 +16,20 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.krishna.questblock.data.BlockedApp
+import com.krishna.questblock.data.AppDatabase
 import com.krishna.questblock.data.FunLimit
 import com.krishna.questblock.data.FunSignal
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.StudySignal
 import com.krishna.questblock.data.StudyTracker
+import com.krishna.questblock.data.dayNumber
 import com.krishna.questblock.data.fmtLeft
 import com.krishna.questblock.data.frozenAt
 import com.krishna.questblock.data.leftMs
 import com.krishna.questblock.ui.MainActivity
+import com.krishna.questblock.util.Backup
+import com.krishna.questblock.util.Health
 import com.krishna.questblock.ui.fmtDur
 import com.krishna.questblock.util.Perms
 import dagger.hilt.android.AndroidEntryPoint
@@ -84,6 +88,7 @@ class KeepAliveService : Service() {
 
     @Inject lateinit var repo: GameRepository
     @Inject lateinit var prefs: Prefs
+    @Inject lateinit var db: AppDatabase
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var apps: List<BlockedApp> = emptyList()
@@ -93,6 +98,7 @@ class KeepAliveService : Service() {
     private var lastBeatWrite = 0L
     private var lastWatchdog = 0L
     private var offShown = false
+    private var healthKey = ""
     private var study: StudyTracker.Status? = null
     private var studyAt = 0L
 
@@ -118,6 +124,11 @@ class KeepAliveService : Service() {
             scope.launch {
                 while (true) {
                     val st = runCatching { StudyTracker.sweep(applicationContext, repo, prefs) }.getOrNull()
+                    // Backup 2.0: one automatic copy a day into Downloads/QuestBlock (keeps the newest 3)
+                    if (prefs.onboardingDone && prefs.lastAutoBackupDay != dayNumber(System.currentTimeMillis())) {
+                        prefs.lastAutoBackupDay = dayNumber(System.currentTimeMillis())
+                        runCatching { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { Backup.autoBackup(applicationContext, db) } }
+                    }
                     study = st; studyAt = System.currentTimeMillis()
                     render()
                     // quicker while a study app is open; enter/leave from the accessibility service wakes it at once
@@ -234,23 +245,26 @@ class KeepAliveService : Service() {
         // Watchdog (every 20 s, only after setup)
         if (prefs.onboardingDone && now - lastWatchdog > 20_000L) {
             lastWatchdog = now
-            val on = Perms.accessibilityEnabled(this)
-            if (!on && !offShown) {
-                offShown = true
+            // Anti-bypass: Accessibility, and (while fun rules are on) Usage access and battery settings
+            val probs = Health.problems(this, prefs)
+            val key = probs.joinToString("|") { it.id }
+            if (probs.isNotEmpty() && key != healthKey) {
+                healthKey = key
+                val top = probs.first()
                 val fix = PendingIntent.getActivity(this, 1,
-                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    Intent(top.action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
                 nm.notify(ID_WATCHDOG, NotificationCompat.Builder(this, KeepAlive.CH_ALERTS)
                     .setSmallIcon(android.R.drawable.ic_dialog_alert)
-                    .setContentTitle("Blocking is off")
-                    .setContentText("Tap to fix — turn QuestBlock back on in Accessibility.")
+                    .setContentTitle(top.title)
+                    .setContentText("Tap to fix. " + top.text + if (probs.size > 1) " (+${probs.size - 1} more)" else "")
                     .setContentIntent(fix)
                     .setAutoCancel(false)
                     .setOngoing(true)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .build())
-            } else if (on && offShown) {
-                offShown = false
+            } else if (probs.isEmpty() && healthKey.isNotEmpty()) {
+                healthKey = ""
                 nm.cancel(ID_WATCHDOG)
             }
         }

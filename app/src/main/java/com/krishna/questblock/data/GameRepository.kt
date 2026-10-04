@@ -333,6 +333,7 @@ class GameRepository @Inject constructor(
     // ── Focus ─────────────────────────────────────────────────────────────
     suspend fun startFocus(durationMs: Long, task: TaskEntity? = null): Boolean = db.withTransaction {
         val now = System.currentTimeMillis()
+        prefs.breakUntil = 0L
         val p = playerDao.get() ?: Player()
         if (p.focusModeUntil > now) return@withTransaction false
         val end = now + durationMs
@@ -382,6 +383,12 @@ class GameRepository @Inject constructor(
             taskDao.get(task.id)?.let { taskDao.update(it.copy(timerQuestActive = false)) }
         }
         if (completed) {
+            // Break cycle: 5 min after a session, 15 min after every 4th one today
+            val day = dayNumber(System.currentTimeMillis())
+            val n = prefs.focusDoneToday(day) + 1
+            prefs.setFocusDoneToday(day, n)
+            prefs.breakIsLong = n % 4 == 0
+            prefs.breakUntil = System.currentTimeMillis() + (if (n % 4 == 0) 15 else 5) * 60_000L
             unlockAchievement("focus_1")
             if (task != null) {
                 unlockAchievement("timer_quest_1")
@@ -587,6 +594,18 @@ class GameRepository @Inject constructor(
     }
 
     // ── Shop / Inventory ─────────────────────────────────────────────────
+    /** A streak can be repaired when it broke within the last 3 days and no shield is running. */
+    suspend fun canRepairStreak(): Boolean {
+        val p = playerDao.get() ?: return false
+        val today = dayNumber(System.currentTimeMillis())
+        return p.streak > 0 && !p.hasStreakShield() && p.lastCompletionDay < today - 1 && p.lastCompletionDay >= today - 3
+    }
+
+    // ── Focus breaks ─────────────────────────────────────────────────────
+    fun breakUntil(): Long = prefs.breakUntil
+    fun breakIsLong(): Boolean = prefs.breakIsLong
+    fun skipBreak() { prefs.breakUntil = 0L }
+
     suspend fun buyItem(item: ShopItem): Boolean = db.withTransaction {
         val p = playerDao.get() ?: Player()
         if (p.coins < item.price) return@withTransaction false
@@ -599,6 +618,8 @@ class GameRepository @Inject constructor(
                     "xp_boost_1h","xp_boost_3h"  -> p.copy(xpBoostUntil = expiry, coins = p.coins - item.price)
                     "coin_mult_1h","coin_mult_3h" -> p.copy(coinMultiplierUntil = expiry, coins = p.coins - item.price)
                     "streak_shield"               -> p.copy(streakShieldUntil = expiry, coins = p.coins - item.price)
+                    // Streak Repair: pretend yesterday was done, so the next finished quest carries the old streak on
+                    "streak_repair"               -> p.copy(lastCompletionDay = dayNumber(now) - 1, coins = p.coins - item.price)
                     else -> p.copy(coins = p.coins - item.price)
                 }
                 playerDao.upsert(updated)

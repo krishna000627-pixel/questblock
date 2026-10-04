@@ -221,14 +221,22 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                 modifier = Modifier.fillMaxWidth()) { Text("App categories") }
             OutlinedButton(onClick = onOpenUsage, shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth()) { Text("Daily app usage") }
-            var funMin by remember { mutableIntStateOf(prefs.funLimitMin) }
+            var funMin by remember { mutableIntStateOf(prefs.pendingInt("limit") ?: prefs.funLimitMin) }
+            var funNote by remember { mutableStateOf(prefs.pendingSummary()) }
             Text("\uD83C\uDFAE Fun time limit", color = ColorText, fontWeight = FontWeight.SemiBold)
             Text(
                 if (funMin == 0) "Off. Set a daily cap for Fun & Games apps."
                 else "Fun & Games apps lock when you reach it. Apps marked \uD83D\uDEE1 (Free Fire) are never cut mid-use; they lock the next time you open them. Needs Usage access.",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted,
             )
-            StepperRow("Daily limit", funMin, 0..360, 15, if (funMin == 0) "off" else "min") { funMin = it; prefs.funLimitMin = it }
+            StepperRow("Daily limit", funMin, 0..360, 15, if (funMin == 0) "off" else "min") {
+                prefs.funLimitMin = it
+                funMin = prefs.pendingInt("limit") ?: prefs.funLimitMin
+                funNote = prefs.pendingSummary()
+            }
+            Text("\uD83D\uDD12 A commitment: lowering the limit applies now. Raising it or turning it off applies at midnight.",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            if (funNote.isNotEmpty()) Text(funNote, style = MaterialTheme.typography.bodySmall, color = ColorWarning, fontWeight = FontWeight.SemiBold)
         }
 
         // ── Reliability ──────────────────────────────────────────────────

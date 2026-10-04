@@ -23,24 +23,26 @@ import javax.inject.Inject
 @HiltViewModel
 class RulesViewModel @Inject constructor(private val prefs: Prefs) : ViewModel() {
     var autoVerifyOn by mutableStateOf(prefs.autoVerify); private set
-    var examOn by mutableStateOf(prefs.examMode); private set
-    var weekendMin by mutableIntStateOf(prefs.weekendFunLimitMin); private set
+    var examOn by mutableStateOf(prefs.pendingFlag("exam") ?: prefs.examMode); private set
+    var weekendMin by mutableIntStateOf(prefs.pendingInt("weekend") ?: prefs.weekendFunLimitMin); private set
+    var pendingNote by mutableStateOf(prefs.pendingSummary()); private set
     var penaltyCoins by mutableIntStateOf(prefs.focusExitPenalty); private set
-    var quietEnabledOn by mutableStateOf(prefs.quietEnabled); private set
+    var quietEnabledOn by mutableStateOf(prefs.pendingFlag("quiet") ?: prefs.quietEnabled); private set
     var quietFrom by mutableIntStateOf(prefs.quietStartMin); private set
     var quietUntil by mutableIntStateOf(prefs.quietEndMin); private set
-    var studyEnabledOn by mutableStateOf(prefs.studyBlockEnabled); private set
+    var studyEnabledOn by mutableStateOf(prefs.pendingFlag("study") ?: prefs.studyBlockEnabled); private set
     var studyFrom by mutableIntStateOf(prefs.studyStartMin); private set
     var studyUntil by mutableIntStateOf(prefs.studyEndMin); private set
 
     fun updateAutoVerify(v: Boolean) { prefs.autoVerify = v; autoVerifyOn = v }
-    fun updateExam(v: Boolean) { prefs.examMode = v; examOn = v }
-    fun updateWeekend(v: Int) { prefs.weekendFunLimitMin = v.coerceIn(0, 360); weekendMin = prefs.weekendFunLimitMin }
+    private fun refreshNote() { pendingNote = prefs.pendingSummary() }
+    fun updateExam(v: Boolean) { prefs.examMode = v; examOn = prefs.pendingFlag("exam") ?: prefs.examMode; refreshNote() }
+    fun updateWeekend(v: Int) { prefs.weekendFunLimitMin = v.coerceIn(0, 360); weekendMin = prefs.pendingInt("weekend") ?: prefs.weekendFunLimitMin; refreshNote() }
     fun updatePenalty(v: Int) { prefs.focusExitPenalty = v; penaltyCoins = prefs.focusExitPenalty }
-    fun updateQuietEnabled(v: Boolean) { prefs.quietEnabled = v; quietEnabledOn = v }
+    fun updateQuietEnabled(v: Boolean) { prefs.quietEnabled = v; quietEnabledOn = prefs.pendingFlag("quiet") ?: prefs.quietEnabled; refreshNote() }
     fun updateQuietFrom(v: Int) { prefs.quietStartMin = v; quietFrom = prefs.quietStartMin }
     fun updateQuietUntil(v: Int) { prefs.quietEndMin = v; quietUntil = prefs.quietEndMin }
-    fun updateStudyEnabled(v: Boolean) { prefs.studyBlockEnabled = v; studyEnabledOn = v }
+    fun updateStudyEnabled(v: Boolean) { prefs.studyBlockEnabled = v; studyEnabledOn = prefs.pendingFlag("study") ?: prefs.studyBlockEnabled; refreshNote() }
     fun updateStudyFrom(v: Int) { prefs.studyStartMin = v; studyFrom = prefs.studyStartMin }
     fun updateStudyUntil(v: Int) { prefs.studyEndMin = v; studyUntil = prefs.studyEndMin }
 }
@@ -58,6 +60,14 @@ fun RulesScreen(onBack: () -> Unit, vm: RulesViewModel = hiltViewModel()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
                 Text("Rules", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
+            }
+        }
+        item {
+            HubCard {
+                Text("\uD83D\uDD12 Commitment", fontWeight = FontWeight.Bold, color = ColorPrimary, style = MaterialTheme.typography.titleSmall)
+                Text("Fun rules: making them tighter applies now. Loosening one (raising a limit, switching a rule off) applies at midnight.",
+                    style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                if (vm.pendingNote.isNotEmpty()) Text(vm.pendingNote, style = MaterialTheme.typography.bodySmall, color = ColorWarning, fontWeight = FontWeight.SemiBold)
             }
         }
         item {
