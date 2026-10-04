@@ -147,16 +147,16 @@ class HubViewModel @Inject constructor(
         }
     }
 
-    fun setAutoVerify(v: Boolean) { prefs.autoVerify = v; autoVerify = v }
+    fun changeAutoVerify(v: Boolean) { prefs.autoVerify = v; autoVerify = v }
     fun setExam(v: Boolean) { prefs.examMode = v; examMode = v; refresh() }
     fun setWeekend(v: Int) { prefs.weekendFunLimitMin = v; weekendLimit = v }
     fun setPenalty(v: Int) { prefs.focusExitPenalty = v; exitPenalty = prefs.focusExitPenalty }
-    fun setQuietOn(v: Boolean) { prefs.quietEnabled = v; quietOn = v }
-    fun setQuietStart(v: Int) { prefs.quietStartMin = v; quietStart = prefs.quietStartMin }
-    fun setQuietEnd(v: Int) { prefs.quietEndMin = v; quietEnd = prefs.quietEndMin }
-    fun setStudyOn(v: Boolean) { prefs.studyBlockEnabled = v; studyOn = v }
-    fun setStudyStart(v: Int) { prefs.studyStartMin = v; studyStart = prefs.studyStartMin }
-    fun setStudyEnd(v: Int) { prefs.studyEndMin = v; studyEnd = prefs.studyEndMin }
+    fun changeQuietOn(v: Boolean) { prefs.quietEnabled = v; quietOn = v }
+    fun changeQuietStart(v: Int) { prefs.quietStartMin = v; quietStart = prefs.quietStartMin }
+    fun changeQuietEnd(v: Int) { prefs.quietEndMin = v; quietEnd = prefs.quietEndMin }
+    fun changeStudyOn(v: Boolean) { prefs.studyBlockEnabled = v; studyOn = v }
+    fun changeStudyStart(v: Int) { prefs.studyStartMin = v; studyStart = prefs.studyStartMin }
+    fun changeStudyEnd(v: Int) { prefs.studyEndMin = v; studyEnd = prefs.studyEndMin }
 }
 
 @Composable
@@ -318,19 +318,19 @@ fun PlayerHubScreen(onBack: () -> Unit, vm: HubViewModel = hiltViewModel()) {
                 Text("⚙️ Rules", fontWeight = FontWeight.Bold, color = ColorText, style = MaterialTheme.typography.titleSmall)
                 SwitchRow("Auto-complete quests",
                     "A Study quest with a time in its name (\"Physics 45 min\") or a coding quest ticks itself from app time. \"Keep Fun under 60 min\" ticks after 22:00 if you stayed under.",
-                    vm.autoVerify) { vm.setAutoVerify(it) }
+                    vm.autoVerify) { vm.changeAutoVerify(it) }
                 SwitchRow("Exam mode",
                     "Fun limit capped at $EXAM_FUN_LIMIT_MIN min, study target 6 h, 4 focus sessions, 8 quests, and Fun & Games apps locked 08:00–20:00 (or your study hours).",
                     vm.examMode) { vm.setExam(it) }
-                SwitchRow("Quiet hours lock", "Fun & Games apps stay locked in this window (for example at night).", vm.quietOn) { vm.setQuietOn(it) }
+                SwitchRow("Quiet hours lock", "Fun & Games apps stay locked in this window (for example at night).", vm.quietOn) { vm.changeQuietOn(it) }
                 if (vm.quietOn) {
-                    TimeRow("From", vm.quietStart) { vm.setQuietStart(it) }
-                    TimeRow("Until", vm.quietEnd) { vm.setQuietEnd(it) }
+                    TimeRow("From", vm.quietStart) { vm.changeQuietStart(it) }
+                    TimeRow("Until", vm.quietEnd) { vm.changeQuietEnd(it) }
                 }
-                SwitchRow("Study hours lock", "Fun & Games apps stay locked in this window.", vm.studyOn) { vm.setStudyOn(it) }
+                SwitchRow("Study hours lock", "Fun & Games apps stay locked in this window.", vm.studyOn) { vm.changeStudyOn(it) }
                 if (vm.studyOn) {
-                    TimeRow("From", vm.studyStart) { vm.setStudyStart(it) }
-                    TimeRow("Until", vm.studyEnd) { vm.setStudyEnd(it) }
+                    TimeRow("From", vm.studyStart) { vm.changeStudyStart(it) }
+                    TimeRow("Until", vm.studyEnd) { vm.changeStudyEnd(it) }
                 }
                 Text("A game already open is not cut when a window starts; it is locked the next time you open it.",
                     style = MaterialTheme.typography.bodySmall, color = ColorMuted)
