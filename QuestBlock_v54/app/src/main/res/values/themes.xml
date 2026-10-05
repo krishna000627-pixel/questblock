@@ -1,0 +1,12 @@
+<resources>
+    <style name="Theme.QuestBlock" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!-- no system "preview" window: the app paints its own background straight away -->
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+
+    <!-- Lock page: same, opens straight into the chosen theme -->
+    <style name="Theme.QuestBlock.Lock" parent="Theme.QuestBlock" />
+</resources>
