@@ -23,7 +23,7 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
             }
             .toMap()
 
-    fun categoryMap(): Map<String, String> { applyDue(); return readCats() }
+    fun categoryMap(): Map<String, String> { applyDue(); applyDueCats(); return readCats() }
 
     fun categoryOverride(pkg: String): String? = categoryMap()[pkg]
 
@@ -88,8 +88,10 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
             key == "exam" -> sp.edit().putBoolean("exam_mode", v == "1").apply()
             key == "quiet" -> sp.edit().putBoolean("quiet_on", v == "1").apply()
             key == "study" -> sp.edit().putBoolean("studyblock_on", v == "1").apply()
+            key == "music" -> sp.edit().putBoolean("pause_music_limit", v == "1").apply()
             key.startsWith("cat:") -> setCategory(key.removePrefix("cat:"), v.ifEmpty { null })
             key.startsWith("safe:") -> setFunSafe(key.removePrefix("safe:"), v == "1")
+            key.startsWith("site:") -> if (v == "0") removeSiteNow(key.removePrefix("site:"))
         }
     }
 
@@ -110,8 +112,10 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
                 k == "exam" -> "exam mode \u2192 " + if (v.first == "1") "on" else "off"
                 k == "quiet" -> "quiet hours \u2192 " + if (v.first == "1") "on" else "off"
                 k == "study" -> "study hours \u2192 " + if (v.first == "1") "on" else "off"
+                k == "music" -> "pause fun music \u2192 " + if (v.first == "1") "on" else "off"
                 k.startsWith("cat:") -> "an app leaves Fun & Games"
                 k.startsWith("safe:") -> "a \uD83D\uDEE1 switch turns on"
+                k.startsWith("site:") -> "a website is unblocked"
                 else -> k
             }
         }
@@ -156,6 +160,104 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
 
     /** Any fun rule in force? Then loosening one is a commitment break. */
     val funRulesActive: Boolean get() = effectiveFunLimitMin > 0 || quietEnabled || studyBlockEnabled || examMode
+
+    // ── Weekly category lock: one change per app per week, starting at a time you choose (15 min steps) ──
+    /** pkg -> (category or "" for automatic, start time in ms). Stored as "pkg<TAB>cat<TAB>startMs". */
+    private fun readSched(): MutableMap<String, Pair<String, Long>> {
+        val out = LinkedHashMap<String, Pair<String, Long>>()
+        (sp.getString("cat_sched", "") ?: "").lineSequence().forEach { line ->
+            val p = line.split('\t')
+            if (p.size == 3) p[2].toLongOrNull()?.let { out[p[0]] = p[1] to it }
+        }
+        return out
+    }
+    private fun writeSched(m: Map<String, Pair<String, Long>>) {
+        sp.edit().putString("cat_sched", m.entries.joinToString("\n") { "${it.key}\t${it.value.first}\t${it.value.second}" }).apply()
+    }
+
+    /** Put due scheduled category changes into effect. */
+    fun applyDueCats() {
+        if ((sp.getString("cat_sched", "") ?: "").isEmpty()) return
+        val m = readSched()
+        val now = System.currentTimeMillis()
+        var changed = false
+        val it = m.entries.iterator()
+        while (it.hasNext()) {
+            val e = it.next()
+            if (e.value.second <= now) { setCategory(e.key, e.value.first.ifEmpty { null }); it.remove(); changed = true }
+        }
+        if (changed) writeSched(m)
+    }
+
+    /** When this app may be moved again (0 = now). */
+    fun catLockedUntil(pkg: String): Long = sp.getLong("catlock_$pkg", 0L)
+
+    /** The change waiting for its start time: (category or "" for automatic, start ms). */
+    fun pendingCat(pkg: String): Pair<String, Long>? { applyDueCats(); return readSched()[pkg] }
+
+    /** Move an app to [cat] (null = automatic) from [startMs]. Starts at once if that time has come. Locks the app for a week from the start. */
+    fun scheduleCategory(pkg: String, cat: String?, startMs: Long) {
+        val now = System.currentTimeMillis()
+        val start = maxOf(startMs, now)
+        val m = readSched()
+        if (startMs <= now) { setCategory(pkg, cat); m.remove(pkg) } else m[pkg] = (cat ?: "") to startMs
+        writeSched(m)
+        sp.edit().putLong("catlock_$pkg", start + 7 * 86_400_000L).apply()
+    }
+
+    /** For the Usage page, which changes at once: record the week lock. */
+    fun lockCategoryFromNow(pkg: String) { sp.edit().putLong("catlock_$pkg", System.currentTimeMillis() + 7 * 86_400_000L).apply() }
+
+    // ── Website blocker ──
+    fun blockedSites(): List<String> =
+        (sp.getString("blocked_sites", "") ?: "").lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
+
+    private fun writeSites(l: List<String>) { sp.edit().putString("blocked_sites", l.joinToString("\n")).apply() }
+
+    /** "https://www.Instagram.com/x" -> "instagram.com" */
+    fun normalizeSite(raw: String): String {
+        var s = raw.trim().lowercase()
+        s = s.removePrefix("https://").removePrefix("http://").removePrefix("www.")
+        s = s.substringBefore('/').substringBefore('?').substringBefore('#').substringBefore(':')
+        return s
+    }
+
+    /** Adding a block applies at once. Returns false if it was empty or already there. */
+    fun addSite(raw: String): Boolean {
+        val d = normalizeSite(raw)
+        if (d.isEmpty() || !d.contains('.')) return false
+        val l = blockedSites()
+        if (d in l) return false
+        writeSites(l + d)
+        val m = readPending()
+        if (m.remove("site:$d") != null) writePending(m)
+        return true
+    }
+
+    /** Removing a block is loosening: it waits until midnight. */
+    fun removeSite(d: String) {
+        val m = readPending()
+        m["site:$d"] = "0" to today() + 1
+        writePending(m)
+    }
+    fun removeSiteNow(d: String) { writeSites(blockedSites().filter { it != d }) }
+    fun siteUnblockPending(d: String): Boolean { applyDue(); return readPending().containsKey("site:$d") }
+
+    /** True if [host] (or a parent domain) is on the list. */
+    fun isSiteBlocked(host: String): Boolean {
+        applyDue()
+        val h = normalizeSite(host)
+        return blockedSites().any { h == it || h.endsWith(".$it") }
+    }
+
+    // ── Ghost time: music from fun apps while they are not on screen ──
+    val pauseMusicAtLimit: Boolean get() = sp.getBoolean("pause_music_limit", true)
+
+    /** Turning it ON applies now; turning it OFF waits until midnight (a fun rule, like the others). */
+    fun changePauseMusic(on: Boolean) {
+        if (!sp.contains("pause_music_limit")) sp.edit().putBoolean("pause_music_limit", true).apply()
+        commitFlag("music", "pause_music_limit", on)
+    }
 
     /** Change an app's category. Moving a fun app OUT of Fun & Games waits until tomorrow while fun rules are on. Returns true if applied now. */
     fun changeCategory(pkg: String, cat: String?, oldCat: String, newCat: String): Boolean {

@@ -26,5 +26,4 @@ object AboutMe {
         AboutLink("✉️", "Email", "Krishna000627@gmail.com", "mailto:Krishna000627@gmail.com"),
     )
 
-    const val CREDITS = "Built with Kotlin, Jetpack Compose, Room and Hilt."
 }

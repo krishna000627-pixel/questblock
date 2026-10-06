@@ -155,6 +155,71 @@ object UsageTracker {
         return out
     }
 
+    private const val EV_FGS_START = 19   // FOREGROUND_SERVICE_START (Android 10+)
+    private const val EV_FGS_STOP = 20    // FOREGROUND_SERVICE_STOP
+
+    /** Periods each app had a foreground service running (music players, downloads...), clipped to [from, to]. Android 10+. */
+    fun serviceIntervals(ctx: Context, from: Long, to: Long): Map<String, List<LongArray>> {
+        if (Build.VERSION.SDK_INT < 29) return emptyMap()
+        val usm = ctx.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager ?: return emptyMap()
+        val events = runCatching { usm.queryEvents(from - 6 * 3_600_000L, to) }.getOrNull() ?: return emptyMap()
+        val ev = UsageEvents.Event()
+        val starts = HashMap<String, Long>()
+        val out = HashMap<String, MutableList<LongArray>>()
+        fun close(pkg: String, end: Long) {
+            val s = starts.remove(pkg) ?: return
+            val a = maxOf(s, from); val b = minOf(end, to)
+            if (b > a) out.getOrPut(pkg) { ArrayList() }.add(longArrayOf(a, b))
+        }
+        while (events.hasNextEvent()) {
+            events.getNextEvent(ev)
+            val pkg = ev.packageName ?: continue
+            when (ev.eventType) {
+                EV_FGS_START -> if (!starts.containsKey(pkg)) starts[pkg] = ev.timeStamp
+                EV_FGS_STOP -> close(pkg, ev.timeStamp)
+                EV_SHUTDOWN, EV_STARTUP -> starts.keys.toList().forEach { close(it, ev.timeStamp) }
+            }
+        }
+        starts.keys.toList().forEach { close(it, to) }
+        return out
+    }
+
+    private fun overlapMs(a: List<LongArray>, b: List<LongArray>): Long {
+        var sum = 0L
+        for (x in a) for (y in b) {
+            val s = maxOf(x[0], y[0]); val e = minOf(x[1], y[1])
+            if (e > s) sum += e - s
+        }
+        return sum
+    }
+
+    /**
+     * Ghost time: a Fun & Games app had a service running while music was playing, minus the time it was on screen.
+     * It is an estimate: Android does not say which app is making the sound.
+     */
+    fun ghost(ctx: Context, prefs: Prefs, from: Long, to: Long, fg: Map<String, Long>? = null): Map<String, Long> {
+        val music = com.krishna.questblock.util.MusicLog.intervals(ctx, from, to)
+        if (music.isEmpty()) return emptyMap()
+        val per = fg ?: foreground(ctx, from, to).perPkg
+        val pm = ctx.packageManager
+        val out = HashMap<String, Long>()
+        serviceIntervals(ctx, from, to).forEach { (pkg, iv) ->
+            if (AppCategorizer.categoryOf(prefs, pm, pkg) != "fun") return@forEach
+            val g = maxOf(0L, overlapMs(iv, music) - (per[pkg] ?: 0L))
+            if (g > 0L) out[pkg] = g
+        }
+        return out
+    }
+
+    /** Fun & Games apps with a service running right now. */
+    fun openFunServices(ctx: Context, prefs: Prefs): Set<String> {
+        val now = System.currentTimeMillis()
+        val pm = ctx.packageManager
+        return serviceIntervals(ctx, now - 6 * 3_600_000L, now).filter { (pkg, iv) ->
+            iv.lastOrNull()?.let { now - it[1] < 90_000L } == true && AppCategorizer.categoryOf(prefs, pm, pkg) == "fun"
+        }.keys
+    }
+
     /** Debug dump: raw system records and event totals for [from]..[to], biggest first. */
     fun diagnose(ctx: Context, from: Long, to: Long): String {
         val usm = ctx.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager

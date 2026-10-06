@@ -109,6 +109,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         if (t - lastBeat > 30_000L) { lastBeat = t; prefs.lastActiveAt = System.currentTimeMillis() }
         val pkg = event.packageName?.toString() ?: return
         if (pkg == packageName) return
+        if (pkg in BROWSERS) checkWebsite(pkg)
         val isWindowChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
 
         if (pkg in GUARDED_PKGS) {
@@ -234,6 +235,43 @@ class BlockerAccessibilityService : AccessibilityService() {
                 showFunLimit(pkg)
             }
         }
+    }
+
+    // ── Website blocker (reads the browser address bar; works only in browsers that expose it) ──
+    private var lastSiteCheck = 0L
+    private var lastSiteHit = 0L
+
+    private fun checkWebsite(pkg: String) {
+        val now = SystemClock.uptimeMillis()
+        if (now - lastSiteCheck < 600L) return
+        lastSiteCheck = now
+        if (prefs.blockedSites().isEmpty()) return
+        val root = rootInActiveWindow ?: return
+        val url = findUrl(root, pkg) ?: return
+        if (!prefs.isSiteBlocked(url)) return
+        if (now - lastSiteHit < 2500L) return
+        lastSiteHit = now
+        DebugLog.d("service: blocked site ${prefs.normalizeSite(url)} in $pkg")
+        Toast.makeText(this, "\uD83D\uDD12 ${prefs.normalizeSite(url)} is blocked", Toast.LENGTH_LONG).show()
+        performGlobalAction(GLOBAL_ACTION_HOME)
+    }
+
+    private fun findUrl(root: AccessibilityNodeInfo, pkg: String): String? {
+        for (id in (URL_BAR_IDS[pkg].orEmpty() + "$pkg:id/url_bar")) {
+            val n = root.findAccessibilityNodeInfosByViewId(id)?.firstOrNull() ?: continue
+            n.text?.toString()?.takeIf { it.contains('.') && !it.contains(' ') }?.let { return it }
+        }
+        return scanForUrl(root, 0)
+    }
+
+    private fun scanForUrl(n: AccessibilityNodeInfo?, depth: Int): String? {
+        if (n == null || depth > 12) return null
+        if (n.className?.toString()?.contains("EditText") == true) {
+            val t = n.text?.toString()
+            if (!t.isNullOrBlank() && !t.contains(' ') && t.contains('.')) return t
+        }
+        for (i in 0 until n.childCount) scanForUrl(n.getChild(i), depth + 1)?.let { return it }
+        return null
     }
 
     private fun showFunLimit(pkg: String) {
@@ -461,6 +499,19 @@ class BlockerAccessibilityService : AccessibilityService() {
 
         fun openRecents(): Boolean = instance?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS) ?: false
 
+        private val BROWSERS = setOf(
+            "com.android.chrome", "com.chrome.beta", "org.chromium.chrome", "org.mozilla.firefox", "org.mozilla.firefox_beta",
+            "org.mozilla.fenix", "com.brave.browser", "com.microsoft.emmx", "com.sec.android.app.sbrowser", "com.opera.browser",
+            "com.opera.mini.native", "com.duckduckgo.mobile.android", "com.kiwibrowser.browser", "com.vivaldi.browser",
+            "com.heytap.browser", "com.coloros.browser", "com.google.android.apps.chrome",
+        )
+        private val URL_BAR_IDS: Map<String, List<String>> = mapOf(
+            "org.mozilla.firefox" to listOf("org.mozilla.firefox:id/mozac_browser_toolbar_url_view", "org.mozilla.firefox:id/url_bar_title"),
+            "org.mozilla.fenix" to listOf("org.mozilla.fenix:id/mozac_browser_toolbar_url_view"),
+            "com.sec.android.app.sbrowser" to listOf("com.sec.android.app.sbrowser:id/location_bar_edit_text"),
+            "com.opera.browser" to listOf("com.opera.browser:id/url_field"),
+            "com.duckduckgo.mobile.android" to listOf("com.duckduckgo.mobile.android:id/omnibarTextInput"),
+        )
         private const val SETTLE_MS = 180L
         private const val RELAUNCH_GUARD_MS = 800L
         private const val SAFE_REJOIN_MS = 5 * 60_000L

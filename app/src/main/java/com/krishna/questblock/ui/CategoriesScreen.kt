@@ -46,6 +46,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.krishna.questblock.data.AppCategorizer
 import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.USAGE_CATEGORIES
+import com.krishna.questblock.data.UsageTracker
+import com.krishna.questblock.data.usageCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -79,6 +81,18 @@ class CategoriesViewModel @Inject constructor(
         val applied = prefs.changeFunSafe(pkg, pkg !in _safe.value)
         _safe.value = prefs.funSafeSet()
         return applied
+    }
+
+    private val _tick = MutableStateFlow(0)
+    /** Bumped when a scheduled change is saved, so rows redraw. */
+    val tick: StateFlow<Int> = _tick
+    fun lockedUntil(pkg: String): Long = prefs.catLockedUntil(pkg)
+    fun pending(pkg: String): Pair<String, Long>? = prefs.pendingCat(pkg)
+    /** One change per app per week. [cat] null = back to automatic. */
+    fun schedule(app: CatApp, cat: String?, startMs: Long) {
+        prefs.scheduleCategory(app.pkg, cat, startMs)
+        _chosen.value = prefs.categoryMap()
+        _tick.value = _tick.value + 1
     }
 
     private val _loaded = MutableStateFlow(false)
@@ -116,6 +130,8 @@ fun CategoriesScreen(onBack: () -> Unit, vm: CategoriesViewModel = hiltViewModel
     val loaded by vm.loaded.collectAsStateWithLifecycle()
     val safeSet by vm.safe.collectAsStateWithLifecycle()
     val toastCtx = androidx.compose.ui.platform.LocalContext.current
+    val tick by vm.tick.collectAsStateWithLifecycle()
+    var request by remember { mutableStateOf<Pair<CatApp, String?>?>(null) }
     var query by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf("all") }
 
@@ -131,7 +147,7 @@ fun CategoriesScreen(onBack: () -> Unit, vm: CategoriesViewModel = hiltViewModel
             Column {
                 Text("App categories", style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold, color = ColorText)
-                Text("Tap an icon to move an app. Tap it again to go back to automatic.",
+                Text("Tap an icon to move an app. One change per app per week, and you choose when it starts.",
                     style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             }
         }
@@ -174,6 +190,14 @@ fun CategoriesScreen(onBack: () -> Unit, vm: CategoriesViewModel = hiltViewModel
                         Text(a.label, maxLines = 1, overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = ColorText)
                         Text(if (manual) "set by you" else "automatic", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+                        val pend = remember(tick, chosen, a.pkg) { vm.pending(a.pkg) }
+                        val lockedTill = remember(tick, chosen, a.pkg) { vm.lockedUntil(a.pkg) }
+                        if (pend != null) {
+                            Text("\u23F3 \u2192 " + (if (pend.first.isEmpty()) "automatic" else usageCategory(pend.first).short) + " on " + fmtWhen(pend.second),
+                                style = MaterialTheme.typography.labelSmall, color = ColorAccent, fontWeight = FontWeight.SemiBold)
+                        } else if (lockedTill > System.currentTimeMillis()) {
+                            Text("\uD83D\uDD12 can change again " + fmtWhen(lockedTill), style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+                        }
                         if (eff == "fun") {
                             val isSafe = a.pkg in safeSet
                             Text(
@@ -190,7 +214,14 @@ fun CategoriesScreen(onBack: () -> Unit, vm: CategoriesViewModel = hiltViewModel
                         Box(
                             Modifier.size(38.dp).clip(CircleShape)
                                 .background(if (sel) ColorPrimary.copy(alpha = 0.22f) else ColorSurfaceHigh)
-                                .clickable { if (!vm.pick(a, c.id)) commitToast(toastCtx) },
+                                .clickable {
+                                    val until = vm.lockedUntil(a.pkg)
+                                    if (until > System.currentTimeMillis()) {
+                                        android.widget.Toast.makeText(toastCtx, "\uD83D\uDD12 One change per week. You can change this app again " + fmtWhen(until),
+                                            android.widget.Toast.LENGTH_LONG).show()
+                                    } else if (eff != c.id) request = a to c.id
+                                    else if (manual) request = a to null
+                                },
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(c.emoji, fontSize = 17.sp)
@@ -201,6 +232,60 @@ fun CategoriesScreen(onBack: () -> Unit, vm: CategoriesViewModel = hiltViewModel
             item { Spacer(Modifier.height(16.dp)) }
         }
     }
+
+    request?.let { (app, target) ->
+        CategoryChangeDialog(
+            app = app,
+            current = chosen[app.pkg] ?: app.auto,
+            target = target,
+            onDismiss = { request = null },
+            onConfirm = { start -> vm.schedule(app, target, start); request = null },
+        )
+    }
+}
+
+private fun fmtWhen(t: Long): String = java.text.SimpleDateFormat("EEE d MMM, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(t))
+
+/** Pick when the change starts: day and time in 15 minute steps. Moving an app out of Fun & Games cannot start before tomorrow. */
+@Composable
+private fun CategoryChangeDialog(app: CatApp, current: String, target: String?, onDismiss: () -> Unit, onConfirm: (Long) -> Unit) {
+    val newCat = target ?: app.auto
+    val looser = current == "fun" && newCat != "fun"
+    val midnight = UsageTracker.dayStart(0)
+    val minStart = if (looser) midnight + 86_400_000L else 0L
+    val cal = java.util.Calendar.getInstance()
+    val nowMin = (cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)) / 15 * 15
+    var dayOffset by remember { mutableStateOf(if (looser) 1 else 0) }
+    var minutes by remember { mutableStateOf(if (looser) 0 else nowMin) }
+    val chosenStart = midnight + dayOffset * 86_400_000L + minutes * 60_000L
+    val start = maxOf(chosenStart, minStart)
+    val startsNow = start <= System.currentTimeMillis()
+    val lockEnd = maxOf(start, System.currentTimeMillis()) + 7 * 86_400_000L
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("${app.label} \u2192 " + (if (target == null) "automatic (${usageCategory(app.auto).short})" else usageCategory(target).label), fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Starts: " + if (startsNow) "now" else fmtWhen(start), fontWeight = FontWeight.Bold, color = ColorPrimary)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Day", Modifier.weight(1f), color = ColorText)
+                    androidx.compose.material3.TextButton(onClick = { dayOffset = (dayOffset - 1).coerceAtLeast(if (looser) 1 else 0) }) { Text("\u2212") }
+                    Text(if (dayOffset == 0) "today" else if (dayOffset == 1) "tomorrow" else "in $dayOffset days", color = ColorText)
+                    androidx.compose.material3.TextButton(onClick = { dayOffset = (dayOffset + 1).coerceAtMost(7) }) { Text("+") }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Time", Modifier.weight(1f), color = ColorText)
+                    androidx.compose.material3.TextButton(onClick = { minutes = (minutes - 15 + 1440) % 1440 }) { Text("\u2212") }
+                    Text("%02d:%02d".format(minutes / 60, minutes % 60), color = ColorText)
+                    androidx.compose.material3.TextButton(onClick = { minutes = (minutes + 15) % 1440 }) { Text("+") }
+                }
+                Text("Then this app is locked until " + fmtWhen(lockEnd) + ".", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = { onConfirm(start) }) { Text("Change", fontWeight = FontWeight.Bold) } },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable

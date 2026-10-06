@@ -63,7 +63,7 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class AppUse(val pkg: String, val label: String, val ms: Long, val cat: String)
-data class UsageUi(val totalMs: Long = 0L, val byCat: Map<String, Long> = emptyMap(), val apps: List<AppUse> = emptyList(), val loaded: Boolean = false)
+data class UsageUi(val totalMs: Long = 0L, val byCat: Map<String, Long> = emptyMap(), val apps: List<AppUse> = emptyList(), val loaded: Boolean = false, val ghostMs: Long = 0L)
 
 @HiltViewModel
 class UsageViewModel @Inject constructor(
@@ -92,7 +92,8 @@ class UsageViewModel @Inject constructor(
                     .map { AppUse(it.key, UsageTracker.labelOf(pm, it.key), it.value, AppCategorizer.categoryOf(prefs, pm, it.key)) }
                     .sortedByDescending { it.ms }
                 val byCat = apps.groupBy { it.cat }.mapValues { e -> e.value.sumOf { it.ms } }
-                UsageUi(apps.sumOf { it.ms }, byCat, apps, true)
+                val ghost = runCatching { UsageTracker.ghost(ctx, prefs, from, to, raw).values.sum() }.getOrDefault(0L)
+                UsageUi(apps.sumOf { it.ms }, byCat, apps, true, ghost)
             }
             _ui.value = result
         }
@@ -202,6 +203,17 @@ fun UsageScreen(onBack: () -> Unit, onOpenCategories: () -> Unit, vm: UsageViewM
             }
         }
 
+        // ghost time: music from fun apps while they were off screen
+        if (ui.ghostMs >= 60_000L) {
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(ColorCard).padding(12.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("\uD83C\uDFA7 Ghost", style = MaterialTheme.typography.labelLarge, color = ColorWarning, fontWeight = FontWeight.Bold)
+                    Text(fmtDur(ui.ghostMs), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ColorText)
+                }
+                Text("Music from Fun apps while off screen. Counts toward your Fun limit.", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+            }
+        }
+
         // apps grouped by category
         if (ui.loaded && ui.apps.isEmpty()) {
             Text("No app time recorded for this period yet.", color = ColorMuted)
@@ -215,7 +227,7 @@ fun UsageScreen(onBack: () -> Unit, onOpenCategories: () -> Unit, vm: UsageViewM
                 }
                 list.forEach { a ->
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ColorCard)
-                        .clickable { editing = a }.padding(10.dp),
+                        .clickable { onOpenCategories() }.padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         AppIcon(a.pkg, a.label)
                         Text(a.label, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -230,27 +242,6 @@ fun UsageScreen(onBack: () -> Unit, onOpenCategories: () -> Unit, vm: UsageViewM
             Text("Manage app categories")
         }
         Spacer(Modifier.height(16.dp))
-    }
-
-    // quick re-categorise from this page
-    editing?.let { app ->
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { editing = null },
-            confirmButton = {},
-            title = { Text(app.label, fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    USAGE_CATEGORIES.forEach { c ->
-                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                            .background(if (app.cat == c.id) ColorPrimary.copy(alpha = 0.18f) else ColorSurfaceHigh)
-                            .clickable { if (!vm.setCategory(app.pkg, c.id, range)) commitToast(ctx); editing = null }.padding(12.dp)) {
-                            Text("${c.emoji}  ${c.label}", fontWeight = FontWeight.SemiBold, color = ColorText)
-                        }
-                    }
-                    Text("Use \"Manage app categories\" to reset an app to automatic.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-                }
-            },
-        )
     }
 }
 

@@ -2,6 +2,7 @@
 package com.krishna.questblock.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -26,6 +27,7 @@ class RulesViewModel @Inject constructor(private val prefs: Prefs) : ViewModel()
     var examOn by mutableStateOf(prefs.pendingFlag("exam") ?: prefs.examMode); private set
     var weekendMin by mutableIntStateOf(prefs.pendingInt("weekend") ?: prefs.weekendFunLimitMin); private set
     var pendingNote by mutableStateOf(prefs.pendingSummary()); private set
+    var pauseMusicOn by mutableStateOf(prefs.pendingFlag("music") ?: prefs.pauseMusicAtLimit); private set
     var penaltyCoins by mutableIntStateOf(prefs.focusExitPenalty); private set
     var quietEnabledOn by mutableStateOf(prefs.pendingFlag("quiet") ?: prefs.quietEnabled); private set
     var quietFrom by mutableIntStateOf(prefs.quietStartMin); private set
@@ -36,6 +38,7 @@ class RulesViewModel @Inject constructor(private val prefs: Prefs) : ViewModel()
 
     fun updateAutoVerify(v: Boolean) { prefs.autoVerify = v; autoVerifyOn = v }
     private fun refreshNote() { pendingNote = prefs.pendingSummary() }
+    fun updatePauseMusic(v: Boolean) { prefs.changePauseMusic(v); pauseMusicOn = prefs.pendingFlag("music") ?: prefs.pauseMusicAtLimit; refreshNote() }
     fun updateExam(v: Boolean) { prefs.examMode = v; examOn = prefs.pendingFlag("exam") ?: prefs.examMode; refreshNote() }
     fun updateWeekend(v: Int) { prefs.weekendFunLimitMin = v.coerceIn(0, 360); weekendMin = prefs.pendingInt("weekend") ?: prefs.weekendFunLimitMin; refreshNote() }
     fun updatePenalty(v: Int) { prefs.focusExitPenalty = v; penaltyCoins = prefs.focusExitPenalty }
@@ -50,7 +53,7 @@ class RulesViewModel @Inject constructor(private val prefs: Prefs) : ViewModel()
 private fun hhmm(m: Int) = "%02d:%02d".format(m / 60, m % 60)
 
 @Composable
-fun RulesScreen(onBack: () -> Unit, vm: RulesViewModel = hiltViewModel()) {
+fun RulesScreen(onBack: () -> Unit, onOpenSites: () -> Unit, vm: RulesViewModel = hiltViewModel()) {
     LazyColumn(
         Modifier.fillMaxSize().background(ColorBg),
         contentPadding = PaddingValues(12.dp),
@@ -72,8 +75,20 @@ fun RulesScreen(onBack: () -> Unit, vm: RulesViewModel = hiltViewModel()) {
         }
         item {
             HubCard {
+                Row(Modifier.fillMaxWidth().clickable { onOpenSites() }, verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("🌐 Website blocker", fontWeight = FontWeight.Bold, color = ColorPrimary, style = MaterialTheme.typography.titleSmall)
+                        Text("Block sites like instagram.com", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                    }
+                    Text("›", color = ColorMuted)
+                }
+            }
+        }
+        item {
+            HubCard {
                 Text("🤖 Automation", fontWeight = FontWeight.Bold, color = ColorPrimary, style = MaterialTheme.typography.titleSmall)
                 SwitchRow("Auto-complete quests", "Study and coding quests with a time in the name", vm.autoVerifyOn) { vm.updateAutoVerify(it) }
+                SwitchRow("Pause fun music at limit", "🎧 Ghost time stops when Fun is used up", vm.pauseMusicOn) { vm.updatePauseMusic(it) }
             }
         }
         item {

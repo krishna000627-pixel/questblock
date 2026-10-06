@@ -144,7 +144,8 @@ fun MainScreen() {
             composable("hub_goals")    { GoalsScreen(onBack = { navController.popBackStack() }) }
             composable("hub_reports")  { ReportsScreen(onBack = { navController.popBackStack() }) }
             composable("hub_badges")   { BadgesScreen(onBack = { navController.popBackStack() }) }
-            composable("hub_rules")    { RulesScreen(onBack = { navController.popBackStack() }) }
+            composable("hub_rules")    { RulesScreen(onBack = { navController.popBackStack() }, onOpenSites = { navController.openPage("hub_sites") }) }
+            composable("hub_sites")    { SitesScreen(onBack = { navController.popBackStack() }) }
         }
     }
 }
