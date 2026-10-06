@@ -110,6 +110,24 @@ private fun buildSteps(pkgUri: Uri): List<OnboardStep> = listOf(
         onAction = { it.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkgUri)) },
     ),
     OnboardStep.PermStep(
+        emoji = "🔔",
+        title = "Allow notifications",
+        body = "Unlock timers, reminders and warnings are shown as notifications.",
+        actionLabel = "Open notification settings",
+        isDone = { Perms.notificationsOk(it) },
+        onAction = { ctx ->
+            ctx.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName))
+        },
+    ),
+    OnboardStep.PermStep(
+        emoji = "🎧",
+        title = "Notification access (optional)",
+        body = "Lets QuestBlock see which app is playing music, even if that app's notifications are off.",
+        actionLabel = "Open notification access",
+        isDone = { Perms.notificationAccess(it) },
+        onAction = { it.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
+    ),
+    OnboardStep.PermStep(
         emoji = "🛡️",
         title = "Device admin (optional)",
         body = "Makes QuestBlock harder to uninstall on a whim. You can skip this.",

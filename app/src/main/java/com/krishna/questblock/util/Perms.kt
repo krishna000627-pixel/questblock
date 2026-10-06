@@ -26,6 +26,9 @@ object Perms {
         android.os.Build.VERSION.SDK_INT < 33 ||
             ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
+    fun notificationAccess(ctx: Context): Boolean =
+        androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(ctx).contains(ctx.packageName)
+
     fun adminComponent(ctx: Context) = ComponentName(ctx, QuestAdminReceiver::class.java)
 
     fun adminActive(ctx: Context): Boolean =

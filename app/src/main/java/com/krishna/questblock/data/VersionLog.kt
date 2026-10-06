@@ -3,6 +3,14 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("62.0.0", "Website unlock, debug page, ideas",
+        listOf(
+            "Blocked websites can be unlocked with coins, with the same timer and notification as apps",
+            "Home/Back on a blocked site moves the browser off it so other sites keep working",
+            "Debug log has its own page",
+            "Notification permission and notification access are in the permission window",
+            "About me: new page and widget to write update prompts and ideas, with Copy",
+        )),
     VersionEntry("53.0.0", "Commitment, health check, Backup 2.0, breaks",
         listOf(
             "Fun limit is now a commitment: tightening applies now, loosening waits until midnight",

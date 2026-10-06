@@ -126,13 +126,16 @@ fun MainScreen() {
                     onOpenReliability = { navController.openPage("reliability") },
                     onOpenCategories = { navController.openPage("categories") },
                     onOpenUsage = { navController.openPage("usage") },
+                    onOpenDebug = { navController.openPage("debuglog") },
                 )
             }
+            composable("debuglog") { DebugLogScreen(onBack = { navController.popBackStack() }) }
+            composable("ideas") { IdeasScreen(onBack = { navController.popBackStack() }) }
             composable("usage") { UsageScreen(onBack = { navController.popBackStack() }, onOpenCategories = { navController.openPage("categories") }) }
             composable("categories") { CategoriesScreen(onBack = { navController.popBackStack() }) }
             composable("reliability") { ReliabilityScreen(onBack = { navController.popBackStack() }) }
             composable("coins")        { CoinLogScreen(onBack = { navController.popBackStack() }) }
-            composable("about")        { AboutMeScreen(onBack = { navController.popBackStack() }) }
+            composable("about")        { AboutMeScreen(onBack = { navController.popBackStack() }, onOpenIdeas = { navController.openPage("ideas") }) }
             composable("shop")         { InventoryScreen(onBack = { navController.popBackStack() }) }
             composable("hub")          { PlayerHubScreen(
                 onBack = { navController.popBackStack() },

@@ -88,7 +88,7 @@ class SettingsViewModel @Inject constructor(
 }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCategories: () -> Unit, onOpenUsage: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCategories: () -> Unit, onOpenUsage: () -> Unit, onOpenDebug: () -> Unit = {}, vm: SettingsViewModel = hiltViewModel()) {
     val ctx = LocalContext.current
     val prefs = vm.prefs
     val player by vm.player.collectAsStateWithLifecycle()
@@ -293,6 +293,9 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                 ctx.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                     .putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName))
             }
+            PermRow("Notification access", "Names the app playing music", Perms.notificationAccess(ctx)) {
+                ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            }
             val lastActive = prefs.lastActiveAt
             Text("Blocker last active: " +
                 (if (lastActive == 0L) "never" else agoText(System.currentTimeMillis() - lastActive)),
@@ -338,18 +341,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
         }
         Spacer(Modifier.height(12.dp))
         Section("\uD83D\uDC1E Debug log") {
-            var logText by remember { mutableStateOf(com.krishna.questblock.util.DebugLog.read()) }
-            Text(if (logText.isBlank()) "(empty \u2014 try an unlock, then come back and tap Refresh)" else logText.takeLast(2500),
-                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { logText = com.krishna.questblock.util.DebugLog.read() }) { Text("Refresh") }
-                OutlinedButton(onClick = {
-                    val cm = ctx.getSystemService(android.content.ClipboardManager::class.java)
-                    cm.setPrimaryClip(android.content.ClipData.newPlainText("QuestBlock log", com.krishna.questblock.util.DebugLog.read()))
-                    android.widget.Toast.makeText(ctx, "Log copied", android.widget.Toast.LENGTH_SHORT).show()
-                }) { Text("Copy") }
-                OutlinedButton(onClick = { com.krishna.questblock.util.DebugLog.clear(); logText = "" }) { Text("Clear") }
-            }
+            OutlinedButton(onClick = onOpenDebug, modifier = Modifier.fillMaxWidth()) { Text("Open debug log") }
         }
         Spacer(Modifier.height(12.dp))
     }

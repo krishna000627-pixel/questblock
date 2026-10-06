@@ -147,7 +147,8 @@ class KeepAliveService : Service() {
 
     private fun hasActiveUnlock(): Boolean {
         val now = System.currentTimeMillis()
-        return apps.any { !it.isStudyApp && it.unlockedUntil > now && !it.frozenAt(prefs.awayAt(it.packageName), now) }
+        return apps.any { !it.isStudyApp && it.unlockedUntil > now && !it.frozenAt(prefs.awayAt(it.packageName), now) } ||
+            prefs.blockedSites().any { prefs.siteUnlockedUntil(it) > now }
     }
 
     private fun render() {
@@ -160,6 +161,10 @@ class KeepAliveService : Service() {
         val active = apps.filter { !it.isStudyApp && (it.unlockedUntil > now || it.frozenAt(prefs.awayAt(it.packageName), now)) }
             .sortedBy { it.leftMs(prefs.awayAt(it.packageName), now) }
 
+        // websites unlocked with coins show up here too, like apps
+        val sites = prefs.blockedSites().filter { prefs.siteUnlockedUntil(it) > now }.sortedBy { prefs.siteUnlockedUntil(it) }
+        val siteExpired = prefs.blockedSites().filter { val u = prefs.siteUnlockedUntil(it); u in 1..now && now - u < 120_000L }
+            .maxByOrNull { prefs.siteUnlockedUntil(it) }
         // ONE notification does everything: live countdown, 5-min block tracker, 1-min warning, expired state.
         val justExpired = apps.filter { !it.isStudyApp && it.unlockedUntil in 1..now && now - it.unlockedUntil < 120_000L &&
                 !it.frozenAt(prefs.awayAt(it.packageName), now) }
@@ -216,7 +221,8 @@ class KeepAliveService : Service() {
             val blockMs = 5 * 60_000L
             val blocksLeft = ((left + blockMs - 1) / blockMs).toInt().coerceAtLeast(1)
             val inBlock = left - (blocksLeft - 1) * blockMs            // time left in the current 5-min block
-            val extra = if (active.size > 1) " · +${active.size - 1} more unlocked" else ""
+            val more = active.size - 1 + sites.size
+            val extra = if (more > 0) " · +$more more unlocked" else ""
             if (paused) {
                 title = "⏸ ${first.label} · ${fmtLeft(left)} saved"
                 text = "Paused while you're away$extra"
@@ -230,8 +236,22 @@ class KeepAliveService : Service() {
                 whenMs = first.unlockedUntil
                 progress = (((blockMs - inBlock) * 100) / blockMs).toInt().coerceIn(0, 100)
             }
+        } else if (sites.isNotEmpty()) {
+            val site = sites.first()
+            val until = prefs.siteUnlockedUntil(site)
+            val left = until - now
+            val blockMs = 5 * 60_000L
+            val blocksLeft = ((left + blockMs - 1) / blockMs).toInt().coerceAtLeast(1)
+            val inBlock = left - (blocksLeft - 1) * blockMs
+            val extra = if (sites.size > 1) " · +${sites.size - 1} more unlocked" else ""
+            title = "${if (left <= 60_000L) "⏳ " else ""}$site · unlocked"
+            text = "$blocksLeft × 5 min block${if (blocksLeft > 1) "s" else ""} left$extra"
+            whenMs = until
+            progress = (((blockMs - inBlock) * 100) / blockMs).toInt().coerceIn(0, 100)
         } else if (justExpired != null) {
             title = "⌛ ${justExpired.label} locked again"; text = "Unlock ran out. Open QuestBlock to earn more time."
+        } else if (siteExpired != null) {
+            title = "⌛ $siteExpired locked again"; text = "Unlock ran out. Open QuestBlock to earn more time."
         } else {
             title = "QuestBlock is on"; text = "Blocking is active"
         }
