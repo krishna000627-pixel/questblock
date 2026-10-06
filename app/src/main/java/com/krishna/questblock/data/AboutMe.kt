@@ -10,9 +10,7 @@ object AboutMe {
     const val BIO =
         "I’m Krishna, a Class 12 PCM student and solo Android developer. I build and maintain two apps " +
         "— QuestPhone (a gamified Android launcher) and QuestBlock (this app) — entirely from my phone. " +
-        "No Android Studio. No laptop. Just Termux, GitHub Actions and Claude.
-
-" +
+        "No Android Studio. No laptop. Just Termux, GitHub Actions and Claude.\n\n" +
         "I’ve been writing code since school, mostly Kotlin for Android. I read code structurally and " +
         "catch bugs by pattern recognition rather than writing everything from scratch."
     const val WHY =
