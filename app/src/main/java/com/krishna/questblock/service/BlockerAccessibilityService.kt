@@ -249,6 +249,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         val root = rootInActiveWindow ?: return
         val url = findUrl(root, pkg) ?: return
         val domain = prefs.matchedSite(url) ?: return
+        BlockActivity.browserPkg = pkg
         if (t - lastSiteHit < 1500L) return
         lastSiteHit = t
         scope.launch {

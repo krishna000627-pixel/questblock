@@ -94,6 +94,7 @@ class BlockViewModel @Inject constructor(private val repo: GameRepository) : Vie
     val player = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
 
     fun rate(): Int = repo.ratePer5()
+    fun siteUnlockedUntil(domain: String): Long = repo.siteUnlockedUntil(domain)
     fun holdSeconds(): Int = repo.holdSeconds()
     fun showQuotes(): Boolean = repo.showQuotes()
     /** onResult(ok, error): error is non-null only when something actually threw, so it can be shown on screen. */
@@ -174,6 +175,15 @@ class BlockActivity : ComponentActivity() {
     }
 
     private fun goHome() {
+        // blocked website: send the browser to a neutral page so other sites stay usable
+        if (target.startsWith("site:") && browserPkg.isNotEmpty()) {
+            runCatching {
+                startActivity(
+                    Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.google.com"))
+                        .setPackage(browserPkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }.onSuccess { finishAndRemoveTask(); return }
+        }
         startActivity(
             Intent(Intent.ACTION_MAIN)
                 .addCategory(Intent.CATEGORY_HOME)
@@ -193,7 +203,7 @@ class BlockActivity : ComponentActivity() {
         if (opened) return
         opened = true
         launching = true       // ← tell onStop not to destroy us mid-launch
-        packageManager.getLaunchIntentForPackage(target)?.let {
+        if (!target.startsWith("site:")) packageManager.getLaunchIntentForPackage(target)?.let {
             startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
         finishAndRemoveTask()
@@ -203,6 +213,7 @@ class BlockActivity : ComponentActivity() {
         const val EXTRA_PKG = "target_pkg"
         const val EXTRA_FUN_LIMIT = "fun_limit"
         @Volatile var showingFor: String = ""
+        @Volatile var browserPkg: String = ""
     }
 }
 
@@ -268,7 +279,9 @@ fun BlockScreen(
     val notifOk = remember { com.krishna.questblock.util.Perms.notificationsOk(ctx) }
 
     // Already unlocked: exit immediately — single tap scenario covered here too
-    val unlockedUntil = rule?.unlockedUntil ?: 0L
+    val isSite = pkg.startsWith("site:")
+    var siteUntil by remember(pkg, nonce) { mutableLongStateOf(if (isSite) vm.siteUnlockedUntil(pkg.removePrefix("site:")) else 0L) }
+    val unlockedUntil = if (isSite) siteUntil else (rule?.unlockedUntil ?: 0L)
     LaunchedEffect(unlockedUntil) {
         // while we are paying we show the receipt first and exit ourselves
         com.krishna.questblock.util.DebugLog.d("page: pkg=$pkg rule=${rule != null} unlockLeft=${unlockedUntil - System.currentTimeMillis()}ms paying=$paying coins=${player.coins}")
@@ -300,7 +313,7 @@ fun BlockScreen(
             if (isHolding) {
                 com.krishna.questblock.util.DebugLog.d("hold complete: rule=${rule != null} paying=$paying coins=$coinsNow cost=$costNow blocks=$blocksNow")
                 when {
-                    rule == null -> status = "\u26A0 $label isn't in your blocked list (Vault)"
+                    rule == null && !isSite -> status = "\u26A0 $label isn't in your blocked list (Vault)"
                     paying -> status = "Already processing\u2026"
                     coinsNow < costNow -> status = "Not enough coins: have $coinsNow, need $costNow"
                     else -> {
@@ -327,6 +340,7 @@ fun BlockScreen(
                                     "\u2705 -${res.cost} \uD83E\uDE99  (${res.before} \u2192 ${res.after})  +${res.minutes} min" +
                                         if (bad) "\n\u26A0 balance mismatch: another writer changed coins" else ""
                                 } else "\u2705 Already unlocked"
+                                if (isSite) siteUntil = vm.siteUnlockedUntil(pkg.removePrefix("site:"))
                                 KeepAlive.start(ctx)
                                 // stay on the page: the "Open now" panel appears, the app opens only when tapped
                                 paying = false
@@ -354,7 +368,7 @@ fun BlockScreen(
             bmp.asImageBitmap()
         }.getOrNull()
     }
-    val questIsPrimary = rule != null && !canAfford
+    val questIsPrimary = (rule != null || isSite) && !canAfford
 
     Box(
         Modifier
@@ -399,7 +413,7 @@ fun BlockScreen(
 
             Spacer(Modifier.height(28.dp))
 
-            if (rule != null) {
+            if (rule != null || isSite) {
                 val missing = cost - player.coins
 
                 // Time selector: hidden while a timer is running (nothing to buy until it ends)
@@ -430,9 +444,9 @@ fun BlockScreen(
                         }
                     }
 
-                    if (rule.ratePer5 > 0) {
+                    if ((rule?.ratePer5 ?: 0) > 0) {
                         Spacer(Modifier.height(4.dp))
-                        Text("Custom rate: ${rule.ratePer5} 🪙 per 5 min",
+                        Text("Custom rate: ${rule?.ratePer5} 🪙 per 5 min",
                             style = MaterialTheme.typography.labelSmall, color = ColorMuted)
                     }
                 }

@@ -89,6 +89,10 @@ fun RulesScreen(onBack: () -> Unit, onOpenSites: () -> Unit, vm: RulesViewModel 
                 Text("🤖 Automation", fontWeight = FontWeight.Bold, color = ColorPrimary, style = MaterialTheme.typography.titleSmall)
                 SwitchRow("Auto-complete quests", "Study and coding quests with a time in the name", vm.autoVerifyOn) { vm.updateAutoVerify(it) }
                 SwitchRow("Pause fun music at limit", "🎧 Ghost time stops when Fun is used up", vm.pauseMusicOn) { vm.updatePauseMusic(it) }
+                val rc = androidx.compose.ui.platform.LocalContext.current
+                TextButton(onClick = {
+                    runCatching { rc.startActivity(android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                }) { Text("🎧 Name the music app exactly (notification access)") }
             }
         }
         item {

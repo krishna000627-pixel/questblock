@@ -74,6 +74,13 @@ object MusicLog {
 
     private fun findSource(): String? {
         val c = ctx ?: return null
+        runCatching {
+            val msm = c.getSystemService(Context.MEDIA_SESSION_SERVICE) as android.media.session.MediaSessionManager
+            val cn = android.content.ComponentName(c, com.krishna.questblock.service.MediaListenerService::class.java)
+            msm.getActiveSessions(cn)
+                .firstOrNull { it.playbackState?.state == android.media.session.PlaybackState.STATE_PLAYING }
+                ?.packageName?.let { if (it != c.packageName) return it }
+        }
         val now = System.currentTimeMillis()
         val hidden = UsageTracker.hiddenPackages(c)
         val open = UsageTracker.foreground(c, now - 30 * 60_000L, now).openPkg

@@ -109,6 +109,7 @@ class GameRepository @Inject constructor(
 
     // ── Settings shortcuts ────────────────────────────────────────────────
     fun ratePer5(): Int = prefs.ratePer5
+    fun siteUnlockedUntil(domain: String): Long = prefs.siteUnlockedUntil(domain)
     fun studyMinPerCoin(): Int = prefs.studyMinPerCoin
     fun focusBonus(): Int = prefs.focusBonus
     fun holdSeconds(): Int = prefs.holdSeconds
