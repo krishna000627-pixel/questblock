@@ -29,7 +29,8 @@ object UsageTracker {
     // (phone left on a screen / screen-off event missing); stop counting after this much.
     private const val STUCK_GAP_MS = 60 * 60_000L
 
-    class Result(val perPkg: Map<String, Long>, val openPkg: String?)
+    class Span(val pkg: String, val start: Long, val end: Long)
+    class Result(val perPkg: Map<String, Long>, val openPkg: String?, val spans: List<Span> = emptyList())
 
     fun hasAccess(ctx: Context): Boolean {
         val ops = ctx.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager ?: return false
@@ -58,12 +59,13 @@ object UsageTracker {
         var fgPkg: String? = null
         val fgActs = HashSet<String>()
         var lastEv = 0L
+        val spans = ArrayList<Span>()
 
         fun close(at: Long) {
             val p = open ?: return
             val s = maxOf(since, from)
             val e = minOf(at, to)
-            if (e > s) out[p] = (out[p] ?: 0L) + (e - s)
+            if (e > s) { out[p] = (out[p] ?: 0L) + (e - s); spans.add(Span(p, s, e)) }
             open = null
         }
         fun clearAll(at: Long) { close(at); fgPkg = null; fgActs.clear() }
@@ -118,9 +120,9 @@ object UsageTracker {
         val openAtEnd = if (screenOn) open else null
         if (openAtEnd != null) {
             val s = maxOf(since, from)
-            if (to > s) out[openAtEnd] = (out[openAtEnd] ?: 0L) + (to - s)
+            if (to > s) { out[openAtEnd] = (out[openAtEnd] ?: 0L) + (to - s); spans.add(Span(openAtEnd, s, to)) }
         }
-        return Result(out, openAtEnd)
+        return Result(out, openAtEnd, spans)
     }
 
     /**
@@ -193,22 +195,47 @@ object UsageTracker {
         return sum
     }
 
+    /** The app you used most recently within [withinMs], not counting the launcher, system UI or this app. */
+    fun recentApp(ctx: Context, withinMs: Long): String? {
+        val usm = ctx.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager ?: return null
+        val now = System.currentTimeMillis()
+        val events = runCatching { usm.queryEvents(now - withinMs, now) }.getOrNull() ?: return null
+        val hidden = hiddenPackages(ctx)
+        val ev = UsageEvents.Event()
+        var last: String? = null
+        while (events.hasNextEvent()) {
+            events.getNextEvent(ev)
+            val pkg = ev.packageName ?: continue
+            if (ev.eventType == EV_RESUMED && pkg !in hidden && pkg != ctx.packageName) last = pkg
+        }
+        return last
+    }
+
     /**
-     * Ghost time: a Fun & Games app had a service running while music was playing, minus the time it was on screen.
-     * It is an estimate: Android does not say which app is making the sound.
+     * Music played per app (ms), minus the time that app was on screen. The app is the one you were using when the music
+     * started ("" = unknown). It is an estimate: Android does not say which app is making the sound.
      */
-    fun ghost(ctx: Context, prefs: Prefs, from: Long, to: Long, fg: Map<String, Long>? = null): Map<String, Long> {
-        val music = com.krishna.questblock.util.MusicLog.intervals(ctx, from, to)
-        if (music.isEmpty()) return emptyMap()
-        val per = fg ?: foreground(ctx, from, to).perPkg
-        val pm = ctx.packageManager
+    fun musicByApp(ctx: Context, from: Long, to: Long, spans: List<Span>? = null): Map<String, Long> {
+        val periods = com.krishna.questblock.util.MusicLog.periods(ctx, from, to)
+        if (periods.isEmpty()) return emptyMap()
+        val sp = spans ?: foreground(ctx, from, to).spans
         val out = HashMap<String, Long>()
-        serviceIntervals(ctx, from, to).forEach { (pkg, iv) ->
-            if (AppCategorizer.categoryOf(prefs, pm, pkg) != "fun") return@forEach
-            val g = maxOf(0L, overlapMs(iv, music) - (per[pkg] ?: 0L))
-            if (g > 0L) out[pkg] = g
+        for (p in periods) {
+            var ms = p.end - p.start
+            if (p.pkg.isNotEmpty()) for (s in sp) {
+                if (s.pkg != p.pkg) continue
+                val a = maxOf(s.start, p.start); val b = minOf(s.end, p.end)
+                if (b > a) ms -= (b - a)
+            }
+            if (ms > 0L) out[p.pkg] = (out[p.pkg] ?: 0L) + ms
         }
         return out
+    }
+
+    /** Music time from Fun & Games apps. This is what counts toward the Fun limit. */
+    fun ghost(ctx: Context, prefs: Prefs, from: Long, to: Long, spans: List<Span>? = null): Map<String, Long> {
+        val pm = ctx.packageManager
+        return musicByApp(ctx, from, to, spans).filter { it.key.isNotEmpty() && AppCategorizer.categoryOf(prefs, pm, it.key) == "fun" }
     }
 
     /** Fun & Games apps with a service running right now. */

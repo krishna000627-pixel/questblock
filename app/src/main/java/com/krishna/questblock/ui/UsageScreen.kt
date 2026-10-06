@@ -63,7 +63,7 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class AppUse(val pkg: String, val label: String, val ms: Long, val cat: String)
-data class UsageUi(val totalMs: Long = 0L, val byCat: Map<String, Long> = emptyMap(), val apps: List<AppUse> = emptyList(), val loaded: Boolean = false, val ghostMs: Long = 0L)
+data class UsageUi(val totalMs: Long = 0L, val byCat: Map<String, Long> = emptyMap(), val apps: List<AppUse> = emptyList(), val loaded: Boolean = false, val music: List<AppUse> = emptyList())
 
 @HiltViewModel
 class UsageViewModel @Inject constructor(
@@ -86,14 +86,21 @@ class UsageViewModel @Inject constructor(
                 val (from, to) = UsageTracker.rangeFor(range)
                 val pm = ctx.packageManager
                 val hidden = UsageTracker.hiddenPackages(ctx)
-                val raw = UsageTracker.foreground(ctx, from, to).perPkg
+                val fgRes = UsageTracker.foreground(ctx, from, to)
+                val raw = fgRes.perPkg
                 val apps = raw.entries
                     .filter { it.key !in hidden && it.value >= 30_000L && pm.getLaunchIntentForPackage(it.key) != null }
                     .map { AppUse(it.key, UsageTracker.labelOf(pm, it.key), it.value, AppCategorizer.categoryOf(prefs, pm, it.key)) }
                     .sortedByDescending { it.ms }
                 val byCat = apps.groupBy { it.cat }.mapValues { e -> e.value.sumOf { it.ms } }
-                val ghost = runCatching { UsageTracker.ghost(ctx, prefs, from, to, raw).values.sum() }.getOrDefault(0L)
-                UsageUi(apps.sumOf { it.ms }, byCat, apps, true, ghost)
+                val music = runCatching { UsageTracker.musicByApp(ctx, from, to, fgRes.spans) }.getOrDefault(emptyMap())
+                    .filter { it.value >= 60_000L }
+                    .map { (pkg, ms) ->
+                        AppUse(pkg, if (pkg.isEmpty()) "Unknown app" else UsageTracker.labelOf(pm, pkg), ms,
+                            if (pkg.isEmpty()) "neutral" else AppCategorizer.categoryOf(prefs, pm, pkg))
+                    }
+                    .sortedByDescending { it.ms }
+                UsageUi(apps.sumOf { it.ms }, byCat, apps, true, music)
             }
             _ui.value = result
         }
@@ -203,14 +210,28 @@ fun UsageScreen(onBack: () -> Unit, onOpenCategories: () -> Unit, vm: UsageViewM
             }
         }
 
-        // ghost time: music from fun apps while they were off screen
-        if (ui.ghostMs >= 60_000L) {
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(ColorCard).padding(12.dp)) {
+        // music played while the app was not on screen, recorded per app
+        if (ui.loaded) {
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(ColorCard).padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("\uD83C\uDFA7 Ghost", style = MaterialTheme.typography.labelLarge, color = ColorWarning, fontWeight = FontWeight.Bold)
-                    Text(fmtDur(ui.ghostMs), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ColorText)
+                    Text("\uD83C\uDFA7 Music off screen", style = MaterialTheme.typography.labelLarge, color = ColorWarning, fontWeight = FontWeight.Bold)
+                    Text(fmtDur(ui.music.sumOf { it.ms }), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ColorText)
                 }
-                Text("Music from Fun apps while off screen. Counts toward your Fun limit.", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+                if (ui.music.isEmpty()) {
+                    Text("None yet. Play music in an app, leave it, and check back.", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+                } else {
+                    ui.music.forEach { m ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            AppIcon(m.pkg, m.label, 30.dp)
+                            Column(Modifier.weight(1f)) {
+                                Text(m.label, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, color = ColorText)
+                                if (m.cat == "fun") Text("counts as Fun & Games", style = MaterialTheme.typography.labelSmall, color = ColorWarning)
+                            }
+                            Text(fmtDur(m.ms), color = ColorMuted, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
             }
         }
 

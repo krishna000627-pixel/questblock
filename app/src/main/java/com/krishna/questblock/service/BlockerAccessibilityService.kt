@@ -242,18 +242,47 @@ class BlockerAccessibilityService : AccessibilityService() {
     private var lastSiteHit = 0L
 
     private fun checkWebsite(pkg: String) {
-        val now = SystemClock.uptimeMillis()
-        if (now - lastSiteCheck < 600L) return
-        lastSiteCheck = now
+        val t = SystemClock.uptimeMillis()
+        if (t - lastSiteCheck < 600L) return
+        lastSiteCheck = t
         if (prefs.blockedSites().isEmpty()) return
         val root = rootInActiveWindow ?: return
         val url = findUrl(root, pkg) ?: return
-        if (!prefs.isSiteBlocked(url)) return
-        if (now - lastSiteHit < 2500L) return
-        lastSiteHit = now
-        DebugLog.d("service: blocked site ${prefs.normalizeSite(url)} in $pkg")
-        Toast.makeText(this, "\uD83D\uDD12 ${prefs.normalizeSite(url)} is blocked", Toast.LENGTH_LONG).show()
-        performGlobalAction(GLOBAL_ACTION_HOME)
+        val domain = prefs.matchedSite(url) ?: return
+        if (t - lastSiteHit < 1500L) return
+        lastSiteHit = t
+        scope.launch {
+            val key = "site:$domain"
+            val st = FunLimit.state(this@BlockerAccessibilityService, prefs)
+            if (st.reached || prefs.funBlockedNow()) {
+                // like a fun app: no coin unlock once the limit is used up or fun is locked
+                FunSignal.quiet = !st.reached
+                DebugLog.d("service: site $domain locked (fun limit / lock window)")
+                showFunLimit(key)
+                return@launch
+            }
+            if (prefs.siteUnlockedUntil(domain) > System.currentTimeMillis()) return@launch
+            DebugLog.d("service: site $domain blocked, showing coin lock")
+            showSiteBlock(key)
+        }
+    }
+
+    private fun showSiteBlock(key: String) {
+        val t = SystemClock.uptimeMillis()
+        if (BlockActivity.showingFor == key) return
+        if (lastBlockPkg == key && t - lastBlockAt < RELAUNCH_GUARD_MS) return
+        lastBlockPkg = key
+        lastBlockAt = t
+        startActivity(
+            Intent(this, BlockActivity::class.java)
+                .putExtra(BlockActivity.EXTRA_PKG, key)
+                .addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                        Intent.FLAG_ACTIVITY_NO_ANIMATION or
+                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+                )
+        )
     }
 
     private fun findUrl(root: AccessibilityNodeInfo, pkg: String): String? {

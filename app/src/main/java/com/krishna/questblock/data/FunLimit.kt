@@ -39,9 +39,10 @@ object FunLimit {
         val used = withContext(Dispatchers.IO) {
             val pm = ctx.packageManager
             val from = UsageTracker.dayStart(0)
-            val per = UsageTracker.foreground(ctx, from, now).perPkg
+            val res = UsageTracker.foreground(ctx, from, now)
+            val per = res.perPkg
             val onScreen = per.entries.filter { AppCategorizer.categoryOf(prefs, pm, it.key) == "fun" }.sumOf { it.value }
-            onScreen + runCatching { UsageTracker.ghost(ctx, prefs, from, now, per).values.sum() }.getOrDefault(0L)
+            onScreen + runCatching { UsageTracker.ghost(ctx, prefs, from, now, res.spans).values.sum() }.getOrDefault(0L)
         }
         val s = State(used, limitMs, now)
         last = s

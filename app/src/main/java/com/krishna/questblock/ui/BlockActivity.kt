@@ -233,7 +233,7 @@ fun BlockScreen(
     val player by vm.player.collectAsStateWithLifecycle()
     val rule = blocked.firstOrNull { it.packageName == pkg }
     val label = remember(pkg) {
-        runCatching {
+        if (pkg.startsWith("site:")) pkg.removePrefix("site:") else runCatching {
             ctx.packageManager.getApplicationLabel(ctx.packageManager.getApplicationInfo(pkg, 0)).toString()
         }.getOrDefault(pkg)
     }

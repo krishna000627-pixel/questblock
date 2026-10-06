@@ -464,6 +464,7 @@ class GameRepository @Inject constructor(
     private val unlockMutex = kotlinx.coroutines.sync.Mutex()
 
     suspend fun unlock(pkg: String, blocks: Int): UnlockResult = unlockMutex.withLock {
+        if (pkg.startsWith("site:")) return@withLock unlockSite(pkg.removePrefix("site:"), blocks)
         val b = blocks.coerceIn(1, MAX_UNLOCK_BLOCKS)
         val up = android.os.SystemClock.elapsedRealtime()
         var label = ""
@@ -504,6 +505,26 @@ class GameRepository @Inject constructor(
             }.onFailure { android.util.Log.e("QuestBlock", "unlock session tracking failed", it) }
         }
         result
+    }
+
+    /** Same coin price as an app (blocks of 5 minutes at the global rate). Websites have no database row, the open time lives in Prefs. */
+    private suspend fun unlockSite(domain: String, blocks: Int): UnlockResult {
+        val b = blocks.coerceIn(1, MAX_UNLOCK_BLOCKS)
+        var result = UnlockResult(ok = false)
+        db.withTransaction {
+            val p = playerDao.get() ?: Player().also { playerDao.upsert(it) }
+            val cost = unlockCost(b, prefs.ratePer5, null)
+            if (playerDao.spend(cost) == 0) {
+                result = UnlockResult(ok = false, cost = cost, before = p.coins, after = p.coins)
+                return@withTransaction
+            }
+            val now = System.currentTimeMillis()
+            val ms = b * 5 * 60_000L
+            prefs.setSiteUnlockedUntil(domain, maxOf(now, prefs.siteUnlockedUntil(domain)) + ms)
+            logCoin(-cost, "Unlock", "$domain \u00b7 ${fmtBlocks(b)}")
+            result = UnlockResult(ok = true, charged = true, cost = cost, before = p.coins, after = p.coins - cost, minutes = b * 5, msBought = ms)
+        }
+        return result
     }
 
     // ── Unlock session tracking (v17) ────────────────────────────────────

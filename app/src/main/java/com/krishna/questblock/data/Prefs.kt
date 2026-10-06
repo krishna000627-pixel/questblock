@@ -243,12 +243,16 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     fun removeSiteNow(d: String) { writeSites(blockedSites().filter { it != d }) }
     fun siteUnblockPending(d: String): Boolean { applyDue(); return readPending().containsKey("site:$d") }
 
-    /** True if [host] (or a parent domain) is on the list. */
-    fun isSiteBlocked(host: String): Boolean {
+    /** The list entry that matches [host] (or one of its parent domains), or null. */
+    fun matchedSite(host: String): String? {
         applyDue()
         val h = normalizeSite(host)
-        return blockedSites().any { h == it || h.endsWith(".$it") }
+        return blockedSites().firstOrNull { h == it || h.endsWith(".$it") }
     }
+
+    /** Paid unlock for a blocked site: until this time (ms) it is open. */
+    fun siteUnlockedUntil(d: String): Long = sp.getLong("site_unlock_$d", 0L)
+    fun setSiteUnlockedUntil(d: String, t: Long) { sp.edit().putLong("site_unlock_$d", t).apply() }
 
     // ── Ghost time: music from fun apps while they are not on screen ──
     val pauseMusicAtLimit: Boolean get() = sp.getBoolean("pause_music_limit", true)

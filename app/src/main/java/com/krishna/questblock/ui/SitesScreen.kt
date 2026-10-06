@@ -57,7 +57,7 @@ fun SitesScreen(onBack: () -> Unit, vm: SitesViewModel = hiltViewModel()) {
                     Button(onClick = { if (vm.add(text)) text = "" }) { Text("Block") }
                 }
                 if (vm.error.isNotEmpty()) Text(vm.error, color = ColorWarning, style = MaterialTheme.typography.bodySmall)
-                Text("Works in browsers that show the address bar to QuestBlock. Unblocking waits until midnight.",
+                Text("Unlock with coins, like apps. Fully locked when Fun is used up. Unblocking waits until midnight. Works in browsers that show their address bar.",
                     style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             }
         }
