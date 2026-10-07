@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("70.0.0", "Build fix for Routine first",
+        listOf(
+            "Fixes the v69 build error (missing import for the routine-day check)",
+        )),
     VersionEntry("69.0.0", "Weekly review, routine tools, widget, freeze",
         listOf(
             "Weekly review page (Settings → About): coins, quests, routine steps, music time, best day and one suggested change",

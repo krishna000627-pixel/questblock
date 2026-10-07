@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.map
 import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.krishna.questblock.ui.isForToday
 import kotlin.math.roundToInt
 
 fun baseReward(difficulty: Int): Int = when (difficulty) { 1 -> 10; 2 -> 25; else -> 50 }
