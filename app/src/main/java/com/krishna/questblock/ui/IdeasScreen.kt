@@ -12,7 +12,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -23,7 +27,25 @@ import com.krishna.questblock.data.IdeaStore
 fun IdeasScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
     var ideas by remember { mutableStateOf(IdeaStore.all(ctx)) }
-    var draft by remember { mutableStateOf("") }
+    var field by remember { mutableStateOf(TextFieldValue("")) }
+    val draft = field.text
+    val focus = remember { FocusRequester() }
+    fun setDraft(t: String) { field = TextFieldValue(t, TextRange(t.length)) }
+    val tags = listOf("🐞 Bug: ", "✨ Feature: ", "🎨 UI: ")
+
+    // put the tag at the start of the line the cursor is on, then leave the cursor ready to type
+    fun applyTag(tag: String) {
+        val t = field.text
+        val pos = field.selection.start.coerceIn(0, t.length)
+        val ls = if (pos == 0) 0 else t.lastIndexOf('\n', pos - 1) + 1
+        val le = t.indexOf('\n', pos).let { if (it < 0) t.length else it }
+        var line = t.substring(ls, le)
+        tags.forEach { line = line.removePrefix(it) }
+        val newLine = tag + line
+        val caret = if (line.isBlank()) ls + tag.length else ls + newLine.length
+        field = TextFieldValue(t.substring(0, ls) + newLine + t.substring(le), TextRange(caret))
+        focus.requestFocus()
+    }
     var editing by remember { mutableIntStateOf(-1) }
     val version = remember {
         runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
@@ -53,24 +75,29 @@ fun IdeasScreen(onBack: () -> Unit) {
             modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("🐞 Bug: ", "✨ Feature: ", "🎨 UI: ").forEach { tag ->
-                        AssistChip(onClick = { if (!draft.startsWith(tag)) draft = tag + draft.substringAfter(": ", draft) },
-                            label = { Text(tag.trim().removeSuffix(":")) })
+                    tags.forEach { tag ->
+                        AssistChip(onClick = { applyTag(tag) }, label = { Text(tag.trim().removeSuffix(":")) })
                     }
                 }
                 OutlinedTextField(
-                    value = draft, onValueChange = { draft = it },
-                    modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 8,
+                    value = field, onValueChange = { field = it },
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus), minLines = 3, maxLines = 8,
                     placeholder = { Text("What should the next update do?") },
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = {
-                        if (editing >= 0) IdeaStore.update(ctx, editing, draft) else IdeaStore.add(ctx, draft)
-                        draft = ""; editing = -1; reload()
+                        if (editing >= 0) IdeaStore.update(ctx, editing, draft)
+                        else {
+                            // each non-empty line becomes its own idea, in the order written
+                            val tagOnly = tags.map { it.trim() }
+                            draft.lines().map { it.trim() }.filter { it.isNotEmpty() && it !in tagOnly }
+                                .reversed().forEach { IdeaStore.add(ctx, it) }
+                        }
+                        setDraft(""); editing = -1; reload()
                     }, enabled = draft.isNotBlank(), shape = RoundedCornerShape(10.dp)) {
                         Text(if (editing >= 0) "Save edit" else "Save")
                     }
-                    if (editing >= 0) OutlinedButton(onClick = { draft = ""; editing = -1 }, shape = RoundedCornerShape(10.dp)) { Text("Cancel") }
+                    if (editing >= 0) OutlinedButton(onClick = { setDraft(""); editing = -1 }, shape = RoundedCornerShape(10.dp)) { Text("Cancel") }
                     else OutlinedButton(onClick = { copy(draft) }, enabled = draft.isNotBlank(), shape = RoundedCornerShape(10.dp)) { Text("Copy") }
                 }
             }
@@ -109,10 +136,10 @@ fun IdeasScreen(onBack: () -> Unit) {
                         }
                         Row {
                             TextButton(onClick = { copy(idea.text) }) { Text("Copy") }
-                            TextButton(onClick = { draft = idea.text; editing = i }) { Text("Edit") }
+                            TextButton(onClick = { setDraft(idea.text); editing = i; focus.requestFocus() }) { Text("Edit") }
                             TextButton(onClick = {
                                 IdeaStore.delete(ctx, i)
-                                if (editing == i) { editing = -1; draft = "" } else if (editing > i) editing--
+                                if (editing == i) { editing = -1; setDraft("") } else if (editing > i) editing--
                                 reload()
                             }) { Text("Delete", color = ColorMuted) }
                         }

@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("65.0.0", "Ideas tags work per line",
+        listOf(
+            "Bug/Feature/UI chips go on the line your cursor is on and leave the cursor after the colon",
+            "Enter starts a new line; Save turns each line into its own idea",
+        )),
     VersionEntry("64.0.0", "Ideas page rebuilt, music source more reliable",
         listOf(
             "Ideas page: tick ideas off, Bug/Feature/UI tags, Edit, Clear done, and one tap to copy everything as a ready update prompt",
