@@ -3,6 +3,15 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("80.0.0", "Comments are not counted",
+        listOf(
+            "Scrolling the comments panel in Shorts or Reels no longer counts as a video swipe (the debug log shows 'clips: comments scroll ignored')",
+        )),
+    VersionEntry("79.0.0", "Swipe counting once the count starts",
+        listOf(
+            "Once the Shorts/Reels count has started, every vertical swipe in the app counts as one video without re-checking the screen each time, so fast swipes are not missed",
+            "Sideways scrolls are ignored; swipes less than 0.7 s apart count once",
+        )),
     VersionEntry("78.0.0", "Counter overlay fix",
         listOf(
             "The Shorts and Reels counter is now drawn by the blocker service itself, so it no longer needs the Draw over other apps permission",

@@ -252,6 +252,19 @@ class BlockerAccessibilityService : AccessibilityService() {
     private var shortsBackAt = 0L
     private var shortsBackCount = 0
 
+    /** True when this view sits inside a comments (or engagement) panel, by walking up its parents. */
+    private fun inCommentsPanel(node: android.view.accessibility.AccessibilityNodeInfo?): Boolean {
+        var n = node
+        var depth = 0
+        while (n != null && depth < 12) {
+            val id = n.viewIdResourceName?.lowercase().orEmpty()
+            if (id.contains("comment") || id.contains("engagement_panel")) return true
+            n = n.parent
+            depth++
+        }
+        return false
+    }
+
     private fun kindOf(pkg: String): String? = when {
         pkg in YOUTUBE_PKGS -> ShortsStats.YT
         pkg == INSTAGRAM_PKG -> ShortsStats.IG
@@ -262,6 +275,22 @@ class BlockerAccessibilityService : AccessibilityService() {
         val kind = kindOf(pkg) ?: return
         val scrolled = event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED
         val t = SystemClock.uptimeMillis()
+        // Swipes inside the comments panel are scrolling the comments, not changing the video
+        if (scrolled && inCommentsPanel(event.source)) {
+            DebugLog.d("clips: comments scroll ignored ($kind)")
+            return
+        }
+        // Once the count has started (the Shorts/Reels timer is running), every vertical swipe in the app is one video.
+        // No screen check is needed for each swipe, so fast swipes are not missed.
+        if (scrolled && shortsKind == kind && shortsJob?.isActive == true) {
+            if (t - lastSwipeAt < 700L) return
+            if (Build.VERSION.SDK_INT >= 28 && Math.abs(event.scrollDeltaX) > Math.abs(event.scrollDeltaY)) return
+            lastSwipeAt = t
+            ShortsStats.add(this, kind, 0L, 1)
+            DebugLog.d("clips: swipe counted ($kind) while counting, class=${event.className}")
+            showCounter(kind)
+            return
+        }
         if (scrolled) {
             // one swipe = one video (the scroll events of a single swipe come in a burst)
             if (t - lastSwipeAt < 700L) return
