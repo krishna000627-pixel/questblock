@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("78.0.0", "Counter overlay fix",
+        listOf(
+            "The Shorts and Reels counter is now drawn by the blocker service itself, so it no longer needs the Draw over other apps permission",
+            "More 'clips:' debug lines (swipes counted, screen labels, overlay problems)",
+        )),
     VersionEntry("77.0.0", "Clips like apps, counter fixes",
         listOf(
             "Default theme is now System",

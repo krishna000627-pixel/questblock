@@ -280,6 +280,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         if (scrolled) {
             lastSwipeAt = t
             ShortsStats.add(this, kind, 0L, 1)
+            DebugLog.d("clips: swipe counted ($kind) class=${event.className} from=${event.fromIndex} to=${event.toIndex}")
             showCounter(kind)
             return
         }
@@ -348,6 +349,14 @@ class BlockerAccessibilityService : AccessibilityService() {
         for (i in 0 until n.childCount) sampleIds(n.getChild(i), out, depth + 1)
     }
 
+    /** For the debug log: short texts / descriptions of a few action buttons, to learn what the screen looks like. */
+    private fun sampleLabels(n: AccessibilityNodeInfo?, out: MutableSet<String>, depth: Int) {
+        if (n == null || depth > 24 || out.size >= 10) return
+        val l = (n.contentDescription ?: n.text)?.toString()
+        if (l != null && l.length in 3..28 && Regex("(?i)short|reel|like|comment|share|remix|subscribe|home|library").containsMatchIn(l)) out += l
+        for (i in 0 until n.childCount) sampleLabels(n.getChild(i), out, depth + 1)
+    }
+
     private var lastClipsLog = 0L
     private fun logClips(kind: String, root: AccessibilityNodeInfo, found: Boolean, event: AccessibilityEvent?) {
         val t = SystemClock.uptimeMillis()
@@ -355,7 +364,9 @@ class BlockerAccessibilityService : AccessibilityService() {
         lastClipsLog = t
         val ids = LinkedHashSet<String>()
         sampleIds(root, ids, 0)
-        val ev = if (event != null && event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED)
+        val labels = LinkedHashSet<String>()
+        sampleLabels(root, labels, 0)
+        val ev = " labels=$labels" + if (event != null && event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED)
             " scroll[class=${event.className} from=${event.fromIndex} to=${event.toIndex} count=${event.itemCount}]" else ""
         DebugLog.d("clips: $kind screen=$found ids=$ids$ev")
     }

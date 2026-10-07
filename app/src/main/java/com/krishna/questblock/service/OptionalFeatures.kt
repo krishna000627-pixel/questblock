@@ -153,35 +153,50 @@ object FunBubble {
     }
 }
 
-/** Live Shorts / Reels counter over the app (top left). Shown by the blocker while a clips screen is open. */
+/**
+ * Live Shorts / Reels counter over the app (top left).
+ * Drawn as an accessibility overlay when the blocker service shows it: that needs no "Draw over other apps" permission.
+ */
 object CounterBubble {
     private var view: TextView? = null
+    private var wm: WindowManager? = null
+    private var lastFail = 0L
 
     fun show(ctx: Context, text: String) {
-        val app = ctx.applicationContext
-        if (!Settings.canDrawOverlays(app)) return
-        val v = view ?: TextView(app).apply {
+        val isA11y = ctx is android.accessibilityservice.AccessibilityService
+        val host: Context = if (isA11y) ctx else ctx.applicationContext
+        if (!isA11y && !Settings.canDrawOverlays(host)) { fail("counter: no overlay permission"); return }
+        val existing = view
+        if (existing != null) { existing.text = text; return }
+        val tv = TextView(host).apply {
             setTextColor(0xFFFFFFFF.toInt()); textSize = 13f; typeface = Typeface.DEFAULT_BOLD
             setPadding(26, 10, 26, 10)
             background = GradientDrawable().apply { setColor(0xCC000000.toInt()); cornerRadius = 60f }
-        }.also { tv ->
-            val lp = WindowManager.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                PixelFormat.TRANSLUCENT,
-            ).apply { gravity = Gravity.TOP or Gravity.START; x = 24; y = 140 }
-            val ok = runCatching { app.getSystemService(WindowManager::class.java).addView(tv, lp) }.isSuccess
-            if (ok) view = tv
+            this.text = text
         }
-        v.text = text
+        val lp = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
+            if (isA11y) WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY else WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT,
+        ).apply { gravity = Gravity.TOP or Gravity.START; x = 24; y = 140 }
+        val manager = host.getSystemService(WindowManager::class.java)
+        val r = runCatching { manager.addView(tv, lp) }
+        if (r.isSuccess) { view = tv; wm = manager; DebugLog.d("counter: shown") }
+        else fail("counter: addView failed (${r.exceptionOrNull()?.javaClass?.simpleName})")
+    }
+
+    private fun fail(msg: String) {
+        val now = System.currentTimeMillis()
+        if (now - lastFail > 30_000L) { lastFail = now; DebugLog.d(msg) }
     }
 
     fun hide(ctx: Context) {
         val v = view ?: return
         view = null
-        runCatching { ctx.applicationContext.getSystemService(WindowManager::class.java).removeView(v) }
+        runCatching { (wm ?: ctx.applicationContext.getSystemService(WindowManager::class.java)).removeView(v) }
+        wm = null
     }
 }
 
