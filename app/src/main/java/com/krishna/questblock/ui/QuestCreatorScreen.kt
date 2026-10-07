@@ -332,6 +332,18 @@ fun QuestCreatorScreen(
             // ── Routine steps ──────────────────────────────────────────────
             if (isRoutine) item {
                 SectionLabel("Steps")
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                    ROUTINE_TEMPLATES.forEach { (name, list) ->
+                        OutlinedButton(
+                            onClick = {
+                                if (title.isBlank()) title = name.substringAfter(' ') + " routine"
+                                steps.clear(); steps.addAll(list)
+                            },
+                            modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                        ) { Text(name, style = MaterialTheme.typography.labelMedium, maxLines = 1) }
+                    }
+                }
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     steps.forEachIndexed { idx, text ->
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -655,3 +667,9 @@ private fun showTimeOfDayPicker(ctx: Context, initial: Int?, onResult: (Int) -> 
     val m = initial ?: (8 * 60)
     TimePickerDialog(ctx, { _, h, min -> onResult(h * 60 + min) }, m / 60, m % 60, false).show()
 }
+
+private val ROUTINE_TEMPLATES: List<Pair<String, List<String>>> = listOf(
+    "🌅 Morning" to listOf("Wake up and drink water", "Wash up", "Make the bed", "Plan the day"),
+    "📚 Study" to listOf("Phone away", "Study 25 min", "Break 5 min", "Study 25 min", "Review notes"),
+    "🌙 Night" to listOf("Pack bag for tomorrow", "Wash up", "Plan tomorrow", "Phone off"),
+)

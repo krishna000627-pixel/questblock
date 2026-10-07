@@ -20,6 +20,7 @@ object ShopCatalog {
         ShopItem("coin_mult_3h", "Coin Storm",        "🧲", "1.5× coins for 3 hours",       200, "powerup", 10_800_000L),
         ShopItem("streak_shield","Streak Shield",     "🛡️", "Protect streak for 1 day",     100, "powerup", 86_400_000L),
         ShopItem("streak_repair","Streak Repair",     "🩹", "Restore a streak broken in the last 3 days", 150, "powerup"),
+        ShopItem("streak_freeze","Streak Freeze",     "🧊", "Saves your streak once if you miss a day", 120, "powerup"),
         // ─── Avatar Frames ────────────────────────────────────────────────
         ShopItem("frame_fire",   "Fire Frame",        "🔥", "Blazing avatar frame",          150, "cosmetic_frame", isConsumable = false),
         ShopItem("frame_ice",    "Ice Frame",         "❄️", "Cool icy avatar frame",         150, "cosmetic_frame", isConsumable = false),

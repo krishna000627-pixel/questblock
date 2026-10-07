@@ -88,7 +88,7 @@ class SettingsViewModel @Inject constructor(
 }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCategories: () -> Unit, onOpenUsage: () -> Unit, onOpenDebug: () -> Unit = {}, vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCategories: () -> Unit, onOpenUsage: () -> Unit, onOpenDebug: () -> Unit = {}, onOpenVersions: () -> Unit = {}, onOpenWeekly: () -> Unit = {}, vm: SettingsViewModel = hiltViewModel()) {
     val ctx = LocalContext.current
     val prefs = vm.prefs
     val player by vm.player.collectAsStateWithLifecycle()
@@ -337,6 +337,10 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
             }
             Text("QuestBlock v$version", color = ColorText, fontWeight = FontWeight.SemiBold)
             val latest = com.krishna.questblock.data.VERSION_LOG.first()
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onOpenVersions, shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) { Text("Version history") }
+                OutlinedButton(onClick = onOpenWeekly, shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) { Text("Weekly review") }
+            }
             Text("v${latest.version}: ${latest.headline}", style = MaterialTheme.typography.bodySmall,
                 color = ColorText, fontWeight = FontWeight.SemiBold)
             Text(latest.items.joinToString("\n") { "• $it" }, style = MaterialTheme.typography.bodySmall, color = ColorMuted)

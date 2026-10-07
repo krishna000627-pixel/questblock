@@ -27,6 +27,7 @@ class RulesViewModel @Inject constructor(private val prefs: Prefs) : ViewModel()
     var examOn by mutableStateOf(prefs.pendingFlag("exam") ?: prefs.examMode); private set
     var weekendMin by mutableIntStateOf(prefs.pendingInt("weekend") ?: prefs.weekendFunLimitMin); private set
     var pendingNote by mutableStateOf(prefs.pendingSummary()); private set
+    var routineFirstOn by mutableStateOf(prefs.routineFirst); private set
     var pauseMusicOn by mutableStateOf(prefs.pendingFlag("music") ?: prefs.pauseMusicAtLimit); private set
     var penaltyCoins by mutableIntStateOf(prefs.focusExitPenalty); private set
     var quietEnabledOn by mutableStateOf(prefs.pendingFlag("quiet") ?: prefs.quietEnabled); private set
@@ -38,6 +39,7 @@ class RulesViewModel @Inject constructor(private val prefs: Prefs) : ViewModel()
 
     fun updateAutoVerify(v: Boolean) { prefs.autoVerify = v; autoVerifyOn = v }
     private fun refreshNote() { pendingNote = prefs.pendingSummary() }
+    fun updateRoutineFirst(v: Boolean) { prefs.routineFirst = v; routineFirstOn = v }
     fun updatePauseMusic(v: Boolean) { prefs.changePauseMusic(v); pauseMusicOn = prefs.pendingFlag("music") ?: prefs.pauseMusicAtLimit; refreshNote() }
     fun updateExam(v: Boolean) { prefs.examMode = v; examOn = prefs.pendingFlag("exam") ?: prefs.examMode; refreshNote() }
     fun updateWeekend(v: Int) { prefs.weekendFunLimitMin = v.coerceIn(0, 360); weekendMin = prefs.pendingInt("weekend") ?: prefs.weekendFunLimitMin; refreshNote() }
@@ -89,6 +91,7 @@ fun RulesScreen(onBack: () -> Unit, onOpenSites: () -> Unit, vm: RulesViewModel 
                 Text("🤖 Automation", fontWeight = FontWeight.Bold, color = ColorPrimary, style = MaterialTheme.typography.titleSmall)
                 SwitchRow("Auto-complete quests", "Study and coding quests with a time in the name", vm.autoVerifyOn) { vm.updateAutoVerify(it) }
                 SwitchRow("Pause fun music at limit", "🎧 Ghost time stops when Fun is used up", vm.pauseMusicOn) { vm.updatePauseMusic(it) }
+                SwitchRow("Routine first", "📋 Fun unlocks cost +50% until today's routine is done", vm.routineFirstOn) { vm.updateRoutineFirst(it) }
                 val rc = androidx.compose.ui.platform.LocalContext.current
                 TextButton(onClick = {
                     runCatching { rc.startActivity(android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }

@@ -127,8 +127,12 @@ fun MainScreen() {
                     onOpenCategories = { navController.openPage("categories") },
                     onOpenUsage = { navController.openPage("usage") },
                     onOpenDebug = { navController.openPage("debuglog") },
+                    onOpenVersions = { navController.openPage("versions") },
+                    onOpenWeekly = { navController.openPage("weekly") },
                 )
             }
+            composable("versions") { VersionScreen(onBack = { navController.popBackStack() }) }
+            composable("weekly") { WeeklyReviewScreen(onBack = { navController.popBackStack() }) }
             composable("debuglog") { DebugLogScreen(onBack = { navController.popBackStack() }) }
             composable("ideas") { IdeasScreen(onBack = { navController.popBackStack() }) }
             composable("usage") { UsageScreen(onBack = { navController.popBackStack() }, onOpenCategories = { navController.openPage("categories") }) }

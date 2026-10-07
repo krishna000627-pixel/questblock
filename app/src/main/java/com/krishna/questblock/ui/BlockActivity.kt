@@ -94,6 +94,10 @@ class BlockViewModel @Inject constructor(private val repo: GameRepository) : Vie
     val player = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
 
     fun rate(): Int = repo.ratePer5()
+    /** Extra percent on unlock prices while "Routine first" is on and today's routine is unfinished. */
+    var surcharge by mutableIntStateOf(0)
+        private set
+    init { viewModelScope.launch { surcharge = repo.routineSurchargePct() } }
     fun siteUnlockedUntil(domain: String): Long = repo.siteUnlockedUntil(domain)
     fun holdSeconds(): Int = repo.holdSeconds()
     fun showQuotes(): Boolean = repo.showQuotes()
@@ -258,7 +262,7 @@ fun BlockScreen(
     }
 
     var blocks by remember { mutableIntStateOf(3) }
-    val cost = unlockCost(blocks, rate, rule)
+    val cost = com.krishna.questblock.data.withSurcharge(unlockCost(blocks, rate, rule), vm.surcharge)
     val canAfford = player.coins >= cost
     val blocksNow by rememberUpdatedState(blocks)
     val costNow by rememberUpdatedState(cost)
@@ -415,6 +419,8 @@ fun BlockScreen(
 
             if (rule != null || isSite) {
                 val missing = cost - player.coins
+                if (vm.surcharge > 0) Text("📋 Routine unfinished: +${vm.surcharge}% on unlock prices",
+                    style = MaterialTheme.typography.labelSmall, color = ColorWarning)
 
                 // Time selector: hidden while a timer is running (nothing to buy until it ends)
                 if (unlockLeftMs == 0L) {

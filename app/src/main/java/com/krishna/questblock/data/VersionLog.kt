@@ -3,6 +3,21 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("69.0.0", "Weekly review, routine tools, widget, freeze",
+        listOf(
+            "Weekly review page (Settings → About): coins, quests, routine steps, music time, best day and one suggested change",
+            "Routine templates: Morning, Study and Night fill the steps in one tap",
+            "Skip a routine step for 5 coins; skipped steps pay nothing",
+            "Timed steps: a step like \"Study 25 min\" gets a Start button and ticks itself when the time is up",
+            "Routine first (Rules): fun unlocks cost +50% until today's routine is done",
+            "Streak Freeze in the shop (120 coins): saves your streak once if you miss a day",
+            "Home-screen widget showing the next routine step and your coins",
+            "Version history page is now linked from Settings → About",
+        )),
+    VersionEntry("68.0.0", "Quests page no longer jumps to Suggested",
+        listOf(
+            "Quests opens on Suggested only when you have no unfinished quests at all, not when nothing is due today or while the list is still loading",
+        )),
     VersionEntry("67.0.0", "Build fix for routine steps",
         listOf(
             "Fixes the v66 build error on Home (routine counters)",

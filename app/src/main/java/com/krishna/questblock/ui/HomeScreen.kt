@@ -67,6 +67,10 @@ class HomeViewModel @Inject constructor(
         repo.completeStep(task, sub)
         if (all.all { it.done || it.id == sub.id }) repo.completeTask(task)
     }
+    fun skipStep(task: TaskEntity, sub: SubTask, all: List<SubTask>) = viewModelScope.launch {
+        if (!repo.skipStep(task, sub)) { notice = "Skipping costs $STEP_SKIP_COST🪙 and you don't have enough"; return@launch }
+        if (all.all { it.done || it.id == sub.id }) repo.completeTask(task)
+    }
     fun addSuggestion(q: StarterQuest, tomorrow: Boolean = false) = viewModelScope.launch {
         val dueToday = nextRunDayStart(0, System.currentTimeMillis()) - 1 + (if (tomorrow) 86_400_000L else 0L)
         repo.addTask(QuestDraft(title = q.title, difficulty = q.difficulty, category = "Study", notes = q.note, dueAt = dueToday))
@@ -122,6 +126,13 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
     val stepDone = routineToday.sumOf { t -> stepsByTask[t.id]?.count { it.done } ?: 0 }
     val shownDone = if (routineDay) stepDone else doneToday
     val shownTotal = if (routineDay) stepTotal else totalToday
+    // line for the home-screen widget: the next routine step, else the top quest
+    val widgetLine = run {
+        val t = routineToday.firstOrNull { tk -> stepsByTask[tk.id]?.any { !it.done } == true }
+        if (t != null) "📋 ${t.title}: ${(stepsByTask[t.id] ?: emptyList()).sortedBy { it.id }.first { !it.done }.title}"
+        else todayList.firstOrNull()?.let { "🎯 ${it.title}" } ?: "All clear today"
+    }
+    LaunchedEffect(widgetLine, player.coins) { com.krishna.questblock.service.QuestWidget.update(ctx, widgetLine, player.coins) }
 
     val recentAch    = achievements.filter { it.unlockedAt != null }.sortedByDescending { it.unlockedAt }.take(3)
 
@@ -174,7 +185,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                 }
                 steps.forEachIndexed { i, sub ->
                     item(key = "rs_${sub.id}") {
-                        HomeStepRow(task, sub, i, steps.size) { vm.tickStep(task, sub, steps) }
+                        HomeStepRow(task, sub, i, steps.size, vm.prefs, onTick = { vm.tickStep(task, sub, steps) }, onSkip = { vm.skipStep(task, sub, steps) })
                     }
                 }
             }
@@ -452,20 +463,47 @@ private fun stepPriority(i: Int, n: Int, own: Int): Int = when {
 }
 
 @Composable
-private fun HomeStepRow(task: TaskEntity, sub: SubTask, i: Int, n: Int, onTick: () -> Unit) {
+private fun HomeStepRow(task: TaskEntity, sub: SubTask, i: Int, n: Int, prefs: Prefs, onTick: () -> Unit, onSkip: () -> Unit) {
     val pr = stepPriority(i, n, task.priority)
     val prColor = when (pr) { 1 -> ColorDanger; 2 -> ColorWarning; else -> ColorMuted }
     val coins = maxOf(1, (baseReward(task.difficulty) + n - 1) / n)
+    // a step like "Study 25 min" gets a timer; it ticks itself when the time is up
+    val mins = remember(sub.title) { Regex("(\\d{1,3})\\s*min", RegexOption.IGNORE_CASE).find(sub.title)?.groupValues?.get(1)?.toIntOrNull() }
+    var endAt by remember(sub.id) { mutableLongStateOf(prefs.stepTimerEnd(sub.id)) }
+    var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    val tick by rememberUpdatedState(onTick)
+    LaunchedEffect(endAt, sub.done) {
+        while (endAt > 0L && !sub.done) {
+            nowMs = System.currentTimeMillis()
+            if (nowMs >= endAt) { prefs.setStepTimerEnd(sub.id, 0L); endAt = 0L; tick(); break }
+            delay(1000L)
+        }
+    }
     Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = sub.done, onCheckedChange = { if (!sub.done) onTick() })
-            Text(sub.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
-                color = if (sub.done) ColorMuted else ColorText,
-                textDecoration = if (sub.done) androidx.compose.ui.text.style.TextDecoration.LineThrough else null)
-            Text(when (pr) { 1 -> "High"; 2 -> "Med"; else -> "Low" }, style = MaterialTheme.typography.labelSmall, color = prColor)
-            Spacer(Modifier.width(8.dp))
-            Text("+$coins🪙", style = MaterialTheme.typography.labelSmall, color = ColorCoin, fontWeight = FontWeight.Bold)
+        Column {
+            Row(Modifier.fillMaxWidth().padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = sub.done, onCheckedChange = { if (!sub.done) onTick() })
+                Text(sub.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                    color = if (sub.done) ColorMuted else ColorText,
+                    textDecoration = if (sub.done) androidx.compose.ui.text.style.TextDecoration.LineThrough else null)
+                Text(when (pr) { 1 -> "High"; 2 -> "Med"; else -> "Low" }, style = MaterialTheme.typography.labelSmall, color = prColor)
+                Spacer(Modifier.width(8.dp))
+                Text("+$coins🪙", style = MaterialTheme.typography.labelSmall, color = ColorCoin, fontWeight = FontWeight.Bold)
+            }
+            if (!sub.done) Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (mins != null) {
+                    if (endAt > 0L) {
+                        val left = ((endAt - nowMs).coerceAtLeast(0L)) / 1000L
+                        Text("⏱ %d:%02d".format(left / 60, left % 60), style = MaterialTheme.typography.labelMedium, color = ColorPrimary, fontWeight = FontWeight.Bold)
+                        TextButton(onClick = { endAt = 0L; prefs.setStepTimerEnd(sub.id, 0L) }) { Text("Cancel", color = ColorMuted) }
+                    } else TextButton(onClick = {
+                        endAt = System.currentTimeMillis() + mins * 60_000L; prefs.setStepTimerEnd(sub.id, endAt)
+                    }) { Text("▶ Start $mins min") }
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onSkip) { Text("Skip −$STEP_SKIP_COST🪙", color = ColorMuted, style = MaterialTheme.typography.labelMedium) }
+            }
         }
     }
 }

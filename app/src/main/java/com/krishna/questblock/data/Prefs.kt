@@ -9,6 +9,18 @@ import javax.inject.Singleton
 class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     private val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
 
+    var streakFreezes: Int
+        get() = sp.getInt("streak_freezes", 0)
+        set(v) = sp.edit().putInt("streak_freezes", v.coerceAtLeast(0)).apply()
+    /** "Routine first": fun unlocks cost +50% while today's routine is unfinished. */
+    var routineFirst: Boolean
+        get() = sp.getBoolean("routine_first", false)
+        set(v) = sp.edit().putBoolean("routine_first", v).apply()
+    fun stepTimerEnd(id: Long): Long = sp.getLong("step_timer_$id", 0L)
+    fun setStepTimerEnd(id: Long, t: Long) {
+        if (t == 0L) sp.edit().remove("step_timer_$id").apply() else sp.edit().putLong("step_timer_$id", t).apply()
+    }
+
     /** Routine steps that already paid their coins (ids are unique per day's copy of the routine). */
     fun stepPaid(id: Long): Boolean = sp.getString("paid_steps", "").orEmpty().split(',').contains(id.toString())
     fun markStepPaid(id: Long) {

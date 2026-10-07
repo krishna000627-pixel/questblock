@@ -84,7 +84,12 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
     val dayEnd = nextRunDayStart(0, now) - 1
     val todayOpen = tasks.count { it.isAvailableNow(now) && it.isForToday(dayEnd) }
     val doneToday = tasks.count { it.done && (it.completedAt ?: 0L) >= dayStart }
-    LaunchedEffect(todayOpen == 0) { if (todayOpen == 0) filterTab = "Suggested" }
+    // Only when there are NO unfinished quests at all. The short wait covers the first frame, when the list is still loading.
+    val openCount = tasks.count { !it.done }
+    LaunchedEffect(openCount) {
+        kotlinx.coroutines.delay(600L)
+        if (openCount == 0) filterTab = "Suggested"
+    }
 
     val filtered = tasks.filter { task ->
         val tabOk = when (filterTab) {

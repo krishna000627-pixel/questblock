@@ -17,6 +17,7 @@ import kotlin.math.roundToInt
 
 fun baseReward(difficulty: Int): Int = when (difficulty) { 1 -> 10; 2 -> 25; else -> 50 }
 const val FOCUS_BONUS_COINS = 15
+const val STEP_SKIP_COST = 5
 const val DAILY_LOGIN_COINS = 5
 
 const val DEFAULT_RATE_PER_5 = 5
@@ -33,6 +34,9 @@ fun unlockCost(blocks: Int, globalRate: Int, app: BlockedApp?): Int {
     val rate = app?.ratePer5?.takeIf { it > 0 } ?: globalRate
     return ((blocks * rate * (app?.priceMult ?: 100)) / 100.0).roundToInt().coerceAtLeast(1)
 }
+
+/** [pct] percent on top of [cost] (used by "Routine first"). */
+fun withSurcharge(cost: Int, pct: Int): Int = if (pct <= 0) cost else ((cost * (100 + pct)) / 100.0).roundToInt()
 
 fun fmtBlocks(blocks: Int): String {
     val m = blocks * 5
@@ -200,6 +204,29 @@ class GameRepository @Inject constructor(
     suspend fun addSubTask(taskId: Long, title: String) =
         subTaskDao.insert(SubTask(taskId = taskId, title = title))
 
+    /** Pay [STEP_SKIP_COST] coins to skip a routine step without breaking the routine. No reward for a skipped step. */
+    suspend fun skipStep(task: TaskEntity, sub: SubTask): Boolean {
+        if (sub.done) return false
+        val p = playerDao.get() ?: Player()
+        if (p.coins < STEP_SKIP_COST) return false
+        playerDao.upsert(p.copy(coins = p.coins - STEP_SKIP_COST))
+        logCoin(-STEP_SKIP_COST, "Skipped step", sub.title)
+        prefs.markStepPaid(sub.id)
+        subTaskDao.update(sub.copy(done = true))
+        return true
+    }
+
+    /** 50 while "Routine first" is on and a routine due today is unfinished, else 0. */
+    suspend fun routineSurchargePct(): Int {
+        if (!prefs.routineFirst) return 0
+        val now = System.currentTimeMillis()
+        val dayEnd = nextRunDayStart(0, now) - 1
+        val open = taskDao.observeAll().first().any {
+            !it.done && it.questType == "routine" && it.isAvailableNow(now) && it.isForToday(dayEnd)
+        }
+        return if (open) 50 else 0
+    }
+
     suspend fun toggleSubTask(sub: SubTask) {
         if (!sub.done) { taskDao.get(sub.taskId)?.let { completeStep(it, sub); return } }
         subTaskDao.update(sub.copy(done = !sub.done))
@@ -246,7 +273,12 @@ class GameRepository @Inject constructor(
 
             val p = playerDao.get() ?: Player()
             val newStreak = when (p.lastCompletionDay) {
-                today -> p.streak; today - 1 -> p.streak + 1; else -> 1
+                today -> p.streak
+                today - 1 -> p.streak + 1
+                // a Streak Freeze covers exactly one missed day
+                else -> if (p.lastCompletionDay == today - 2 && p.streak > 0 && prefs.streakFreezes > 0) {
+                    prefs.streakFreezes = prefs.streakFreezes - 1; p.streak + 1
+                } else 1
             }
             val base = baseReward(fresh.difficulty)
             val xpMulti  = if (p.hasXpBoost()) 2.0 else 1.0
@@ -491,6 +523,7 @@ class GameRepository @Inject constructor(
         var label = ""
         var result = UnlockResult(ok = false)
         // CRITICAL part: take coins + save unlock time. Nothing optional lives in here.
+        val pct = routineSurchargePct()
         db.withTransaction {
             val app = appDao.get(pkg) ?: error("$pkg is not in the blocked list")
             val prev = lastPaidAt[pkg]
@@ -500,7 +533,7 @@ class GameRepository @Inject constructor(
                 return@withTransaction
             }
             val p = playerDao.get() ?: Player().also { playerDao.upsert(it) }
-            val cost = unlockCost(b, prefs.ratePer5, app)
+            val cost = withSurcharge(unlockCost(b, prefs.ratePer5, app), pct)
             // atomic UPDATE ... WHERE coins >= cost: no read-modify-write, can't be overwritten by a stale copy
             com.krishna.questblock.util.DebugLog.d("repo.unlock: pkg=$pkg blocks=$b cost=$cost coins=${p.coins}")
             if (playerDao.spend(cost) == 0) { result = UnlockResult(ok = false, cost = cost, before = p.coins, after = p.coins); return@withTransaction }
@@ -532,9 +565,10 @@ class GameRepository @Inject constructor(
     private suspend fun unlockSite(domain: String, blocks: Int): UnlockResult {
         val b = blocks.coerceIn(1, MAX_UNLOCK_BLOCKS)
         var result = UnlockResult(ok = false)
+        val pct = routineSurchargePct()
         db.withTransaction {
             val p = playerDao.get() ?: Player().also { playerDao.upsert(it) }
-            val cost = unlockCost(b, prefs.ratePer5, null)
+            val cost = withSurcharge(unlockCost(b, prefs.ratePer5, null), pct)
             if (playerDao.spend(cost) == 0) {
                 result = UnlockResult(ok = false, cost = cost, before = p.coins, after = p.coins)
                 return@withTransaction
@@ -660,6 +694,7 @@ class GameRepository @Inject constructor(
                     "xp_boost_1h","xp_boost_3h"  -> p.copy(xpBoostUntil = expiry, coins = p.coins - item.price)
                     "coin_mult_1h","coin_mult_3h" -> p.copy(coinMultiplierUntil = expiry, coins = p.coins - item.price)
                     "streak_shield"               -> p.copy(streakShieldUntil = expiry, coins = p.coins - item.price)
+                    "streak_freeze"               -> { prefs.streakFreezes = prefs.streakFreezes + 1; p.copy(coins = p.coins - item.price) }
                     // Streak Repair: pretend yesterday was done, so the next finished quest carries the old streak on
                     "streak_repair"               -> p.copy(lastCompletionDay = dayNumber(now) - 1, coins = p.coins - item.price)
                     else -> p.copy(coins = p.coins - item.price)

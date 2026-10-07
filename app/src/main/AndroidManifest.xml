@@ -91,6 +91,13 @@
 
         <receiver android:name=".service.QuestReminderReceiver" android:exported="false" />
 
+        <receiver android:name=".service.QuestWidget" android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/quest_widget_info" />
+        </receiver>
+
         <receiver android:name=".service.BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
