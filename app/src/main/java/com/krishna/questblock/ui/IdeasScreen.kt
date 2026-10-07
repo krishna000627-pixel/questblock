@@ -43,7 +43,7 @@ private fun tagOf(text: String): IdeaTag? =
 
 /** The quest board: write update prompts and ideas, tick them off, and copy them into a chat as one ready prompt. */
 @Composable
-fun IdeasScreen(onBack: () -> Unit, onOpenRoadmap: () -> Unit = {}) {
+fun IdeasScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
     var ideas by remember { mutableStateOf(IdeaStore.all(ctx)) }
     var field by remember { mutableStateOf(TextFieldValue("")) }
@@ -86,17 +86,21 @@ fun IdeasScreen(onBack: () -> Unit, onOpenRoadmap: () -> Unit = {}) {
     ) {
         // ── Header ──────────────────────────────────────────────────────
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-                Column(Modifier.weight(1f)) {
-                    Text("📜 Quest board", style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Black, color = ColorText)
-                    Text("Update scrolls for the next version", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
+                    Column(Modifier.weight(1f)) {
+                        Text("📜 Quest board", style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Black, color = ColorText, maxLines = 1)
+                        Text("Update scrolls for the next version", style = MaterialTheme.typography.bodySmall,
+                            color = ColorMuted, maxLines = 1)
+                    }
                 }
-                TextButton(onClick = onOpenRoadmap) { Text("🗺️ Roadmap", fontWeight = FontWeight.Bold) }
-                Surface(shape = RoundedCornerShape(10.dp), color = ColorCoin.copy(alpha = 0.15f)) {
-                    Text("${open.size} open · $doneCount done", Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        style = MaterialTheme.typography.labelMedium, color = ColorCoin, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Surface(shape = RoundedCornerShape(10.dp), color = ColorCoin.copy(alpha = 0.15f)) {
+                        Text("${open.size} open · $doneCount done", Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            style = MaterialTheme.typography.labelMedium, color = ColorCoin, fontWeight = FontWeight.Bold, maxLines = 1)
+                    }
                 }
             }
         }

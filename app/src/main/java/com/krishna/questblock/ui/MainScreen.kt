@@ -159,8 +159,7 @@ fun MainScreen() {
             composable("selftest") { SelfTestScreen(onBack = { navController.popBackStack() }) }
             composable("weekly") { WeeklyReviewScreen(onBack = { navController.popBackStack() }) }
             composable("debuglog") { DebugLogScreen(onBack = { navController.popBackStack() }) }
-            composable("ideas") { IdeasScreen(onBack = { navController.popBackStack() }, onOpenRoadmap = { navController.openPage("roadmap") }) }
-            composable("roadmap") { RoadmapScreen(onBack = { navController.popBackStack() }) }
+            composable("ideas") { IdeasScreen(onBack = { navController.popBackStack() }) }
             composable("usage") { UsageScreen(onBack = { navController.popBackStack() }, onOpenCategories = { navController.openPage("categories") }) }
             composable("categories") { CategoriesScreen(onBack = { navController.popBackStack() }) }
             composable("reliability") { ReliabilityScreen(onBack = { navController.popBackStack() }) }

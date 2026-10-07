@@ -3,6 +3,14 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("91.0.0", "Roadmap removed",
+        listOf(
+            "The Roadmap page and its Roadmap button on the Quest board are gone",
+        )),
+    VersionEntry("90.0.0", "Quest board header fix",
+        listOf(
+            "Quest board: the title no longer breaks into one letter per line; the open/done counter and Roadmap button moved to their own row",
+        )),
     VersionEntry("89.0.0", "Auto-tick after copy",
         listOf(
             "Quest board: Copy as update prompt now ticks off every scroll it copied, so they show as sent (Clear done removes them)",
