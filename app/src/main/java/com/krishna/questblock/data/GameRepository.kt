@@ -200,7 +200,25 @@ class GameRepository @Inject constructor(
     suspend fun addSubTask(taskId: Long, title: String) =
         subTaskDao.insert(SubTask(taskId = taskId, title = title))
 
-    suspend fun toggleSubTask(sub: SubTask) = subTaskDao.update(sub.copy(done = !sub.done))
+    suspend fun toggleSubTask(sub: SubTask) {
+        if (!sub.done) { taskDao.get(sub.taskId)?.let { completeStep(it, sub); return } }
+        subTaskDao.update(sub.copy(done = !sub.done))
+    }
+
+    /** Ticks one routine step. Each step is worth an equal share of the routine's reward (paid once per step). */
+    suspend fun completeStep(task: TaskEntity, sub: SubTask) {
+        if (sub.done) return
+        subTaskDao.update(sub.copy(done = true))
+        if (prefs.stepPaid(sub.id)) return
+        prefs.markStepPaid(sub.id)
+        val n = subTaskDao.getAll(task.id).size.coerceAtLeast(1)
+        val share = maxOf(1, (baseReward(task.difficulty) + n - 1) / n)
+        val p = playerDao.get() ?: Player()
+        val earned = (share * (if (p.hasCoinMultiplier()) 1.5 else 1.0)).roundToInt()
+        val xp = (share * (if (p.hasXpBoost()) 2.0 else 1.0)).roundToInt()
+        playerDao.upsert(p.copy(coins = p.coins + earned, xp = p.xp + xp))
+        logCoin(earned, "Routine step", sub.title)
+    }
 
     suspend fun deleteTask(task: TaskEntity) {
         cancelReminder(task.id)
@@ -234,8 +252,10 @@ class GameRepository @Inject constructor(
             val xpMulti  = if (p.hasXpBoost()) 2.0 else 1.0
             val coinMulti = if (p.hasCoinMultiplier()) 1.5 else 1.0
             val streakMulti = 1.0 + (newStreak - 1).coerceIn(0, 5) * 0.1
-            val earned = (base * streakMulti * coinMulti).roundToInt()
-            val xpEarned = (base * xpMulti).roundToInt()
+            // a routine's reward is paid step by step, so finishing it adds nothing on top
+            val isRoutine = fresh.questType == "routine"
+            val earned = if (isRoutine) 0 else (base * streakMulti * coinMulti).roundToInt()
+            val xpEarned = if (isRoutine) 0 else (base * xpMulti).roundToInt()
 
             val log = p.weeklyXpLog.split(",").filter { it.isNotBlank() }.toMutableList()
             val todayEntry = "$today:${xpEarned}"
@@ -257,7 +277,7 @@ class GameRepository @Inject constructor(
                 focusQuestId   = if (wasFocusQuest) -1L else p.focusQuestId,
                 focusTotalMs   = if (wasFocusQuest) 0L else p.focusTotalMs,
             ))
-            logCoin(earned, "Quest", fresh.title)
+            if (earned > 0) logCoin(earned, "Quest", fresh.title)
             if (milestoneXp > 0) logCoin(milestoneXp / 5, "Streak bonus", "$newStreak-day streak")
             checkAchievements(p.copy(xp = p.xp + xpEarned, streak = newStreak))
 

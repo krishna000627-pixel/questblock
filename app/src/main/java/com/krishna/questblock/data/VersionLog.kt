@@ -3,6 +3,14 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("66.0.0", "Routines on Home: every step is a quest",
+        listOf(
+            "Home shows a routine's steps as separate lines instead of one routine quest",
+            "Each step has an automatic priority (first third High, middle Medium, last third Low) and its own coins, paid once when ticked",
+            "On a routine day Home shows only the routine's steps; other quests wait until tomorrow",
+            "Suggested quests stay visible on routine days and are added for tomorrow",
+            "Finishing a routine pays nothing extra, the steps already paid",
+        )),
     VersionEntry("65.0.0", "Ideas tags work per line",
         listOf(
             "Bug/Feature/UI chips go on the line your cursor is on and leave the cursor after the colon",

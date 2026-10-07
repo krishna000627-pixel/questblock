@@ -9,6 +9,13 @@ import javax.inject.Singleton
 class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     private val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
 
+    /** Routine steps that already paid their coins (ids are unique per day's copy of the routine). */
+    fun stepPaid(id: Long): Boolean = sp.getString("paid_steps", "").orEmpty().split(',').contains(id.toString())
+    fun markStepPaid(id: Long) {
+        val l = sp.getString("paid_steps", "").orEmpty().split(',').filter { it.isNotEmpty() }.takeLast(400) + id.toString()
+        sp.edit().putString("paid_steps", l.joinToString(",")).apply()
+    }
+
     /** 0 = dark, 1 = light, 2 = follow system */
     var themeMode: Int
         get() = sp.getInt("theme_mode", 0)

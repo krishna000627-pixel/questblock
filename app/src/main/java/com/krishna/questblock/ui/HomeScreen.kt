@@ -61,8 +61,14 @@ class HomeViewModel @Inject constructor(
     }
     fun dismissBonus() { loginBonus = 0 }
     /** Turns a suggestion into a real quest due today. */
-    fun addSuggestion(q: StarterQuest) = viewModelScope.launch {
-        val dueToday = nextRunDayStart(0, System.currentTimeMillis()) - 1
+    val subs = repo.allSubTasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    /** Ticks a routine step; when it was the last one, the routine itself is finished. */
+    fun tickStep(task: TaskEntity, sub: SubTask, all: List<SubTask>) = viewModelScope.launch {
+        repo.completeStep(task, sub)
+        if (all.all { it.done || it.id == sub.id }) repo.completeTask(task)
+    }
+    fun addSuggestion(q: StarterQuest, tomorrow: Boolean = false) = viewModelScope.launch {
+        val dueToday = nextRunDayStart(0, System.currentTimeMillis()) - 1 + (if (tomorrow) 86_400_000L else 0L)
         repo.addTask(QuestDraft(title = q.title, difficulty = q.difficulty, category = "Study", notes = q.note, dueAt = dueToday))
     }
     /** One-line message shown as a toast (e.g. a Routine with unticked steps). */
@@ -104,6 +110,16 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
     val comingUp = rest.filter { it.dueAt != null }.sortedWith(compareBy<TaskEntity> { it.dueAt ?: Long.MAX_VALUE }.thenBy { it.priority })
     val noDate   = rest.filter { it.dueAt == null }.sortedBy { it.priority }
 
+    // Routine day: only the routine's steps count as today's quests (each step is one quest)
+    val subs by vm.subs.collectAsStateWithLifecycle()
+    val routineToday = todayList.filter { it.questType == "routine" }
+    val routineDay = routineToday.isNotEmpty()
+    val stepsByTask = subs.groupBy { it.taskId }
+    val stepTotal = routineToday.sumOf { stepsByTask[it.id]?.size ?: 0 }
+    val stepDone = routineToday.sumOf { t -> stepsByTask[t.id]?.count { it.done } ?: 0 }
+    val shownDone = if (routineDay) stepDone else doneToday
+    val shownTotal = if (routineDay) stepTotal else totalToday
+
     val overdueCount = todayList.count { it.dueAt != null && it.dueAt < now }
     val doneToday    = tasks.count { it.done && (it.completedAt ?: 0L) >= dayStart }
     val totalToday   = doneToday + todayList.size
@@ -124,7 +140,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
         if (problems.isNotEmpty()) item { HealthBanner(problems.first(), problems.size) }
 
         // ── Hero card ──────────────────────────────────────────────────────
-        item { HeroCard(player = player, doneToday = doneToday, total = totalToday, onCoinsClick = onOpenShop) }
+        item { HeroCard(player = player, doneToday = shownDone, total = shownTotal, onCoinsClick = onOpenShop) }
 
         // ── Daily login bonus ──────────────────────────────────────────────
         if (vm.loginBonus > 0) {
@@ -145,11 +161,26 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                     fontWeight = FontWeight.Bold, color = ColorText)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (overdueCount > 0) Text("⚠ $overdueCount overdue", style = MaterialTheme.typography.labelMedium, color = ColorDanger)
-                    if (totalToday > 0) Text("$doneToday/$totalToday done", style = MaterialTheme.typography.labelMedium, color = ColorPrimary)
+                    if (shownTotal > 0) Text("$shownDone/$shownTotal done", style = MaterialTheme.typography.labelMedium, color = ColorPrimary)
                 }
             }
         }
-        if (todayList.isEmpty()) {
+        if (routineDay) {
+            routineToday.forEach { task ->
+                val steps = (stepsByTask[task.id] ?: emptyList()).sortedBy { it.id }
+                item(key = "rh_${task.id}") {
+                    Text("📋 ${task.title} · ${steps.count { it.done }}/${steps.size}", style = MaterialTheme.typography.labelLarge,
+                        color = ColorMuted, fontWeight = FontWeight.SemiBold)
+                }
+                steps.forEachIndexed { i, sub ->
+                    item(key = "rs_${sub.id}") {
+                        HomeStepRow(task, sub, i, steps.size) { vm.tickStep(task, sub, steps) }
+                    }
+                }
+            }
+            item { Text("Routine day: other quests wait until tomorrow", style = MaterialTheme.typography.labelSmall, color = ColorMuted) }
+            item { SuggestedQuests(onAdd = { vm.addSuggestion(it, tomorrow = true) }, title = "\uD83D\uDCA1 Suggested (added for tomorrow)") }
+        } else if (todayList.isEmpty()) {
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
                     shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
@@ -179,13 +210,13 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
         }
 
         // ── Next: dated quests, then undated ───────────────────────────────
-        if (comingUp.isNotEmpty()) {
+        if (!routineDay && comingUp.isNotEmpty()) {
             item { SubHeader("⏰ Coming up") }
             items(comingUp.take(3), key = { "up_${it.id}" }) { task ->
                 HomeQuestRow(task = task, now = now, onComplete = { vm.complete(task) })
             }
         }
-        if (noDate.isNotEmpty()) {
+        if (!routineDay && noDate.isNotEmpty()) {
             item { SubHeader("📋 No date") }
             items(noDate.take(3), key = { "nd_${it.id}" }) { task ->
                 HomeQuestRow(task = task, now = now, onComplete = { vm.complete(task) })
@@ -410,6 +441,33 @@ private fun SlimPill(text: String, highlighted: Boolean, onClick: () -> Unit, mo
 private fun SubHeader(text: String) {
     Text(text, modifier = Modifier.padding(top = 4.dp),
         style = MaterialTheme.typography.labelLarge, color = ColorMuted, fontWeight = FontWeight.SemiBold)
+}
+
+/** Priority is automatic: the routine's first third of steps is High, the middle Medium, the last third Low. */
+private fun stepPriority(i: Int, n: Int, own: Int): Int = when {
+    n <= 1 -> own
+    i * 3 < n -> 1
+    i * 3 < n * 2 -> 2
+    else -> 3
+}
+
+@Composable
+private fun HomeStepRow(task: TaskEntity, sub: SubTask, i: Int, n: Int, onTick: () -> Unit) {
+    val pr = stepPriority(i, n, task.priority)
+    val prColor = when (pr) { 1 -> ColorDanger; 2 -> ColorWarning; else -> ColorMuted }
+    val coins = maxOf(1, (baseReward(task.difficulty) + n - 1) / n)
+    Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = sub.done, onCheckedChange = { if (!sub.done) onTick() })
+            Text(sub.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                color = if (sub.done) ColorMuted else ColorText,
+                textDecoration = if (sub.done) androidx.compose.ui.text.style.TextDecoration.LineThrough else null)
+            Text(when (pr) { 1 -> "High"; 2 -> "Med"; else -> "Low" }, style = MaterialTheme.typography.labelSmall, color = prColor)
+            Spacer(Modifier.width(8.dp))
+            Text("+$coins🪙", style = MaterialTheme.typography.labelSmall, color = ColorCoin, fontWeight = FontWeight.Bold)
+        }
+    }
 }
 
 @Composable
