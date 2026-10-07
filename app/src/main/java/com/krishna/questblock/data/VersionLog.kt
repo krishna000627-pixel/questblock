@@ -3,6 +3,13 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("77.0.0", "Clips like apps, counter fixes",
+        listOf(
+            "Default theme is now System",
+            "Vault: YouTube Shorts and Instagram Reels look and work like normal app rows (no extra text)",
+            "Clips coin time only runs while you are in Shorts or Reels; the unlocked notification goes away when you leave, and unused time is given back when you return",
+            "Counter: wider detection of the Shorts and Reels screens; the debug log now has 'clips:' lines to show what the app sees",
+        )),
     VersionEntry("76.0.0", "Experiments page",
         listOf(
             "The optional features moved from Settings to Hub → Experiments, right below Rules",

@@ -112,7 +112,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         val pkg = event.packageName?.toString() ?: return
         if (pkg == packageName) return
         if (pkg in BROWSERS) checkWebsite(pkg)
-        if (pkg in YOUTUBE_PKGS || pkg == INSTAGRAM_PKG) checkShorts(pkg, event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED)
+        if (pkg in YOUTUBE_PKGS || pkg == INSTAGRAM_PKG) checkShorts(pkg, event)
         val isWindowChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
 
         if (pkg in GUARDED_PKGS) {
@@ -258,8 +258,9 @@ class BlockerAccessibilityService : AccessibilityService() {
         else -> null
     }
 
-    private fun checkShorts(pkg: String, scrolled: Boolean) {
+    private fun checkShorts(pkg: String, event: AccessibilityEvent) {
         val kind = kindOf(pkg) ?: return
+        val scrolled = event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED
         val t = SystemClock.uptimeMillis()
         if (scrolled) {
             // one swipe = one video (the scroll events of a single swipe come in a burst)
@@ -270,7 +271,9 @@ class BlockerAccessibilityService : AccessibilityService() {
         }
         val root = rootInActiveWindow ?: return
         if (root.packageName?.toString() != pkg) return
-        if (!isShortForm(root, kind)) {
+        val onClips = isShortForm(root, kind)
+        logClips(kind, root, onClips, event)
+        if (!onClips) {
             if (!scrolled && shortsKind == kind) stopShortTimer()
             return
         }
@@ -286,6 +289,15 @@ class BlockerAccessibilityService : AccessibilityService() {
             if (prefs.shortPicked(kind)) {
                 // picked in the Vault: needs coins to run, and no coins help once the fun limit is used up
                 if (locked) { blockShort(kind); return@launch }
+                // coin time is only used up while you are inside the clips screen: add back the time you were away
+                val key = "short:$kind"
+                val away = prefs.awayAt(key)
+                if (away > 0L) {
+                    prefs.clearAway(key)
+                    val n = System.currentTimeMillis()
+                    val until = prefs.siteUnlockedUntil(key)
+                    if (until > away && dayNumber(away) == dayNumber(n)) prefs.setSiteUnlockedUntil(key, until + (n - away))
+                }
                 if (prefs.siteUnlockedUntil("short:$kind") <= System.currentTimeMillis()) {
                     DebugLog.d("service: $kind clips need coins, showing the lock")
                     showSiteBlock("short:$kind")
@@ -300,20 +312,52 @@ class BlockerAccessibilityService : AccessibilityService() {
 
     private fun isShortForm(root: AccessibilityNodeInfo, kind: String): Boolean {
         val pkg = root.packageName?.toString() ?: return false
-        val ids = if (kind == ShortsStats.YT) SHORTS_IDS else REELS_IDS
-        for (id in ids) {
+        val fixed = if (kind == ShortsStats.YT) SHORTS_IDS else REELS_IDS
+        for (id in fixed) {
             if (root.findAccessibilityNodeInfosByViewId("$pkg:id/$id")?.isNotEmpty() == true) return true
         }
+        // the app's own names can change between versions: look for any view whose id starts like the player's
+        val parts = if (kind == ShortsStats.YT) SHORTS_ID_PARTS else REELS_ID_PARTS
+        if (hasIdPart(root, parts, 0)) return true
         return hasSelectedTab(root, if (kind == ShortsStats.YT) "Shorts" else "Reels", 0)
+    }
+
+    private fun hasIdPart(n: AccessibilityNodeInfo?, parts: List<String>, depth: Int): Boolean {
+        if (n == null || depth > 24) return false
+        val id = n.viewIdResourceName
+        if (id != null && parts.any { id.contains(":id/$it") }) return true
+        for (i in 0 until n.childCount) if (hasIdPart(n.getChild(i), parts, depth + 1)) return true
+        return false
     }
 
     /** Fallback: the bottom-bar tab with this name is selected. */
     private fun hasSelectedTab(n: AccessibilityNodeInfo?, name: String, depth: Int): Boolean {
-        if (n == null || depth > 14) return false
+        if (n == null || depth > 24) return false
         val label = (n.contentDescription ?: n.text)?.toString()
-        if (label != null && label.equals(name, ignoreCase = true) && n.isSelected) return true
+        if (label != null && (label.equals(name, ignoreCase = true) || label.startsWith("$name,", ignoreCase = true)) &&
+            (n.isSelected || label.contains("selected", ignoreCase = true))) return true
         for (i in 0 until n.childCount) if (hasSelectedTab(n.getChild(i), name, depth + 1)) return true
         return false
+    }
+
+    /** For the debug log: a few view ids from the window that look like clips views. */
+    private fun sampleIds(n: AccessibilityNodeInfo?, out: MutableSet<String>, depth: Int) {
+        if (n == null || depth > 24 || out.size >= 8) return
+        val id = n.viewIdResourceName
+        if (id != null && (id.contains("reel") || id.contains("clips") || id.contains("short"))) out += id.substringAfter(":id/")
+        for (i in 0 until n.childCount) sampleIds(n.getChild(i), out, depth + 1)
+    }
+
+    private var lastClipsLog = 0L
+    private fun logClips(kind: String, root: AccessibilityNodeInfo, found: Boolean, event: AccessibilityEvent?) {
+        val t = SystemClock.uptimeMillis()
+        if (t - lastClipsLog < 4_000L) return
+        lastClipsLog = t
+        val ids = LinkedHashSet<String>()
+        sampleIds(root, ids, 0)
+        val ev = if (event != null && event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED)
+            " scroll[class=${event.className} from=${event.fromIndex} to=${event.toIndex} count=${event.itemCount}]" else ""
+        DebugLog.d("clips: $kind screen=$found ids=$ids$ev")
     }
 
     private fun showCounter(kind: String) {
@@ -329,6 +373,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         shortsJob?.cancel()
         shortsKind = kind
         FunSignal.shortsOn = true
+        FunSignal.shortsKind = kind
         showCounter(kind)
         shortsJob = scope.launch {
             val pm = getSystemService(PowerManager::class.java)
@@ -356,13 +401,23 @@ class BlockerAccessibilityService : AccessibilityService() {
                 }
             } finally {
                 FunSignal.shortsOn = false
+                if (FunSignal.shortsKind == kind) FunSignal.shortsKind = null
+                markClipsAway(kind)
                 CounterBubble.hide(this@BlockerAccessibilityService)
                 if (shortsKind == kind) shortsKind = null
             }
         }
     }
 
+    /** Remember when you left, so coin time you did not use is given back when you return. */
+    private fun markClipsAway(kind: String) {
+        val key = "short:$kind"
+        if (prefs.shortPicked(kind) && prefs.siteUnlockedUntil(key) > System.currentTimeMillis()) prefs.setAwayAt(key, System.currentTimeMillis())
+    }
+
     private fun stopShortTimer() {
+        shortsKind?.let { markClipsAway(it) }
+        FunSignal.shortsKind = null
         shortsJob?.cancel()
         shortsJob = null
         shortsKind = null
@@ -783,6 +838,8 @@ class BlockerAccessibilityService : AccessibilityService() {
         )
         private const val INSTAGRAM_PKG = "com.instagram.android"
         private val REELS_IDS = listOf("clips_viewer_view_pager", "clips_viewer_container", "clips_viewer_fragment")
+        private val SHORTS_ID_PARTS = listOf("reel_player", "reel_recycler", "reel_watch", "reel_time_bar", "reel_progress")
+        private val REELS_ID_PARTS = listOf("clips_viewer", "clips_video", "clips_author", "clips_ufi")
         private val YOUTUBE_PKGS = setOf("com.google.android.youtube", "app.revanced.android.youtube", "com.vanced.android.youtube")
         /** Views YouTube uses for the Shorts player (the selected "Shorts" tab is the fallback). */
         private val SHORTS_IDS = listOf("reel_recycler", "reel_player_page_container", "shorts_container")

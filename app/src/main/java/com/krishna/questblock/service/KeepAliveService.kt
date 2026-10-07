@@ -148,10 +148,13 @@ class KeepAliveService : Service() {
         return START_STICKY
     }
 
+    /** Websites with coin time, plus Shorts/Reels only while that screen is open (away time is saved, not shown). */
+    private fun liveKeys(): List<String> = prefs.unlockKeys().filter { !it.startsWith("short:") || FunSignal.shortsKind == it.removePrefix("short:") }
+
     private fun hasActiveUnlock(): Boolean {
         val now = System.currentTimeMillis()
         return apps.any { !it.isStudyApp && it.unlockedUntil > now && !it.frozenAt(prefs.awayAt(it.packageName), now) } ||
-            prefs.unlockKeys().any { prefs.siteUnlockedUntil(it) > now }
+            liveKeys().any { prefs.siteUnlockedUntil(it) > now }
     }
 
     private fun render() {
@@ -172,8 +175,8 @@ class KeepAliveService : Service() {
             .sortedBy { it.leftMs(prefs.awayAt(it.packageName), now) }
 
         // websites unlocked with coins show up here too, like apps
-        val sites = prefs.unlockKeys().filter { prefs.siteUnlockedUntil(it) > now }.sortedBy { prefs.siteUnlockedUntil(it) }
-        val siteExpired = prefs.unlockKeys().filter { val u = prefs.siteUnlockedUntil(it); u in 1..now && now - u < 120_000L }
+        val sites = liveKeys().filter { prefs.siteUnlockedUntil(it) > now }.sortedBy { prefs.siteUnlockedUntil(it) }
+        val siteExpired = liveKeys().filter { val u = prefs.siteUnlockedUntil(it); u in 1..now && now - u < 120_000L }
             .maxByOrNull { prefs.siteUnlockedUntil(it) }
         // ONE notification does everything: live countdown, 5-min block tracker, 1-min warning, expired state.
         val justExpired = apps.filter { !it.isStudyApp && it.unlockedUntil in 1..now && now - it.unlockedUntil < 120_000L &&

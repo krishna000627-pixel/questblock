@@ -22,7 +22,7 @@ import androidx.core.view.WindowCompat
 
 // ── Theme mode ───────────────────────────────────────────────────────────────
 /** What the user picked: 0 = dark, 1 = light, 2 = follow the phone. Saved in Prefs.themeMode. */
-var ThemeMode by mutableIntStateOf(0)
+var ThemeMode by mutableIntStateOf(2)
 /** What is actually painted right now. Every colour below reads this, so the whole app recolours live. */
 var LightMode by mutableStateOf(false)
 
@@ -33,7 +33,7 @@ fun applyThemeMode(mode: Int, systemDark: Boolean) {
 
 /** Call from every activity before setContent so the first frame is already the right theme. */
 fun loadThemeMode(ctx: Context) {
-    val mode = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getInt("theme_mode", 0)
+    val mode = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getInt("theme_mode", 2)
     val sysDark = (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
     applyThemeMode(mode, sysDark)
     // paint the chosen background before the first frame so the XML window colour never shows

@@ -11,6 +11,8 @@ object FunSignal {
     @Volatile var quiet: Boolean = false
     /** True while YouTube Shorts is on screen (so the time-left bubble can show there too). */
     @Volatile var shortsOn: Boolean = false
+    /** Which clips screen is on right now ("yt" or "ig"), or null. */
+    @Volatile var shortsKind: String? = null
     fun enter(p: String) { pkg = p }
     fun leave() { pkg = null }
 }

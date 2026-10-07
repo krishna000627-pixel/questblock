@@ -30,7 +30,7 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
 
     /** 0 = dark, 1 = light, 2 = follow system */
     var themeMode: Int
-        get() = sp.getInt("theme_mode", 0)
+        get() = sp.getInt("theme_mode", 2)
         set(value) = sp.edit().putInt("theme_mode", value).apply()
 
     // ── App categories (manual choices), one "package=category" per line ──
@@ -518,8 +518,8 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     }
 
     /** Shorts / Reels picked as a distraction in the Vault: they then need coins to run. Removing the pick waits until midnight. */
-    fun shortPicked(kind: String): Boolean { applyDue(); return flag("short_$kind") }
-    fun changeShortPicked(kind: String, on: Boolean) = commitFlag("opt:short_$kind", "short_$kind", on)
+    fun shortPicked(kind: String): Boolean = flag("short_$kind")
+    fun changeShortPicked(kind: String, on: Boolean) = setFlag("short_$kind", on)
     /** Lock keys whose coin-unlock time is shown in the notification: websites plus the two Vault clips. */
     fun unlockKeys(): List<String> = blockedSites() + listOf("short:yt", "short:ig")
     /** Live Shorts / Reels counter over the app (default on; needs Draw over other apps). */

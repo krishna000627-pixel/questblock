@@ -118,11 +118,9 @@ class AppsViewModel @Inject constructor(
     fun setOptions(pkg: String, limit: Int, start: Int, end: Int, mult: Int, rate: Int) =
         viewModelScope.launch { repo.setAppOptions(pkg, limit, start, end, mult, rate) }
     fun setQuery(q: String) { query.value = q }
-    /** Is this clips screen picked as a distraction (a removal waiting for midnight counts as still on)? */
     fun clipsOn(kind: String): Boolean = repo.shortPicked(kind)
     fun setClips(kind: String, on: Boolean) { repo.changeShortPicked(kind, on) }
-    fun clipsPendingOff(kind: String): Boolean = repo.shortPending(kind) == false
-    fun clipsNote(): String = repo.shortPending("yt").let { y -> repo.shortPending("ig").let { i -> if (y == false || i == false) "A pick you removed ends at midnight." else "" } }
+    fun clipsUntil(kind: String): Long = repo.siteUnlockedUntil("short:$kind")
     fun setBlocked(app: InstalledApp, on: Boolean) =
         viewModelScope.launch { repo.setBlocked(app.pkg, app.label, on) }
     fun setStudyApp(app: InstalledApp, isStudy: Boolean) =
@@ -136,6 +134,8 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
     val candidates by vm.studyCandidates.collectAsStateWithLifecycle()
     val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
     var showStudyPicker by remember { mutableStateOf(false) }
+    var ytOn by remember { mutableStateOf(vm.clipsOn("yt")) }
+    var igOn by remember { mutableStateOf(vm.clipsOn("ig")) }
     var optionsFor by remember { mutableStateOf<AppRow?>(null) }
     val rate = remember { vm.rate() }
     val studyMin = remember { vm.studyMin() }
@@ -168,31 +168,6 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
                     focusedContainerColor = ColorSurface, unfocusedContainerColor = ColorSurface,
                 ),
             )
-        }
-
-        // ── Clips: Shorts and Reels as distraction "apps" ───────────────
-        item {
-            Card(colors = CardDefaults.cardColors(containerColor = ColorSurface), shape = RoundedCornerShape(14.dp)) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("🎬 Clips (distraction)", style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold, color = ColorText)
-                    Text("Pick Shorts or Reels and they need coins to run ($rate🪙 per 5 min). YouTube and Instagram themselves stay free. After the fun limit they stay locked.",
-                        style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-                    var yt by remember { mutableStateOf(vm.clipsOn("yt")) }
-                    var ig by remember { mutableStateOf(vm.clipsOn("ig")) }
-                    var note by remember { mutableStateOf(vm.clipsNote()) }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("▶ YouTube Shorts", color = ColorText, modifier = Modifier.weight(1f))
-                        Switch(checked = yt, onCheckedChange = { vm.setClips("yt", it); yt = vm.clipsOn("yt") || vm.clipsPendingOff("yt"); note = vm.clipsNote() })
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("📸 Instagram Reels", color = ColorText, modifier = Modifier.weight(1f))
-                        Switch(checked = ig, onCheckedChange = { vm.setClips("ig", it); ig = vm.clipsOn("ig") || vm.clipsPendingOff("ig"); note = vm.clipsNote() })
-                    }
-                    if (note.isNotEmpty()) Text(note, style = MaterialTheme.typography.bodySmall, color = ColorWarning)
-                    Text("🔒 Turning a pick off applies at midnight. Counts are on the Stats page.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-                }
-            }
         }
 
         // ── Study apps ───────────────────────────────────────────────────
@@ -236,9 +211,11 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
                     style = MaterialTheme.typography.labelSmall, color = ColorMuted)
             }
         }
-        if (lockedRows.isEmpty() && isLoaded) {
+        if (lockedRows.isEmpty() && isLoaded && !ytOn && !igOn) {
             item { Text("Toggle an app below to lock it.", style = MaterialTheme.typography.bodySmall, color = ColorMuted) }
         }
+        if (ytOn) item(key = "clip_yt") { ClipCard("YouTube Shorts", true, vm.clipsUntil("yt")) { vm.setClips("yt", it); ytOn = vm.clipsOn("yt") } }
+        if (igOn) item(key = "clip_ig") { ClipCard("Instagram Reels", true, vm.clipsUntil("ig")) { vm.setClips("ig", it); igOn = vm.clipsOn("ig") } }
         items(lockedRows, key = { it.app.pkg }) { row ->
             AppCard(row, studyMin, onToggle = { vm.setBlocked(row.app, it) }, onOptions = { optionsFor = row })
         }
@@ -253,8 +230,14 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
         }
 
         // ── Everything else ──────────────────────────────────────────────
-        if (freeRows.isNotEmpty()) {
+        if (!ytOn || !igOn) {
             item { Text("All apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
+                fontWeight = FontWeight.SemiBold) }
+            if (!ytOn) item(key = "clip_yt_off") { ClipCard("YouTube Shorts", false, 0L) { vm.setClips("yt", it); ytOn = vm.clipsOn("yt") } }
+            if (!igOn) item(key = "clip_ig_off") { ClipCard("Instagram Reels", false, 0L) { vm.setClips("ig", it); igOn = vm.clipsOn("ig") } }
+        }
+        if (freeRows.isNotEmpty()) {
+            if (ytOn && igOn) item { Text("All apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
                 fontWeight = FontWeight.SemiBold) }
             items(freeRows, key = { "u_${it.app.pkg}" }) { row ->
                 AppCard(row, studyMin, onToggle = { vm.setBlocked(row.app, it) })
@@ -289,6 +272,49 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
             onPick = { vm.setStudyApp(it, true); showStudyPicker = false },
             onDismiss = { showStudyPicker = false },
         )
+    }
+}
+
+/** Shorts / Reels row: looks and works like a normal app row. */
+@Composable
+private fun ClipCard(label: String, isOn: Boolean, unlockEnd: Long, onToggle: (Boolean) -> Unit) {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(unlockEnd) {
+        if (unlockEnd > 0L) {
+            while (true) {
+                now = System.currentTimeMillis()
+                if (now > unlockEnd + EXPIRED_SHOW_MS) break
+                delay(1000L)
+            }
+        }
+    }
+    val leftMs = if (unlockEnd > now) unlockEnd - now else 0L
+    Card(colors = CardDefaults.cardColors(containerColor = if (isOn) ColorSurface else ColorSurface.copy(alpha = 0.6f)),
+        shape = RoundedCornerShape(12.dp)) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(
+                Modifier.size(36.dp).clip(CircleShape)
+                    .background(if (isOn) ColorPrimary.copy(alpha = 0.15f) else ColorSurfaceHigh),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isOn) Icon(Icons.Default.Lock, contentDescription = null, tint = ColorPrimary, modifier = Modifier.size(18.dp))
+                else Text(label.firstOrNull()?.uppercase() ?: "?", style = MaterialTheme.typography.titleSmall,
+                    color = ColorMuted, fontWeight = FontWeight.Bold)
+            }
+            Column(Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.bodyMedium, color = ColorText,
+                    fontWeight = if (isOn) FontWeight.Medium else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (leftMs > 0) Text("Unlocked · ${fmtLeft(leftMs)} left", style = MaterialTheme.typography.labelSmall,
+                    color = if (leftMs <= 60_000L) ColorWarning else ColorCoin)
+            }
+            Switch(
+                checked = isOn, onCheckedChange = onToggle,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = ColorOnPrimary, checkedTrackColor = ColorPrimary,
+                    uncheckedThumbColor = ColorMuted, uncheckedTrackColor = ColorSurfaceHigh),
+            )
+        }
     }
 }
 
