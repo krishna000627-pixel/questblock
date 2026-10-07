@@ -336,10 +336,11 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                 runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
             }
             Text("QuestBlock v$version", color = ColorText, fontWeight = FontWeight.SemiBold)
-            Text("v11: no double charge on unlock · coins per 5 min · live timer · coin log · reliability · quest types",
-                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            val latest = com.krishna.questblock.data.VERSION_LOG.first()
+            Text("v${latest.version}: ${latest.headline}", style = MaterialTheme.typography.bodySmall,
+                color = ColorText, fontWeight = FontWeight.SemiBold)
+            Text(latest.items.joinToString("\n") { "• $it" }, style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
-        Spacer(Modifier.height(12.dp))
         Section("\uD83D\uDC1E Debug log") {
             OutlinedButton(onClick = onOpenDebug, modifier = Modifier.fillMaxWidth()) { Text("Open debug log") }
         }

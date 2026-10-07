@@ -3,6 +3,17 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("64.0.0", "Ideas page rebuilt, music source more reliable",
+        listOf(
+            "Ideas page: tick ideas off, Bug/Feature/UI tags, Edit, Clear done, and one tap to copy everything as a ready update prompt",
+            "About me widget shows only open ideas",
+            "Music: asks Android for the playing app a few times before guessing, and the debug log shows when music starts/stops and which app it picked",
+        )),
+    VersionEntry("63.0.0", "About shows the latest version, tighter spacing",
+        listOf(
+            "Settings → About now shows what changed in the current version",
+            "Less empty space between About and Debug log",
+        )),
     VersionEntry("62.0.0", "Website unlock, debug page, ideas",
         listOf(
             "Blocked websites can be unlocked with coins, with the same timer and notification as apps",

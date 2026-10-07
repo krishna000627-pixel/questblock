@@ -63,6 +63,7 @@ object MusicLog {
         lastOn = on
         val t = System.currentTimeMillis()
         set(t, on, "")
+        DebugLog.d(if (on) "music: started" else "music: stopped")
         if (on) {
             startWatch()
             // find the source in the background, then tag the entry
@@ -72,20 +73,31 @@ object MusicLog {
         }
     }
 
-    private fun findSource(): String? {
+    /** The app Android says is playing, via notification access. Null if access is off or nothing is playing yet. */
+    private fun fromSession(c: Context): String? = runCatching {
+        val msm = c.getSystemService(Context.MEDIA_SESSION_SERVICE) as android.media.session.MediaSessionManager
+        val cn = android.content.ComponentName(c, com.krishna.questblock.service.MediaListenerService::class.java)
+        msm.getActiveSessions(cn)
+            .firstOrNull {
+                val st = it.playbackState?.state
+                st == android.media.session.PlaybackState.STATE_PLAYING || st == android.media.session.PlaybackState.STATE_BUFFERING
+            }?.packageName?.takeIf { it != c.packageName }
+    }.onFailure { DebugLog.d("music: session lookup failed (${it.javaClass.simpleName})") }.getOrNull()
+
+    private suspend fun findSource(): String? {
         val c = ctx ?: return null
-        runCatching {
-            val msm = c.getSystemService(Context.MEDIA_SESSION_SERVICE) as android.media.session.MediaSessionManager
-            val cn = android.content.ComponentName(c, com.krishna.questblock.service.MediaListenerService::class.java)
-            msm.getActiveSessions(cn)
-                .firstOrNull { it.playbackState?.state == android.media.session.PlaybackState.STATE_PLAYING }
-                ?.packageName?.let { if (it != c.packageName) return it }
+        // the player reports PLAYING a moment after the audio starts, so try a few times
+        for (i in 0 until 4) {
+            fromSession(c)?.let { DebugLog.d("music: source $it (media session)"); return it }
+            if (i < 3) delay(1_500L)
         }
         val now = System.currentTimeMillis()
         val hidden = UsageTracker.hiddenPackages(c)
         val open = UsageTracker.foreground(c, now - 30 * 60_000L, now).openPkg
-        if (open != null && open !in hidden && open != c.packageName) return open
-        return UsageTracker.recentApp(c, 30 * 60_000L)
+        val guess = if (open != null && open !in hidden && open != c.packageName) open
+            else UsageTracker.recentApp(c, 30 * 60_000L)
+        DebugLog.d("music: source ${guess ?: "unknown"} (guess, notification access=${Perms.notificationAccess(c)})")
+        return guess
     }
 
     @Synchronized
