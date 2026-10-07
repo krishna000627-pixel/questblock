@@ -118,6 +118,11 @@ class AppsViewModel @Inject constructor(
     fun setOptions(pkg: String, limit: Int, start: Int, end: Int, mult: Int, rate: Int) =
         viewModelScope.launch { repo.setAppOptions(pkg, limit, start, end, mult, rate) }
     fun setQuery(q: String) { query.value = q }
+    /** Is this clips screen picked as a distraction (a removal waiting for midnight counts as still on)? */
+    fun clipsOn(kind: String): Boolean = repo.shortPicked(kind)
+    fun setClips(kind: String, on: Boolean) { repo.changeShortPicked(kind, on) }
+    fun clipsPendingOff(kind: String): Boolean = repo.shortPending(kind) == false
+    fun clipsNote(): String = repo.shortPending("yt").let { y -> repo.shortPending("ig").let { i -> if (y == false || i == false) "A pick you removed ends at midnight." else "" } }
     fun setBlocked(app: InstalledApp, on: Boolean) =
         viewModelScope.launch { repo.setBlocked(app.pkg, app.label, on) }
     fun setStudyApp(app: InstalledApp, isStudy: Boolean) =
@@ -163,6 +168,31 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
                     focusedContainerColor = ColorSurface, unfocusedContainerColor = ColorSurface,
                 ),
             )
+        }
+
+        // ── Clips: Shorts and Reels as distraction "apps" ───────────────
+        item {
+            Card(colors = CardDefaults.cardColors(containerColor = ColorSurface), shape = RoundedCornerShape(14.dp)) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("🎬 Clips (distraction)", style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold, color = ColorText)
+                    Text("Pick Shorts or Reels and they need coins to run ($rate🪙 per 5 min). YouTube and Instagram themselves stay free. After the fun limit they stay locked.",
+                        style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                    var yt by remember { mutableStateOf(vm.clipsOn("yt")) }
+                    var ig by remember { mutableStateOf(vm.clipsOn("ig")) }
+                    var note by remember { mutableStateOf(vm.clipsNote()) }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("▶ YouTube Shorts", color = ColorText, modifier = Modifier.weight(1f))
+                        Switch(checked = yt, onCheckedChange = { vm.setClips("yt", it); yt = vm.clipsOn("yt") || vm.clipsPendingOff("yt"); note = vm.clipsNote() })
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("📸 Instagram Reels", color = ColorText, modifier = Modifier.weight(1f))
+                        Switch(checked = ig, onCheckedChange = { vm.setClips("ig", it); ig = vm.clipsOn("ig") || vm.clipsPendingOff("ig"); note = vm.clipsNote() })
+                    }
+                    if (note.isNotEmpty()) Text(note, style = MaterialTheme.typography.bodySmall, color = ColorWarning)
+                    Text("🔒 Turning a pick off applies at midnight. Counts are on the Stats page.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                }
+            }
         }
 
         // ── Study apps ───────────────────────────────────────────────────

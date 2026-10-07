@@ -3,6 +3,18 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("76.0.0", "Experiments page",
+        listOf(
+            "The optional features moved from Settings to Hub → Experiments, right below Rules",
+            "The Shorts and Reels counter over the app shows only the number of videos (minutes stay on the Stats page)",
+        )),
+    VersionEntry("75.0.0", "Shorts and Reels counter, clips in the Vault",
+        listOf(
+            "Live counter over YouTube Shorts and Instagram Reels: videos swiped and minutes today (Settings → Optional features to turn it off)",
+            "Stats page: Shorts and Reels today and the last 7 days",
+            "Vault → Clips: pick YouTube Shorts and/or Instagram Reels as distractions. They then need coins to run; YouTube and Instagram stay free",
+            "After the fun limit, picked clips stay locked (no coins). Removing a pick waits until midnight",
+        )),
     VersionEntry("74.0.0", "Build fix",
         listOf(
             "Fixes the v73 build error on the Home screen (hide coin balance switch)",

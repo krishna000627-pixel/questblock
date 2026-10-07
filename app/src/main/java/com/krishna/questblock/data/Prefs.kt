@@ -134,6 +134,7 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
                 k == "study" -> "study hours \u2192 " + if (v.first == "1") "on" else "off"
                 k == "music" -> "pause fun music \u2192 " + if (v.first == "1") "on" else "off"
                 k == "opt:shorts_block" -> "Shorts block \u2192 " + if (v.first == "1") "on" else "off"
+                k.startsWith("opt:short_") -> "a Shorts/Reels lock is removed"
                 k == "opt:ghost_counts" -> "music counts as fun time \u2192 " + if (v.first == "1") "on" else "off"
                 k.startsWith("cat:") -> "an app leaves Fun & Games"
                 k.startsWith("safe:") -> "a \uD83D\uDEE1 switch turns on"
@@ -515,6 +516,14 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         if (!sp.contains("ghost_counts")) setFlag("ghost_counts", true)
         commitFlag("opt:ghost_counts", "ghost_counts", on)
     }
+
+    /** Shorts / Reels picked as a distraction in the Vault: they then need coins to run. Removing the pick waits until midnight. */
+    fun shortPicked(kind: String): Boolean { applyDue(); return flag("short_$kind") }
+    fun changeShortPicked(kind: String, on: Boolean) = commitFlag("opt:short_$kind", "short_$kind", on)
+    /** Lock keys whose coin-unlock time is shown in the notification: websites plus the two Vault clips. */
+    fun unlockKeys(): List<String> = blockedSites() + listOf("short:yt", "short:ig")
+    /** Live Shorts / Reels counter over the app (default on; needs Draw over other apps). */
+    var optCounter: Boolean get() = flag("opt_counter", true); set(v) = setFlag("opt_counter", v)
 
     var optMusicOnFocus: Boolean get() = flag("opt_music_focus"); set(v) = setFlag("opt_music_focus", v)
     var optMusicWarn: Boolean get() = flag("opt_music_warn"); set(v) = setFlag("opt_music_warn", v)

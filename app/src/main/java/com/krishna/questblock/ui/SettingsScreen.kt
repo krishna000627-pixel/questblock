@@ -241,7 +241,10 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
             if (funNote.isNotEmpty()) Text(funNote, style = MaterialTheme.typography.bodySmall, color = ColorWarning, fontWeight = FontWeight.SemiBold)
         }
 
-        OptionalFeaturesSection(prefs, ctx)
+        Section("🧪 Experiments") {
+            Text("The optional features (Shorts block, music warnings, Bedtime mode, Focus extras, undo and more) moved to Hub → Experiments.",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        }
 
         // ── Reliability ──────────────────────────────────────────────────
         Section("🛠️ Reliability") {
@@ -431,8 +434,8 @@ private fun hhmmOf(m: Int) = "%02d:%02d".format(m / 60, m % 60)
 
 /** v73: extra behaviours you switch on yourself. Nothing here changes by itself. */
 @Composable
-private fun OptionalFeaturesSection(prefs: Prefs, ctx: Context) {
-    Section("🧩 Optional features") {
+internal fun OptionalFeaturesSection(prefs: Prefs, ctx: Context) {
+    Section("🧪 Experiments") {
         Text("Switches you turn on yourself. Nothing here changes on its own.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
 
         // ── Fun limit ──
@@ -453,6 +456,12 @@ private fun OptionalFeaturesSection(prefs: Prefs, ctx: Context) {
         }
         if (note.isNotEmpty()) Text(note, style = MaterialTheme.typography.bodySmall, color = ColorWarning, fontWeight = FontWeight.SemiBold)
         Text("🔒 Turning these off waits until midnight, like the other fun rules.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        var counter by remember { mutableStateOf(prefs.optCounter) }
+        ToggleRow("Shorts and Reels counter over the app", "Videos swiped, live. Needs Draw over other apps. Totals and minutes are on the Stats page.", counter) {
+            if (it && !Perms.overlayGranted(ctx)) {
+                Toast.makeText(ctx, "Allow \"Draw over other apps\" first (Permissions below)", Toast.LENGTH_LONG).show()
+            } else { counter = it; prefs.optCounter = it }
+        }
         var warn80 by remember { mutableStateOf(prefs.optWarn80) }
         ToggleRow("Warn at 80% of the limit", "One notification a day", warn80) { warn80 = it; prefs.optWarn80 = it }
         var bubble by remember { mutableStateOf(prefs.optBubble) }

@@ -115,6 +115,9 @@ class GameRepository @Inject constructor(
     // ── Settings shortcuts ────────────────────────────────────────────────
     fun ratePer5(): Int = prefs.ratePer5
     fun siteUnlockedUntil(domain: String): Long = prefs.siteUnlockedUntil(domain)
+    fun shortPicked(kind: String): Boolean = prefs.shortPicked(kind)
+    fun changeShortPicked(kind: String, on: Boolean) = prefs.changeShortPicked(kind, on)
+    fun shortPending(kind: String): Boolean? = prefs.pendingFlag("opt:short_$kind")
     fun studyMinPerCoin(): Int = prefs.studyMinPerCoin
     fun focusBonus(): Int = prefs.focusBonus
     fun holdSeconds(): Int = prefs.holdSeconds
@@ -566,6 +569,7 @@ class GameRepository @Inject constructor(
 
     suspend fun unlock(pkg: String, blocks: Int): UnlockResult = unlockMutex.withLock {
         if (pkg.startsWith("site:")) return@withLock unlockSite(pkg.removePrefix("site:"), blocks)
+        if (pkg.startsWith("short:")) return@withLock unlockSite(pkg, blocks)
         val b = blocks.coerceIn(1, MAX_UNLOCK_BLOCKS)
         val up = android.os.SystemClock.elapsedRealtime()
         var label = ""
@@ -624,7 +628,7 @@ class GameRepository @Inject constructor(
             val now = System.currentTimeMillis()
             val ms = b * 5 * 60_000L
             prefs.setSiteUnlockedUntil(domain, maxOf(now, prefs.siteUnlockedUntil(domain)) + ms)
-            logCoin(-cost, "Unlock", "$domain \u00b7 ${fmtBlocks(b)}")
+            logCoin(-cost, "Unlock", "${pseudoLabel(domain) ?: domain} \u00b7 ${fmtBlocks(b)}")
             result = UnlockResult(ok = true, charged = true, cost = cost, before = p.coins, after = p.coins - cost, minutes = b * 5, msBought = ms)
         }
         return result

@@ -45,6 +45,7 @@ fun PlayerHubScreen(
     onOpenReports: () -> Unit,
     onOpenBadges: () -> Unit,
     onOpenRules: () -> Unit,
+    onOpenExperiments: () -> Unit = {},
     vm: HubViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(Unit) { vm.store.refresh() }
@@ -128,6 +129,7 @@ fun PlayerHubScreen(
             item { NavCard("📈 Report & coins", "This week", onOpenReports) }
             item { NavCard("🏆 Badges", "${st.badges.count { it.unlocked }} of ${st.badges.size} unlocked", onOpenBadges) }
             item { NavCard("⚙️ Rules", "Limits and locks", onOpenRules) }
+            item { NavCard("🧪 Experiments", "Optional features, all switches are yours", onOpenExperiments) }
         } else {
             item { Spacer(Modifier.height(1.dp)) }
         }

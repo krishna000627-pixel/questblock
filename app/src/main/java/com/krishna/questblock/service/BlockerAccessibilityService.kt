@@ -21,6 +21,7 @@ import com.krishna.questblock.data.StudySession
 import com.krishna.questblock.data.AppCategorizer
 import com.krishna.questblock.data.FunLimit
 import com.krishna.questblock.data.FunSignal
+import com.krishna.questblock.data.ShortsStats
 import com.krishna.questblock.data.StudySignal
 import com.krishna.questblock.util.DebugLog
 import com.krishna.questblock.data.UsageTracker
@@ -111,7 +112,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         val pkg = event.packageName?.toString() ?: return
         if (pkg == packageName) return
         if (pkg in BROWSERS) checkWebsite(pkg)
-        if (pkg in YOUTUBE_PKGS) checkShorts()
+        if (pkg in YOUTUBE_PKGS || pkg == INSTAGRAM_PKG) checkShorts(pkg, event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED)
         val isWindowChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
 
         if (pkg in GUARDED_PKGS) {
@@ -144,6 +145,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     }
 
     private fun markForeground(pkg: String) {
+        if (kindOf(pkg) == null && shortsJob != null) stopShortTimer()
         if (currentPkg != pkg) {
             funCutJob?.cancel(); funCutPkg = null
             safeSession?.let { if (it != pkg) { safeLeftAt[it] = System.currentTimeMillis(); safeSession = null } }
@@ -240,49 +242,94 @@ class BlockerAccessibilityService : AccessibilityService() {
     }
 
 
-    // ── v73: YouTube Shorts. YouTube itself is never blocked; Shorts is sent back once the fun limit is used up (or fun is locked). ──
-    private var lastShortsCheck = 0L
+    // ── Short videos: YouTube Shorts ("yt") and Instagram Reels ("ig").
+    // YouTube and Instagram themselves are never touched here. We count swipes and time, show a live counter over the app,
+    // and (if picked in the Vault) ask for coins; after the fun limit they are locked for good.
+    private var lastShortCheck = 0L
+    private var lastSwipeAt = 0L
     private var shortsJob: Job? = null
+    private var shortsKind: String? = null
     private var shortsBackAt = 0L
     private var shortsBackCount = 0
 
-    private fun checkShorts() {
-        if (!prefs.shortsBlockOn && FunLimit.last?.enabled != true) return
+    private fun kindOf(pkg: String): String? = when {
+        pkg in YOUTUBE_PKGS -> ShortsStats.YT
+        pkg == INSTAGRAM_PKG -> ShortsStats.IG
+        else -> null
+    }
+
+    private fun checkShorts(pkg: String, scrolled: Boolean) {
+        val kind = kindOf(pkg) ?: return
         val t = SystemClock.uptimeMillis()
-        if (t - lastShortsCheck < 600L) return
-        lastShortsCheck = t
+        if (scrolled) {
+            // one swipe = one video (the scroll events of a single swipe come in a burst)
+            if (t - lastSwipeAt < 700L) return
+        } else {
+            if (t - lastShortCheck < 600L) return
+            lastShortCheck = t
+        }
         val root = rootInActiveWindow ?: return
-        if (root.packageName?.toString() !in YOUTUBE_PKGS) return
-        if (!isShortsScreen(root)) return
+        if (root.packageName?.toString() != pkg) return
+        if (!isShortForm(root, kind)) {
+            if (!scrolled && shortsKind == kind) stopShortTimer()
+            return
+        }
+        if (scrolled) {
+            lastSwipeAt = t
+            ShortsStats.add(this, kind, 0L, 1)
+            showCounter(kind)
+            return
+        }
         scope.launch {
             val st = FunLimit.state(this@BlockerAccessibilityService, prefs)
             val locked = st.reached || prefs.funBlockedNow()
-            if (locked && prefs.shortsBlockOn) { blockShorts(); return@launch }
-            startShortsTimer()
+            if (prefs.shortPicked(kind)) {
+                // picked in the Vault: needs coins to run, and no coins help once the fun limit is used up
+                if (locked) { blockShort(kind); return@launch }
+                if (prefs.siteUnlockedUntil("short:$kind") <= System.currentTimeMillis()) {
+                    DebugLog.d("service: $kind clips need coins, showing the lock")
+                    showSiteBlock("short:$kind")
+                    return@launch
+                }
+            } else if (locked && kind == ShortsStats.YT && prefs.shortsBlockOn) {
+                blockShort(kind); return@launch
+            }
+            startShortTimer(kind)
         }
     }
 
-    private fun isShortsScreen(root: AccessibilityNodeInfo): Boolean {
+    private fun isShortForm(root: AccessibilityNodeInfo, kind: String): Boolean {
         val pkg = root.packageName?.toString() ?: return false
-        for (id in SHORTS_IDS) {
+        val ids = if (kind == ShortsStats.YT) SHORTS_IDS else REELS_IDS
+        for (id in ids) {
             if (root.findAccessibilityNodeInfosByViewId("$pkg:id/$id")?.isNotEmpty() == true) return true
         }
-        return hasSelectedShortsTab(root, 0)
+        return hasSelectedTab(root, if (kind == ShortsStats.YT) "Shorts" else "Reels", 0)
     }
 
-    /** Fallback: the bottom-bar tab called "Shorts" is selected. */
-    private fun hasSelectedShortsTab(n: AccessibilityNodeInfo?, depth: Int): Boolean {
+    /** Fallback: the bottom-bar tab with this name is selected. */
+    private fun hasSelectedTab(n: AccessibilityNodeInfo?, name: String, depth: Int): Boolean {
         if (n == null || depth > 14) return false
         val label = (n.contentDescription ?: n.text)?.toString()
-        if (label != null && label.equals("Shorts", ignoreCase = true) && n.isSelected) return true
-        for (i in 0 until n.childCount) if (hasSelectedShortsTab(n.getChild(i), depth + 1)) return true
+        if (label != null && label.equals(name, ignoreCase = true) && n.isSelected) return true
+        for (i in 0 until n.childCount) if (hasSelectedTab(n.getChild(i), name, depth + 1)) return true
         return false
     }
 
-    /** While Shorts is on screen, add its time to today's fun time (every 5 s), and cut it when the limit is reached. */
-    private fun startShortsTimer() {
-        if (shortsJob?.isActive == true) return
+    private fun showCounter(kind: String) {
+        if (!prefs.optCounter) return
+        val d = ShortsStats.today(this, kind)
+        val name = if (kind == ShortsStats.YT) "Shorts" else "Reels"
+        CounterBubble.show(this, "\u25B6 $name ${d.n}")
+    }
+
+    /** While a short-video screen is on, add its time every 5 s; cut it when the limit is reached or the coin time ends. */
+    private fun startShortTimer(kind: String) {
+        if (shortsJob?.isActive == true && shortsKind == kind) { showCounter(kind); return }
+        shortsJob?.cancel()
+        shortsKind = kind
         FunSignal.shortsOn = true
+        showCounter(kind)
         shortsJob = scope.launch {
             val pm = getSystemService(PowerManager::class.java)
             var ticks = 0
@@ -291,28 +338,46 @@ class BlockerAccessibilityService : AccessibilityService() {
                     delay(5_000L)
                     if (!pm.isInteractive) break
                     val root = rootInActiveWindow
-                    if (root == null || root.packageName?.toString() !in YOUTUBE_PKGS || !isShortsScreen(root)) break
-                    prefs.addShortsMs(5_000L)
+                    val pkgOk = root?.packageName?.toString()?.let { kindOf(it) == kind } == true
+                    if (!pkgOk || !isShortForm(root!!, kind)) break
+                    ShortsStats.add(this@BlockerAccessibilityService, kind, 5_000L, 0)
+                    if (kind == ShortsStats.YT) prefs.addShortsMs(5_000L)   // Shorts time counts as fun time
+                    showCounter(kind)
                     ticks++
+                    // coin time ran out
+                    if (prefs.shortPicked(kind) && prefs.siteUnlockedUntil("short:$kind") <= System.currentTimeMillis()) {
+                        showSiteBlock("short:$kind"); break
+                    }
                     if (ticks % 3 == 0) {
                         val st = FunLimit.state(this@BlockerAccessibilityService, prefs, force = true)
-                        if ((st.reached || prefs.funBlockedNow()) && prefs.shortsBlockOn) { blockShorts(); break }
+                        val locked = st.reached || prefs.funBlockedNow()
+                        if (locked && (prefs.shortPicked(kind) || (kind == ShortsStats.YT && prefs.shortsBlockOn))) { blockShort(kind); break }
                     }
                 }
             } finally {
                 FunSignal.shortsOn = false
+                CounterBubble.hide(this@BlockerAccessibilityService)
+                if (shortsKind == kind) shortsKind = null
             }
         }
     }
 
-    private fun blockShorts() {
+    private fun stopShortTimer() {
+        shortsJob?.cancel()
+        shortsJob = null
+        shortsKind = null
+        FunSignal.shortsOn = false
+        CounterBubble.hide(this)
+    }
+
+    private fun blockShort(kind: String) {
         val t = SystemClock.uptimeMillis()
         if (t - shortsBackAt < 1_200L) return
         shortsBackCount = if (t - shortsBackAt > 10_000L) 1 else shortsBackCount + 1
         shortsBackAt = t
-        DebugLog.d("service: Shorts blocked (fun limit / lock window), back x$shortsBackCount")
-        Toast.makeText(this, "Shorts is locked. Fun limit reached.", Toast.LENGTH_SHORT).show()
-        // BACK leaves the Shorts tab; if YouTube keeps landing on Shorts, go home instead
+        DebugLog.d("service: $kind clips blocked (fun limit / lock window), back x$shortsBackCount")
+        Toast.makeText(this, (if (kind == ShortsStats.YT) "Shorts" else "Reels") + " is locked. Fun limit reached.", Toast.LENGTH_SHORT).show()
+        // BACK leaves the clips screen; if the app keeps landing on it, go home instead
         performGlobalAction(if (shortsBackCount > 3) GLOBAL_ACTION_HOME else GLOBAL_ACTION_BACK)
         maybeBedtime()
     }
@@ -716,6 +781,8 @@ class BlockerAccessibilityService : AccessibilityService() {
             "com.opera.browser" to listOf("com.opera.browser:id/url_field"),
             "com.duckduckgo.mobile.android" to listOf("com.duckduckgo.mobile.android:id/omnibarTextInput"),
         )
+        private const val INSTAGRAM_PKG = "com.instagram.android"
+        private val REELS_IDS = listOf("clips_viewer_view_pager", "clips_viewer_container", "clips_viewer_fragment")
         private val YOUTUBE_PKGS = setOf("com.google.android.youtube", "app.revanced.android.youtube", "com.vanced.android.youtube")
         /** Views YouTube uses for the Shorts player (the selected "Shorts" tab is the fallback). */
         private val SHORTS_IDS = listOf("reel_recycler", "reel_player_page_container", "shorts_container")

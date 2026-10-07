@@ -153,6 +153,38 @@ object FunBubble {
     }
 }
 
+/** Live Shorts / Reels counter over the app (top left). Shown by the blocker while a clips screen is open. */
+object CounterBubble {
+    private var view: TextView? = null
+
+    fun show(ctx: Context, text: String) {
+        val app = ctx.applicationContext
+        if (!Settings.canDrawOverlays(app)) return
+        val v = view ?: TextView(app).apply {
+            setTextColor(0xFFFFFFFF.toInt()); textSize = 13f; typeface = Typeface.DEFAULT_BOLD
+            setPadding(26, 10, 26, 10)
+            background = GradientDrawable().apply { setColor(0xCC000000.toInt()); cornerRadius = 60f }
+        }.also { tv ->
+            val lp = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT,
+            ).apply { gravity = Gravity.TOP or Gravity.START; x = 24; y = 140 }
+            val ok = runCatching { app.getSystemService(WindowManager::class.java).addView(tv, lp) }.isSuccess
+            if (ok) view = tv
+        }
+        v.text = text
+    }
+
+    fun hide(ctx: Context) {
+        val v = view ?: return
+        view = null
+        runCatching { ctx.applicationContext.getSystemService(WindowManager::class.java).removeView(v) }
+    }
+}
+
 /**
  * Runs inside the keep-alive service every second or few. Cheap checks run each time;
  * the heavier ones (fun warnings, evening nudge, daily summary) at most every 30 s.

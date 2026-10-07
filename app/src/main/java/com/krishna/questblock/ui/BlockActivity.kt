@@ -75,6 +75,8 @@ import com.krishna.questblock.data.MAX_UNLOCK_BLOCKS
 import com.krishna.questblock.data.UnlockResult
 import com.krishna.questblock.data.fmtBlocks
 import com.krishna.questblock.data.fmtLeft
+import com.krishna.questblock.data.lockKeyOf
+import com.krishna.questblock.data.pseudoLabel
 import com.krishna.questblock.data.unlockCost
 import com.krishna.questblock.service.KeepAlive
 import dagger.hilt.android.AndroidEntryPoint
@@ -207,7 +209,7 @@ class BlockActivity : ComponentActivity() {
         if (opened) return
         opened = true
         launching = true       // ← tell onStop not to destroy us mid-launch
-        if (!target.startsWith("site:")) packageManager.getLaunchIntentForPackage(target)?.let {
+        if (!target.startsWith("site:") && !target.startsWith("short:")) packageManager.getLaunchIntentForPackage(target)?.let {
             startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
         finishAndRemoveTask()
@@ -248,7 +250,7 @@ fun BlockScreen(
     val player by vm.player.collectAsStateWithLifecycle()
     val rule = blocked.firstOrNull { it.packageName == pkg }
     val label = remember(pkg) {
-        if (pkg.startsWith("site:")) pkg.removePrefix("site:") else runCatching {
+        if (pkg.startsWith("site:")) pkg.removePrefix("site:") else if (pkg.startsWith("short:")) (pseudoLabel(pkg) ?: pkg) else runCatching {
             ctx.packageManager.getApplicationLabel(ctx.packageManager.getApplicationInfo(pkg, 0)).toString()
         }.getOrDefault(pkg)
     }
@@ -283,8 +285,8 @@ fun BlockScreen(
     val notifOk = remember { com.krishna.questblock.util.Perms.notificationsOk(ctx) }
 
     // Already unlocked: exit immediately — single tap scenario covered here too
-    val isSite = pkg.startsWith("site:")
-    var siteUntil by remember(pkg, nonce) { mutableLongStateOf(if (isSite) vm.siteUnlockedUntil(pkg.removePrefix("site:")) else 0L) }
+    val isSite = pkg.startsWith("site:") || pkg.startsWith("short:")
+    var siteUntil by remember(pkg, nonce) { mutableLongStateOf(if (isSite) vm.siteUnlockedUntil(lockKeyOf(pkg)) else 0L) }
     val unlockedUntil = if (isSite) siteUntil else (rule?.unlockedUntil ?: 0L)
     LaunchedEffect(unlockedUntil) {
         // while we are paying we show the receipt first and exit ourselves
@@ -344,7 +346,7 @@ fun BlockScreen(
                                     "\u2705 -${res.cost} \uD83E\uDE99  (${res.before} \u2192 ${res.after})  +${res.minutes} min" +
                                         if (bad) "\n\u26A0 balance mismatch: another writer changed coins" else ""
                                 } else "\u2705 Already unlocked"
-                                if (isSite) siteUntil = vm.siteUnlockedUntil(pkg.removePrefix("site:"))
+                                if (isSite) siteUntil = vm.siteUnlockedUntil(lockKeyOf(pkg))
                                 KeepAlive.start(ctx)
                                 // stay on the page: the "Open now" panel appears, the app opens only when tapped
                                 paying = false

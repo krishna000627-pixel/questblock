@@ -186,6 +186,34 @@ fun StatsSection(vm: StatsViewModel = hiltViewModel()) {
             }
         }
 
+        // Shorts and Reels counters
+        item {
+            val sctx = androidx.compose.ui.platform.LocalContext.current
+            val yt = remember { com.krishna.questblock.data.ShortsStats.lastDays(sctx, 7, com.krishna.questblock.data.ShortsStats.YT) }
+            val ig = remember { com.krishna.questblock.data.ShortsStats.lastDays(sctx, 7, com.krishna.questblock.data.ShortsStats.IG) }
+            Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
+                shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("🎬 Shorts and Reels", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ColorText)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SummaryCard(Modifier.weight(1f), "▶", "${yt[0].n}", "Shorts today · ${yt[0].ms / 60_000L}m")
+                        SummaryCard(Modifier.weight(1f), "📸", "${ig[0].n}", "Reels today · ${ig[0].ms / 60_000L}m")
+                    }
+                    Text("Last 7 days (videos · minutes)", style = MaterialTheme.typography.labelMedium, color = ColorMuted)
+                    yt.indices.forEach { i ->
+                        val label = if (i == 0) "Today" else if (i == 1) "Yesterday" else "$i days ago"
+                        Row(Modifier.fillMaxWidth()) {
+                            Text(label, style = MaterialTheme.typography.bodySmall, color = ColorText, modifier = Modifier.weight(1f))
+                            Text("▶ ${yt[i].n} · ${yt[i].ms / 60_000L}m     📸 ${ig[i].n} · ${ig[i].ms / 60_000L}m",
+                                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                        }
+                    }
+                    Text("Counted from swipes inside YouTube and Instagram. It is an estimate: comments and replays can add a swipe.",
+                        style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+                }
+            }
+        }
+
         // Achievements
         item {
             Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
