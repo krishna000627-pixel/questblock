@@ -3,6 +3,15 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("73.0.0", "Optional features, Shorts block",
+        listOf(
+            "YouTube is never blocked or paused. Shorts is sent back once the fun limit is used up; Shorts minutes count as fun time",
+            "New Settings section 'Optional features': every switch is yours to turn on, nothing changes by itself",
+            "Music: 1-minute warning with a +5 min button (25 coins), stop music when Focus starts, YouTube never paused, choose whether Fun-app music counts",
+            "Fun limit: 80% warning, time-left bubble over fun apps and Shorts, Bedtime mode at the limit (taps the Quick Settings tile) with a Test now button",
+            "Focus: Do Not Disturb, keep screen on, vibrate when a break ends, hide Fun app notifications",
+            "Quests: evening nudge, daily summary, confirm before delete or skip, 10-second Undo, hide coins on Home, Done button on the widget",
+        )),
     VersionEntry("72.0.0", "Build fix for the widget",
         listOf(
             "Fixes the v71 build error in the widget feed (missing import for the availability check)",

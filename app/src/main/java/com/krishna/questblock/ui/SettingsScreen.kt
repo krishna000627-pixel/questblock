@@ -37,6 +37,8 @@ import androidx.lifecycle.viewModelScope
 import com.krishna.questblock.data.AppDatabase
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Player
+import com.krishna.questblock.data.FUN_EXTEND_COST
+import com.krishna.questblock.data.FUN_EXTEND_MIN
 import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.agoText
 import com.krishna.questblock.util.Backup
@@ -239,6 +241,8 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
             if (funNote.isNotEmpty()) Text(funNote, style = MaterialTheme.typography.bodySmall, color = ColorWarning, fontWeight = FontWeight.SemiBold)
         }
 
+        OptionalFeaturesSection(prefs, ctx)
+
         // ── Reliability ──────────────────────────────────────────────────
         Section("🛠️ Reliability") {
             Text("Battery, autostart and keep-alive shortcuts so the blocker isn't killed in the background.",
@@ -420,5 +424,115 @@ private fun PermRow(label: String, sub: String, ok: Boolean, onFix: () -> Unit) 
             Text(sub, color = ColorMuted, style = MaterialTheme.typography.bodySmall)
         }
         if (!ok) TextButton(onClick = onFix) { Text("Fix", color = ColorPrimary, fontWeight = FontWeight.Bold) }
+    }
+}
+
+private fun hhmmOf(m: Int) = "%02d:%02d".format(m / 60, m % 60)
+
+/** v73: extra behaviours you switch on yourself. Nothing here changes by itself. */
+@Composable
+private fun OptionalFeaturesSection(prefs: Prefs, ctx: Context) {
+    Section("🧩 Optional features") {
+        Text("Switches you turn on yourself. Nothing here changes on its own.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+
+        // ── Fun limit ──
+        Text("🎮 Fun limit", color = ColorText, fontWeight = FontWeight.SemiBold)
+        var shorts by remember { mutableStateOf(prefs.pendingFlag("opt:shorts_block") ?: prefs.shortsBlockOn) }
+        var note by remember { mutableStateOf(prefs.pendingSummary()) }
+        ToggleRow("Block YouTube Shorts after the limit",
+            "YouTube itself is never blocked. Shorts minutes count as fun time. Opening Shorts sends you back.", shorts) {
+            prefs.changeShortsBlock(it)
+            shorts = prefs.pendingFlag("opt:shorts_block") ?: prefs.shortsBlockOn
+            note = prefs.pendingSummary()
+        }
+        var ghost by remember { mutableStateOf(prefs.pendingFlag("opt:ghost_counts") ?: prefs.ghostCountsOn) }
+        ToggleRow("Music from Fun apps counts toward the limit", "Off: only time on screen counts", ghost) {
+            prefs.changeGhostCounts(it)
+            ghost = prefs.pendingFlag("opt:ghost_counts") ?: prefs.ghostCountsOn
+            note = prefs.pendingSummary()
+        }
+        if (note.isNotEmpty()) Text(note, style = MaterialTheme.typography.bodySmall, color = ColorWarning, fontWeight = FontWeight.SemiBold)
+        Text("🔒 Turning these off waits until midnight, like the other fun rules.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        var warn80 by remember { mutableStateOf(prefs.optWarn80) }
+        ToggleRow("Warn at 80% of the limit", "One notification a day", warn80) { warn80 = it; prefs.optWarn80 = it }
+        var bubble by remember { mutableStateOf(prefs.optBubble) }
+        ToggleRow("Time-left bubble", "Small bubble over fun apps and Shorts. Needs Draw over other apps.", bubble) {
+            if (it && !Perms.overlayGranted(ctx)) {
+                Toast.makeText(ctx, "Allow \"Draw over other apps\" first (Permissions below)", Toast.LENGTH_LONG).show()
+            } else { bubble = it; prefs.optBubble = it }
+        }
+
+        HorizontalDivider(color = ColorDivider)
+        // ── Music ──
+        Text("🎧 Music", color = ColorText, fontWeight = FontWeight.SemiBold)
+        Text("Music from Fun apps is paused at the limit (Rules → Pause fun music). YouTube is never paused.",
+            style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        var mwarn by remember { mutableStateOf(prefs.optMusicWarn) }
+        ToggleRow("1-minute warning before music stops", "Notification with a +$FUN_EXTEND_MIN min button ($FUN_EXTEND_COST🪙)", mwarn) { mwarn = it; prefs.optMusicWarn = it }
+        var mfocus by remember { mutableStateOf(prefs.optMusicOnFocus) }
+        ToggleRow("Stop music when Focus starts", "Not YouTube", mfocus) { mfocus = it; prefs.optMusicOnFocus = it }
+
+        HorizontalDivider(color = ColorDivider)
+        // ── Bedtime mode ──
+        Text("🌙 Bedtime mode", color = ColorText, fontWeight = FontWeight.SemiBold)
+        var bed by remember { mutableStateOf(prefs.optBedtime) }
+        ToggleRow("Turn on Bedtime mode at the limit",
+            "Taps the Bedtime tile in Quick Settings (grayscale and silence). Once a day. Keep the tile on the first page.", bed) { bed = it; prefs.optBedtime = it }
+        OutlinedButton(onClick = {
+            val svc = com.krishna.questblock.service.BlockerAccessibilityService.instance
+            if (svc == null) Toast.makeText(ctx, "Turn on the accessibility service first", Toast.LENGTH_LONG).show()
+            else svc.runBedtimeTest { msg -> Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show() }
+        }, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) { Text("Test now") }
+        Text("Test taps the tile once. If it turned Bedtime mode on, switch it off yourself.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+
+        HorizontalDivider(color = ColorDivider)
+        // ── Focus ──
+        Text("⚡ Focus", color = ColorText, fontWeight = FontWeight.SemiBold)
+        val nm = ctx.getSystemService(android.app.NotificationManager::class.java)
+        var dnd by remember { mutableStateOf(prefs.optFocusDnd) }
+        ToggleRow("Do Not Disturb during Focus", "Priority only. Put back when Focus ends.", dnd) { dnd = it; prefs.optFocusDnd = it }
+        if (dnd && !nm.isNotificationPolicyAccessGranted) {
+            TextButton(onClick = { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }) { Text("⚠️ Allow Do Not Disturb access") }
+        }
+        var awake by remember { mutableStateOf(prefs.optFocusAwake) }
+        ToggleRow("Keep the screen on", "While a Focus session runs and the Focus page is open", awake) { awake = it; prefs.optFocusAwake = it }
+        var vibe by remember { mutableStateOf(prefs.optBreakVibrate) }
+        ToggleRow("Vibrate when a break ends", null, vibe) { vibe = it; prefs.optBreakVibrate = it }
+        var fnotif by remember { mutableStateOf(prefs.optFocusNotif) }
+        ToggleRow("Hide Fun app notifications during Focus", "Needs Notification access", fnotif) { fnotif = it; prefs.optFocusNotif = it }
+        if (fnotif && !Perms.notificationAccess(ctx)) {
+            TextButton(onClick = { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }) { Text("⚠️ Allow Notification access") }
+        }
+
+        HorizontalDivider(color = ColorDivider)
+        // ── Quests and coins ──
+        Text("🎯 Quests and coins", color = ColorText, fontWeight = FontWeight.SemiBold)
+        var eve by remember { mutableStateOf(prefs.optEvening) }
+        ToggleRow("Evening nudge", "If quests are still open", eve) { eve = it; prefs.optEvening = it }
+        if (eve) {
+            var h by remember { mutableIntStateOf(prefs.optEveningHour) }
+            StepperRow("Nudge at", h, 15..23, 1, "h") { h = it; prefs.optEveningHour = it }
+        }
+        var sum by remember { mutableStateOf(prefs.optSummary) }
+        ToggleRow("Daily summary", "Quests done, coins, streak and fun time", sum) { sum = it; prefs.optSummary = it }
+        if (sum) {
+            var m by remember { mutableIntStateOf(prefs.optSummaryMin) }
+            Text("Summary at ${hhmmOf(m)}", color = ColorText, fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { m = ((m - 30) + 1440) % 1440; prefs.optSummaryMin = m }, shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) { Text("− 30 min") }
+                OutlinedButton(onClick = { m = (m + 30) % 1440; prefs.optSummaryMin = m }, shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) { Text("+ 30 min") }
+            }
+        }
+        var conf by remember { mutableStateOf(prefs.optConfirm) }
+        ToggleRow("Ask before deleting a quest or skipping a step", null, conf) { conf = it; prefs.optConfirm = it }
+        var undo by remember { mutableStateOf(prefs.optUndo) }
+        ToggleRow("Undo after finishing a quest", "About 10 seconds to take it back (coins and XP too)", undo) { undo = it; prefs.optUndo = it }
+        var hide by remember { mutableStateOf(prefs.optHideCoins) }
+        ToggleRow("Hide the coin balance on Home", null, hide) { hide = it; prefs.optHideCoins = it }
+        var wd by remember { mutableStateOf(prefs.optWidgetDone) }
+        ToggleRow("Done button on the widget", "Ticks the next step or finishes the quest shown", wd) {
+            wd = it; prefs.optWidgetDone = it
+            com.krishna.questblock.service.QuestWidget.refresh(ctx)
+        }
     }
 }

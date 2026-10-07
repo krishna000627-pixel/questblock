@@ -11,9 +11,11 @@ import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
 import com.krishna.questblock.data.AppCategorizer
+import com.krishna.questblock.data.FUN_EXTEND_MIN
 import com.krishna.questblock.data.FunLimit
 import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.UsageTracker
+import com.krishna.questblock.service.OptionalAlerts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -172,22 +174,61 @@ object MusicLog {
         }
     }
 
+    /** When the music will be paused after the 1-minute warning (0 = no warning running). */
+    private var pauseAt = 0L
+
+    private fun isYouTube(pkg: String?): Boolean =
+        pkg == "com.google.android.youtube" || pkg == "app.revanced.android.youtube" || pkg == "com.vanced.android.youtube"
+
     private suspend fun evaluate() {
         val c = ctx ?: return
         val p = prefs ?: return
-        if (!p.pauseMusicAtLimit || !isPlaying()) return
+        if (!p.pauseMusicAtLimit || !isPlaying()) { clearWarning(c); return }
         val st = FunLimit.state(c, p, force = true)
-        if (!(st.reached || p.funBlockedNow())) return
+        if (!(st.reached || p.funBlockedNow())) { clearWarning(c); return }
+        // YouTube is never paused (lectures, music): only Shorts is cut, by the blocker.
+        if (isYouTube(fromSession(c))) {
+            DebugLog.d("music: playing from YouTube, never paused")
+            return
+        }
         // Study and coding apps may play their own audio, so leave those alone.
         val now = System.currentTimeMillis()
         val fg = UsageTracker.foreground(c, now - 3_600_000L, now).openPkg
         val cat = fg?.let { AppCategorizer.categoryOf(p, c.packageManager, it) }
         if (cat == "study" || cat == "coding") {
             DebugLog.d("music: playing but $fg ($cat) is on screen, not pausing")
+            clearWarning(c)
             return
         }
+        // Optional: a 1-minute warning first, with a "+5 min" button that costs coins
+        if (p.optMusicWarn && st.reached) {
+            if (pauseAt == 0L) {
+                pauseAt = now + 60_000L
+                OptionalAlerts.post(c, OptionalAlerts.ID_MUSIC, "🎧 Music stops in 1 minute", "Fun time is used up. Keep going for +$FUN_EXTEND_MIN min?", extend = true)
+                return
+            }
+            if (now < pauseAt) return
+        }
+        clearWarning(c)
         DebugLog.d("music: pausing (limit reached=${st.reached}, locked=${p.funBlockedNow()}, on screen=$fg)")
         pauseNow(c)
+    }
+
+    private fun clearWarning(c: Context) {
+        if (pauseAt != 0L) { pauseAt = 0L; OptionalAlerts.cancel(c, OptionalAlerts.ID_MUSIC) }
+    }
+
+    /** Optional: pause music when a Focus session starts (never YouTube). */
+    fun pauseForFocus() {
+        val c = ctx ?: return
+        val p = prefs ?: return
+        if (!p.optMusicOnFocus) return
+        scope.launch {
+            if (!isPlaying()) return@launch
+            if (isYouTube(fromSession(c))) { DebugLog.d("music: Focus started, YouTube left playing"); return@launch }
+            DebugLog.d("music: pausing for Focus")
+            pauseNow(c)
+        }
     }
 
     private suspend fun pauseNow(c: Context) {

@@ -8,12 +8,25 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
+
+/** Finished quests that can still be taken back (optional 10-second Undo). */
+object UndoBus {
+    val events = kotlinx.coroutines.flow.MutableSharedFlow<com.krishna.questblock.data.GameRepository.CompletionUndo>(extraBufferCapacity = 4)
+}
+
+@dagger.hilt.android.lifecycle.HiltViewModel
+class UndoViewModel @javax.inject.Inject constructor(private val repo: com.krishna.questblock.data.GameRepository) : androidx.lifecycle.ViewModel() {
+    fun undo(u: com.krishna.questblock.data.GameRepository.CompletionUndo) =
+        viewModelScope.launch { repo.undoCompletion(u) }
+}
 
 private data class NavItem(val route: String, val label: String, val icon: ImageVector)
 
@@ -51,8 +64,18 @@ fun MainScreen() {
     LaunchedEffect(route) { if (route != null && route in TAB_ROUTES) lastTab = route }
     val activeTab = if (route != null && route in TAB_ROUTES) route else lastTab
 
+    val undoVm: UndoViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val snack = remember { SnackbarHostState() }
+    LaunchedEffect(Unit) {
+        UndoBus.events.collect { u ->
+            val r = snack.showSnackbar("Quest done", actionLabel = "Undo", duration = SnackbarDuration.Long)
+            if (r == SnackbarResult.ActionPerformed) undoVm.undo(u)
+        }
+    }
+
     Scaffold(
         containerColor = ColorBg,
+        snackbarHost = { SnackbarHost(snack) },
         bottomBar = {
             NavigationBar(containerColor = ColorSurface) {
                 NAV_ITEMS.forEach { item ->

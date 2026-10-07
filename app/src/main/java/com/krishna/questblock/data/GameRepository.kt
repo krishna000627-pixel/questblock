@@ -248,6 +248,53 @@ class GameRepository @Inject constructor(
         logCoin(earned, "Routine step", sub.title)
     }
 
+    // ── v73: +5 min of fun time, and undo for a finished quest ──
+    suspend fun buyFunExtension(): Boolean = db.withTransaction {
+        val p = playerDao.get() ?: Player()
+        if (p.coins < FUN_EXTEND_COST) return@withTransaction false
+        playerDao.upsert(p.copy(coins = p.coins - FUN_EXTEND_COST))
+        logCoin(-FUN_EXTEND_COST, "Fun +$FUN_EXTEND_MIN min", "")
+        prefs.addFunBonusToday(FUN_EXTEND_MIN * 60_000L)
+        true
+    }
+
+    /** Everything needed to take a quest completion back. */
+    class CompletionUndo(
+        val task: TaskEntity, val before: Player, val coinsGained: Int, val xpGained: Int,
+        val knownIds: Set<Long>, val freezes: Int,
+    )
+
+    /** Like [completeTask], but returns what is needed to undo it (null if nothing was completed). */
+    suspend fun completeTaskUndoable(task: TaskEntity): CompletionUndo? {
+        val fresh = taskDao.get(task.id) ?: return null
+        if (fresh.done) return null
+        val before = playerDao.get() ?: Player()
+        val ids = taskDao.observeAll().first().map { it.id }.toSet()
+        val freezes = prefs.streakFreezes
+        completeTask(task)
+        if (taskDao.get(task.id)?.done != true) return null
+        val after = playerDao.get() ?: before
+        return CompletionUndo(fresh, before, after.coins - before.coins, after.xp - before.xp, ids, freezes)
+    }
+
+    suspend fun undoCompletion(u: CompletionUndo) = db.withTransaction {
+        // the next copy of a recurring quest was created by the completion: remove it
+        taskDao.observeAll().first().filter { it.id !in u.knownIds }.forEach {
+            cancelReminder(it.id); subTaskDao.deleteAll(it.id); taskDao.delete(it)
+        }
+        taskDao.update(u.task)
+        scheduleReminder(u.task)
+        val now = playerDao.get() ?: u.before
+        playerDao.upsert(now.copy(
+            coins = (now.coins - u.coinsGained).coerceAtLeast(0), xp = (now.xp - u.xpGained).coerceAtLeast(0),
+            streak = u.before.streak, lastCompletionDay = u.before.lastCompletionDay,
+            xpBoostUntil = u.before.xpBoostUntil, weeklyXpLog = u.before.weeklyXpLog,
+            focusModeUntil = u.before.focusModeUntil, focusQuestId = u.before.focusQuestId, focusTotalMs = u.before.focusTotalMs,
+        ))
+        prefs.streakFreezes = u.freezes
+        if (u.coinsGained != 0) logCoin(-u.coinsGained, "Undo quest", u.task.title)
+    }
+
     suspend fun deleteTask(task: TaskEntity) {
         cancelReminder(task.id)
         subTaskDao.deleteAll(task.id)
@@ -680,6 +727,7 @@ class GameRepository @Inject constructor(
 
     // ── Focus breaks ─────────────────────────────────────────────────────
     fun breakUntil(): Long = prefs.breakUntil
+    fun keepScreenAwakeInFocus(): Boolean = prefs.optFocusAwake
     fun breakIsLong(): Boolean = prefs.breakIsLong
     fun skipBreak() { prefs.breakUntil = 0L }
 

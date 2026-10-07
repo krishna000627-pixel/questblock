@@ -90,6 +90,8 @@
         </receiver>
 
         <receiver android:name=".service.QuestReminderReceiver" android:exported="false" />
+        <receiver android:name=".service.FunExtendReceiver" android:exported="false" />
+        <receiver android:name=".service.WidgetDoneReceiver" android:exported="false" />
 
         <receiver android:name=".service.QuestWidget" android:exported="true">
             <intent-filter>

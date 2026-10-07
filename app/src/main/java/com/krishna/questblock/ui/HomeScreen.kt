@@ -63,13 +63,17 @@ class HomeViewModel @Inject constructor(
     /** Turns a suggestion into a real quest due today. */
     val subs = repo.allSubTasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     /** Ticks a routine step; when it was the last one, the routine itself is finished. */
+    /** Finishes a quest; with the optional Undo switch on, the Quests snackbar offers to take it back. */
+    private suspend fun finish(task: TaskEntity) {
+        if (prefs.optUndo) repo.completeTaskUndoable(task)?.let { UndoBus.events.tryEmit(it) } else repo.completeTask(task)
+    }
     fun tickStep(task: TaskEntity, sub: SubTask, all: List<SubTask>) = viewModelScope.launch {
         repo.completeStep(task, sub)
-        if (all.all { it.done || it.id == sub.id }) repo.completeTask(task)
+        if (all.all { it.done || it.id == sub.id }) finish(task)
     }
     fun skipStep(task: TaskEntity, sub: SubTask, all: List<SubTask>) = viewModelScope.launch {
         if (!repo.skipStep(task, sub)) { notice = "Skipping costs $STEP_SKIP_COST🪙 and you don't have enough"; return@launch }
-        if (all.all { it.done || it.id == sub.id }) repo.completeTask(task)
+        if (all.all { it.done || it.id == sub.id }) finish(task)
     }
     fun addSuggestion(q: StarterQuest, tomorrow: Boolean = false) = viewModelScope.launch {
         val dueToday = nextRunDayStart(0, System.currentTimeMillis()) - 1 + (if (tomorrow) 86_400_000L else 0L)
@@ -84,7 +88,7 @@ class HomeViewModel @Inject constructor(
             notice = "Tick every step first (open it in Quests)"
             return@launch
         }
-        repo.completeTask(task)
+        finish(task)
     }
 }
 
@@ -97,6 +101,18 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
     val ctx = LocalContext.current
     LaunchedEffect(vm.notice) {
         vm.notice?.let { Toast.makeText(ctx, it, Toast.LENGTH_SHORT).show(); vm.clearNotice() }
+    }
+    // optional: ask before spending coins to skip a routine step
+    var askSkip by remember { mutableStateOf<Triple<TaskEntity, SubTask, List<SubTask>>?>(null) }
+    askSkip?.let { (t, sub, all) ->
+        AlertDialog(
+            onDismissRequest = { askSkip = null },
+            containerColor = ColorSurface,
+            title = { Text("Skip this step?", color = ColorText, fontWeight = FontWeight.Bold) },
+            text = { Text("${sub.title}\nCosts $STEP_SKIP_COST🪙, no reward.", color = ColorMuted) },
+            confirmButton = { TextButton(onClick = { vm.skipStep(t, sub, all); askSkip = null }) { Text("Skip", color = ColorDanger, fontWeight = FontWeight.Bold) } },
+            dismissButton = { TextButton(onClick = { askSkip = null }) { Text("Cancel", color = ColorMuted) } },
+        )
     }
 
     val now      = System.currentTimeMillis()
@@ -178,7 +194,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                 }
                 steps.forEachIndexed { i, sub ->
                     item(key = "rs_${sub.id}") {
-                        HomeStepRow(task, sub, i, steps.size, vm.prefs, onTick = { vm.tickStep(task, sub, steps) }, onSkip = { vm.skipStep(task, sub, steps) })
+                        HomeStepRow(task, sub, i, steps.size, vm.prefs, onTick = { vm.tickStep(task, sub, steps) }, onSkip = { if (vm.prefs.optConfirm) askSkip = Triple(task, sub, steps) else vm.skipStep(task, sub, steps) })
                     }
                 }
             }
@@ -343,7 +359,7 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int, onCoinsClick: (
 
             // Stats chips
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatPill(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable { onCoinsClick() }, "🪙", "${player.coins}", "coins · shop")
+                StatPill(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable { onCoinsClick() }, "🪙", if (vm.prefs.optHideCoins) "•••" else "${player.coins}", "coins · shop")
                 StatPill(Modifier.weight(1f), "🔥", "${player.streak}d", "streak")
                 StatPill(Modifier.weight(1f), "✅", "$doneToday/$total", "done")
             }

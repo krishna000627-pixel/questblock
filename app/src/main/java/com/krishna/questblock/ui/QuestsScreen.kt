@@ -40,13 +40,15 @@ import java.util.*
 import javax.inject.Inject
 
 @HiltViewModel
-class QuestsViewModel @Inject constructor(private val repo: GameRepository) : ViewModel() {
+class QuestsViewModel @Inject constructor(private val repo: GameRepository, val prefs: Prefs) : ViewModel() {
     val tasks  = repo.tasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val player = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
     val subs   = repo.allSubTasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     fun toggleStep(step: SubTask) = viewModelScope.launch { repo.toggleSubTask(step) }
     fun add(title: String, difficulty: Int) = viewModelScope.launch { repo.addTask(title, difficulty) }
-    fun complete(task: TaskEntity) = viewModelScope.launch { repo.completeTask(task) }
+    fun complete(task: TaskEntity) = viewModelScope.launch {
+        if (prefs.optUndo) repo.completeTaskUndoable(task)?.let { UndoBus.events.tryEmit(it) } else repo.completeTask(task)
+    }
     fun delete(task: TaskEntity)   = viewModelScope.launch { repo.deleteTask(task) }
     fun startFocus(task: TaskEntity) = viewModelScope.launch {
         repo.startFocus(if (task.timerDurationMs > 0) task.timerDurationMs else 60 * 60_000L, task)
@@ -105,6 +107,20 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
     }
     val pending  = filtered.filter { !it.done }
     val done     = filtered.filter { it.done }
+    // optional: ask before deleting a quest
+    var askDelete by remember { mutableStateOf<TaskEntity?>(null) }
+    val confirmDelete = vm.prefs.optConfirm
+    val requestDelete: (TaskEntity) -> Unit = { t -> if (confirmDelete) askDelete = t else vm.delete(t) }
+    askDelete?.let { t ->
+        AlertDialog(
+            onDismissRequest = { askDelete = null },
+            containerColor = ColorSurface,
+            title = { Text("Delete this quest?", color = ColorText, fontWeight = FontWeight.Bold) },
+            text = { Text(t.title, color = ColorMuted) },
+            confirmButton = { TextButton(onClick = { vm.delete(t); askDelete = null }) { Text("Delete", color = ColorDanger, fontWeight = FontWeight.Bold) } },
+            dismissButton = { TextButton(onClick = { askDelete = null }) { Text("Cancel", color = ColorMuted) } },
+        )
+    }
 
     Scaffold(
         containerColor = ColorBg,
@@ -220,7 +236,8 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
                             steps = stepsByTask[task.id].orEmpty(),
                             onToggleStep = { vm.toggleStep(it) },
                             onComplete = { vm.complete(task) },
-                            onDelete   = { vm.delete(task) },
+                            onDelete   = { requestDelete(task) },
+                            confirmDelete = confirmDelete,
                             onEdit     = { onEditQuest(task.id) },
                             onStartFocus = { vm.startFocus(task); onOpenFocus() },
                             onStopFocus  = { vm.stopFocus() },
@@ -237,7 +254,7 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
                 items(doneShown, key = { it.id }) { task ->
                     SwipeableQuestCard(task = task, now = now,
                         steps = stepsByTask[task.id].orEmpty(), onToggleStep = {},
-                        onComplete = {}, onDelete = { vm.delete(task) }, onEdit = {},
+                        onComplete = {}, onDelete = { requestDelete(task) }, confirmDelete = confirmDelete, onEdit = {},
                         onStartFocus = {}, onStopFocus = {},
                     )
                 }
@@ -260,13 +277,13 @@ private fun SectionHeader(label: String) {
 @Composable
 private fun SwipeableQuestCard(
     task: TaskEntity, now: Long, steps: List<SubTask>, onToggleStep: (SubTask) -> Unit,
-    onComplete: () -> Unit, onDelete: () -> Unit, onEdit: () -> Unit,
+    onComplete: () -> Unit, onDelete: () -> Unit, confirmDelete: Boolean = false, onEdit: () -> Unit,
     onStartFocus: () -> Unit, onStopFocus: () -> Unit,
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             when (value) {
-                EndToStart -> { onDelete(); true }
+                EndToStart -> { onDelete(); !confirmDelete }
                 StartToEnd -> {
                     // only swipe-complete when it can really be completed (right day, routine steps all ticked)
                     val ok = !task.done && task.isAvailableNow(now) && steps.all { it.done }

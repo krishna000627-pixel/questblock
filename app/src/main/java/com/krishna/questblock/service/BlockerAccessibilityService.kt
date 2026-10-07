@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
@@ -110,6 +111,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         val pkg = event.packageName?.toString() ?: return
         if (pkg == packageName) return
         if (pkg in BROWSERS) checkWebsite(pkg)
+        if (pkg in YOUTUBE_PKGS) checkShorts()
         val isWindowChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
 
         if (pkg in GUARDED_PKGS) {
@@ -237,6 +239,177 @@ class BlockerAccessibilityService : AccessibilityService() {
         }
     }
 
+
+    // ── v73: YouTube Shorts. YouTube itself is never blocked; Shorts is sent back once the fun limit is used up (or fun is locked). ──
+    private var lastShortsCheck = 0L
+    private var shortsJob: Job? = null
+    private var shortsBackAt = 0L
+    private var shortsBackCount = 0
+
+    private fun checkShorts() {
+        if (!prefs.shortsBlockOn && FunLimit.last?.enabled != true) return
+        val t = SystemClock.uptimeMillis()
+        if (t - lastShortsCheck < 600L) return
+        lastShortsCheck = t
+        val root = rootInActiveWindow ?: return
+        if (root.packageName?.toString() !in YOUTUBE_PKGS) return
+        if (!isShortsScreen(root)) return
+        scope.launch {
+            val st = FunLimit.state(this@BlockerAccessibilityService, prefs)
+            val locked = st.reached || prefs.funBlockedNow()
+            if (locked && prefs.shortsBlockOn) { blockShorts(); return@launch }
+            startShortsTimer()
+        }
+    }
+
+    private fun isShortsScreen(root: AccessibilityNodeInfo): Boolean {
+        val pkg = root.packageName?.toString() ?: return false
+        for (id in SHORTS_IDS) {
+            if (root.findAccessibilityNodeInfosByViewId("$pkg:id/$id")?.isNotEmpty() == true) return true
+        }
+        return hasSelectedShortsTab(root, 0)
+    }
+
+    /** Fallback: the bottom-bar tab called "Shorts" is selected. */
+    private fun hasSelectedShortsTab(n: AccessibilityNodeInfo?, depth: Int): Boolean {
+        if (n == null || depth > 14) return false
+        val label = (n.contentDescription ?: n.text)?.toString()
+        if (label != null && label.equals("Shorts", ignoreCase = true) && n.isSelected) return true
+        for (i in 0 until n.childCount) if (hasSelectedShortsTab(n.getChild(i), depth + 1)) return true
+        return false
+    }
+
+    /** While Shorts is on screen, add its time to today's fun time (every 5 s), and cut it when the limit is reached. */
+    private fun startShortsTimer() {
+        if (shortsJob?.isActive == true) return
+        FunSignal.shortsOn = true
+        shortsJob = scope.launch {
+            val pm = getSystemService(PowerManager::class.java)
+            var ticks = 0
+            try {
+                while (true) {
+                    delay(5_000L)
+                    if (!pm.isInteractive) break
+                    val root = rootInActiveWindow
+                    if (root == null || root.packageName?.toString() !in YOUTUBE_PKGS || !isShortsScreen(root)) break
+                    prefs.addShortsMs(5_000L)
+                    ticks++
+                    if (ticks % 3 == 0) {
+                        val st = FunLimit.state(this@BlockerAccessibilityService, prefs, force = true)
+                        if ((st.reached || prefs.funBlockedNow()) && prefs.shortsBlockOn) { blockShorts(); break }
+                    }
+                }
+            } finally {
+                FunSignal.shortsOn = false
+            }
+        }
+    }
+
+    private fun blockShorts() {
+        val t = SystemClock.uptimeMillis()
+        if (t - shortsBackAt < 1_200L) return
+        shortsBackCount = if (t - shortsBackAt > 10_000L) 1 else shortsBackCount + 1
+        shortsBackAt = t
+        DebugLog.d("service: Shorts blocked (fun limit / lock window), back x$shortsBackCount")
+        Toast.makeText(this, "Shorts is locked. Fun limit reached.", Toast.LENGTH_SHORT).show()
+        // BACK leaves the Shorts tab; if YouTube keeps landing on Shorts, go home instead
+        performGlobalAction(if (shortsBackCount > 3) GLOBAL_ACTION_HOME else GLOBAL_ACTION_BACK)
+        maybeBedtime()
+    }
+
+    // ── v73: Bedtime mode (Digital Wellbeing). No root: the service opens Quick Settings and taps the tile, like a finger would. ──
+    private var bedtimeBusy = false
+
+    private fun maybeBedtime() {
+        if (!prefs.optBedtime || bedtimeBusy || prefs.doneToday("bedtime")) return
+        prefs.markToday("bedtime")
+        bedtimeBusy = true
+        scope.launch {
+            delay(1_500L)
+            val r = runCatching { toggleBedtime() }.getOrElse { "failed (${it.javaClass.simpleName})" }
+            DebugLog.d("service: Bedtime mode at fun limit: $r")
+            bedtimeBusy = false
+        }
+    }
+
+    /** Settings "Test now" button. [onResult] gets a one-line report. */
+    fun runBedtimeTest(onResult: (String) -> Unit) {
+        if (bedtimeBusy) { onResult("Already running"); return }
+        bedtimeBusy = true
+        scope.launch {
+            val r = runCatching { toggleBedtime() }.getOrElse { "Failed (${it.javaClass.simpleName})" }
+            DebugLog.d("service: Bedtime test: $r")
+            bedtimeBusy = false
+            onResult(r)
+        }
+    }
+
+    private suspend fun toggleBedtime(): String {
+        performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
+        delay(1_200L)
+        var tile: AccessibilityNodeInfo? = null
+        for (i in 0 until 5) {
+            tile = findBedtimeTile()
+            if (tile != null) break
+            delay(500L)
+        }
+        if (tile == null) {
+            closeShade()
+            return "Tile not found. Keep Bedtime on the first page of Quick Settings."
+        }
+        val state = tileState(tile)
+        if (state == true) {
+            closeShade()
+            return "Bedtime mode is already on."
+        }
+        val tapped = clickUp(tile)
+        delay(700L)
+        closeShade()
+        val was = when (state) { false -> "was off"; else -> "state unknown" }
+        return if (tapped) "Tapped the Bedtime tile ($was)." else "Found the tile but the tap did not work."
+    }
+
+    private fun closeShade() { performGlobalAction(GLOBAL_ACTION_BACK) }
+
+    private fun findBedtimeTile(): AccessibilityNodeInfo? {
+        val roots = ArrayList<AccessibilityNodeInfo>()
+        rootInActiveWindow?.let { roots += it }
+        runCatching { windows.mapNotNullTo(roots) { it.root } }
+        for (r in roots) {
+            val hits = r.findAccessibilityNodeInfosByText("Bedtime") ?: continue
+            for (h in hits) {
+                var cur: AccessibilityNodeInfo? = h
+                var hops = 0
+                while (cur != null && hops < 6) {
+                    if (cur.isClickable) return cur
+                    cur = cur.parent; hops++
+                }
+            }
+        }
+        return null
+    }
+
+    /** true = on, false = off, null = cannot tell. */
+    private fun tileState(n: AccessibilityNodeInfo): Boolean? {
+        if (n.isCheckable) return n.isChecked
+        val sd = if (Build.VERSION.SDK_INT >= 30) n.stateDescription?.toString()?.lowercase().orEmpty() else ""
+        if (sd.isNotEmpty()) {
+            if (Regex("\\boff\\b").containsMatchIn(sd)) return false
+            if (Regex("\\bon\\b").containsMatchIn(sd)) return true
+        }
+        return null
+    }
+
+    private fun clickUp(n: AccessibilityNodeInfo): Boolean {
+        var cur: AccessibilityNodeInfo? = n
+        var hops = 0
+        while (cur != null && hops < 6) {
+            if (cur.isClickable && cur.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true
+            cur = cur.parent; hops++
+        }
+        return false
+    }
+
     // ── Website blocker (reads the browser address bar; works only in browsers that expose it) ──
     private var lastSiteCheck = 0L
     private var lastSiteHit = 0L
@@ -311,6 +484,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         lastBlockPkg = pkg
         lastBlockAt = now
         com.krishna.questblock.util.DebugLog.d("service.showFunLimit pkg=$pkg")
+        if (!FunSignal.quiet && FunLimit.last?.reached == true) maybeBedtime()
         startActivity(
             Intent(this, BlockActivity::class.java)
                 .putExtra(BlockActivity.EXTRA_PKG, pkg)
@@ -542,6 +716,9 @@ class BlockerAccessibilityService : AccessibilityService() {
             "com.opera.browser" to listOf("com.opera.browser:id/url_field"),
             "com.duckduckgo.mobile.android" to listOf("com.duckduckgo.mobile.android:id/omnibarTextInput"),
         )
+        private val YOUTUBE_PKGS = setOf("com.google.android.youtube", "app.revanced.android.youtube", "com.vanced.android.youtube")
+        /** Views YouTube uses for the Shorts player (the selected "Shorts" tab is the fallback). */
+        private val SHORTS_IDS = listOf("reel_recycler", "reel_player_page_container", "shorts_container")
         private const val SETTLE_MS = 180L
         private const val RELAUNCH_GUARD_MS = 800L
         private const val SAFE_REJOIN_MS = 5 * 60_000L

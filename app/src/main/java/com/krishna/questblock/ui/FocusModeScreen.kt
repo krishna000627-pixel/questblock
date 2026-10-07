@@ -50,6 +50,7 @@ class FocusViewModel @Inject constructor(private val repo: GameRepository) : Vie
 
     fun bonus(): Int = repo.focusBonus()
     fun breakUntil(): Long = repo.breakUntil()
+    fun keepAwake(): Boolean = repo.keepScreenAwakeInFocus()
     fun breakIsLong(): Boolean = repo.breakIsLong()
     fun skipBreak() = repo.skipBreak()
     fun start(durationMs: Long, quest: TaskEntity?) = viewModelScope.launch { repo.startFocus(durationMs, quest) }
@@ -74,6 +75,14 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
     // Timer hit zero (or app was reopened after it expired) -> pay out once.
     LaunchedEffect(player.focusModeUntil, running) {
         if (player.focusModeUntil > 0L && !running) vm.settle()
+    }
+
+    // optional: keep the screen on while a Focus session runs and this page is open
+    val view = androidx.compose.ui.platform.LocalView.current
+    val awake = running && vm.keepAwake()
+    DisposableEffect(awake) {
+        view.keepScreenOn = awake
+        onDispose { view.keepScreenOn = false }
     }
 
     val timerQuests = tasks.filter { it.isTimerQuest && it.isAvailableNow(now) }

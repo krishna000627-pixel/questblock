@@ -9,6 +9,8 @@ object FunSignal {
     @Volatile var pkg: String? = null
     /** True when the lock page is shown because of quiet/study hours (not because the daily limit ran out). */
     @Volatile var quiet: Boolean = false
+    /** True while YouTube Shorts is on screen (so the time-left bubble can show there too). */
+    @Volatile var shortsOn: Boolean = false
     fun enter(p: String) { pkg = p }
     fun leave() { pkg = null }
 }
@@ -27,7 +29,9 @@ object FunLimit {
 
     /** Today's fun time. Cached for 45 s unless [force]. Without Usage access the limit is simply off. */
     suspend fun state(ctx: Context, prefs: Prefs, force: Boolean = false): State {
-        val limitMs = prefs.effectiveFunLimitMin * 60_000L
+        val baseMs = prefs.effectiveFunLimitMin * 60_000L
+        // "+5 min" bought with coins today is added on top (only when a limit is set)
+        val limitMs = if (baseMs > 0L) baseMs + prefs.funBonusTodayMs() else 0L
         val now = System.currentTimeMillis()
         val c = last
         if (!force && c != null && c.limitMs == limitMs && now - c.at < 45_000L && dayNumber(c.at) == dayNumber(now)) return c
@@ -42,7 +46,10 @@ object FunLimit {
             val res = UsageTracker.foreground(ctx, from, now)
             val per = res.perPkg
             val onScreen = per.entries.filter { AppCategorizer.categoryOf(prefs, pm, it.key) == "fun" }.sumOf { it.value }
-            onScreen + runCatching { UsageTracker.ghost(ctx, prefs, from, now, res.spans).values.sum() }.getOrDefault(0L)
+            val ghostMs = if (prefs.ghostCountsOn) runCatching { UsageTracker.ghost(ctx, prefs, from, now, res.spans).values.sum() }.getOrDefault(0L) else 0L
+            // Shorts time counts as fun time, unless YouTube itself is already a Fun & Games app (then it is counted above)
+            val shortsMs = if (AppCategorizer.categoryOf(prefs, pm, "com.google.android.youtube") == "fun") 0L else prefs.shortsMsToday()
+            onScreen + ghostMs + shortsMs
         }
         val s = State(used, limitMs, now)
         last = s

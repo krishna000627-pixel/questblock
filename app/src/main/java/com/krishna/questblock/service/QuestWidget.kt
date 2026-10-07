@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.widget.RemoteViews
 import com.krishna.questblock.R
 
@@ -17,11 +18,17 @@ class QuestWidget : AppWidgetProvider() {
     companion object {
         private const val SP = "quest_widget"
 
-        fun update(ctx: Context, line: String, coins: Int) {
+        fun update(ctx: Context, line: String, coins: Int, action: String = "") {
             val app = ctx.applicationContext
             val sp = app.getSharedPreferences(SP, Context.MODE_PRIVATE)
-            if (sp.getString("line", null) == line && sp.getInt("coins", -1) == coins) return
-            sp.edit().putString("line", line).putInt("coins", coins).apply()
+            if (sp.getString("line", null) == line && sp.getInt("coins", -1) == coins && sp.getString("action", "") == action) return
+            sp.edit().putString("line", line).putInt("coins", coins).putString("action", action).apply()
+            refresh(app)
+        }
+
+        /** Redraw every widget (also used when the Done-button switch changes in Settings). */
+        fun refresh(ctx: Context) {
+            val app = ctx.applicationContext
             runCatching {
                 val mgr = AppWidgetManager.getInstance(app)
                 mgr.getAppWidgetIds(ComponentName(app, QuestWidget::class.java)).forEach { render(app, mgr, it) }
@@ -33,6 +40,15 @@ class QuestWidget : AppWidgetProvider() {
             val views = RemoteViews(ctx.packageName, R.layout.quest_widget)
             views.setTextViewText(R.id.widget_line, sp.getString("line", "Open QuestBlock"))
             views.setTextViewText(R.id.widget_coins, "🪙 ${sp.getInt("coins", 0)}")
+            // optional Done button (Settings → Optional features)
+            val action = sp.getString("action", "").orEmpty()
+            val doneOn = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getBoolean("opt_widget_done", false)
+            if (doneOn && action.isNotEmpty()) {
+                views.setViewVisibility(R.id.widget_done, android.view.View.VISIBLE)
+                val di = Intent(ctx, WidgetDoneReceiver::class.java).putExtra("action", action)
+                views.setOnClickPendingIntent(R.id.widget_done,
+                    PendingIntent.getBroadcast(ctx, 11, di, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+            } else views.setViewVisibility(R.id.widget_done, android.view.View.GONE)
             val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
             if (launch != null) {
                 val pi = PendingIntent.getActivity(ctx, 0, launch, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)

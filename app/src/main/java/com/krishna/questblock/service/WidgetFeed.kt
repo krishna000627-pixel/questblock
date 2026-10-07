@@ -22,13 +22,18 @@ object WidgetFeed {
         if (started) return
         started = true
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
-            combine(repo.tasks, repo.allSubTasks, repo.player) { tasks, subs, p -> lineFor(tasks, subs) to p.coins }
+            combine(repo.tasks, repo.allSubTasks, repo.player) { tasks, subs, p -> Triple(pickFor(tasks, subs), p.coins, 0) }
                 .distinctUntilChanged()
-                .collect { (line, coins) -> runCatching { QuestWidget.update(app.applicationContext, line, coins) } }
+                .collect { (pick, coins, _) -> runCatching { QuestWidget.update(app.applicationContext, pick.line, coins, pick.action) } }
         }
     }
 
-    fun lineFor(tasks: List<TaskEntity>, subs: List<SubTask>): String {
+    /** What the widget shows and what its Done button does ("step:ID", "task:ID" or "" for nothing). */
+    data class Pick(val line: String, val action: String)
+
+    fun lineFor(tasks: List<TaskEntity>, subs: List<SubTask>): String = pickFor(tasks, subs).line
+
+    fun pickFor(tasks: List<TaskEntity>, subs: List<SubTask>): Pick {
         val now = System.currentTimeMillis()
         val dayEnd = nextRunDayStart(0, now) - 1
         val open = tasks.filter { !it.done && it.isAvailableNow(now) }
@@ -38,13 +43,13 @@ object WidgetFeed {
         val routines = today.filter { it.questType == "routine" }
         for (r in routines) {
             val next = subs.filter { it.taskId == r.id }.sortedBy { it.id }.firstOrNull { !it.done }
-            if (next != null) return "📋 ${r.title}: ${next.title}"
+            if (next != null) return Pick("📋 ${r.title}: ${next.title}", "step:${next.id}")
         }
-        routines.firstOrNull()?.let { return "📋 ${it.title}" }
-        today.firstOrNull()?.let { return "🎯 ${it.title}" }
+        routines.firstOrNull()?.let { return Pick("📋 ${it.title}", "task:${it.id}") }
+        today.firstOrNull()?.let { return Pick("🎯 ${it.title}", "task:${it.id}") }
         // nothing due today: show the next thing that is waiting
-        open.filter { it.dueAt != null }.minByOrNull { it.dueAt ?: Long.MAX_VALUE }?.let { return "⏰ ${it.title}" }
-        open.minByOrNull { it.priority }?.let { return "📌 ${it.title}" }
-        return "All clear today"
+        open.filter { it.dueAt != null }.minByOrNull { it.dueAt ?: Long.MAX_VALUE }?.let { return Pick("⏰ ${it.title}", "") }
+        open.minByOrNull { it.priority }?.let { return Pick("📌 ${it.title}", "") }
+        return Pick("All clear today", "")
     }
 }

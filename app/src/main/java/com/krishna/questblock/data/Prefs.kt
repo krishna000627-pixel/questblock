@@ -108,6 +108,7 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
             key == "quiet" -> sp.edit().putBoolean("quiet_on", v == "1").apply()
             key == "study" -> sp.edit().putBoolean("studyblock_on", v == "1").apply()
             key == "music" -> sp.edit().putBoolean("pause_music_limit", v == "1").apply()
+            key.startsWith("opt:") -> sp.edit().putBoolean(key.removePrefix("opt:"), v == "1").apply()
             key.startsWith("cat:") -> setCategory(key.removePrefix("cat:"), v.ifEmpty { null })
             key.startsWith("safe:") -> setFunSafe(key.removePrefix("safe:"), v == "1")
             key.startsWith("site:") -> if (v == "0") removeSiteNow(key.removePrefix("site:"))
@@ -132,6 +133,8 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
                 k == "quiet" -> "quiet hours \u2192 " + if (v.first == "1") "on" else "off"
                 k == "study" -> "study hours \u2192 " + if (v.first == "1") "on" else "off"
                 k == "music" -> "pause fun music \u2192 " + if (v.first == "1") "on" else "off"
+                k == "opt:shorts_block" -> "Shorts block \u2192 " + if (v.first == "1") "on" else "off"
+                k == "opt:ghost_counts" -> "music counts as fun time \u2192 " + if (v.first == "1") "on" else "off"
                 k.startsWith("cat:") -> "an app leaves Fun & Games"
                 k.startsWith("safe:") -> "a \uD83D\uDEE1 switch turns on"
                 k.startsWith("site:") -> "a website is unblocked"
@@ -496,7 +499,72 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     fun isClaimed(key: String): Boolean = sp.getBoolean("claimed_$key", false)
     fun setClaimed(key: String) { sp.edit().putBoolean("claimed_$key", true).apply() }
 
+    // ── v73: optional features. Everything here is a switch you turn on yourself (Shorts block and music counting default to on). ──
+    private fun flag(k: String, def: Boolean = false) = sp.getBoolean(k, def)
+    private fun setFlag(k: String, v: Boolean) = sp.edit().putBoolean(k, v).apply()
+
+    /** Block YouTube Shorts once the fun limit is used up (or fun is locked). YouTube itself is never blocked. A commitment: off waits for midnight. */
+    val shortsBlockOn: Boolean get() { applyDue(); return flag("shorts_block", true) }
+    fun changeShortsBlock(on: Boolean) {
+        if (!sp.contains("shorts_block")) setFlag("shorts_block", true)
+        commitFlag("opt:shorts_block", "shorts_block", on)
+    }
+    /** Music from Fun apps (ghost time) counts toward the fun limit. A commitment: off waits for midnight. */
+    val ghostCountsOn: Boolean get() { applyDue(); return flag("ghost_counts", true) }
+    fun changeGhostCounts(on: Boolean) {
+        if (!sp.contains("ghost_counts")) setFlag("ghost_counts", true)
+        commitFlag("opt:ghost_counts", "ghost_counts", on)
+    }
+
+    var optMusicOnFocus: Boolean get() = flag("opt_music_focus"); set(v) = setFlag("opt_music_focus", v)
+    var optMusicWarn: Boolean get() = flag("opt_music_warn"); set(v) = setFlag("opt_music_warn", v)
+    var optWarn80: Boolean get() = flag("opt_warn80"); set(v) = setFlag("opt_warn80", v)
+    var optBubble: Boolean get() = flag("opt_bubble"); set(v) = setFlag("opt_bubble", v)
+    var optBedtime: Boolean get() = flag("opt_bedtime"); set(v) = setFlag("opt_bedtime", v)
+    var optFocusDnd: Boolean get() = flag("opt_focus_dnd"); set(v) = setFlag("opt_focus_dnd", v)
+    var optFocusAwake: Boolean get() = flag("opt_focus_awake"); set(v) = setFlag("opt_focus_awake", v)
+    var optBreakVibrate: Boolean get() = flag("opt_break_vibrate"); set(v) = setFlag("opt_break_vibrate", v)
+    var optFocusNotif: Boolean get() = flag("opt_focus_notif"); set(v) = setFlag("opt_focus_notif", v)
+    var optEvening: Boolean get() = flag("opt_evening"); set(v) = setFlag("opt_evening", v)
+    var optEveningHour: Int get() = sp.getInt("opt_evening_hour", 20); set(v) = sp.edit().putInt("opt_evening_hour", v.coerceIn(15, 23)).apply()
+    var optConfirm: Boolean get() = flag("opt_confirm"); set(v) = setFlag("opt_confirm", v)
+    var optUndo: Boolean get() = flag("opt_undo"); set(v) = setFlag("opt_undo", v)
+    var optHideCoins: Boolean get() = flag("opt_hide_coins"); set(v) = setFlag("opt_hide_coins", v)
+    var optWidgetDone: Boolean get() = flag("opt_widget_done"); set(v) = setFlag("opt_widget_done", v)
+    var optSummary: Boolean get() = flag("opt_summary"); set(v) = setFlag("opt_summary", v)
+    /** Minute of the day for the daily summary (default 21:00). */
+    var optSummaryMin: Int get() = sp.getInt("opt_summary_min", 21 * 60); set(v) = sp.edit().putInt("opt_summary_min", ((v % 1440) + 1440) % 1440).apply()
+
+    // Shorts time today (counts toward the fun limit)
+    fun shortsMsToday(): Long = if (sp.getLong("shorts_day", 0L) == today()) sp.getLong("shorts_ms", 0L) else 0L
+    fun addShortsMs(ms: Long) {
+        val d = today()
+        val cur = if (sp.getLong("shorts_day", 0L) == d) sp.getLong("shorts_ms", 0L) else 0L
+        sp.edit().putLong("shorts_day", d).putLong("shorts_ms", cur + ms).apply()
+    }
+
+    // Extra fun time bought with coins ("+5 min"); gone at midnight
+    fun funBonusTodayMs(): Long = if (sp.getLong("fun_bonus_day", 0L) == today()) sp.getLong("fun_bonus_ms", 0L) else 0L
+    fun addFunBonusToday(ms: Long) {
+        sp.edit().putLong("fun_bonus_day", today()).putLong("fun_bonus_ms", funBonusTodayMs() + ms).apply()
+    }
+
+    // Once-a-day markers so a notification or action never repeats
+    fun doneToday(name: String): Boolean = sp.getLong("once_$name", 0L) == today()
+    fun markToday(name: String) { sp.edit().putLong("once_$name", today()).apply() }
+
+    /** Focus end time as last seen by the app (lets the notification listener know a Focus is running). */
+    var focusUntilCache: Long get() = sp.getLong("focus_until_cache", 0L); set(v) = sp.edit().putLong("focus_until_cache", v).apply()
+    /** The Focus end time we already applied Do Not Disturb / music pause for (0 = nothing applied). */
+    var focusAppliedUntil: Long get() = sp.getLong("focus_applied", 0L); set(v) = sp.edit().putLong("focus_applied", v).apply()
+    /** Do Not Disturb filter to put back after Focus (-1 = we did not change it). */
+    var dndPrevFilter: Int get() = sp.getInt("dnd_prev", -1); set(v) = sp.edit().putInt("dnd_prev", v).apply()
+    var lastBreakVibe: Long get() = sp.getLong("break_vibe", 0L); set(v) = sp.edit().putLong("break_vibe", v).apply()
+
     fun clearAll() = sp.edit().clear().apply()
 }
 
 const val EXAM_FUN_LIMIT_MIN = 45
+/** "+5 min" of fun time, bought with coins from the warning notification. */
+const val FUN_EXTEND_MIN = 5
+const val FUN_EXTEND_COST = 25

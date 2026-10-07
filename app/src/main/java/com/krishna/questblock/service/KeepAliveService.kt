@@ -120,6 +120,8 @@ class KeepAliveService : Service() {
                 startForeground(ID_ONGOING, n)
             }
             scope.launch { repo.blockedApps.collect { apps = it; render() } }
+            // v73: remember when Focus ends, so Do Not Disturb, music and notification rules know a Focus is running
+            scope.launch { repo.player.collect { prefs.focusUntilCache = it.focusModeUntil } }
             // Study coins come from Android's usage record; sweep every 20 s (also catches up after the service was killed)
             scope.launch {
                 while (true) {
@@ -138,7 +140,8 @@ class KeepAliveService : Service() {
             scope.launch {
                 while (true) {
                     render()
-                    delay(if (hasActiveUnlock() || StudySignal.pkg != null || FunSignal.pkg != null) 1000L else 5000L)
+                    runCatching { OptionalTick.run(applicationContext, repo, prefs) }
+                    delay(if (hasActiveUnlock() || StudySignal.pkg != null || FunSignal.pkg != null || FunSignal.shortsOn) 1000L else 5000L)
                 }
             }
         }
@@ -156,6 +159,13 @@ class KeepAliveService : Service() {
         val nm = getSystemService(NotificationManager::class.java)
 
         if (now - lastBeatWrite > 5000L) { prefs.keepAliveBeat = now; lastBeatWrite = now }
+
+        // v73: optional time-left bubble over a fun app (or Shorts)
+        val fl = FunLimit.last
+        if (prefs.optBubble && fl != null && fl.enabled && (FunSignal.pkg != null || FunSignal.shortsOn)) {
+            val left = fl.limitMs - (fl.usedMs + (now - fl.at).coerceAtLeast(0L))
+            FunBubble.show(this, if (left > 0L) "🎮 " + fmtDur(left) + " left" else "🎮 limit reached")
+        } else FunBubble.hide(this)
 
         // an app counts as unlocked while time is running, or while it is paused (user away) with time saved
         val active = apps.filter { !it.isStudyApp && (it.unlockedUntil > now || it.frozenAt(prefs.awayAt(it.packageName), now)) }
