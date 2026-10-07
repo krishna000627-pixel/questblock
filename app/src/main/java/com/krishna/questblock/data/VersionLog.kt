@@ -3,6 +3,15 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("89.0.0", "Auto-tick after copy",
+        listOf(
+            "Quest board: Copy as update prompt now ticks off every scroll it copied, so they show as sent (Clear done removes them)",
+        )),
+    VersionEntry("88.0.0", "Roadmap",
+        listOf(
+            "New 🗺️ Roadmap page (Quest board → Roadmap): 10 ideas for the next versions, each with an Add to Quest board button, plus Add all",
+            "The roadmap list lives in FeatureIdeas.kt, so new ideas are one line each",
+        )),
     VersionEntry("87.0.0", "Rules, Reliability, Cultivation",
         listOf(
             "Rules → 🎮 Fun time: daily limit, weekend limit, exam mode, pause fun music and routine first are now in one panel (removed from Settings)",

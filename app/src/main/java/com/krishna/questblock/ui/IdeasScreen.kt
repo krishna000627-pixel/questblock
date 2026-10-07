@@ -43,7 +43,7 @@ private fun tagOf(text: String): IdeaTag? =
 
 /** The quest board: write update prompts and ideas, tick them off, and copy them into a chat as one ready prompt. */
 @Composable
-fun IdeasScreen(onBack: () -> Unit) {
+fun IdeasScreen(onBack: () -> Unit, onOpenRoadmap: () -> Unit = {}) {
     val ctx = LocalContext.current
     var ideas by remember { mutableStateOf(IdeaStore.all(ctx)) }
     var field by remember { mutableStateOf(TextFieldValue("")) }
@@ -93,6 +93,7 @@ fun IdeasScreen(onBack: () -> Unit) {
                         fontWeight = FontWeight.Black, color = ColorText)
                     Text("Update scrolls for the next version", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
                 }
+                TextButton(onClick = onOpenRoadmap) { Text("🗺️ Roadmap", fontWeight = FontWeight.Bold) }
                 Surface(shape = RoundedCornerShape(10.dp), color = ColorCoin.copy(alpha = 0.15f)) {
                     Text("${open.size} open · $doneCount done", Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                         style = MaterialTheme.typography.labelMedium, color = ColorCoin, fontWeight = FontWeight.Bold)
@@ -150,6 +151,11 @@ fun IdeasScreen(onBack: () -> Unit) {
                         val logPart = if (withLog) "\n\nDebug log (last 15 lines):\n" +
                             com.krishna.questblock.util.DebugLog.read().lines().filter { it.isNotBlank() }.takeLast(15).joinToString("\n") else ""
                         copy(head + "\n\n" + open.mapIndexed { i, it -> "${i + 1}. ${it.text}" }.joinToString("\n") + logPart)
+                        // everything that was just copied is now sent: tick it all off
+                        val sent = ideas.indices.filter { !ideas[it].done }
+                        sent.forEach { IdeaStore.toggle(ctx, it) }
+                        editing = -1; reload()
+                        Toast.makeText(ctx, "Copied. ${sent.size} scrolls ticked off", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(12.dp),
                 ) { Text("📋 Copy as update prompt (${open.size})", fontWeight = FontWeight.Bold) }
