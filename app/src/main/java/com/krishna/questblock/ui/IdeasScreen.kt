@@ -123,6 +123,22 @@ fun IdeasScreen(onBack: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
             ) { Text("📋 Copy as update prompt (${open.size})") }
         }
+        OutlinedButton(
+            onClick = {
+                val cur = version.substringBefore('.').toIntOrNull()
+                val head = (if (cur != null) "QuestBlock v$cur (latest zip attached). Make a HEAVY IMPROVEMENT version and bump to v${cur + 1}."
+                    else "QuestBlock (latest zip attached). Make a HEAVY IMPROVEMENT version and bump the version.") +
+                    "\n1. Read the version history and the debug log lines below, and find what is weakest or buggy." +
+                    "\n2. Fix bugs first. Then make every page cleaner and faster: good design, even spacing, each page loads all at once (no half-loaded lists), big clear buttons." +
+                    "\n3. Add at most 5 improvements that matter most. Keep every existing feature working." +
+                    "\n4. Short reply: list what you changed, then give the Termux command."
+                val extra = if (open.isNotEmpty()) "\n\nAlso do these:\n" + open.mapIndexed { i, it -> "${i + 1}. ${it.text}" }.joinToString("\n") else ""
+                val logPart = "\n\nDebug log (last 15 lines):\n" +
+                    com.krishna.questblock.util.DebugLog.read().lines().filter { it.isNotBlank() }.takeLast(15).joinToString("\n")
+                copy(head + extra + logPart)
+            },
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+        ) { Text("🚀 Copy heavy-improvement prompt") }
 
         // ── List ────────────────────────────────────────────────────────
         if (ideas.isEmpty()) {

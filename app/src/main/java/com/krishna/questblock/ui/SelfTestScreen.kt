@@ -245,7 +245,8 @@ class SelfTestViewModel @Inject constructor(
         val d = shortsTotal() - s
         shortsStart = null
         setManual("Shorts swipe count", when { d == 3 -> TestStatus.OK; d > 0 -> TestStatus.WARN; else -> TestStatus.FAIL },
-            when { d == 3 -> "swiped 3 videos, counted 3"; d > 0 -> "swiped 3 videos, counted $d"; else -> "swiped 3 videos, counted 0: check the 'clips:' lines in the debug log" })
+            (when { d == 3 -> "swiped 3 videos, counted 3"; d > 0 -> "swiped 3 videos, counted $d"; else -> "swiped 3 videos, counted 0" }) +
+                if (d == 3) "" else "\n" + DebugLog.read().lines().filter { it.contains("clips:") }.takeLast(10).joinToString("\n"))
     }
 
     fun report(): String {

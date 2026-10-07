@@ -558,28 +558,22 @@ fun BlockScreen(
                         color = ColorDanger, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(8.dp))
                 }
-            if (questIsPrimary) {
-                Button(
-                    onClick = onQuests,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
-                    shape = RoundedCornerShape(14.dp),
-                ) { Text("Do a quest instead", fontWeight = FontWeight.Bold) }
-            } else {
-                OutlinedButton(
-                    onClick = onQuests,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorText),
-                    border = BorderStroke(1.dp, ColorSurfaceHigh),
-                    shape = RoundedCornerShape(14.dp),
-                ) { Text("Do a quest instead") }
-            }
+            Button(
+                onClick = onHome,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
+                shape = RoundedCornerShape(14.dp),
+            ) { Text("Go home", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium) }
 
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
 
-            TextButton(onClick = onHome) {
-                Text("Go home", color = ColorMuted)
-            }
+            OutlinedButton(
+                onClick = onQuests,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorText),
+                border = BorderStroke(1.dp, ColorSurfaceHigh),
+                shape = RoundedCornerShape(14.dp),
+            ) { Text("Do a quest instead") }
         }
 
         // Coin balance chip

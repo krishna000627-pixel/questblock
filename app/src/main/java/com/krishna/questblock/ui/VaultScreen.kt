@@ -170,6 +170,13 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
             )
         }
 
+        if (!isLoaded) {
+            item {
+                Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = ColorPrimary, modifier = Modifier.size(32.dp))
+                }
+            }
+        } else {
         // ── Study apps ───────────────────────────────────────────────────
         item {
             Card(colors = CardDefaults.cardColors(containerColor = ColorPrimary.copy(0.08f)),
@@ -220,15 +227,6 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
             AppCard(row, studyMin, onToggle = { vm.setBlocked(row.app, it) }, onOptions = { optionsFor = row })
         }
 
-        // ── Loading state ─────────────────────────────────────────────────
-        if (!isLoaded) {
-            item {
-                Box(Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = ColorPrimary, modifier = Modifier.size(28.dp))
-                }
-            }
-        }
-
         // ── Everything else ──────────────────────────────────────────────
         if (!ytOn || !igOn) {
             item { Text("All apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
@@ -253,6 +251,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
                     Text("No apps found", style = MaterialTheme.typography.titleMedium, color = ColorText)
                 }
             }
+        }
         }
     }
 

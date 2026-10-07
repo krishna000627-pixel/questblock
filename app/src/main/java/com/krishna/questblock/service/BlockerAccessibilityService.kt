@@ -251,6 +251,21 @@ class BlockerAccessibilityService : AccessibilityService() {
     private var shortsKind: String? = null
     private var shortsBackAt = 0L
     private var shortsBackCount = 0
+    private var lastClipSig = 0
+    private var lastSigCountAt = 0L
+
+    /** A fingerprint of the longer texts on screen (title, channel, caption). It changes when a new video is shown. */
+    private fun clipSignature(root: AccessibilityNodeInfo): Int {
+        val texts = ArrayList<String>()
+        fun walk(n: AccessibilityNodeInfo?, depth: Int) {
+            if (n == null || depth > 14 || texts.size >= 40) return
+            val s = (n.text ?: n.contentDescription)?.toString()
+            if (s != null && s.length >= 6 && s.any { it.isLetter() }) texts += s
+            for (i in 0 until n.childCount) walk(n.getChild(i), depth + 1)
+        }
+        walk(root, 0)
+        return if (texts.isEmpty()) 0 else texts.joinToString("|").hashCode()
+    }
 
     /** True when this view sits inside a comments (or engagement) panel, by walking up its parents. */
     private fun inCommentsPanel(node: android.view.accessibility.AccessibilityNodeInfo?): Boolean {
@@ -305,6 +320,19 @@ class BlockerAccessibilityService : AccessibilityService() {
         if (!onClips) {
             if (!scrolled && shortsKind == kind) stopShortTimer()
             return
+        }
+        // Backup count: some versions of the apps do not send a scroll event for every swipe. A new title/caption on screen
+        // while the timer runs means a new video. Not used within 1.2 s of a swipe that was already counted.
+        if (!scrolled && shortsKind == kind && shortsJob?.isActive == true) {
+            val sig = clipSignature(root)
+            val prev = lastClipSig
+            if (sig != 0) lastClipSig = sig
+            if (prev != 0 && sig != 0 && sig != prev && t - lastSwipeAt > 1200L) {
+                lastSwipeAt = t
+                ShortsStats.add(this, kind, 0L, 1)
+                DebugLog.d("clips: swipe counted ($kind) by new video on screen")
+                showCounter(kind)
+            }
         }
         if (scrolled) {
             lastSwipeAt = t
@@ -456,6 +484,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     }
 
     private fun stopShortTimer() {
+        lastClipSig = 0
         shortsKind?.let { markClipsAway(it) }
         FunSignal.shortsKind = null
         shortsJob?.cancel()
@@ -472,7 +501,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         shortsBackAt = t
         DebugLog.d("service: $kind clips blocked (fun limit / lock window), back x$shortsBackCount")
         Toast.makeText(this, (if (kind == ShortsStats.YT) "Shorts" else "Reels") + " is locked. Fun limit reached.", Toast.LENGTH_SHORT).show()
-        // BACK leaves the clips screen; if the app keeps landing on it, go home instead
+        // BACK leaves the clips screen and lands on the YouTube / Instagram page; only if the app keeps landing on clips, go to the phone's home
         performGlobalAction(if (shortsBackCount > 3) GLOBAL_ACTION_HOME else GLOBAL_ACTION_BACK)
         maybeBedtime()
     }

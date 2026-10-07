@@ -154,37 +154,8 @@ fun StatsSection(vm: StatsViewModel = hiltViewModel()) {
             }
         }
 
-        // Simulated Leaderboard
-        item {
-            Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
-                shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("🏆 Weekly Leaderboard", style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold, color = ColorText)
-                    Text("Simulated — based on your XP history",
-                        style = MaterialTheme.typography.labelSmall, color = ColorMuted)
-                    val board = buildLeaderboard(player, weeklyData)
-                    board.forEachIndexed { i, (name, xp) ->
-                        val isYou = name == (player.name.ifBlank { "You" })
-                        val rankColor = when (i) { 0 -> ColorCoin; 1 -> ColorMuted; 2 -> ColorWarning; else -> ColorMuted }
-                        Row(Modifier.fillMaxWidth()
-                            .background(if (isYou) ColorPrimary.copy(0.1f) else Color.Transparent, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("${i + 1}", style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Black, color = rankColor, modifier = Modifier.width(24.dp))
-                            Text(name, style = MaterialTheme.typography.bodyMedium,
-                                color = if (isYou) ColorPrimary else ColorText,
-                                fontWeight = if (isYou) FontWeight.Bold else FontWeight.Normal,
-                                modifier = Modifier.weight(1f))
-                            Text("$xp XP", style = MaterialTheme.typography.labelMedium,
-                                color = if (isYou) ColorPrimary else ColorMuted, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        }
+        // Daily leaderboard
+        item { LeaderboardCard(player, weeklyData) }
 
         // Shorts and Reels counters
         item {
@@ -296,21 +267,6 @@ private fun buildWeeklyXpData(log: String): List<Pair<String, Int>> {
     }
     return days.map { (label, dayNum) -> label to (xpByDay[dayNum] ?: 0) }
 }
-
-private fun buildLeaderboard(player: Player, weeklyData: List<Pair<String, Int>>): List<Pair<String, Int>> {
-    val yourXp = weeklyData.sumOf { it.second }
-    val you = (player.name.ifBlank { "You" }) to yourXp
-    // Simulated rivals based on your XP so it's always competitive
-    val rivals = listOf(
-        "Alex_Dev" to (yourXp * 0.85).toInt().coerceAtLeast(10),
-        "StudyPro" to (yourXp * 1.12).toInt().coerceAtLeast(15),
-        "NightOwl" to (yourXp * 0.6).toInt().coerceAtLeast(5),
-        "Focused_K" to (yourXp * 1.3).toInt().coerceAtLeast(20),
-        "QuestMstr" to (yourXp * 0.45).toInt().coerceAtLeast(3),
-    )
-    return (rivals + you).sortedByDescending { it.second }
-}
-
 
 // ── Dedicated Stats screen ─────────────────────────────────────────────────
 @Composable

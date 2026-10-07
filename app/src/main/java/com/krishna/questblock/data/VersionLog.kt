@@ -3,6 +3,25 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("86.0.0", "Shorts lock back to the app, bigger leaderboard",
+        listOf(
+            "Shorts/Reels lock: goes back to the YouTube / Instagram page again (phone home only if it keeps landing on Shorts/Reels)",
+            "Leaderboard: 80 simulated players with random names (a new set every day), you see the top 10 and your own rank below if you are lower",
+            "The leaderboard changes only twice a day (midnight and noon); arrows show the rank move from the morning board",
+        )),
+    VersionEntry("85.0.0", "Heavy improvement",
+        listOf(
+            "Ideas page: 🚀 Copy heavy-improvement prompt (asks for a full review, fixes, cleaner pages and up to 5 improvements, with your open ideas and the last debug lines)",
+            "New daily leaderboard: 8 players, medals, XP bars, arrows for how each rank moved since yesterday, XP needed to pass the next player. Rivals change every midnight",
+            "Vault: the page now loads as one set. A spinner shows until everything is ready, then all sections appear together",
+            "Shorts/Reels lock: sends you to the phone's home screen, not back into YouTube or Instagram",
+            "Lock page: Go home is now the big button; Do a quest instead is below it",
+        )),
+    VersionEntry("84.0.0", "Shorts count backup",
+        listOf(
+            "Shorts and Reels counter: a new title or caption on screen now also counts as a new video, for swipes that send no scroll signal (self test showed 1 of 3 counted)",
+            "Self test: when the swipe test is not 3 of 3, the report includes the last 10 'clips:' debug lines",
+        )),
     VersionEntry("83.0.0", "Manual checks in the Self test",
         listOf(
             "Self test → Manual checks: the app sends a test notification and you confirm you saw it",
