@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("74.0.0", "Build fix",
+        listOf(
+            "Fixes the v73 build error on the Home screen (hide coin balance switch)",
+        )),
     VersionEntry("73.0.0", "Optional features, Shorts block",
         listOf(
             "YouTube is never blocked or paused. Shorts is sent back once the fun limit is used up; Shorts minutes count as fun time",

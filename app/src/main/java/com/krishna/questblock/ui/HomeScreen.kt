@@ -160,7 +160,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
         if (problems.isNotEmpty()) item { HealthBanner(problems.first(), problems.size) }
 
         // ── Hero card ──────────────────────────────────────────────────────
-        item { HeroCard(player = player, doneToday = shownDone, total = shownTotal, onCoinsClick = onOpenShop) }
+        item { HeroCard(player = player, doneToday = shownDone, total = shownTotal, hideCoins = vm.prefs.optHideCoins, onCoinsClick = onOpenShop) }
 
         // ── Daily login bonus ──────────────────────────────────────────────
         if (vm.loginBonus > 0) {
@@ -300,7 +300,7 @@ fun TaskEntity.isForToday(endOfToday: Long): Boolean =
 
 // ── Hero card ──────────────────────────────────────────────────────────────
 @Composable
-private fun HeroCard(player: Player, doneToday: Int, total: Int, onCoinsClick: () -> Unit) {
+private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Boolean = false, onCoinsClick: () -> Unit) {
     val level = player.level()
     val xp    = player.xpIntoLevel()
     val frameColor = when (player.equippedFrame) {
@@ -359,7 +359,7 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int, onCoinsClick: (
 
             // Stats chips
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatPill(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable { onCoinsClick() }, "🪙", if (vm.prefs.optHideCoins) "•••" else "${player.coins}", "coins · shop")
+                StatPill(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable { onCoinsClick() }, "🪙", if (hideCoins) "•••" else "${player.coins}", "coins · shop")
                 StatPill(Modifier.weight(1f), "🔥", "${player.streak}d", "streak")
                 StatPill(Modifier.weight(1f), "✅", "$doneToday/$total", "done")
             }
