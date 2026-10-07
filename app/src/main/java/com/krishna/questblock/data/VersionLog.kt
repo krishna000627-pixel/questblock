@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("67.0.0", "Build fix for routine steps",
+        listOf(
+            "Fixes the v66 build error on Home (routine counters)",
+        )),
     VersionEntry("66.0.0", "Routines on Home: every step is a quest",
         listOf(
             "Home shows a routine's steps as separate lines instead of one routine quest",

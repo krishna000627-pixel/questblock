@@ -110,6 +110,9 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
     val comingUp = rest.filter { it.dueAt != null }.sortedWith(compareBy<TaskEntity> { it.dueAt ?: Long.MAX_VALUE }.thenBy { it.priority })
     val noDate   = rest.filter { it.dueAt == null }.sortedBy { it.priority }
 
+    val overdueCount = todayList.count { it.dueAt != null && it.dueAt < now }
+    val doneToday    = tasks.count { it.done && (it.completedAt ?: 0L) >= dayStart }
+    val totalToday   = doneToday + todayList.size
     // Routine day: only the routine's steps count as today's quests (each step is one quest)
     val subs by vm.subs.collectAsStateWithLifecycle()
     val routineToday = todayList.filter { it.questType == "routine" }
@@ -120,9 +123,6 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
     val shownDone = if (routineDay) stepDone else doneToday
     val shownTotal = if (routineDay) stepTotal else totalToday
 
-    val overdueCount = todayList.count { it.dueAt != null && it.dueAt < now }
-    val doneToday    = tasks.count { it.done && (it.completedAt ?: 0L) >= dayStart }
-    val totalToday   = doneToday + todayList.size
     val recentAch    = achievements.filter { it.unlockedAt != null }.sortedByDescending { it.unlockedAt }.take(3)
 
     val healthCtx = LocalContext.current
