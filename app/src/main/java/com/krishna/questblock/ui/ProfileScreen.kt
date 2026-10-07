@@ -100,6 +100,8 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                 }
             }
 
+            CultivationStrip(player.xp)
+
             // ── Hero info (read-only; edit it from Settings) ────────────────
             Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
                 shape = RoundedCornerShape(16.dp)) {

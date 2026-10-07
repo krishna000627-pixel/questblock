@@ -160,7 +160,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
         if (problems.isNotEmpty()) item { HealthBanner(problems.first(), problems.size) }
 
         // ── Hero card ──────────────────────────────────────────────────────
-        item { HeroCard(player = player, doneToday = shownDone, total = shownTotal, hideCoins = vm.prefs.optHideCoins, onCoinsClick = onOpenShop) }
+        item { HeroCard(player = player, doneToday = shownDone, total = shownTotal, hideCoins = vm.prefs.optHideCoins, onCoinsClick = onOpenShop, onAddQuest = { vm.addSuggestion(it) }) }
 
         // ── Daily login bonus ──────────────────────────────────────────────
         if (vm.loginBonus > 0) {
@@ -300,7 +300,7 @@ fun TaskEntity.isForToday(endOfToday: Long): Boolean =
 
 // ── Hero card ──────────────────────────────────────────────────────────────
 @Composable
-private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Boolean = false, onCoinsClick: () -> Unit) {
+private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Boolean = false, onCoinsClick: () -> Unit, onAddQuest: ((StarterQuest) -> Unit)? = null) {
     val level = player.level()
     val xp    = player.xpIntoLevel()
     val frameColor = when (player.equippedFrame) {
@@ -375,6 +375,8 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Bool
                         .background(Brush.horizontalGradient(listOf(ColorPrimary, ColorAccent)), CircleShape))
                 }
             }
+
+            CultivationStrip(player.xp, onAddQuest = onAddQuest)
         }
     }
 }

@@ -25,6 +25,7 @@ import javax.inject.Inject
 class RulesViewModel @Inject constructor(private val prefs: Prefs) : ViewModel() {
     var autoVerifyOn by mutableStateOf(prefs.autoVerify); private set
     var examOn by mutableStateOf(prefs.pendingFlag("exam") ?: prefs.examMode); private set
+    var funMin by mutableIntStateOf(prefs.pendingInt("limit") ?: prefs.funLimitMin); private set
     var weekendMin by mutableIntStateOf(prefs.pendingInt("weekend") ?: prefs.weekendFunLimitMin); private set
     var pendingNote by mutableStateOf(prefs.pendingSummary()); private set
     var routineFirstOn by mutableStateOf(prefs.routineFirst); private set
@@ -42,6 +43,7 @@ class RulesViewModel @Inject constructor(private val prefs: Prefs) : ViewModel()
     fun updateRoutineFirst(v: Boolean) { prefs.routineFirst = v; routineFirstOn = v }
     fun updatePauseMusic(v: Boolean) { prefs.changePauseMusic(v); pauseMusicOn = prefs.pendingFlag("music") ?: prefs.pauseMusicAtLimit; refreshNote() }
     fun updateExam(v: Boolean) { prefs.examMode = v; examOn = prefs.pendingFlag("exam") ?: prefs.examMode; refreshNote() }
+    fun updateFunLimit(v: Int) { prefs.funLimitMin = v.coerceIn(0, 360); funMin = prefs.pendingInt("limit") ?: prefs.funLimitMin; refreshNote() }
     fun updateWeekend(v: Int) { prefs.weekendFunLimitMin = v.coerceIn(0, 360); weekendMin = prefs.pendingInt("weekend") ?: prefs.weekendFunLimitMin; refreshNote() }
     fun updatePenalty(v: Int) { prefs.focusExitPenalty = v; penaltyCoins = prefs.focusExitPenalty }
     fun updateQuietEnabled(v: Boolean) { prefs.quietEnabled = v; quietEnabledOn = prefs.pendingFlag("quiet") ?: prefs.quietEnabled; refreshNote() }
@@ -76,6 +78,21 @@ fun RulesScreen(onBack: () -> Unit, onOpenSites: () -> Unit, vm: RulesViewModel 
             }
         }
         item {
+            RpgPanel("🎮 Fun time", accent = ColorCoin) {
+                Text(
+                    if (vm.funMin == 0) "Off. Set a daily cap for Fun & Games apps."
+                    else "Fun & Games apps lock when you reach it. Apps marked 🛡 (Free Fire) are never cut mid-use; they lock the next time you open them. Needs Usage access.",
+                    style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                StepRow("Daily limit", if (vm.funMin == 0) "off" else "${vm.funMin} min",
+                    { vm.updateFunLimit(vm.funMin - 15) }, { vm.updateFunLimit(vm.funMin + 15) })
+                StepRow("Weekend limit", if (vm.weekendMin == 0) "same" else "${vm.weekendMin} min",
+                    { vm.updateWeekend(vm.weekendMin - 15) }, { vm.updateWeekend(vm.weekendMin + 15) })
+                SwitchRow("Exam mode", "Fun max $EXAM_FUN_LIMIT_MIN min, locked 08:00–20:00", vm.examOn) { vm.updateExam(it) }
+                SwitchRow("Pause fun music at limit", "🎧 Ghost time stops when Fun is used up", vm.pauseMusicOn) { vm.updatePauseMusic(it) }
+                SwitchRow("Routine first", "📋 Fun unlocks cost +50% until today's routine is done", vm.routineFirstOn) { vm.updateRoutineFirst(it) }
+            }
+        }
+        item {
             HubCard {
                 Row(Modifier.fillMaxWidth().clickable { onOpenSites() }, verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -90,18 +107,10 @@ fun RulesScreen(onBack: () -> Unit, onOpenSites: () -> Unit, vm: RulesViewModel 
             HubCard {
                 Text("🤖 Automation", fontWeight = FontWeight.Bold, color = ColorPrimary, style = MaterialTheme.typography.titleSmall)
                 SwitchRow("Auto-complete quests", "Study and coding quests with a time in the name", vm.autoVerifyOn) { vm.updateAutoVerify(it) }
-                SwitchRow("Pause fun music at limit", "🎧 Ghost time stops when Fun is used up", vm.pauseMusicOn) { vm.updatePauseMusic(it) }
-                SwitchRow("Routine first", "📋 Fun unlocks cost +50% until today's routine is done", vm.routineFirstOn) { vm.updateRoutineFirst(it) }
                 val rc = androidx.compose.ui.platform.LocalContext.current
                 TextButton(onClick = {
                     runCatching { rc.startActivity(android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
                 }) { Text("🎧 Name the music app exactly (notification access)") }
-            }
-        }
-        item {
-            HubCard {
-                Text("📚 Exam mode", fontWeight = FontWeight.Bold, color = ColorPrimary, style = MaterialTheme.typography.titleSmall)
-                SwitchRow("Exam mode", "Fun max $EXAM_FUN_LIMIT_MIN min, locked 08:00–20:00", vm.examOn) { vm.updateExam(it) }
             }
         }
         item {
@@ -121,9 +130,7 @@ fun RulesScreen(onBack: () -> Unit, onOpenSites: () -> Unit, vm: RulesViewModel 
         }
         item {
             HubCard {
-                Text("⚖️ Limits and penalties", fontWeight = FontWeight.Bold, color = ColorPrimary, style = MaterialTheme.typography.titleSmall)
-                StepRow("Weekend fun limit", if (vm.weekendMin == 0) "same" else "${vm.weekendMin} min",
-                    { vm.updateWeekend(vm.weekendMin - 15) }, { vm.updateWeekend(vm.weekendMin + 15) })
+                Text("⚖️ Penalties", fontWeight = FontWeight.Bold, color = ColorPrimary, style = MaterialTheme.typography.titleSmall)
                 StepRow("Focus give-up cost", if (vm.penaltyCoins == 0) "off" else "${vm.penaltyCoins} \uD83E\uDE99",
                     { vm.updatePenalty(vm.penaltyCoins - 5) }, { vm.updatePenalty(vm.penaltyCoins + 5) })
             }

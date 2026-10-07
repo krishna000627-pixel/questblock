@@ -266,7 +266,8 @@ class KeepAliveService : Service() {
         } else if (siteExpired != null) {
             title = "⌛ ${com.krishna.questblock.data.pseudoLabel(siteExpired) ?: siteExpired} locked again"; text = "Unlock ran out. Open QuestBlock to earn more time."
         } else {
-            title = "QuestBlock is on"; text = "Blocking is active"
+            val strictLine = if (!prefs.strictMode) "🛡 Strict off" else if (prefs.strictPausedUntil > now) "🛡 Strict paused" else "🛡 Strict on"
+            title = "QuestBlock is on"; text = "Blocking is active · $strictLine"
         }
         val screenOn = getSystemService(PowerManager::class.java).isInteractive
         val key = "$title|$text|${progress / 2}"

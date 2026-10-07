@@ -108,6 +108,7 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
             key == "quiet" -> sp.edit().putBoolean("quiet_on", v == "1").apply()
             key == "study" -> sp.edit().putBoolean("studyblock_on", v == "1").apply()
             key == "music" -> sp.edit().putBoolean("pause_music_limit", v == "1").apply()
+            key == "strict" -> sp.edit().putBoolean("strict", v == "1").apply()
             key.startsWith("opt:") -> sp.edit().putBoolean(key.removePrefix("opt:"), v == "1").apply()
             key.startsWith("cat:") -> setCategory(key.removePrefix("cat:"), v.ifEmpty { null })
             key.startsWith("safe:") -> setFunSafe(key.removePrefix("safe:"), v == "1")
@@ -133,6 +134,7 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
                 k == "quiet" -> "quiet hours \u2192 " + if (v.first == "1") "on" else "off"
                 k == "study" -> "study hours \u2192 " + if (v.first == "1") "on" else "off"
                 k == "music" -> "pause fun music \u2192 " + if (v.first == "1") "on" else "off"
+                k == "strict" -> "strict mode \u2192 " + if (v.first == "1") "on" else "off"
                 k == "opt:shorts_block" -> "Shorts block \u2192 " + if (v.first == "1") "on" else "off"
                 k.startsWith("opt:short_") -> "a Shorts/Reels lock is removed"
                 k == "opt:ghost_counts" -> "music counts as fun time \u2192 " + if (v.first == "1") "on" else "off"
@@ -167,8 +169,8 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     }
 
     /** Switches: turning a fun rule OFF is loosening, turning it ON applies at once. */
-    private fun commitFlag(key: String, spKey: String, new: Boolean) {
-        val cur = sp.getBoolean(spKey, false)
+    private fun commitFlag(key: String, spKey: String, new: Boolean, def: Boolean = false) {
+        val cur = sp.getBoolean(spKey, def)
         val m = readPending()
         if (new == cur) {
             if (m.remove(key) != null) writePending(m)
@@ -346,13 +348,23 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         sp.edit().putString("fun_safe", s.joinToString("\n")).apply()
     }
 
+    /** Strict mode is ON by default (v87). Turning it off is loosening, so it waits until midnight like the fun rules. */
     var strictMode: Boolean
-        get() = sp.getBoolean("strict", false)
-        set(value) = sp.edit().putBoolean("strict", value).apply()
+        get() { applyDue(); return sp.getBoolean("strict", true) }
+        set(value) { commitFlag("strict", "strict", value, true) }
 
     var strictPausedUntil: Long
         get() = sp.getLong("strict_paused_until", 0L)
         set(value) = sp.edit().putLong("strict_paused_until", value).apply()
+
+    /** Strict mode can be paused only once per day (5 minutes). */
+    fun strictPauseUsedToday(): Boolean = sp.getLong("strict_pause_day", 0L) == today()
+    fun pauseStrict(minutes: Int = 5): Boolean {
+        if (strictPauseUsedToday()) return false
+        sp.edit().putLong("strict_pause_day", today()).apply()
+        strictPausedUntil = System.currentTimeMillis() + minutes * 60_000L
+        return true
+    }
 
     var onboardingDone: Boolean
         get() = sp.getBoolean("onboarding_done", false)
@@ -396,6 +408,11 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     var holdSeconds: Int
         get() = sp.getInt("hold_seconds", 3).coerceIn(1, 10)
         set(value) = sp.edit().putInt("hold_seconds", value.coerceIn(1, 10)).apply()
+
+    /** Cultivation realms on Home, Profile and the widget. Same key is read by the widget and the strip. */
+    var cultivationOn: Boolean
+        get() = sp.getBoolean("cultivation_on", true)
+        set(value) = sp.edit().putBoolean("cultivation_on", value).apply()
 
     var showQuotes: Boolean
         get() = sp.getBoolean("quotes", true)

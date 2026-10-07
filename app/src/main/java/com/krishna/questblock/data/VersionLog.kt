@@ -3,6 +3,19 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("87.0.0", "Rules, Reliability, Cultivation",
+        listOf(
+            "Rules → 🎮 Fun time: daily limit, weekend limit, exam mode, pause fun music and routine first are now in one panel (removed from Settings)",
+            "Reliability page now holds Permissions and Strict mode (removed from Settings)",
+            "Shorts/Reels lock page: Go home opens the YouTube / Instagram main screen, not Shorts and not the phone home",
+            "Stricter: strict mode is on by default, turning it off waits until midnight, its pause is 5 minutes once a day, and Shorts/Reels go to the phone home on the 3rd back",
+            "Ideas page is now the 📜 Quest board: one scrolling page, coloured tags, icon buttons, Copy heavy-improvement prompt removed",
+            "New 🌬️ Cultivation realms: Qi Condensation → Foundation → Core → Nascent Soul → Soul Transformation → Void Refinement → Immortal Ascension, with stages and XP to break through (Home and Profile)",
+            "RPG-framed panels on the new pages",
+            "Settings → Cultivation: switch the realms off or on (level and XP stay the same)",
+            "Breakthrough popup when you enter a new realm; ⚡ tribulation quest at a realm's peak stage and a 🐉 weekly boss quest on Home",
+            "Notification shows Strict on / paused / off; widget shows your realm",
+        )),
     VersionEntry("86.0.0", "Shorts lock back to the app, bigger leaderboard",
         listOf(
             "Shorts/Reels lock: goes back to the YouTube / Instagram page again (phone home only if it keeps landing on Shorts/Reels)",

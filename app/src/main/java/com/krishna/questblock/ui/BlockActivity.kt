@@ -181,6 +181,19 @@ class BlockActivity : ComponentActivity() {
     }
 
     private fun goHome() {
+        // Shorts / Reels lock: go to the app's main screen (home feed), not into Shorts/Reels and not the phone home screen
+        if (target.startsWith("short:")) {
+            val pkgs = if (target.removePrefix("short:") == "yt")
+                listOf("com.google.android.youtube", "app.revanced.android.youtube", "com.vanced.android.youtube")
+            else listOf("com.instagram.android")
+            val intent = pkgs.firstNotNullOfOrNull { packageManager.getLaunchIntentForPackage(it) }
+            if (intent != null) {
+                // CLEAR_TASK restarts the app on its main screen, so it cannot resume inside Shorts/Reels
+                runCatching {
+                    startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
+                }.onSuccess { launching = true; finishAndRemoveTask(); return }
+            }
+        }
         // blocked website: send the browser to a neutral page so other sites stay usable
         if (target.startsWith("site:") && browserPkg.isNotEmpty()) {
             runCatching {

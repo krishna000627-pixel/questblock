@@ -501,8 +501,8 @@ class BlockerAccessibilityService : AccessibilityService() {
         shortsBackAt = t
         DebugLog.d("service: $kind clips blocked (fun limit / lock window), back x$shortsBackCount")
         Toast.makeText(this, (if (kind == ShortsStats.YT) "Shorts" else "Reels") + " is locked. Fun limit reached.", Toast.LENGTH_SHORT).show()
-        // BACK leaves the clips screen and lands on the YouTube / Instagram page; only if the app keeps landing on clips, go to the phone's home
-        performGlobalAction(if (shortsBackCount > 3) GLOBAL_ACTION_HOME else GLOBAL_ACTION_BACK)
+        // BACK leaves the clips screen and lands on the YouTube / Instagram page; only if the app keeps landing on clips (3rd time), go to the phone's home
+        performGlobalAction(if (shortsBackCount > 2) GLOBAL_ACTION_HOME else GLOBAL_ACTION_BACK)
         maybeBedtime()
     }
 

@@ -2,18 +2,23 @@
 package com.krishna.questblock.ui
 
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
@@ -22,7 +27,21 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.krishna.questblock.data.IdeaStore
 
-/** Write update prompts and ideas, tick them off, and copy them into a chat as one ready prompt. */
+/** One kind of note: the text the line starts with, the short name shown on the pill, and its colour. */
+private class IdeaTag(val prefix: String, val label: String, val color: Color)
+
+private val IDEA_TAGS = listOf(
+    IdeaTag("🐞 Bug: ", "🐞 Bug", Color(0xFFFF5C5C)),
+    IdeaTag("✨ Feature: ", "✨ Feature", Color(0xFFFFC857)),
+    IdeaTag("🎨 UI: ", "🎨 UI", Color(0xFFB45CFF)),
+    IdeaTag("💡 Idea: ", "💡 Idea", Color(0xFF5C9EFF)),
+)
+
+private fun tagOf(text: String): IdeaTag? =
+    IDEA_TAGS.firstOrNull { text.startsWith(it.prefix.trim()) } ?:
+        IDEA_TAGS.firstOrNull { text.startsWith(it.label.substringBefore(' ')) }
+
+/** The quest board: write update prompts and ideas, tick them off, and copy them into a chat as one ready prompt. */
 @Composable
 fun IdeasScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
@@ -31,7 +50,6 @@ fun IdeasScreen(onBack: () -> Unit) {
     val draft = field.text
     val focus = remember { FocusRequester() }
     fun setDraft(t: String) { field = TextFieldValue(t, TextRange(t.length)) }
-    val tags = listOf("🐞 Bug: ", "✨ Feature: ", "🎨 UI: ")
 
     // put the tag at the start of the line the cursor is on, then leave the cursor ready to type
     fun applyTag(tag: String) {
@@ -40,7 +58,7 @@ fun IdeasScreen(onBack: () -> Unit) {
         val ls = if (pos == 0) 0 else t.lastIndexOf('\n', pos - 1) + 1
         val le = t.indexOf('\n', pos).let { if (it < 0) t.length else it }
         var line = t.substring(ls, le)
-        tags.forEach { line = line.removePrefix(it) }
+        IDEA_TAGS.forEach { line = line.removePrefix(it.prefix) }
         val newLine = tag + line
         val caret = if (line.isBlank()) ls + tag.length else ls + newLine.length
         field = TextFieldValue(t.substring(0, ls) + newLine + t.substring(le), TextRange(caret))
@@ -61,42 +79,58 @@ fun IdeasScreen(onBack: () -> Unit) {
     }
     fun reload() { ideas = IdeaStore.all(ctx) }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-            Column {
-                Text("Update prompts & ideas", style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold, color = ColorText)
-                Text("${open.size} open · $doneCount done", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+    LazyColumn(
+        Modifier.fillMaxSize().background(ColorBg),
+        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        // ── Header ──────────────────────────────────────────────────────
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
+                Column(Modifier.weight(1f)) {
+                    Text("📜 Quest board", style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Black, color = ColorText)
+                    Text("Update scrolls for the next version", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                }
+                Surface(shape = RoundedCornerShape(10.dp), color = ColorCoin.copy(alpha = 0.15f)) {
+                    Text("${open.size} open · $doneCount done", Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        style = MaterialTheme.typography.labelMedium, color = ColorCoin, fontWeight = FontWeight.Bold)
+                }
             }
         }
 
         // ── Write ───────────────────────────────────────────────────────
-        Card(colors = CardDefaults.cardColors(containerColor = ColorSurface), shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item {
+            RpgPanel(if (editing >= 0) "✏️ Edit scroll" else "✍️ New scroll", accent = ColorCoin) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    tags.forEach { tag ->
-                        AssistChip(onClick = { applyTag(tag) }, label = { Text(tag.trim().removeSuffix(":")) })
+                    IDEA_TAGS.forEach { tag ->
+                        AssistChip(
+                            onClick = { applyTag(tag.prefix) },
+                            label = { Text(tag.label.substringAfter(' '), fontWeight = FontWeight.SemiBold) },
+                            border = androidx.compose.foundation.BorderStroke(1.dp, tag.color.copy(alpha = 0.7f)),
+                            colors = AssistChipDefaults.assistChipColors(labelColor = tag.color),
+                        )
                     }
                 }
                 OutlinedTextField(
                     value = field, onValueChange = { field = it },
                     modifier = Modifier.fillMaxWidth().focusRequester(focus), minLines = 3, maxLines = 8,
-                    placeholder = { Text("What should the next update do?") },
+                    placeholder = { Text("What should the next update do? One line = one scroll.") },
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = {
                         if (editing >= 0) IdeaStore.update(ctx, editing, draft)
                         else {
                             // each non-empty line becomes its own idea, in the order written
-                            val tagOnly = tags.map { it.trim() }
+                            val tagOnly = IDEA_TAGS.map { it.prefix.trim() }
                             draft.lines().map { it.trim() }.filter { it.isNotEmpty() && it !in tagOnly }
                                 .reversed().forEach { IdeaStore.add(ctx, it) }
                         }
                         setDraft(""); editing = -1; reload()
-                    }, enabled = draft.isNotBlank(), shape = RoundedCornerShape(10.dp)) {
-                        Text(if (editing >= 0) "Save edit" else "Save")
+                    }, enabled = draft.isNotBlank(), shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = ColorCoin, contentColor = Color(0xFF1A1200))) {
+                        Text(if (editing >= 0) "Save edit" else "Save scroll", fontWeight = FontWeight.Bold)
                     }
                     if (editing >= 0) OutlinedButton(onClick = { setDraft(""); editing = -1 }, shape = RoundedCornerShape(10.dp)) { Text("Cancel") }
                     else OutlinedButton(onClick = { copy(draft) }, enabled = draft.isNotBlank(), shape = RoundedCornerShape(10.dp)) { Text("Copy") }
@@ -105,74 +139,72 @@ fun IdeasScreen(onBack: () -> Unit) {
         }
 
         // ── Ready prompt ────────────────────────────────────────────────
-        if (open.isNotEmpty()) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = withLog, onCheckedChange = { withLog = it })
-                Text("Add the last 15 debug log lines", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        if (open.isNotEmpty()) item {
+            RpgPanel("🚀 Send to the forge", accent = ColorPrimary) {
+                Button(
+                    onClick = {
+                        val cur = version.substringBefore('.').toIntOrNull()
+                        val head = if (cur != null)
+                            "QuestBlock v$cur (latest zip attached). Bump to v${cur + 1} and make these changes. Short reply, give the Termux command."
+                        else "QuestBlock (latest zip attached). Make these changes and bump the version. Short reply, give the Termux command."
+                        val logPart = if (withLog) "\n\nDebug log (last 15 lines):\n" +
+                            com.krishna.questblock.util.DebugLog.read().lines().filter { it.isNotBlank() }.takeLast(15).joinToString("\n") else ""
+                        copy(head + "\n\n" + open.mapIndexed { i, it -> "${i + 1}. ${it.text}" }.joinToString("\n") + logPart)
+                    },
+                    modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(12.dp),
+                ) { Text("📋 Copy as update prompt (${open.size})", fontWeight = FontWeight.Bold) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = withLog, onCheckedChange = { withLog = it })
+                    Text("Add the last 15 debug log lines", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                }
             }
-            Button(
-                onClick = {
-                    val cur = version.substringBefore('.').toIntOrNull()
-                    val head = if (cur != null)
-                        "QuestBlock v$cur (latest zip attached). Bump to v${cur + 1} and make these changes. Short reply, give the Termux command."
-                    else "QuestBlock (latest zip attached). Make these changes and bump the version. Short reply, give the Termux command."
-                    val logPart = if (withLog) "\n\nDebug log (last 15 lines):\n" +
-                        com.krishna.questblock.util.DebugLog.read().lines().filter { it.isNotBlank() }.takeLast(15).joinToString("\n") else ""
-                    copy(head + "\n\n" + open.mapIndexed { i, it -> "${i + 1}. ${it.text}" }.joinToString("\n") + logPart)
-                },
-                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
-            ) { Text("📋 Copy as update prompt (${open.size})") }
         }
-        OutlinedButton(
-            onClick = {
-                val cur = version.substringBefore('.').toIntOrNull()
-                val head = (if (cur != null) "QuestBlock v$cur (latest zip attached). Make a HEAVY IMPROVEMENT version and bump to v${cur + 1}."
-                    else "QuestBlock (latest zip attached). Make a HEAVY IMPROVEMENT version and bump the version.") +
-                    "\n1. Read the version history and the debug log lines below, and find what is weakest or buggy." +
-                    "\n2. Fix bugs first. Then make every page cleaner and faster: good design, even spacing, each page loads all at once (no half-loaded lists), big clear buttons." +
-                    "\n3. Add at most 5 improvements that matter most. Keep every existing feature working." +
-                    "\n4. Short reply: list what you changed, then give the Termux command."
-                val extra = if (open.isNotEmpty()) "\n\nAlso do these:\n" + open.mapIndexed { i, it -> "${i + 1}. ${it.text}" }.joinToString("\n") else ""
-                val logPart = "\n\nDebug log (last 15 lines):\n" +
-                    com.krishna.questblock.util.DebugLog.read().lines().filter { it.isNotBlank() }.takeLast(15).joinToString("\n")
-                copy(head + extra + logPart)
-            },
-            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
-        ) { Text("🚀 Copy heavy-improvement prompt") }
 
         // ── List ────────────────────────────────────────────────────────
-        if (ideas.isEmpty()) {
-            Text("Nothing yet. Write what you want changed, tick it off when it's done.",
-                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        if (ideas.isEmpty()) item {
+            Text("The board is empty. Write what you want changed, tick it off when it's done.",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted, modifier = Modifier.padding(4.dp))
         }
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
-            itemsIndexed(ideas) { i, idea ->
-                Card(colors = CardDefaults.cardColors(containerColor = ColorSurface), shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(start = 4.dp, end = 12.dp, top = 6.dp, bottom = 2.dp)) {
+        itemsIndexed(ideas) { i, idea ->
+            val tag = tagOf(idea.text)
+            val accent = if (idea.done) ColorMuted else (tag?.color ?: ColorPrimary)
+            val body = tag?.let { t -> idea.text.removePrefix(t.prefix).removePrefix(t.prefix.trim()).trim().ifEmpty { idea.text } } ?: idea.text
+            Surface(shape = RoundedCornerShape(14.dp), color = ColorSurface, modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.height(IntrinsicSize.Min)) {
+                    Box(Modifier.width(5.dp).fillMaxHeight().background(accent))
+                    Column(Modifier.weight(1f).padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 2.dp)) {
                         Row(verticalAlignment = Alignment.Top) {
                             Checkbox(checked = idea.done, onCheckedChange = { IdeaStore.toggle(ctx, i); reload() })
-                            Text(idea.text, Modifier.padding(top = 12.dp),
-                                color = if (idea.done) ColorMuted else ColorText,
-                                textDecoration = if (idea.done) TextDecoration.LineThrough else null,
-                                style = MaterialTheme.typography.bodyMedium)
+                            Column(Modifier.weight(1f).padding(top = 10.dp, end = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                if (tag != null) Surface(shape = RoundedCornerShape(6.dp), color = accent.copy(alpha = 0.15f)) {
+                                    Text(tag.label, Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                                        style = MaterialTheme.typography.labelSmall, color = accent, fontWeight = FontWeight.Bold)
+                                }
+                                Text(body,
+                                    color = if (idea.done) ColorMuted else ColorText,
+                                    textDecoration = if (idea.done) TextDecoration.LineThrough else null,
+                                    style = MaterialTheme.typography.bodyMedium)
+                            }
                         }
-                        Row {
-                            TextButton(onClick = { copy(idea.text) }) { Text("Copy") }
-                            TextButton(onClick = { setDraft(idea.text); editing = i; focus.requestFocus() }) { Text("Edit") }
-                            TextButton(onClick = {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            IconButton(onClick = { copy(idea.text) }, modifier = Modifier.size(38.dp)) {
+                                Icon(Icons.Default.ContentCopy, "Copy", tint = ColorMuted, modifier = Modifier.size(18.dp)) }
+                            IconButton(onClick = { setDraft(idea.text); editing = i; focus.requestFocus() }, modifier = Modifier.size(38.dp)) {
+                                Icon(Icons.Default.Edit, "Edit", tint = ColorMuted, modifier = Modifier.size(18.dp)) }
+                            IconButton(onClick = {
                                 IdeaStore.delete(ctx, i)
                                 if (editing == i) { editing = -1; setDraft("") } else if (editing > i) editing--
                                 reload()
-                            }) { Text("Delete", color = ColorMuted) }
+                            }, modifier = Modifier.size(38.dp)) {
+                                Icon(Icons.Default.Delete, "Delete", tint = ColorDanger.copy(alpha = 0.8f), modifier = Modifier.size(18.dp)) }
                         }
                     }
                 }
             }
-            if (doneCount > 0) item {
-                TextButton(onClick = { IdeaStore.clearDone(ctx); editing = -1; reload() },
-                    modifier = Modifier.fillMaxWidth()) { Text("Clear $doneCount done", color = ColorMuted) }
-            }
+        }
+        if (doneCount > 0) item {
+            TextButton(onClick = { IdeaStore.clearDone(ctx); editing = -1; reload() },
+                modifier = Modifier.fillMaxWidth()) { Text("Clear $doneCount done", color = ColorMuted) }
         }
     }
 }

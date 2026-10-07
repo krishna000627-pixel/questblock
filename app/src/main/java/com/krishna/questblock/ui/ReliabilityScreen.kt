@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.krishna.questblock.ui
 
+import android.app.admin.DevicePolicyManager
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -76,6 +77,72 @@ fun ReliabilityScreen(onBack: () -> Unit, vm: ReliabilityViewModel = hiltViewMod
                 Button(onClick = { ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
                     colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
                     shape = RoundedCornerShape(10.dp)) { Text("Turn the blocker back on", fontWeight = FontWeight.Bold) }
+            }
+        }
+
+        // ── Strict mode ─────────────────────────────────────────────────
+        RpgPanel("🛡️ Strict mode", accent = ColorDanger) {
+            var strict by remember { mutableStateOf(prefs.pendingFlag("strict") ?: prefs.strictMode) }
+            var note by remember { mutableStateOf(prefs.pendingSummary()) }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f)) {
+                    Text("Strict mode", color = ColorText, fontWeight = FontWeight.SemiBold)
+                    Text("Kicks you out of system Settings pages that show QuestBlock, so you can't uninstall it or turn off its accessibility service on impulse.",
+                        color = ColorMuted, style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(checked = strict, onCheckedChange = {
+                    prefs.strictMode = it
+                    strict = prefs.pendingFlag("strict") ?: prefs.strictMode
+                    note = prefs.pendingSummary()
+                }, colors = SwitchDefaults.colors(checkedThumbColor = ColorOnPrimary, checkedTrackColor = ColorPrimary,
+                    uncheckedThumbColor = ColorMuted, uncheckedTrackColor = ColorSurfaceHigh))
+            }
+            Text("🔒 Strict is on by default. Turning it off takes effect at midnight, and the 5-minute pause can be used once a day.",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            if (note.contains("strict")) Text(note, style = MaterialTheme.typography.bodySmall, color = ColorWarning, fontWeight = FontWeight.SemiBold)
+            if (strict) {
+                val paused = prefs.strictPausedUntil > now
+                val used = prefs.strictPauseUsedToday()
+                OutlinedButton(
+                    onClick = {
+                        if (prefs.pauseStrict(5)) Toast.makeText(ctx, "Strict mode paused for 5 minutes", Toast.LENGTH_SHORT).show()
+                        else Toast.makeText(ctx, "You already used today's pause", Toast.LENGTH_SHORT).show()
+                    },
+                    enabled = !used && !paused,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorWarning),
+                ) { Text(if (paused) "Paused (5 min)" else if (used) "Pause used today" else "Pause for 5 minutes") }
+            }
+        }
+
+        // ── Permissions ─────────────────────────────────────────────────
+        RpgPanel("✅ Permissions", accent = ColorPrimary) {
+            val pkgUriP = remember { Uri.parse("package:${ctx.packageName}") }
+            PermRow("Accessibility service", "Detects blocked apps", accessibilityOn) {
+                ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+            PermRow("Draw over other apps", "Shows the lock screen", remember(stamp) { Perms.overlayGranted(ctx) }) {
+                ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, pkgUriP))
+            }
+            PermRow("Battery unrestricted", "Keeps blocking alive", batteryOk) {
+                runCatching { ctx.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkgUriP)) }
+                    .onFailure { ctx.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+            }
+            PermRow("Device admin", "Protects against uninstall", remember(stamp) { Perms.adminActive(ctx) }) {
+                ctx.startActivity(
+                    Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+                        .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, Perms.adminComponent(ctx))
+                )
+            }
+            PermRow("Usage access", "Study coins and the App usage page", remember(stamp) { com.krishna.questblock.data.UsageTracker.hasAccess(ctx) }) {
+                ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+            }
+            PermRow("Notifications", "Reminders, unlock timer, alerts", notifOk) {
+                ctx.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName))
+            }
+            PermRow("Notification access", "Names the app playing music", remember(stamp) { Perms.notificationAccess(ctx) }) {
+                ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
             }
         }
 
@@ -160,5 +227,17 @@ private fun StatusLine(label: String, ok: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(if (ok) "✅" else "⚠️")
         Text(label, color = ColorText, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun PermRow(label: String, sub: String, ok: Boolean, onFix: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(if (ok) "✅" else "⚠️", style = MaterialTheme.typography.titleMedium)
+        Column(Modifier.weight(1f)) {
+            Text(label, color = ColorText, fontWeight = FontWeight.SemiBold)
+            Text(sub, color = ColorMuted, style = MaterialTheme.typography.bodySmall)
+        }
+        if (!ok) TextButton(onClick = onFix) { Text("Fix", fontWeight = FontWeight.Bold) }
     }
 }

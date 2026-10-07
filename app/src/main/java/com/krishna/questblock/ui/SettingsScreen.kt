@@ -95,10 +95,6 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
     val prefs = vm.prefs
     val player by vm.player.collectAsStateWithLifecycle()
 
-    // Permission status refreshes while you're on this screen
-    var tick by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) { while (true) { delay(1000L); tick++ } }
-
     var confirmReset by remember { mutableStateOf(false) }
 
     Column(
@@ -185,6 +181,15 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
             }
         }
 
+        // ── Cultivation ──────────────────────────────────────────────────
+        Section("🌬️ Cultivation") {
+            var cult by remember { mutableStateOf(prefs.cultivationOn) }
+            ToggleRow("Cultivation realms", "Realm, stage and breakthroughs on Home, Profile and the widget. Your level and XP stay the same when it is off.", cult) {
+                cult = it; prefs.cultivationOn = it
+                com.krishna.questblock.service.QuestWidget.refresh(ctx)
+            }
+        }
+
         // ── Lock screen ──────────────────────────────────────────────────
         Section("🔒 Lock screen") {
             var hold by remember { mutableIntStateOf(prefs.holdSeconds) }
@@ -223,22 +228,8 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                 modifier = Modifier.fillMaxWidth()) { Text("App categories") }
             OutlinedButton(onClick = onOpenUsage, shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth()) { Text("Daily app usage") }
-            var funMin by remember { mutableIntStateOf(prefs.pendingInt("limit") ?: prefs.funLimitMin) }
-            var funNote by remember { mutableStateOf(prefs.pendingSummary()) }
-            Text("\uD83C\uDFAE Fun time limit", color = ColorText, fontWeight = FontWeight.SemiBold)
-            Text(
-                if (funMin == 0) "Off. Set a daily cap for Fun & Games apps."
-                else "Fun & Games apps lock when you reach it. Apps marked \uD83D\uDEE1 (Free Fire) are never cut mid-use; they lock the next time you open them. Needs Usage access.",
-                style = MaterialTheme.typography.bodySmall, color = ColorMuted,
-            )
-            StepperRow("Daily limit", funMin, 0..360, 15, if (funMin == 0) "off" else "min") {
-                prefs.funLimitMin = it
-                funMin = prefs.pendingInt("limit") ?: prefs.funLimitMin
-                funNote = prefs.pendingSummary()
-            }
-            Text("\uD83D\uDD12 A commitment: lowering the limit applies now. Raising it or turning it off applies at midnight.",
+            Text("\uD83C\uDFAE The fun time limit and the other fun rules now live in Hub \u2192 Rules.",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-            if (funNote.isNotEmpty()) Text(funNote, style = MaterialTheme.typography.bodySmall, color = ColorWarning, fontWeight = FontWeight.SemiBold)
         }
 
         Section("🧪 Experiments") {
@@ -248,65 +239,10 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
 
         // ── Reliability ──────────────────────────────────────────────────
         Section("🛠️ Reliability") {
-            Text("Battery, autostart and keep-alive shortcuts so the blocker isn't killed in the background.",
+            Text("Permissions, strict mode, battery, autostart and keep-alive: everything that keeps the blocker alive and protected.",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             OutlinedButton(onClick = onOpenReliability, shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.fillMaxWidth()) { Text("Open Reliability page") }
-        }
-
-        // ── Strictness ───────────────────────────────────────────────────
-        Section("🛡️ Strict mode") {
-            var strict by remember { mutableStateOf(prefs.strictMode) }
-            ToggleRow("Strict mode", "Kicks you out of system Settings pages that show QuestBlock — so you can't uninstall it or turn off its accessibility service on impulse",
-                strict) { strict = it; prefs.strictMode = it }
-            if (strict) {
-                val paused = prefs.strictPausedUntil > System.currentTimeMillis()
-                OutlinedButton(
-                    onClick = {
-                        prefs.strictPausedUntil = System.currentTimeMillis() + 10 * 60_000L
-                        Toast.makeText(ctx, "Strict mode paused for 10 minutes", Toast.LENGTH_SHORT).show()
-                    },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorWarning),
-                ) { Text(if (paused) "Paused (10 min)" else "Pause for 10 minutes") }
-            }
-        }
-
-        // ── Permissions ──────────────────────────────────────────────────
-        Section("✅ Permissions") {
-            // reading `tick` here re-checks the status every second
-            val stamp = tick
-            val pkgUri = remember(stamp) { Uri.parse("package:${ctx.packageName}") }
-            PermRow("Accessibility service", "Detects blocked apps", Perms.accessibilityEnabled(ctx)) {
-                ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            }
-            PermRow("Draw over other apps", "Shows the lock screen", Perms.overlayGranted(ctx)) {
-                ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, pkgUri))
-            }
-            PermRow("Battery unrestricted", "Keeps blocking alive", Perms.batteryExempt(ctx)) {
-                ctx.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkgUri))
-            }
-            PermRow("Device admin", "Protects against uninstall", Perms.adminActive(ctx)) {
-                ctx.startActivity(
-                    Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
-                        .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, Perms.adminComponent(ctx))
-                )
-            }
-            PermRow("Usage access", "Study coins and the App usage page", com.krishna.questblock.data.UsageTracker.hasAccess(ctx)) {
-                ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-            }
-            val notifOk = Perms.notificationsOk(ctx)
-            PermRow("Notifications", "Reminders, unlock timer, alerts", notifOk) {
-                ctx.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                    .putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName))
-            }
-            PermRow("Notification access", "Names the app playing music", Perms.notificationAccess(ctx)) {
-                ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-            }
-            val lastActive = prefs.lastActiveAt
-            Text("Blocker last active: " +
-                (if (lastActive == 0L) "never" else agoText(System.currentTimeMillis() - lastActive)),
-                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                modifier = Modifier.fillMaxWidth()) { Text("Open Reliability & permissions") }
         }
 
         // ── Data ─────────────────────────────────────────────────────────
@@ -419,17 +355,6 @@ private fun StepperRow(label: String, value: Int, range: IntRange, step: Int, su
     }
 }
 
-@Composable
-private fun PermRow(label: String, sub: String, ok: Boolean, onFix: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(if (ok) "✅" else "⚠️")
-        Column(Modifier.weight(1f)) {
-            Text(label, color = ColorText, style = MaterialTheme.typography.bodyMedium)
-            Text(sub, color = ColorMuted, style = MaterialTheme.typography.bodySmall)
-        }
-        if (!ok) TextButton(onClick = onFix) { Text("Fix", color = ColorPrimary, fontWeight = FontWeight.Bold) }
-    }
-}
 
 private fun hhmmOf(m: Int) = "%02d:%02d".format(m / 60, m % 60)
 
@@ -460,7 +385,7 @@ internal fun OptionalFeaturesSection(prefs: Prefs, ctx: Context) {
         var counter by remember { mutableStateOf(prefs.optCounter) }
         ToggleRow("Shorts and Reels counter over the app", "Videos swiped, live. Needs Draw over other apps. Totals and minutes are on the Stats page.", counter) {
             if (it && !Perms.overlayGranted(ctx)) {
-                Toast.makeText(ctx, "Allow \"Draw over other apps\" first (Permissions below)", Toast.LENGTH_LONG).show()
+                Toast.makeText(ctx, "Allow \"Draw over other apps\" first (Settings → Reliability → Permissions)", Toast.LENGTH_LONG).show()
             } else { counter = it; prefs.optCounter = it }
         }
         var warn80 by remember { mutableStateOf(prefs.optWarn80) }
@@ -468,7 +393,7 @@ internal fun OptionalFeaturesSection(prefs: Prefs, ctx: Context) {
         var bubble by remember { mutableStateOf(prefs.optBubble) }
         ToggleRow("Time-left bubble", "Small bubble over fun apps and Shorts. Needs Draw over other apps.", bubble) {
             if (it && !Perms.overlayGranted(ctx)) {
-                Toast.makeText(ctx, "Allow \"Draw over other apps\" first (Permissions below)", Toast.LENGTH_LONG).show()
+                Toast.makeText(ctx, "Allow \"Draw over other apps\" first (Settings → Reliability → Permissions)", Toast.LENGTH_LONG).show()
             } else { bubble = it; prefs.optBubble = it }
         }
 
