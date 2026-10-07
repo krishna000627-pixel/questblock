@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("71.0.0", "Widget stays current",
+        listOf(
+            "Widget no longer says \"All clear today\" when quests or a routine exist: it updates whenever quests, steps or coins change, even if Home is not open",
+            "When nothing is due today it shows the next waiting quest",
+        )),
     VersionEntry("70.0.0", "Build fix for Routine first",
         listOf(
             "Fixes the v69 build error (missing import for the routine-day check)",

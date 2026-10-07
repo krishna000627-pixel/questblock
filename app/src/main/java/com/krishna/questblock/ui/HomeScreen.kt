@@ -126,13 +126,6 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
     val stepDone = routineToday.sumOf { t -> stepsByTask[t.id]?.count { it.done } ?: 0 }
     val shownDone = if (routineDay) stepDone else doneToday
     val shownTotal = if (routineDay) stepTotal else totalToday
-    // line for the home-screen widget: the next routine step, else the top quest
-    val widgetLine = run {
-        val t = routineToday.firstOrNull { tk -> stepsByTask[tk.id]?.any { !it.done } == true }
-        if (t != null) "📋 ${t.title}: ${(stepsByTask[t.id] ?: emptyList()).sortedBy { it.id }.first { !it.done }.title}"
-        else todayList.firstOrNull()?.let { "🎯 ${it.title}" } ?: "All clear today"
-    }
-    LaunchedEffect(widgetLine, player.coins) { com.krishna.questblock.service.QuestWidget.update(ctx, widgetLine, player.coins) }
 
     val recentAch    = achievements.filter { it.unlockedAt != null }.sortedByDescending { it.unlockedAt }.take(3)
 
