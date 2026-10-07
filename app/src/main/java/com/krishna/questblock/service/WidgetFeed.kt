@@ -4,6 +4,7 @@ import android.content.Context
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.SubTask
 import com.krishna.questblock.data.TaskEntity
+import com.krishna.questblock.data.isAvailableNow
 import com.krishna.questblock.data.nextRunDayStart
 import com.krishna.questblock.ui.isForToday
 import kotlinx.coroutines.CoroutineScope
