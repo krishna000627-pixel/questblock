@@ -102,6 +102,17 @@ object MusicLog {
         return guess
     }
 
+    /** One look right now, for the Self test: which app is playing and how we know. */
+    fun guessNow(c: Context): Pair<String?, String> {
+        fromSession(c)?.let { return it to "Android's media session (exact)" }
+        val now = System.currentTimeMillis()
+        val hidden = UsageTracker.hiddenPackages(c)
+        val open = UsageTracker.foreground(c, now - 30 * 60_000L, now).openPkg
+        val guess = if (open != null && open !in hidden && open != c.packageName) open
+            else UsageTracker.recentApp(c, 30 * 60_000L)
+        return guess to "a guess from the last app you used"
+    }
+
     @Synchronized
     private fun set(t: Long, on: Boolean, pkg: String) {
         val p = sp ?: return

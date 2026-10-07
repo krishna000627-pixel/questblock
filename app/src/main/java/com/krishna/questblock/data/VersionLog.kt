@@ -3,6 +3,13 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("83.0.0", "Manual checks in the Self test",
+        listOf(
+            "Self test → Manual checks: the app sends a test notification and you confirm you saw it",
+            "Music app guess: play music in any app, tap Check, the app names the app it thinks is playing and you mark it correct or wrong",
+            "Shorts swipe count: Start, swipe exactly 3 videos in Shorts or Reels, Finish; it shows how many it counted",
+            "Manual results are part of the totals and the copied report",
+        )),
     VersionEntry("82.0.0", "Self test page",
         listOf(
             "Settings → About → Self test: runs 20 checks by itself when you open it (permissions, storage, unlock prices, blocked websites, fun limit, Shorts counter storage, music log, widget, version log)",

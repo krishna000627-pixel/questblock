@@ -21,7 +21,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.krishna.questblock.data.*
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.krishna.questblock.service.QuestWidget
+import com.krishna.questblock.service.Reminders
+import kotlinx.coroutines.Dispatchers
 import com.krishna.questblock.service.WidgetFeed
 import com.krishna.questblock.util.DebugLog
 import com.krishna.questblock.util.MusicLog
@@ -182,11 +186,74 @@ class SelfTestViewModel @Inject constructor(
         }
     }
 
+    // ── Manual checks: the app does the work, you confirm what you see
+    var manual by mutableStateOf<List<TestResult>>(emptyList()); private set
+    private fun setManual(name: String, s: TestStatus, d: String) {
+        manual = manual.filter { it.name != name } + TestResult("Manual", name, s, d)
+    }
+
+    var notifSent by mutableStateOf(false); private set
+    @android.annotation.SuppressLint("MissingPermission")
+    fun sendTestNotification() {
+        if (!Perms.notificationsOk(ctx)) { setManual("Test notification", TestStatus.FAIL, "notifications are off for QuestBlock"); return }
+        runCatching {
+            Reminders.ensureChannel(ctx)
+            val n = NotificationCompat.Builder(ctx, Reminders.CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle("QuestBlock self test")
+                .setContentText("If you can read this, notifications work.")
+                .setAutoCancel(true).build()
+            NotificationManagerCompat.from(ctx).notify(9901, n)
+            notifSent = true
+        }.onFailure { setManual("Test notification", TestStatus.FAIL, "could not send: ${it.javaClass.simpleName}") }
+    }
+    fun confirmNotification(seen: Boolean) {
+        notifSent = false
+        runCatching { NotificationManagerCompat.from(ctx).cancel(9901) }
+        setManual("Test notification", if (seen) TestStatus.OK else TestStatus.FAIL,
+            if (seen) "you saw it" else "sent, but you did not see it: check Do Not Disturb and the notification settings")
+    }
+
+    var musicGuess by mutableStateOf<String?>(null); private set
+    var musicHow by mutableStateOf(""); private set
+    fun checkMusic() {
+        viewModelScope.launch(Dispatchers.Default) {
+            val am = ctx.getSystemService(android.media.AudioManager::class.java)
+            if (am == null || !am.isMusicActive) {
+                musicGuess = null
+                setManual("Music app guess", TestStatus.WARN, "no music was playing: start music in an app first")
+                return@launch
+            }
+            val (pkg, how) = MusicLog.guessNow(ctx)
+            musicGuess = pkg?.let {
+                runCatching { ctx.packageManager.getApplicationLabel(ctx.packageManager.getApplicationInfo(it, 0)).toString() }.getOrDefault(it)
+            } ?: "an unknown app"
+            musicHow = how
+        }
+    }
+    fun confirmMusic(correct: Boolean) {
+        setManual("Music app guess", if (correct) TestStatus.OK else TestStatus.FAIL,
+            "guessed ${musicGuess ?: "?"} from $musicHow: you said ${if (correct) "correct" else "wrong"}")
+        musicGuess = null
+    }
+
+    var shortsStart by mutableStateOf<Int?>(null); private set
+    private fun shortsTotal() = ShortsStats.today(ctx, ShortsStats.YT).n + ShortsStats.today(ctx, ShortsStats.IG).n
+    fun startShortsTest() { shortsStart = shortsTotal() }
+    fun finishShortsTest() {
+        val s = shortsStart ?: return
+        val d = shortsTotal() - s
+        shortsStart = null
+        setManual("Shorts swipe count", when { d == 3 -> TestStatus.OK; d > 0 -> TestStatus.WARN; else -> TestStatus.FAIL },
+            when { d == 3 -> "swiped 3 videos, counted 3"; d > 0 -> "swiped 3 videos, counted $d"; else -> "swiped 3 videos, counted 0: check the 'clips:' lines in the debug log" })
+    }
+
     fun report(): String {
-        val ok = results.count { it.status == TestStatus.OK }
+        val all = results + manual
+        val ok = all.count { it.status == TestStatus.OK }
         return buildString {
-            append("QuestBlock self test: $ok/${results.size} passed\n")
-            results.forEach { append("${icon(it.status)} ${it.group} / ${it.name}: ${it.detail}\n") }
+            append("QuestBlock self test: $ok/${all.size} passed\n")
+            all.forEach { append("${icon(it.status)} ${it.group} / ${it.name}: ${it.detail}\n") }
         }
     }
 }
@@ -198,9 +265,10 @@ fun SelfTestScreen(onBack: () -> Unit, vm: SelfTestViewModel = hiltViewModel()) 
     val ctx = LocalContext.current
     LaunchedEffect(Unit) { vm.run() }   // auto test when the page opens
     val res = vm.results
-    val ok = res.count { it.status == TestStatus.OK }
-    val warns = res.count { it.status == TestStatus.WARN }
-    val fails = res.count { it.status == TestStatus.FAIL }
+    val all = res + vm.manual
+    val ok = all.count { it.status == TestStatus.OK }
+    val warns = all.count { it.status == TestStatus.WARN }
+    val fails = all.count { it.status == TestStatus.FAIL }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp),
@@ -243,7 +311,45 @@ fun SelfTestScreen(onBack: () -> Unit, vm: SelfTestViewModel = hiltViewModel()) 
                 }
             }
         }
+        Text("Manual checks", style = MaterialTheme.typography.labelLarge, color = ColorMuted, fontWeight = FontWeight.SemiBold)
+        ManualCard("🔔 Test notification", "The app sends one. You tell it if you saw it.", vm.manual.firstOrNull { it.name == "Test notification" }) {
+            if (vm.notifSent) {
+                Text("A notification was just sent. Did you see it?", style = MaterialTheme.typography.bodySmall, color = ColorText)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { vm.confirmNotification(true) }, shape = RoundedCornerShape(10.dp)) { Text("Yes ✅") }
+                    OutlinedButton(onClick = { vm.confirmNotification(false) }, shape = RoundedCornerShape(10.dp)) { Text("No ❌") }
+                }
+            } else OutlinedButton(onClick = { vm.sendTestNotification() }, shape = RoundedCornerShape(10.dp)) { Text("Send test notification") }
+        }
+        ManualCard("🎧 Music app guess", "Play music in any app, then tap Check. It tells you which app it thinks is playing.", vm.manual.firstOrNull { it.name == "Music app guess" }) {
+            val g = vm.musicGuess
+            if (g != null) {
+                Text("I think the music is playing in: $g (from ${vm.musicHow}). Is that right?", style = MaterialTheme.typography.bodySmall, color = ColorText)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { vm.confirmMusic(true) }, shape = RoundedCornerShape(10.dp)) { Text("Correct ✅") }
+                    OutlinedButton(onClick = { vm.confirmMusic(false) }, shape = RoundedCornerShape(10.dp)) { Text("Wrong ❌") }
+                }
+            } else OutlinedButton(onClick = { vm.checkMusic() }, shape = RoundedCornerShape(10.dp)) { Text("Check now") }
+        }
+        ManualCard("📱 Shorts swipe count", "Tap Start, open YouTube Shorts or Instagram Reels, swipe exactly 3 videos, come back and tap Finish.", vm.manual.firstOrNull { it.name == "Shorts swipe count" }) {
+            if (vm.shortsStart != null) {
+                Text("Counting… swipe 3 videos in Shorts or Reels, then come back.", style = MaterialTheme.typography.bodySmall, color = ColorText)
+                Button(onClick = { vm.finishShortsTest() }, shape = RoundedCornerShape(10.dp)) { Text("Finish") }
+            } else OutlinedButton(onClick = { vm.startShortsTest() }, shape = RoundedCornerShape(10.dp)) { Text("Start") }
+        }
         Text("Tests use your real settings. The few they touch are put back.", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
         Spacer(Modifier.height(12.dp))
+    }
+}
+
+@Composable
+private fun ManualCard(title: String, hint: String, result: TestResult?, content: @Composable ColumnScope.() -> Unit) {
+    Card(colors = CardDefaults.cardColors(containerColor = ColorSurface), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = ColorText)
+            Text(hint, style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            content()
+            if (result != null) Text("${icon(result.status)} ${result.detail}", style = MaterialTheme.typography.bodySmall, color = ColorText)
+        }
     }
 }
