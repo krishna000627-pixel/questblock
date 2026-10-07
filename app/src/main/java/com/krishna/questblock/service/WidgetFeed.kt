@@ -22,9 +22,9 @@ object WidgetFeed {
         if (started) return
         started = true
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
-            combine(repo.tasks, repo.allSubTasks, repo.player) { tasks, subs, p -> Triple(pickFor(tasks, subs), p.coins, 0) }
+            combine(repo.tasks, repo.allSubTasks, repo.player) { tasks, subs, p -> Triple(pickFor(tasks, subs), p.coins, p.streak) }
                 .distinctUntilChanged()
-                .collect { (pick, coins, _) -> runCatching { QuestWidget.update(app.applicationContext, pick.line, coins, pick.action) } }
+                .collect { (pick, coins, streak) -> runCatching { QuestWidget.update(app.applicationContext, pick.line, coins, pick.action, streak) } }
         }
     }
 

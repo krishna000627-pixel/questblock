@@ -46,6 +46,8 @@ fun WeeklyReviewScreen(onBack: () -> Unit, vm: WeeklyViewModel = hiltViewModel()
 
     val week = log.filter { it.timestamp >= from }
     val earned = week.filter { it.amount > 0 }.sumOf { it.amount }
+    val prevFrom = UsageTracker.dayStart(13)
+    val prevEarned = log.filter { it.timestamp in prevFrom until from && it.amount > 0 }.sumOf { it.amount }
     val spent = week.filter { it.amount < 0 }.sumOf { -it.amount }
     val questsDone = tasks.count { it.done && (it.completedAt ?: 0L) >= from }
     val stepsDone = week.count { it.source == "Routine step" }
@@ -74,7 +76,7 @@ fun WeeklyReviewScreen(onBack: () -> Unit, vm: WeeklyViewModel = hiltViewModel()
                 Text("Last 7 days", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             }
         }
-        WeekCard("🪙 Coins", "+$earned earned · -$spent spent")
+        WeekCard("🪙 Coins", "+$earned earned · -$spent spent" + if (prevEarned > 0) "  (${if (earned >= prevEarned) "+" else ""}${earned - prevEarned} vs last week)" else "")
         WeekCard("✅ Quests", "$questsDone finished · $stepsDone routine steps" + if (skipped > 0) " · $skipped skipped" else "")
         WeekCard("🎧 Music off screen", if (musicMin >= 60) "${musicMin / 60}h ${musicMin % 60}m" else "${musicMin}m")
         if (bestDay != null) WeekCard("⭐ Best day", "${bestDay.key} (+${bestDay.value} coins)")
@@ -84,6 +86,12 @@ fun WeeklyReviewScreen(onBack: () -> Unit, vm: WeeklyViewModel = hiltViewModel()
                 Text(tip, style = MaterialTheme.typography.bodyMedium, color = ColorText)
             }
         }
+        OutlinedButton(onClick = {
+            val cm = ctx.getSystemService(android.content.ClipboardManager::class.java)
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("Weekly review",
+                "Weekly review (last 7 days)\nCoins: +$earned / -$spent\nQuests: $questsDone, routine steps: $stepsDone\nMusic off screen: ${musicMin}m\nTip: $tip"))
+            android.widget.Toast.makeText(ctx, "Copied", android.widget.Toast.LENGTH_SHORT).show()
+        }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Text("Copy review") }
         Text("Coin numbers use your last 500 coin events.", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
         Spacer(Modifier.height(12.dp))
     }

@@ -3,6 +3,19 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("82.0.0", "Self test page",
+        listOf(
+            "Settings → About → Self test: runs 20 checks by itself when you open it (permissions, storage, unlock prices, blocked websites, fun limit, Shorts counter storage, music log, widget, version log)",
+            "Each check shows ✅ passed, ⚠️ warning or ❌ failed with the reason; Run again and Copy report buttons",
+            "The checks use your real settings and put back anything they touch",
+        )),
+    VersionEntry("81.0.0", "Polish pass",
+        listOf(
+            "Weekly review: compares coins with the week before and has a Copy review button",
+            "Ideas: tick 'Add the last 15 debug log lines' to put them in the copied update prompt",
+            "Widget: shows your streak next to your coins",
+            "Release script: a failed build prints only the compile errors (also saved in ~/build_errors.txt)",
+        )),
     VersionEntry("80.0.0", "Comments are not counted",
         listOf(
             "Scrolling the comments panel in Shorts or Reels no longer counts as a video swipe (the debug log shows 'clips: comments scroll ignored')",

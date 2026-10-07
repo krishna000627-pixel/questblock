@@ -18,11 +18,11 @@ class QuestWidget : AppWidgetProvider() {
     companion object {
         private const val SP = "quest_widget"
 
-        fun update(ctx: Context, line: String, coins: Int, action: String = "") {
+        fun update(ctx: Context, line: String, coins: Int, action: String = "", streak: Int = 0) {
             val app = ctx.applicationContext
             val sp = app.getSharedPreferences(SP, Context.MODE_PRIVATE)
-            if (sp.getString("line", null) == line && sp.getInt("coins", -1) == coins && sp.getString("action", "") == action) return
-            sp.edit().putString("line", line).putInt("coins", coins).putString("action", action).apply()
+            if (sp.getString("line", null) == line && sp.getInt("coins", -1) == coins && sp.getString("action", "") == action && sp.getInt("streak", -1) == streak) return
+            sp.edit().putString("line", line).putInt("coins", coins).putString("action", action).putInt("streak", streak).apply()
             refresh(app)
         }
 
@@ -39,7 +39,7 @@ class QuestWidget : AppWidgetProvider() {
             val sp = ctx.getSharedPreferences(SP, Context.MODE_PRIVATE)
             val views = RemoteViews(ctx.packageName, R.layout.quest_widget)
             views.setTextViewText(R.id.widget_line, sp.getString("line", "Open QuestBlock"))
-            views.setTextViewText(R.id.widget_coins, "🪙 ${sp.getInt("coins", 0)}")
+            views.setTextViewText(R.id.widget_coins, "🪙 ${sp.getInt("coins", 0)}" + sp.getInt("streak", 0).let { if (it > 0) "  ·  🔥 $it" else "" })
             // optional Done button (Settings → Optional features)
             val action = sp.getString("action", "").orEmpty()
             val doneOn = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getBoolean("opt_widget_done", false)

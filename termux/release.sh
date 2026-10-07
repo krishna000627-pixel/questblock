@@ -22,7 +22,12 @@ for _ in $(seq 1 20); do
   sleep 4
 done
 [ -n "$RUN_ID" ] || { echo "No CI run found. Check the Actions tab."; exit 1; }
-gh run watch "$RUN_ID" --exit-status
+if ! gh run watch "$RUN_ID" --exit-status; then
+  echo "==> BUILD FAILED. Compile errors:"
+  gh run view "$RUN_ID" --log-failed 2>/dev/null | grep -o "e: file.*" | sed 's#file:///home/runner/work/[^/]*/[^/]*/app/src/main/java/com/krishna/[^/]*/##' | sort -u | head -15 | tee "$HOME/build_errors.txt"
+  echo "==> Paste these lines to Claude (also saved in ~/build_errors.txt)"
+  exit 1
+fi
 
 OUT="$HOME/storage/downloads"
 [ -d "$OUT" ] || { echo "Tip: run termux-setup-storage once to save to Downloads."; OUT="$HOME"; }

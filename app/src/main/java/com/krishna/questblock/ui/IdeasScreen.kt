@@ -47,6 +47,7 @@ fun IdeasScreen(onBack: () -> Unit) {
         focus.requestFocus()
     }
     var editing by remember { mutableIntStateOf(-1) }
+    var withLog by remember { mutableStateOf(false) }
     val version = remember {
         runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
     }
@@ -105,13 +106,19 @@ fun IdeasScreen(onBack: () -> Unit) {
 
         // ── Ready prompt ────────────────────────────────────────────────
         if (open.isNotEmpty()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = withLog, onCheckedChange = { withLog = it })
+                Text("Add the last 15 debug log lines", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            }
             Button(
                 onClick = {
                     val cur = version.substringBefore('.').toIntOrNull()
                     val head = if (cur != null)
                         "QuestBlock v$cur (latest zip attached). Bump to v${cur + 1} and make these changes. Short reply, give the Termux command."
                     else "QuestBlock (latest zip attached). Make these changes and bump the version. Short reply, give the Termux command."
-                    copy(head + "\n\n" + open.mapIndexed { i, it -> "${i + 1}. ${it.text}" }.joinToString("\n"))
+                    val logPart = if (withLog) "\n\nDebug log (last 15 lines):\n" +
+                        com.krishna.questblock.util.DebugLog.read().lines().filter { it.isNotBlank() }.takeLast(15).joinToString("\n") else ""
+                    copy(head + "\n\n" + open.mapIndexed { i, it -> "${i + 1}. ${it.text}" }.joinToString("\n") + logPart)
                 },
                 modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
             ) { Text("📋 Copy as update prompt (${open.size})") }
