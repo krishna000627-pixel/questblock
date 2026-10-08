@@ -411,7 +411,7 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
 
     /** Cultivation realms on Home, Profile and the widget. Same key is read by the widget and the strip. */
     var cultivationOn: Boolean
-        get() = sp.getBoolean("cultivation_on", true)
+        get() = sp.getBoolean("cultivation_on", false)
         set(value) = sp.edit().putBoolean("cultivation_on", value).apply()
 
     var showQuotes: Boolean

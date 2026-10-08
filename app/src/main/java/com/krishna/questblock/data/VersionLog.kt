@@ -3,6 +3,12 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("94.0.0", "Beginner badge, gentler start",
+        listOf(
+            "Cultivation realms are off by default (turn on in Settings -> Cultivation)",
+            "New \uD83C\uDF31 Beginner badge, unlocked from the start",
+            "Start economy: 30 starting coins (was 20) and 10 coins for the daily login (was 5)",
+        )),
     VersionEntry("93.0.0", "No Instagram, no Reels",
         listOf(
             "If Instagram is not installed, the Instagram Reels lock row (Vault) and the Reels counter/stats are hidden",

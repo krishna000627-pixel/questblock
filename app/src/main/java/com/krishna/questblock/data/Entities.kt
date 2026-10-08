@@ -65,7 +65,7 @@ data class BlockedApp(
 @Entity(tableName = "player")
 data class Player(
     @PrimaryKey val id: Int = 1,
-    val coins: Int = 20,
+    val coins: Int = 30,
     val xp: Int = 0,
     val streak: Int = 0,
     val lastCompletionDay: Long = 0L,

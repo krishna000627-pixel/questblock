@@ -63,6 +63,7 @@ object Progression {
         val d = s.days
         val ironWill = s.funLimitMin > 0 && d.drop(1).take(7).size == 7 && d.drop(1).take(7).all { it.funMin <= s.funLimitMin }
         return listOf(
+            Badge("beginner", "Beginner", "\uD83C\uDF31", "Welcome to QuestBlock. Your journey starts here", true, false),
             Badge("iron_will", "Iron Will", "🛡️", "Stay under your Fun limit 7 days in a row", ironWill, false),
             Badge("deep_diver", "Deep Diver", "🎯", "Finish a focus session of 60 min or more", s.longestFocusMin >= 60, false),
             Badge("scholar", "Scholar", "📚", "10 hours of study in one week", s.thisWeek.sumOf { it.studyMin } >= 600, false),

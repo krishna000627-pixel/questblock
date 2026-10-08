@@ -19,7 +19,7 @@ import kotlin.math.roundToInt
 fun baseReward(difficulty: Int): Int = when (difficulty) { 1 -> 10; 2 -> 25; else -> 50 }
 const val FOCUS_BONUS_COINS = 15
 const val STEP_SKIP_COST = 5
-const val DAILY_LOGIN_COINS = 5
+const val DAILY_LOGIN_COINS = 10
 
 const val DEFAULT_RATE_PER_5 = 5
 data class UnlockResult(

@@ -76,7 +76,7 @@ private val TRIBULATION = StarterQuest("⚡", "Tribulation: one 45-min focused b
 fun CultivationStrip(xp: Int, modifier: Modifier = Modifier, onAddQuest: ((StarterQuest) -> Unit)? = null) {
     val ctx = LocalContext.current
     val sp = remember { ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE) }
-    if (!sp.getBoolean("cultivation_on", true)) return
+    if (!sp.getBoolean("cultivation_on", false)) return
     val c = remember(xp) { Cultivation.of(xp) }
     val accent = REALM_COLORS[c.realmIndex % REALM_COLORS.size]
     val frac = if (c.atTop || c.need == 0) 1f else c.into / c.need.toFloat()

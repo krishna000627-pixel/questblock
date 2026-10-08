@@ -40,7 +40,7 @@ class QuestWidget : AppWidgetProvider() {
             val views = RemoteViews(ctx.packageName, R.layout.quest_widget)
             views.setTextViewText(R.id.widget_line, sp.getString("line", "Open QuestBlock"))
             val xp = sp.getInt("xp", -1)
-            val cultOn = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getBoolean("cultivation_on", true)
+            val cultOn = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getBoolean("cultivation_on", false)
             val realm = if (xp >= 0 && cultOn) com.krishna.questblock.engine.Cultivation.of(xp).let {
                 "  ·  ${it.realm.emoji} ${it.realm.name.substringBefore(' ')} ${if (it.stageName.startsWith("Layer")) "L" + it.stageName.removePrefix("Layer ") else it.stageName}"
             } else ""
