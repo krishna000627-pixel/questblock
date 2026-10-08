@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("106.0.0", "Chapters + study first",
+        listOf(
+            "New Chapters checklist (Home -> Chapters): type the chapter count for Physics, Chemistry, Maths, Hindi and English, tick them off, see syllabus %",
+            "Study first, coding next, far less fun: study earns 1 coin per 3 min (was 5), Fun limit 30 min (45 weekends), fun apps in the Vault cost double, coding stays half price",
+        )),
     VersionEntry("105.0.0", "Same time left everywhere",
         listOf(
             "Vault now shows the same unlock time as the notification: while you are away it says Paused with the time saved, instead of counting down",

@@ -21,6 +21,7 @@ class QuestApp : Application() {
         val mig = getSharedPreferences("qb_migrations", MODE_PRIVATE)   // survives the reset below
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             runCatching {
+                var studyFirstPending = false
                 // v103: one-time full reset (database + settings), then balanced starting rules
                 if (!mig.getBoolean("reset_v103", false)) {
                     repo.resetAll()
@@ -37,12 +38,22 @@ class QuestApp : Application() {
                     sp.edit().putBoolean("short_yt", true).apply()
                     mig.edit().putBoolean("yt_shorts_v104", true).apply()
                 }
+                // v106 study first, then coding, far less fun (one time; you can change everything after)
+                if (!mig.getBoolean("study_first_v106", false)) {
+                    sp.edit().putInt("fun_limit_min", 30).putInt("weekend_fun_limit", 45).putInt("study_min", 3).apply()
+                    mig.edit().putBoolean("study_first_v106", true).apply()
+                    studyFirstPending = true
+                }
                 if (!sp.getBoolean("starter_vault_v103", false)) {
                     val pm = packageManager
                     val i = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_LAUNCHER)
                     val labels = pm.queryIntentActivities(i, 0).associate { it.activityInfo.packageName to it.loadLabel(pm).toString() }
                     repo.seedStarterVault(labels)
                     sp.edit().putBoolean("starter_vault_v103", true).apply()
+                }
+                if (studyFirstPending || !mig.getBoolean("fun_price_v106", false)) {
+                    repo.makeFunExpensive()
+                    mig.edit().putBoolean("fun_price_v106", true).apply()
                 }
             }
         }

@@ -552,6 +552,14 @@ class GameRepository @Inject constructor(
         val pw = "xyz.penpencil.physicswala"
         labels[pw]?.let { if (appDao.get(pw) == null) appDao.upsert(BlockedApp(packageName = pw, label = it, isStudyApp = true)) }
     }
+    /** v106 study-first: fun apps in the Vault cost double. Coding stays at half price. */
+    suspend fun makeFunExpensive() {
+        listOf("com.JindoBlu.TwoPlayerGamesChallenge", "com.supercell.clashofclans", "com.ohbibi.fps", "com.freefire.biocodes",
+            "org.telegram.messenger", "com.radio.pocketfm", "in.startv.hotstar", "com.pinterest", "com.snaptube.premium",
+            "com.instantbits.cast.webvideo", "org.torproject.torbrowser").forEach { pkg ->
+            appDao.get(pkg)?.let { appDao.upsert(it.copy(priceMult = 200)) }
+        }
+    }
     suspend fun setStudyApp(pkg: String, label: String, isStudy: Boolean) {
         if (isStudy) appDao.upsert((appDao.get(pkg) ?: BlockedApp(packageName = pkg, label = label))
             .copy(isStudyApp = true, unlockedUntil = 0L))
