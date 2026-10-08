@@ -154,7 +154,20 @@ fun IdeasScreen(onBack: () -> Unit) {
                         else "QuestBlock (latest zip attached). Make these changes and bump the version. Short reply, give the Termux command."
                         val logPart = if (withLog) "\n\nDebug log (last 15 lines):\n" +
                             com.krishna.questblock.util.DebugLog.read().lines().filter { it.isNotBlank() }.takeLast(15).joinToString("\n") else ""
-                        copy(head + "\n\n" + open.mapIndexed { i, it -> "${i + 1}. ${it.text}" }.joinToString("\n") + logPart)
+                        // changes grouped: bugs, features, UI, ideas, then untagged; numbered straight through
+                        val ordered = IDEA_TAGS.flatMap { t -> open.filter { tagOf(it.text) === t } } + open.filter { tagOf(it.text) == null }
+                        val changes = ordered.mapIndexed { i, it -> "${i + 1}. ${it.text}" }.joinToString("\n")
+                        val rules = "Rules:\n" +
+                            "- Bump versionCode and versionName in app/build.gradle.kts.\n" +
+                            "- Add a new entry at the top of VERSION_LOG in data/VersionLog.kt. Read VersionLog.kt first for more info: it holds the full history of past updates and what each one changed, so do not redo or undo them.\n" +
+                            "- Change only what the list above needs.\n" +
+                            "- Keep the reply short."
+                        val cmd = if (cur != null) {
+                            val n = cur + 1
+                            "\n\nEnd your reply with this Termux command:\n" +
+                                "cd ~ && unzip -oq ~/storage/downloads/QuestBlock_v$n.zip -d ~/qb$n && cp -r ~/qb$n/QuestBlock_v$n/. ~/QuestBlock/ && rm -rf ~/qb$n && cd ~/QuestBlock && bash termux/release.sh \"v$n: short summary\""
+                        } else ""
+                        copy(head + "\n\n" + changes + "\n\n" + rules + cmd + logPart)
                         // everything that was just copied is now sent: tick it all off
                         val sent = ideas.indices.filter { !ideas[it].done }
                         sent.forEach { IdeaStore.toggle(ctx, it) }

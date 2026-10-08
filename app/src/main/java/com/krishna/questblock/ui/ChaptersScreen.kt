@@ -401,7 +401,6 @@ fun ChapterSubjectScreen(subjectId: String, startSchool: Boolean, onBack: () -> 
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
             Text("${st.emoji}  ${s.name}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
         }
-        PageSwitch(school) { school = it }
         Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(ColorSurface).padding(16.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -423,9 +422,6 @@ fun ChapterSubjectScreen(subjectId: String, startSchool: Boolean, onBack: () -> 
                 }
             }
         }
-        Text(if (school) "Tap a chapter = taught in school.  Tap \uD83D\uDCD3 = copy complete."
-             else "Tap a chapter = studied (only chapters taught in school).  Tap \uD83D\uDD01 = revised this week (resets every Monday).",
-            style = MaterialTheme.typography.labelSmall, color = ColorMuted, modifier = Modifier.padding(start = 4.dp))
         for (n in 1..s.total) {
             st.groups.firstOrNull { it.first == n }?.let { (_, title) ->
                 Text(title, style = MaterialTheme.typography.labelLarge, color = st.color,

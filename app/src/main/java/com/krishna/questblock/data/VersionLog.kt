@@ -3,6 +3,15 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("127.0.0", "Detailed update prompt",
+        listOf(
+            "Quest board: Copy as update prompt now groups the scrolls (bugs, features, UI, ideas, then the rest), adds short rules (bump the version, add a version log entry, change only what is listed), tells Claude to read VersionLog.kt for the update history, and ends with the Termux update command for the next version. The screen itself is unchanged",
+        )),
+    VersionEntry("126.0.0", "Cleaner subject pages",
+        listOf(
+            "Chapters: subject pages (Physics, Chemistry, Maths, Hindi, English) no longer have the Study / School switch. They open in the mode you picked on the main Chapters page",
+            "Chapters: removed the 'Tap a chapter = ...' hint line from the Study and School subject pages",
+        )),
     VersionEntry("125.0.0", "Today's attendance coins",
         listOf(
             "Attendance: anything already marked Present today before coins existed now gets its coins when you open the Attendance page (once per slot, and taken back if you change it)",
