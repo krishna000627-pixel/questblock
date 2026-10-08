@@ -41,8 +41,11 @@ private data class Mark(val got: Float, val max: Float) {
     val pct: Float get() = if (max > 0f) got * 100f / max else 0f
 }
 
+private const val PASS_PCT = 33f
+private fun Mark.failed(): Boolean = pct < PASS_PCT
+
 private fun fmt(v: Float): String = if (v == v.toInt().toFloat()) v.toInt().toString() else "%.1f".format(v)
-private fun pctColor(p: Float): Color = when { p >= 75f -> ColorPrimary; p >= 50f -> ColorWarning; else -> ColorDanger }
+private fun pctColor(p: Float): Color = when { p >= 75f -> ColorPrimary; p >= 50f -> ColorWarning; else -> ColorDanger }   // below 33% is a fail (also red)
 
 private fun readMark(sp: android.content.SharedPreferences, test: String, subj: String): Mark? {
     val v = sp.getString("marks_${test}_$subj", null) ?: return null
@@ -135,6 +138,13 @@ fun MarksScreen(onBack: () -> Unit) {
                         color = if (d >= 0) ColorPrimary else ColorDanger, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
                 }
                 val ms = data[latest.id].orEmpty()
+                val failedIds = ms.filter { it.value.failed() }.keys
+                if (failedIds.isNotEmpty()) {
+                    Text("\u274C Result: FAIL in " + failedIds.joinToString(", ") { id -> MARK_SUBJECTS.first { it.first == id }.second },
+                        color = ColorDanger, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                } else if (ms.size == MARK_SUBJECTS.size) {
+                    Text("\u2705 Result: PASS", color = ColorPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                }
                 if (ms.size >= 2) {
                     val best = ms.maxByOrNull { it.value.pct }!!
                     val weak = ms.minByOrNull { it.value.pct }!!
@@ -154,7 +164,13 @@ fun MarksScreen(onBack: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("${t.emoji}  ${t.name}", color = ColorText, fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    if (tp != null) Text("${fmt(Math.round(tp * 10f) / 10f)}%", color = pctColor(tp), fontWeight = FontWeight.Bold)
+                    if (tp != null) {
+                        val anyFail = ms.values.any { it.failed() }
+                        if (anyFail) Text("FAIL", color = ColorDanger, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                        else if (ms.size == MARK_SUBJECTS.size) Text("PASS", color = ColorPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                        Spacer(Modifier.width(8.dp))
+                        Text("${fmt(Math.round(tp * 10f) / 10f)}%", color = pctColor(tp), fontWeight = FontWeight.Bold)
+                    }
                     else Text("\u23F3 Waiting", color = ColorMuted, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
                 }
                 MARK_SUBJECTS.forEach { subj ->
@@ -165,13 +181,15 @@ fun MarksScreen(onBack: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Text(subj.second, color = ColorText, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(78.dp))
+                        Text(subj.second, color = if (m != null && m.failed()) ColorDanger else ColorText,
+                            fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false, modifier = Modifier.width(96.dp))
                         Box(Modifier.weight(1f).height(8.dp).clip(RoundedCornerShape(4.dp)).background(ColorDivider)) {
                             if (m != null) Box(Modifier.fillMaxHeight().fillMaxWidth((m.pct / 100f).coerceIn(0f, 1f)).background(pctColor(m.pct)))
                         }
-                        Text(if (m != null) "${fmt(m.got)}/${fmt(m.max)}" else "+ add",
-                            color = if (m != null) ColorText else ColorPrimary, fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.labelLarge, modifier = Modifier.width(70.dp),
+                        Text(if (m != null) "${fmt(m.got)}/${fmt(m.max)}" + (if (m.failed()) " \u2717" else "") else "+ add",
+                            color = if (m != null) (if (m.failed()) ColorDanger else ColorText) else ColorPrimary, fontWeight = FontWeight.Bold,
+                            maxLines = 1, softWrap = false,
+                            style = MaterialTheme.typography.labelLarge, modifier = Modifier.width(78.dp),
                             textAlign = androidx.compose.ui.text.style.TextAlign.End)
                     }
                 }

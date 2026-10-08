@@ -3,6 +3,12 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("118.0.0", "Marks: pass / fail",
+        listOf(
+            "Marks: a subject under 33% is a FAIL (33% exactly passes). It shows in red with a cross, the test card says FAIL, and the summary names the failed subjects",
+            "Marks: PASS shows once all 5 subjects of a test are entered and none is under 33%",
+            "Fix: subject names such as Chemistry no longer wrap onto two lines on the Marks page",
+        )),
     VersionEntry("117.0.0", "Marks feeder + new Chapters look",
         listOf(
             "New Marks page (tap the top progress card on Chapters): enter marks obtained and out-of for Physics, Chemistry, Maths, Hindi and English in MT 1, Quarterly, MT 2, Half-yearly and MT 3. MT 3 shows Waiting until you add it",
