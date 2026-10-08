@@ -18,14 +18,26 @@ class QuestApp : Application() {
         com.krishna.questblock.util.MusicLog.start(this, prefs)
         com.krishna.questblock.service.WidgetFeed.start(this, repo)
         val sp = getSharedPreferences("questblock", MODE_PRIVATE)
-        if (!sp.getBoolean("starter_vault_v102", false)) {
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                runCatching {
+        val mig = getSharedPreferences("qb_migrations", MODE_PRIVATE)   // survives the reset below
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            runCatching {
+                // v103: one-time full reset (database + settings), then balanced starting rules
+                if (!mig.getBoolean("reset_v103", false)) {
+                    repo.resetAll()
+                    sp.edit()
+                        .putInt("fun_limit_min", 60).putInt("weekend_fun_limit", 90)
+                        .putBoolean("strict", false).putBoolean("cultivation_on", false)
+                        .putBoolean("opt_counter", true).putBoolean("opt_undo", true)
+                        .putBoolean("opt_warn80", true).putBoolean("opt_focus_notif", true)
+                        .apply()
+                    mig.edit().putBoolean("reset_v103", true).apply()
+                }
+                if (!sp.getBoolean("starter_vault_v103", false)) {
                     val pm = packageManager
                     val i = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_LAUNCHER)
                     val labels = pm.queryIntentActivities(i, 0).associate { it.activityInfo.packageName to it.loadLabel(pm).toString() }
                     repo.seedStarterVault(labels)
-                    sp.edit().putBoolean("starter_vault_v102", true).apply()
+                    sp.edit().putBoolean("starter_vault_v103", true).apply()
                 }
             }
         }

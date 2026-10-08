@@ -545,6 +545,9 @@ class GameRepository @Inject constructor(
             "org.telegram.messenger", "com.radio.pocketfm", "in.startv.hotstar", "com.pinterest", "com.snaptube.premium",
             "com.instantbits.cast.webvideo", "org.torproject.torbrowser")
         for (pkg in lock) { val l = labels[pkg] ?: continue; if (appDao.get(pkg) == null) appDao.upsert(BlockedApp(packageName = pkg, label = l)) }
+        val coding = listOf("com.haibison.apksigner", "com.anthropic.claude", "com.termux", "com.termux.api", "ru.zdevs.zarchiver",
+            "com.openai.chatgpt", "com.github.android", "ru.iiec.pydroid3", "com.tomminosoftware.sqliteeditor")
+        for (pkg in coding) { val l = labels[pkg] ?: continue; if (appDao.get(pkg) == null) appDao.upsert(BlockedApp(packageName = pkg, label = l, priceMult = 50)) }
         val pw = "xyz.penpencil.physicswala"
         labels[pw]?.let { if (appDao.get(pw) == null) appDao.upsert(BlockedApp(packageName = pw, label = it, isStudyApp = true)) }
     }

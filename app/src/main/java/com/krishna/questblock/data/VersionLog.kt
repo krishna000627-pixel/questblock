@@ -3,6 +3,13 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("103.0.0", "Fresh start",
+        listOf(
+            "One-time full reset of the database and settings on first launch of this version",
+            "Starting rules: Fun limit 60 min (90 on weekends), Strict off, Cultivation off, counter, undo, 80% warning and focus notification on",
+            "Starter Vault now also locks coding apps (Termux, Claude, ChatGPT, GitHub, Pydroid 3, SQLite Editor, ZArchiver, apk-signer) at half price",
+            "11 new badges (First Blood, Getting Going, Half Century, Warming Up, Centurion, First Hour, Fifty Hours Deep, Bookworm, Night Shift Coder, Clean Slate, Double Focus)",
+        )),
     VersionEntry("102.0.0", "Starter Vault + app types",
         listOf(
             "Categories pre-set for the apps on your phone (study, coding, fun, neutral); your own changes still win",
