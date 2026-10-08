@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("100.0.0", "Unequip + Home badge",
+        listOf(
+            "Shop -> My Items: Unequip button for equipped frames, themes and badges, and the free Beginner badge is listed there",
+            "Home avatar shows the Beginner badge too",
+        )),
     VersionEntry("99.0.0", "Tap the version",
         listOf(
             "Tap the version number on the About me page to open the version history",

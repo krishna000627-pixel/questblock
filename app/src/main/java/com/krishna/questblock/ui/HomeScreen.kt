@@ -330,8 +330,8 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Bool
                             fontWeight = FontWeight.Black, color = frameColor)
                     }
                     // Badge
-                    val badgeEmoji = when (player.equippedBadge) {
-                        "badge_star" -> "⭐"; "badge_crown" -> "👑"
+                    val badgeEmoji = when (com.krishna.questblock.data.shownBadgeOf(player)) {
+                        "badge_beginner" -> "\uD83C\uDF31"; "badge_star" -> "⭐"; "badge_crown" -> "👑"
                         "badge_sword" -> "⚔️"; "badge_dragon" -> "🐉"; else -> ""
                     }
                     if (badgeEmoji.isNotBlank()) {

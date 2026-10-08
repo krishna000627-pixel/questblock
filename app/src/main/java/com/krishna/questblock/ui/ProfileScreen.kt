@@ -80,7 +80,7 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                                 fontWeight = FontWeight.Black, color = frameColor)
                         }
                         // Badge overlay
-                        val shownBadge = player.equippedBadge.ifBlank { "badge_beginner" }
+                        val shownBadge = com.krishna.questblock.data.shownBadgeOf(player)
                         if (shownBadge.isNotBlank()) {
                             val emoji = when (shownBadge) {
                                 "badge_beginner" -> "\uD83C\uDF31"
@@ -208,8 +208,8 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                             fontWeight = FontWeight.Bold, color = ColorText)
                         if (player.equippedFrame.isNotBlank())
                             ProfileInfoRow("🖼️ Frame", player.equippedFrame.replace("_", " ").replaceFirstChar { it.uppercase() })
-                        if (true)
-                            ProfileInfoRow("🏅 Badge", player.equippedBadge.ifBlank { "badge_beginner" }.removePrefix("badge_").replaceFirstChar { it.uppercase() })
+                        if (com.krishna.questblock.data.shownBadgeOf(player).isNotBlank())
+                            ProfileInfoRow("🏅 Badge", com.krishna.questblock.data.shownBadgeOf(player).removePrefix("badge_").replaceFirstChar { it.uppercase() })
                         if (player.equippedTheme != "default")
                             ProfileInfoRow("🎨 Theme", player.equippedTheme.replace("_", " ").replaceFirstChar { it.uppercase() })
                     }

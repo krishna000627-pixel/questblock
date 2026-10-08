@@ -72,6 +72,7 @@ class InventoryViewModel @Inject constructor(private val repo: GameRepository) :
         repo.redeemItem(inv); buyResult = "Redeemed ${inv.emoji} ${inv.name}"
     }
     fun equip(inv: InventoryItem) = viewModelScope.launch { repo.equipItem(inv) }
+    fun unequip(inv: InventoryItem) = viewModelScope.launch { repo.unequipItem(inv) }
     fun clearResult() { buyResult = null }
 }
 
@@ -127,7 +128,7 @@ fun InventoryScreen(onBack: () -> Unit, vm: InventoryViewModel = hiltViewModel()
                     onUpdateReward = { vm.updateReward(it) },
                     onDeleteReward = { vm.deleteReward(it) },
                 )
-                1 -> MyItemsTab(inventory, onEquip = { vm.equip(it) }, onRedeem = { vm.redeem(it) })
+                1 -> MyItemsTab(inventory, com.krishna.questblock.data.shownBadgeOf(player), onEquip = { vm.equip(it) }, onUnequip = { vm.unequip(it) }, onRedeem = { vm.redeem(it) })
             }
         }
     }
@@ -379,7 +380,10 @@ private fun RewardDialog(
 
 // ── My Items tab ──────────────────────────────────────────────────────────
 @Composable
-private fun MyItemsTab(inventory: List<InventoryItem>, onEquip: (InventoryItem) -> Unit, onRedeem: (InventoryItem) -> Unit) {
+private fun MyItemsTab(inventory0: List<InventoryItem>, shownBadge: String, onEquip: (InventoryItem) -> Unit, onUnequip: (InventoryItem) -> Unit, onRedeem: (InventoryItem) -> Unit) {
+    val beginner = InventoryItem(id = -1L, itemId = "badge_beginner", category = "cosmetic_badge", name = "Beginner Badge",
+        emoji = "\uD83C\uDF31", isEquipped = shownBadge == "badge_beginner")
+    val inventory = inventory0 + beginner
     if (inventory.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -406,14 +410,14 @@ private fun MyItemsTab(inventory: List<InventoryItem>, onEquip: (InventoryItem) 
                 Text(label, style = MaterialTheme.typography.labelLarge, color = ColorMuted)
             }
             items(list, key = { it.id }) { inv ->
-                InventoryItemCard(inv, onEquip = { onEquip(inv) }, onRedeem = { onRedeem(inv) })
+                InventoryItemCard(inv, onEquip = { onEquip(inv) }, onUnequip = { onUnequip(inv) }, onRedeem = { onRedeem(inv) })
             }
         }
     }
 }
 
 @Composable
-private fun InventoryItemCard(item: InventoryItem, onEquip: () -> Unit, onRedeem: () -> Unit) {
+private fun InventoryItemCard(item: InventoryItem, onEquip: () -> Unit, onUnequip: () -> Unit, onRedeem: () -> Unit) {
     val isCosmetic = item.category.startsWith("cosmetic")
     val isCustom = item.category == "custom"
     Card(colors = CardDefaults.cardColors(containerColor = ColorSurface), shape = RoundedCornerShape(12.dp)) {
@@ -435,6 +439,11 @@ private fun InventoryItemCard(item: InventoryItem, onEquip: () -> Unit, onRedeem
                     color = if (item.isEquipped || (isCustom && item.usedAt == null)) ColorPrimary else ColorMuted)
             }
 
+            if (isCosmetic && item.isEquipped) {
+                OutlinedButton(onClick = onUnequip, shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                ) { Text("Unequip", style = MaterialTheme.typography.labelSmall) }
+            }
             if (isCosmetic && !item.isEquipped) {
                 Button(onClick = onEquip,
                     colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),

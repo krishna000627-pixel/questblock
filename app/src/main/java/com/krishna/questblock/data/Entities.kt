@@ -62,6 +62,9 @@ data class BlockedApp(
     @ColumnInfo(defaultValue = "0")   val ratePer5: Int = 0,
 )
 
+/** Badge shown on Home and Profile: blank = the free Beginner badge, "none" = unequipped on purpose. */
+fun shownBadgeOf(p: Player): String = when (p.equippedBadge) { "" -> "badge_beginner"; "none" -> ""; else -> p.equippedBadge }
+
 @Entity(tableName = "player")
 data class Player(
     @PrimaryKey val id: Int = 1,

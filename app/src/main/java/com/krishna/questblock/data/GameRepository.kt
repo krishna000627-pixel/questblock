@@ -790,7 +790,23 @@ class GameRepository @Inject constructor(
         prefs.clearAll()
     }
 
+    suspend fun unequipItem(inv: InventoryItem) = db.withTransaction {
+        inventoryDao.unequipAll(inv.category)
+        val p = playerDao.get() ?: Player()
+        playerDao.upsert(when (inv.category) {
+            "cosmetic_frame" -> p.copy(equippedFrame = "")
+            "cosmetic_theme" -> p.copy(equippedTheme = "default")
+            "cosmetic_badge" -> p.copy(equippedBadge = "none")
+            else -> p
+        })
+    }
+
     suspend fun equipItem(inv: InventoryItem) = db.withTransaction {
+        if (inv.id == -1L) {   // the free Beginner badge is not an inventory row
+            inventoryDao.unequipAll("cosmetic_badge")
+            playerDao.upsert((playerDao.get() ?: Player()).copy(equippedBadge = "badge_beginner"))
+            return@withTransaction
+        }
         inventoryDao.unequipAll(inv.category); inventoryDao.equip(inv.id)
         val p = playerDao.get() ?: Player()
         playerDao.upsert(when (inv.category) {
