@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -195,6 +196,42 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                 }
             }
             Text("Present = coins (school +$SCHOOL_COINS, coaching +$COACHING_COINS each); changing it takes them back. Counting from ${startDay.substring(6, 8)}/${startDay.substring(4, 6)}/${startDay.substring(0, 4)}. Green = all present, orange = some marked, red = absent somewhere", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        }
+        // 📃 Mood: one tap a day, follows the selected day above. Saved as mood_<yyyymmdd> = 1..5
+        val moods = listOf("\uD83D\uDE1E", "\uD83D\uDE15", "\uD83D\uDE10", "\uD83D\uDE42", "\uD83D\uDE04")
+        val moodNow = sp.getInt("mood_$selected", 0)
+        var weekSum = 0; var weekN = 0
+        run {
+            val c = Calendar.getInstance()
+            repeat(7) {
+                val v = sp.getInt("mood_${dayKey(c)}", 0)
+                if (v in 1..5) { weekSum += v; weekN++ }
+                c.add(Calendar.DAY_OF_MONTH, -1)
+            }
+        }
+        Column(Modifier.fillMaxWidth().background(ColorSurface, RoundedCornerShape(16.dp)).padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("\uD83D\uDCC3 Mood", color = ColorText, fontWeight = FontWeight.Bold)
+            Text("How was ${SimpleDateFormat("EEE d MMM", Locale.getDefault()).format(selCal.time)}?", color = ColorMuted, style = MaterialTheme.typography.bodySmall)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                moods.forEachIndexed { i, face ->
+                    Box(
+                        Modifier.size(52.dp).clip(RoundedCornerShape(14.dp))
+                            .background(if (moodNow == i + 1) ColorPrimary.copy(alpha = 0.35f) else ColorSurfaceHigh)
+                            .clickable {
+                                if (moodNow == i + 1) sp.edit().remove("mood_$selected").apply()
+                                else sp.edit().putInt("mood_$selected", i + 1).apply()
+                                tick++
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) { Text(face, fontSize = 26.sp) }
+                }
+            }
+            Text(
+                if (weekN == 0) "Last 7 days: no check-ins yet"
+                else "Last 7 days: ${moods[Math.round(weekSum.toFloat() / weekN).coerceIn(1, 5) - 1]} average ($weekN check-in${if (weekN > 1) "s" else ""})",
+                color = ColorMuted, style = MaterialTheme.typography.bodySmall,
+            )
         }
         TextButton(onClick = {
             sp.edit().putString("att_start", todayKey).apply(); monthOffset = 0; selected = todayKey; tick++

@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("131.0.0", "Mood check-in",
+        listOf(
+            "Attendance page: new 📃 Mood section at the bottom. One tap on five faces for the selected day (tap again to clear), and a line with your average mood over the last 7 days. No new page. Saved with your settings, so it is in the backup",
+        )),
     VersionEntry("130.0.0", "Only encrypted backups restore",
         listOf(
             "Backup: Restore now accepts only encrypted .qbak files made by v129 or newer. Old .zip and .db backups are refused, because they can be edited. Make a fresh Export after updating",
