@@ -270,14 +270,14 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
             }
             val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
                 if (uri != null) vm.restore(uri) { ok ->
-                    Toast.makeText(ctx, if (ok) "Restored — restarting…" else "Not a valid backup file", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(ctx, if (ok) "Restored — restarting…" else "Not a valid encrypted backup (.qbak)", Toast.LENGTH_SHORT).show()
                 }
             }
-            Text("Backup contains quests, coins, apps, rewards and stats. Settings above are not included.",
+            Text("Backup is encrypted (.qbak, old .zip/.db files no longer restore) and holds quests, coins, apps, rewards, stats, settings and Quest board scrolls. Restore keeps your current coins, never doubles or lowers them, and saves a safety copy to Downloads/QuestBlock first. A daily copy is kept there automatically.",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = {
-                    exportLauncher.launch("questblock-backup-${SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())}.db")
+                    exportLauncher.launch("questblock-backup-${SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(Date())}.qbak")
                 }, shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) { Text("Export") }
                 OutlinedButton(onClick = { importLauncher.launch(arrayOf("*/*")) },
                     shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) { Text("Restore") }

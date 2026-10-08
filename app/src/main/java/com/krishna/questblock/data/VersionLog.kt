@@ -3,6 +3,23 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("130.0.0", "Only encrypted backups restore",
+        listOf(
+            "Backup: Restore now accepts only encrypted .qbak files made by v129 or newer. Old .zip and .db backups are refused, because they can be edited. Make a fresh Export after updating",
+            "Backup: an encrypted file works on any phone that has QuestBlock; one that was edited or damaged is refused",
+        )),
+    VersionEntry("129.0.0", "Encrypted backup + safe restore",
+        listOf(
+            "Backup: every new backup (Export, the daily copy and the restore safety copy) is now encrypted and tamper-checked, saved as .qbak. A file that was edited or damaged is refused. Older .zip and .db backups still restore",
+            "Restore never changes your coins: they stay what they are on the phone now, so a restore cannot double or lower them. Daily login day and claimed rewards also keep their newest value, so nothing can be claimed twice. On a fresh phone with no coin history the backup's coins are used. A Restore line is added to the coin log",
+        )),
+    VersionEntry("128.0.0", "Better backup + music off by default",
+        listOf(
+            "Backup: the zip now also carries your Quest board scrolls and the Shorts, screen and music stats, not just the database and settings",
+            "Backup: Restore first checks the database is healthy, then saves a safety copy of your current data to Downloads/QuestBlock (QuestBlock_before_restore_..., newest 3 kept) before replacing anything",
+            "Backup: the daily automatic copy now keeps the newest 7 instead of 3. Export saves a .zip named with the date and time. The note under Export no longer says settings are left out",
+            "Pause fun music at the limit is now off by default. If you already chose a value it stays as you set it; turning it on applies at once, turning it off still waits for midnight",
+        )),
     VersionEntry("127.0.0", "Detailed update prompt",
         listOf(
             "Quest board: Copy as update prompt now groups the scrolls (bugs, features, UI, ideas, then the rest), adds short rules (bump the version, add a version log entry, change only what is listed), tells Claude to read VersionLog.kt for the update history, and ends with the Termux update command for the next version. The screen itself is unchanged",

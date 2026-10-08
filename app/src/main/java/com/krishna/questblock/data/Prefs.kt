@@ -280,11 +280,10 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     fun setSiteUnlockedUntil(d: String, t: Long) { sp.edit().putLong("site_unlock_$d", t).apply() }
 
     // ── Ghost time: music from fun apps while they are not on screen ──
-    val pauseMusicAtLimit: Boolean get() = sp.getBoolean("pause_music_limit", true)
+    val pauseMusicAtLimit: Boolean get() = sp.getBoolean("pause_music_limit", false)
 
     /** Turning it ON applies now; turning it OFF waits until midnight (a fun rule, like the others). */
     fun changePauseMusic(on: Boolean) {
-        if (!sp.contains("pause_music_limit")) sp.edit().putBoolean("pause_music_limit", true).apply()
         commitFlag("music", "pause_music_limit", on)
     }
 
