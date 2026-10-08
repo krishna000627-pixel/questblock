@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -43,6 +44,7 @@ fun ChaptersScreen(onBack: () -> Unit) {
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
             Text("\uD83D\uDCDA Chapters", style = MaterialTheme.typography.headlineSmall,
@@ -53,7 +55,7 @@ fun ChaptersScreen(onBack: () -> Unit) {
             Text(if (allTotal == 0) "Type how many chapters each subject has" else "Syllabus $allPct% done  ($allDone / $allTotal)",
                 color = ColorText, fontWeight = FontWeight.SemiBold)
             if (allTotal > 0) {
-                LinearProgressIndicator(progress = { allPct / 100f }, modifier = Modifier.fillMaxWidth(), color = ColorPrimary, trackColor = ColorDivider)
+                LinearProgressIndicator(progress = { allPct / 100f }, modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)), color = ColorPrimary, trackColor = ColorDivider)
                 val exam = java.util.GregorianCalendar(2026, java.util.Calendar.NOVEMBER, 17).timeInMillis
                 val days = Math.ceil((exam - System.currentTimeMillis()) / 86_400_000.0).toInt()
                 val left = allTotal - allDone
@@ -82,7 +84,7 @@ fun ChaptersScreen(onBack: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(Modifier.weight(1f)) {
                         Text(name, color = ColorText, fontWeight = FontWeight.Bold)
-                        Text(if (t == 0) "No chapters set" else "$dn / $t done", style = MaterialTheme.typography.bodySmall,
+                        Text(if (t == 0) "Type the chapter count" else "$dn / $t done  \u00B7  ${dn * 100 / t}%", style = MaterialTheme.typography.bodySmall,
                             color = if (t > 0 && dn == t) ColorPrimary else ColorMuted)
                     }
                     var text by remember(id) { mutableStateOf(if (t == 0) "" else t.toString()) }
@@ -94,19 +96,19 @@ fun ChaptersScreen(onBack: () -> Unit) {
                             sp.edit().putInt("chap_total_$id", (n.toIntOrNull() ?: 0).coerceAtMost(200)).apply()
                             rev++
                         },
-                        label = { Text("Chapters") }, singleLine = true,
+                        label = { Text("Total") }, singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.width(110.dp),
+                        modifier = Modifier.width(92.dp),
                     )
                 }
                 if (t > 0) {
-                    LinearProgressIndicator(progress = { dn / t.toFloat() }, modifier = Modifier.fillMaxWidth(), color = ColorPrimary, trackColor = ColorDivider)
+                    LinearProgressIndicator(progress = { dn / t.toFloat() }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)), color = ColorPrimary, trackColor = ColorDivider)
                     (1..t).chunked(6).forEach { rowNums ->
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                             rowNums.forEach { n ->
                                 val on = n in d
                                 Box(
-                                    Modifier.weight(1f).height(38.dp)
+                                    Modifier.weight(1f).height(42.dp)
                                         .background(if (on) ColorPrimary else ColorSurfaceHigh, RoundedCornerShape(10.dp))
                                         .clickable {
                                             val next = if (on) d - n else d + n
@@ -114,7 +116,7 @@ fun ChaptersScreen(onBack: () -> Unit) {
                                             rev++
                                         },
                                     contentAlignment = Alignment.Center,
-                                ) { Text("$n", color = if (on) ColorOnPrimary else ColorText, fontWeight = FontWeight.SemiBold) }
+                                ) { Text(if (on) "\u2713$n" else "$n", color = if (on) ColorOnPrimary else ColorText, fontWeight = FontWeight.SemiBold) }
                             }
                             repeat(6 - rowNums.size) { Spacer(Modifier.weight(1f)) }
                         }

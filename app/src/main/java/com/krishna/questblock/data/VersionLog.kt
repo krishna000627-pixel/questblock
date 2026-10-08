@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("109.0.0", "UI polish",
+        listOf(
+            "Home: even spacing between the shortcut pills, Chapters pill highlighted",
+            "Chapters: thicker progress bars, percent per subject, ticked chips, compact Total box",
+        )),
     VersionEntry("108.0.0", "Hindi and English counts",
         listOf(
             "Hindi 18 and English 19 chapters filled from your books; Chemistry is 10 chapters",

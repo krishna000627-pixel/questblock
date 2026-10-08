@@ -245,12 +245,14 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
 
         // ── Slim shortcuts: Shop + Stats ───────────────────────────────────
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SlimPill("\uD83D\uDED2 Shop", false, onOpenShop, Modifier.weight(1f))
-                SlimPill("\uD83D\uDCCA Stats", false, onOpenStats, Modifier.weight(1f))
-                SlimPill("\uD83E\uDDED Hub", false, onOpenHub, Modifier.weight(1f))
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SlimPill("\uD83D\uDED2 Shop", false, onOpenShop, Modifier.weight(1f))
+                    SlimPill("\uD83D\uDCCA Stats", false, onOpenStats, Modifier.weight(1f))
+                    SlimPill("\uD83E\uDDED Hub", false, onOpenHub, Modifier.weight(1f))
+                }
+                SlimPill("\uD83D\uDCDA Chapters (PCMHE)", true, onOpenChapters, Modifier.fillMaxWidth())
             }
-            SlimPill("\uD83D\uDCDA Chapters (PCMHE)", false, onOpenChapters, Modifier.fillMaxWidth())
         }
 
         // ── Active power-ups ───────────────────────────────────────────────
