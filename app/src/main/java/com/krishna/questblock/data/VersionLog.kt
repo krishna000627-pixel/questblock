@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("101.0.0", "App list copier",
+        listOf(
+            "Settings -> Apps: Copy my apps list copies every app's name, package and category so you can paste it into a chat",
+        )),
     VersionEntry("100.0.0", "Unequip + Home badge",
         listOf(
             "Shop -> My Items: Unequip button for equipped frames, themes and badges, and the free Beginner badge is listed there",

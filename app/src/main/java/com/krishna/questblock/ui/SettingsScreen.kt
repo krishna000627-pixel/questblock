@@ -228,6 +228,20 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                 modifier = Modifier.fillMaxWidth()) { Text("App categories") }
             OutlinedButton(onClick = onOpenUsage, shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth()) { Text("Daily app usage") }
+            OutlinedButton(onClick = {
+                val pm = ctx.packageManager
+                val launcher = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+                val apps = pm.queryIntentActivities(launcher, 0)
+                    .map { it.activityInfo.packageName to it.loadLabel(pm).toString() }
+                    .distinctBy { it.first }.sortedBy { it.second.lowercase() }
+                val text = "Apps on this phone (${apps.size})\nName | package | category\n" + apps.joinToString("\n") { (pkg, label) ->
+                    val cat = prefs.categoryOverride(pkg) ?: com.krishna.questblock.data.AppCategorizer.autoCategory(pm, pkg)
+                    "$label | $pkg | $cat"
+                }
+                ctx.getSystemService(android.content.ClipboardManager::class.java)
+                    .setPrimaryClip(android.content.ClipData.newPlainText("QuestBlock apps", text))
+                Toast.makeText(ctx, "Copied ${apps.size} apps", Toast.LENGTH_SHORT).show()
+            }, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) { Text("Copy my apps list (names + packages)") }
             Text("\uD83C\uDFAE The fun time limit and the other fun rules now live in Hub \u2192 Rules.",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
