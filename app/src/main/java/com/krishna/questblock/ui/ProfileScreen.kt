@@ -80,8 +80,10 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                                 fontWeight = FontWeight.Black, color = frameColor)
                         }
                         // Badge overlay
-                        if (player.equippedBadge.isNotBlank()) {
-                            val emoji = when (player.equippedBadge) {
+                        val shownBadge = player.equippedBadge.ifBlank { "badge_beginner" }
+                        if (shownBadge.isNotBlank()) {
+                            val emoji = when (shownBadge) {
+                                "badge_beginner" -> "\uD83C\uDF31"
                                 "badge_star"   -> "⭐"; "badge_crown" -> "👑"
                                 "badge_sword"  -> "⚔️"; "badge_dragon" -> "🐉"; else -> ""
                             }
@@ -198,7 +200,7 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
             }
 
             // ── Equipped cosmetics ──────────────────────────────────────────
-            if (player.equippedFrame.isNotBlank() || player.equippedBadge.isNotBlank() || player.equippedTheme != "default") {
+            if (true) {
                 Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
                     shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -206,8 +208,8 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                             fontWeight = FontWeight.Bold, color = ColorText)
                         if (player.equippedFrame.isNotBlank())
                             ProfileInfoRow("🖼️ Frame", player.equippedFrame.replace("_", " ").replaceFirstChar { it.uppercase() })
-                        if (player.equippedBadge.isNotBlank())
-                            ProfileInfoRow("🏅 Badge", player.equippedBadge.replace("_", " ").replaceFirstChar { it.uppercase() })
+                        if (true)
+                            ProfileInfoRow("🏅 Badge", player.equippedBadge.ifBlank { "badge_beginner" }.removePrefix("badge_").replaceFirstChar { it.uppercase() })
                         if (player.equippedTheme != "default")
                             ProfileInfoRow("🎨 Theme", player.equippedTheme.replace("_", " ").replaceFirstChar { it.uppercase() })
                     }

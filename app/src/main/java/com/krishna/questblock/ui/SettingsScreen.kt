@@ -279,15 +279,10 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                 runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
             }
             Text("QuestBlock v$version", color = ColorText, fontWeight = FontWeight.SemiBold)
-            val latest = com.krishna.questblock.data.VERSION_LOG.first()
-            OutlinedButton(onClick = onOpenSelfTest, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) { Text("🧪 Self test (checks everything)") }
+            OutlinedButton(onClick = onOpenSelfTest, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) { Text("\uD83E\uDDEA Self test (checks everything)") }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onOpenVersions, shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) { Text("Version history") }
                 OutlinedButton(onClick = onOpenWeekly, shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) { Text("Weekly review") }
             }
-            Text("v${latest.version}: ${latest.headline}", style = MaterialTheme.typography.bodySmall,
-                color = ColorText, fontWeight = FontWeight.SemiBold)
-            Text(latest.items.joinToString("\n") { "• $it" }, style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
         Section("\uD83D\uDC1E Debug log") {
             OutlinedButton(onClick = onOpenDebug, modifier = Modifier.fillMaxWidth()) { Text("Open debug log") }

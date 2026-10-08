@@ -23,7 +23,7 @@ import com.krishna.questblock.data.AboutMe
 
 /** The developer's page. Text lives in data/AboutMe.kt. Works offline; only the link rows open other apps. */
 @Composable
-fun AboutMeScreen(onBack: () -> Unit, onOpenIdeas: () -> Unit = {}) {
+fun AboutMeScreen(onBack: () -> Unit, onOpenIdeas: () -> Unit = {}, onOpenVersions: () -> Unit = {}) {
     val ctx = LocalContext.current
     val version = remember {
         runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
@@ -112,7 +112,8 @@ fun AboutMeScreen(onBack: () -> Unit, onOpenIdeas: () -> Unit = {}) {
         AboutCard {
             Text("📱 QuestBlock", style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold, color = ColorText)
-            Text("Version $version", style = MaterialTheme.typography.bodyMedium, color = ColorText)
+            Text("Version $version", style = MaterialTheme.typography.bodyMedium, color = ColorText,
+                modifier = Modifier.clickable { onOpenVersions() })
             Text(AboutMe.CREDITS, style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
         Spacer(Modifier.height(12.dp))

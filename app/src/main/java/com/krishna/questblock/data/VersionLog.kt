@@ -3,6 +3,22 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("99.0.0", "Tap the version",
+        listOf(
+            "Tap the version number on the About me page to open the version history",
+        )),
+    VersionEntry("97.0.0", "Version history in About",
+        listOf(
+            "Version history moved from Settings to the About me page. Self test and Debug log stay in Settings",
+        )),
+    VersionEntry("96.0.0", "Tools moved to About",
+        listOf(
+            "Version history, Self test and Debug log moved from Settings to the About me page",
+        )),
+    VersionEntry("95.0.0", "Profile Beginner badge",
+        listOf(
+            "Profile now shows a \uD83C\uDF31 Beginner badge from the start (until you equip a Shop badge)",
+        )),
     VersionEntry("94.0.0", "Beginner badge, gentler start",
         listOf(
             "Cultivation realms are off by default (turn on in Settings -> Cultivation)",
