@@ -40,33 +40,3 @@ fun GoalsScreen(onBack: () -> Unit, vm: HubViewModel = hiltViewModel()) {
         }
     }
 }
-
-/** Weekly report and coin economy. */
-@Composable
-fun ReportsScreen(onBack: () -> Unit, vm: HubViewModel = hiltViewModel()) {
-    LaunchedEffect(Unit) { vm.store.refresh() }
-    val st = vm.store.state
-    LazyColumn(
-        Modifier.fillMaxSize().background(ColorBg),
-        contentPadding = PaddingValues(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        item { HubHeader("Weekly report", onBack) }
-        st.weekly?.let { w ->
-            item {
-                HubCard {
-                    w.lines.forEach { Text(it, color = ColorText, style = MaterialTheme.typography.bodyMedium) }
-                    Text("Best day: ${w.bestDay}", color = ColorText, style = MaterialTheme.typography.bodyMedium)
-                    Text("⚠️ ${w.weakness}", color = ColorWarning, style = MaterialTheme.typography.bodyMedium)
-                    Text("💡 ${w.recommendation}", color = ColorPrimary, style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-        }
-        item {
-            HubCard {
-                Text("🪙 Coins, 7 days", fontWeight = FontWeight.Bold, color = ColorText, style = MaterialTheme.typography.titleSmall)
-                st.economy.forEach { Text(it, color = ColorText, style = MaterialTheme.typography.bodyMedium) }
-            }
-        }
-    }
-}

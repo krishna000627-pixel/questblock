@@ -3,6 +3,13 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("132.0.0", "Less clutter",
+        listOf(
+            "Settings: one 🛠️ Developer section now holds Self test, Quest board, Version info, Debug log and About me (they were spread over Settings, Profile and About me)",
+            "Profile: the About me card is gone, it lives in Settings -> Developer",
+            "Hub: Report & coins is merged into the Weekly review. The Hub card now opens Weekly review, which also shows the report lines, weak spot and the 7-day coin summary",
+            "Settings: removed the Experiments pointer. Experiments is only in Hub now",
+        )),
     VersionEntry("131.0.0", "Mood check-in",
         listOf(
             "Attendance page: new 📃 Mood section at the bottom. One tap on five faces for the selected day (tap again to clear), and a line with your average mood over the last 7 days. No new page. Saved with your settings, so it is in the backup",

@@ -163,6 +163,8 @@ fun MainScreen() {
                     onOpenVersions = { navController.openPage("versions") },
                     onOpenWeekly = { navController.openPage("weekly") },
                     onOpenSelfTest = { navController.openPage("selftest") },
+                    onOpenIdeas = { navController.openPage("ideas") },
+                    onOpenAbout = { navController.openPage("about") },
                 )
             }
             composable("versions") { VersionScreen(onBack = { navController.popBackStack() }) }
@@ -198,13 +200,12 @@ fun MainScreen() {
             composable("hub")          { PlayerHubScreen(
                 onBack = { navController.popBackStack() },
                 onOpenGoals = { navController.openPage("hub_goals") },
-                onOpenReports = { navController.openPage("hub_reports") },
+                onOpenReports = { navController.openPage("weekly") },
                 onOpenBadges = { navController.openPage("hub_badges") },
                 onOpenRules = { navController.openPage("hub_rules") },
                 onOpenExperiments = { navController.openPage("hub_experiments") },
             ) }
             composable("hub_goals")    { GoalsScreen(onBack = { navController.popBackStack() }) }
-            composable("hub_reports")  { ReportsScreen(onBack = { navController.popBackStack() }) }
             composable("hub_badges")   { BadgesScreen(onBack = { navController.popBackStack() }) }
             composable("hub_rules")    { RulesScreen(onBack = { navController.popBackStack() }, onOpenSites = { navController.openPage("hub_sites") }) }
             composable("hub_experiments") { ExperimentsScreen(onBack = { navController.popBackStack() }) }

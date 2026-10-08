@@ -90,7 +90,7 @@ class SettingsViewModel @Inject constructor(
 }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCategories: () -> Unit, onOpenUsage: () -> Unit, onOpenDebug: () -> Unit = {}, onOpenVersions: () -> Unit = {}, onOpenWeekly: () -> Unit = {}, onOpenSelfTest: () -> Unit = {}, vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCategories: () -> Unit, onOpenUsage: () -> Unit, onOpenDebug: () -> Unit = {}, onOpenVersions: () -> Unit = {}, onOpenWeekly: () -> Unit = {}, onOpenSelfTest: () -> Unit = {}, onOpenIdeas: () -> Unit = {}, onOpenAbout: () -> Unit = {}, vm: SettingsViewModel = hiltViewModel()) {
     val ctx = LocalContext.current
     val prefs = vm.prefs
     val player by vm.player.collectAsStateWithLifecycle()
@@ -246,11 +246,6 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
 
-        Section("🧪 Experiments") {
-            Text("The optional features (Shorts block, music warnings, Bedtime mode, Focus extras, undo and more) moved to Hub → Experiments.",
-                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-        }
-
         // ── Reliability ──────────────────────────────────────────────────
         Section("🛠️ Reliability") {
             Text("Permissions, strict mode, battery, autostart and keep-alive: everything that keeps the blocker alive and protected.",
@@ -287,19 +282,21 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                 modifier = Modifier.fillMaxWidth()) { Text("Reset all data") }
         }
 
-        // ── About ────────────────────────────────────────────────────────
-        Section("ℹ️ About") {
+        // ── Developer ────────────────────────────────────────────────────
+        Section("🛠️ Developer") {
             val version = remember {
                 runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
             }
             Text("QuestBlock v$version", color = ColorText, fontWeight = FontWeight.SemiBold)
-            OutlinedButton(onClick = onOpenSelfTest, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) { Text("\uD83E\uDDEA Self test (checks everything)") }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onOpenWeekly, shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) { Text("Weekly review") }
+            listOf<Pair<String, () -> Unit>>(
+                "🧪 Self test (checks everything)" to onOpenSelfTest,
+                "📜 Quest board" to onOpenIdeas,
+                "🔭 Version info" to onOpenVersions,
+                "🐞 Debug log" to onOpenDebug,
+                "👨‍💻 About me" to onOpenAbout,
+            ).forEach { (label, go) ->
+                OutlinedButton(onClick = go, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) { Text(label) }
             }
-        }
-        Section("\uD83D\uDC1E Debug log") {
-            OutlinedButton(onClick = onOpenDebug, modifier = Modifier.fillMaxWidth()) { Text("Open debug log") }
         }
         Spacer(Modifier.height(12.dp))
     }

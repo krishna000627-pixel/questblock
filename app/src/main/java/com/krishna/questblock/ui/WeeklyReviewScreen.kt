@@ -37,8 +37,10 @@ class WeeklyViewModel @Inject constructor(repo: GameRepository) : ViewModel() {
 
 /** The last 7 days in one place, with one suggestion. */
 @Composable
-fun WeeklyReviewScreen(onBack: () -> Unit, vm: WeeklyViewModel = hiltViewModel()) {
+fun WeeklyReviewScreen(onBack: () -> Unit, vm: WeeklyViewModel = hiltViewModel(), hub: HubViewModel = hiltViewModel()) {
     val ctx = LocalContext.current
+    LaunchedEffect(Unit) { hub.store.refresh() }
+    val hubSt = hub.store.state
     val log by vm.log.collectAsStateWithLifecycle()
     val tasks by vm.tasks.collectAsStateWithLifecycle()
     val now = System.currentTimeMillis()
@@ -85,6 +87,18 @@ fun WeeklyReviewScreen(onBack: () -> Unit, vm: WeeklyViewModel = hiltViewModel()
                 Text("💡 One change for next week", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ColorText)
                 Text(tip, style = MaterialTheme.typography.bodyMedium, color = ColorText)
             }
+        }
+        // from the old Hub report: the report lines, the weak spot and the 7-day coin summary
+        hubSt.weekly?.let { w ->
+            HubCard {
+                Text("\uD83D\uDCC8 Report", fontWeight = FontWeight.Bold, color = ColorText, style = MaterialTheme.typography.titleSmall)
+                w.lines.forEach { Text(it, color = ColorText, style = MaterialTheme.typography.bodyMedium) }
+                Text("\u26A0\uFE0F ${w.weakness}", color = ColorWarning, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        if (hubSt.economy.isNotEmpty()) HubCard {
+            Text("\uD83E\uDE99 Coins, 7 days", fontWeight = FontWeight.Bold, color = ColorText, style = MaterialTheme.typography.titleSmall)
+            hubSt.economy.forEach { Text(it, color = ColorText, style = MaterialTheme.typography.bodyMedium) }
         }
         OutlinedButton(onClick = {
             val cm = ctx.getSystemService(android.content.ClipboardManager::class.java)
