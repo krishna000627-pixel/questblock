@@ -168,7 +168,21 @@ fun MainScreen() {
             composable("versions") { VersionScreen(onBack = { navController.popBackStack() }) }
             composable("selftest") { SelfTestScreen(onBack = { navController.popBackStack() }) }
             composable("attendance") { AttendanceScreen(onBack = { navController.popBackStack() }) }
-            composable("chapters") { ChaptersScreen(onBack = { navController.popBackStack() }) }
+            composable("chapters") { ChaptersScreen(onBack = { navController.popBackStack() },
+                onOpenSubject = { id, rev -> navController.openPage("chapter_subject/$id/$rev") }) }
+            composable(
+                route = "chapter_subject/{id}/{rev}",
+                arguments = listOf(
+                    navArgument("id") { type = NavType.StringType },
+                    navArgument("rev") { type = NavType.BoolType; defaultValue = false },
+                ),
+            ) { e ->
+                ChapterSubjectScreen(
+                    subjectId = e.arguments?.getString("id") ?: "",
+                    startRev = e.arguments?.getBoolean("rev") ?: false,
+                    onBack = { navController.popBackStack() },
+                )
+            }
             composable("weekly") { WeeklyReviewScreen(onBack = { navController.popBackStack() }) }
             composable("debuglog") { DebugLogScreen(onBack = { navController.popBackStack() }) }
             composable("ideas") { IdeasScreen(onBack = { navController.popBackStack() }) }

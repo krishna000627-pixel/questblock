@@ -3,6 +3,12 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("116.0.0", "Subject pages + Home fixes",
+        listOf(
+            "Fix: a one-time quest you add now shows under Today's quests on Home, not in Coming up or No date",
+            "Home: Suggested quests stay visible while you have 5 or fewer active quests",
+            "Chapters: every subject has its own page with the exact chapter names from your guide (Hindi in Hindi)",
+        )),
     VersionEntry("115.0.0", "Cleaner sections",
         listOf(
             "Chapters: Hindi and English sections (grammar, writing, etc.) are shown as named rows under the numbered chapters",

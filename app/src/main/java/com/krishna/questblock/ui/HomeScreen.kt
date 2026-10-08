@@ -229,6 +229,11 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
             }
         }
 
+        // v116: with 5 or fewer active quests the suggestions stay visible (the empty / routine cases above already show them)
+        if (!routineDay && todayList.isNotEmpty() && pending.size <= 5) {
+            item { SuggestedQuests(onAdd = { vm.addSuggestion(it) }, title = "\uD83D\uDCA1 Suggested for today") }
+        }
+
         // ── Next: dated quests, then undated ───────────────────────────────
         if (!routineDay && comingUp.isNotEmpty()) {
             item { SubHeader("⏰ Coming up") }
@@ -302,6 +307,8 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
 
 fun TaskEntity.isForToday(endOfToday: Long): Boolean =
     (dueAt != null && dueAt <= endOfToday) ||
+        // v116: a one-time quest added today with no due date shows under Today's quests (not in No date)
+        (questType == "onetime" && !isRecurring && dueAt == null && createdAt >= startOfToday(endOfToday)) ||
         (isRecurring && (dueAt == null || questType == "daily" || questType == "weekly" || questType == "challenge"))
 
 // ── Hero card ──────────────────────────────────────────────────────────────

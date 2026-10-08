@@ -19,32 +19,71 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-private data class Subj(val id: String, val name: String, val base: Int, val extras: List<String> = emptyList()) {
+private data class Subj(val id: String, val name: String, val names: List<String>, val extras: List<String> = emptyList()) {
+    val base: Int get() = names.size
     val total: Int get() = base + extras.size
 }
 
-// MP Board Class 12 (fixed): Physics 14, Chemistry 10, Maths 13, Hindi 18 lessons + 7 sections, English 19 lessons + 3 sections
+// MP Board Class 12 (names from the guide's contents pages): Physics 14, Chemistry 10, Maths 13, Hindi 18 lessons + 7 sections, English 19 lessons + 3 sections
 private val SUBJECTS = listOf(
-    Subj("P", "Physics", 14), Subj("C", "Chemistry", 10), Subj("M", "Maths", 13),
-    Subj("H", "Hindi", 18, listOf("Hindi sahitya ka itihas", "Vyakaran", "Patra lekhan", "Anuchhed lekhan", "Nibandh lekhan", "Apathit bodh", "Abhivyakti aur madhyam")),
-    Subj("E", "English", 19, listOf("Reading comprehension", "Writing skills", "Grammar")),
+    Subj("P", "Physics", listOf(
+        "Electric Charge and Electric Field", "Electrostatic Potential and Capacitance", "Current Electricity",
+        "Moving Charges and Magnetism", "Magnetism and Matter", "Electromagnetic Induction", "Alternating Current",
+        "Electromagnetic Waves", "Ray Optics and Optical Instruments", "Wave Optics",
+        "Dual Nature of Radiation and Matter", "Atoms", "Nuclei",
+        "Semiconductor Electronics: Materials, Devices and Simple Circuits")),
+    Subj("C", "Chemistry", listOf(
+        "Solutions", "Electrochemistry", "Chemical Kinetics", "d- and f-block Elements", "Co-ordination Compounds",
+        "Haloalkanes and Haloarenes", "Alcohols, Phenols and Ethers", "Aldehydes, Ketones and Carboxylic Acids",
+        "Amines", "Bio-molecules")),
+    Subj("M", "Maths", listOf(
+        "Relations and Functions", "Inverse Trigonometric Functions", "Matrices", "Determinants",
+        "Continuity and Differentiability (5A) + Differentiation (5B)", "Application of Derivatives",
+        "Integration (7A) + Definite Integral (7B)", "Application of Integrals", "Differential Equations",
+        "Vector Algebra", "Three-dimensional Geometry", "Linear Programming", "Probability")),
+    Subj("H", "Hindi \u0939\u093f\u0928\u094d\u0926\u0940", listOf(
+        "\u0906\u0924\u094d\u092e\u092a\u0930\u093f\u091a\u092f / \u090f\u0915 \u0917\u0940\u0924\u2014\u0926\u093f\u0928 \u091c\u0932\u094d\u0926\u0940-\u091c\u0932\u094d\u0926\u0940 \u0922\u0932\u0924\u093e \u0939\u0948!",
+        "\u092a\u0924\u0902\u0917",
+        "\u0915\u0935\u093f\u0924\u093e \u0915\u0947 \u092c\u0939\u093e\u0928\u0947 / \u092c\u093e\u0924 \u0938\u0940\u0927\u0940 \u0925\u0940 \u092a\u0930",
+        "\u0915\u0948\u092e\u0930\u0947 \u092e\u0947\u0902 \u092c\u0902\u0926 \u0905\u092a\u093e\u0939\u093f\u091c",
+        "\u0909\u0937\u093e",
+        "\u092c\u093e\u0926\u0932 \u0930\u093e\u0917",
+        "\u0915\u0935\u093f\u0924\u093e\u0935\u0932\u0940 (\u0909\u0924\u094d\u0924\u0930 \u0915\u093e\u0902\u0921 \u0938\u0947) / \u0932\u0915\u094d\u0937\u094d\u092e\u0923-\u092e\u0942\u0930\u094d\u091a\u094d\u091b\u093e \u0914\u0930 \u0930\u093e\u092e \u0915\u093e \u0935\u093f\u0932\u093e\u092a",
+        "\u0930\u0941\u092c\u093e\u0907\u092f\u093e\u0901",
+        "\u091b\u094b\u091f\u093e \u092e\u0947\u0930\u093e \u0916\u0947\u0924 / \u092c\u0917\u0941\u0932\u094b\u0902 \u0915\u0947 \u092a\u0902\u0916",
+        "\u092d\u0915\u094d\u0924\u093f\u0928",
+        "\u092c\u093e\u091c\u093e\u0930 \u0926\u0930\u094d\u0936\u0928",
+        "\u0915\u093e\u0932\u0947 \u092e\u0947\u0918\u093e \u092a\u093e\u0928\u0940 \u0926\u0947",
+        "\u092a\u0939\u0932\u0935\u093e\u0928 \u0915\u0940 \u0922\u094b\u0932\u0915",
+        "\u0936\u093f\u0930\u0940\u0937 \u0915\u0947 \u092b\u0942\u0932",
+        "\u0936\u094d\u0930\u092e \u0935\u093f\u092d\u093e\u091c\u0928 \u0914\u0930 \u091c\u093e\u0924\u093f-\u092a\u094d\u0930\u0925\u093e / \u092e\u0947\u0930\u0940 \u0915\u0932\u094d\u092a\u0928\u093e \u0915\u093e \u0906\u0926\u0930\u094d\u0936 \u0938\u092e\u093e\u091c",
+        "\u0938\u093f\u0932\u094d\u0935\u0930 \u0935\u0948\u0921\u093f\u0902\u0917",
+        "\u091c\u0942\u091d",
+        "\u0905\u0924\u0940\u0924 \u092e\u0947\u0902 \u0926\u092c\u0947 \u092a\u093e\u0901\u0935"),
+        listOf("\u0939\u093f\u0928\u094d\u0926\u0940 \u0938\u093e\u0939\u093f\u0924\u094d\u092f \u0915\u093e \u0907\u0924\u093f\u0939\u093e\u0938", "\u0935\u094d\u092f\u093e\u0915\u0930\u0923", "\u092a\u0924\u094d\u0930-\u0932\u0947\u0916\u0928", "\u0905\u0928\u0941\u091a\u094d\u091b\u0947\u0926 \u0932\u0947\u0916\u0928", "\u0928\u093f\u092c\u0902\u0927 \u0932\u0947\u0916\u0928", "\u0905\u092a\u0920\u093f\u0924 \u092c\u094b\u0927", "\u0905\u092d\u093f\u0935\u094d\u092f\u0915\u094d\u0924\u093f \u0914\u0930 \u092e\u093e\u0927\u094d\u092f\u092e")),
+    Subj("E", "English", listOf(
+        "The Last Lesson", "Lost Spring", "Deep Water", "The Rattrap", "Indigo", "Poets and Pancakes", "The Interview", "Going Places",
+        "My Mother at Sixty-six", "Keeping Quiet", "A Thing of Beauty", "A Roadside Stand", "Aunt Jennifer's Tigers",
+        "The Third Level", "The Tiger King", "Journey to the End of the Earth", "The Enemy", "On the Face of It", "Memories of Childhood"),
+        listOf("Reading Comprehension", "Writing Skills", "Grammar")),
 )
+
+private fun readSet(sp: android.content.SharedPreferences, kind: String, s: Subj): Set<Int> =
+    (sp.getString("chap_${kind}_${s.id}", "") ?: "").split(",").mapNotNull { it.toIntOrNull() }
+        .filter { it in 1..s.total }.toSet()
+
+private fun saveSet(sp: android.content.SharedPreferences, kind: String, s: Subj, v: Set<Int>) =
+    sp.edit().putString("chap_${kind}_${s.id}", v.sorted().joinToString(",")).apply()
 
 /** PCMHE chapter checklist. Study mode ticks chapters done; Revision mode ticks chapters revised (only done ones). */
 @Composable
-fun ChaptersScreen(onBack: () -> Unit) {
+fun ChaptersScreen(onBack: () -> Unit, onOpenSubject: (String, Boolean) -> Unit = { _, _ -> }) {
     val ctx = LocalContext.current
     val sp = remember { ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE) }
     var tick by remember { mutableIntStateOf(0) }          // bump after every change
     var revMode by remember { mutableStateOf(false) }
-    val open = remember { mutableStateMapOf<String, Boolean>() }
 
-    // Always clamped to the real chapter range, so stale or wrong saved numbers can never count.
-    fun read(kind: String, s: Subj): Set<Int> =
-        (sp.getString("chap_${kind}_${s.id}", "") ?: "").split(",").mapNotNull { it.toIntOrNull() }
-            .filter { it in 1..s.total }.toSet()
-    fun save(kind: String, s: Subj, v: Set<Int>) =
-        sp.edit().putString("chap_${kind}_${s.id}", v.sorted().joinToString(",")).apply()
+    fun read(kind: String, s: Subj): Set<Int> = readSet(sp, kind, s)
 
     val refresh = tick
     val allTotal = SUBJECTS.sumOf { it.total }
@@ -106,15 +145,14 @@ fun ChaptersScreen(onBack: () -> Unit) {
             }
         }
 
-        // Subjects (tap a card to open its chapters)
+        // Subjects (tap a card to open that subject's own page)
         SUBJECTS.forEach { s ->
             val doneSet = read("done", s)
             val revSet = read("rev", s).intersect(doneSet)
             val shown = if (revMode) revSet.size else doneSet.size
-            val isOpen = open[s.id] == true
             val accent = if (revMode) ColorAccent else ColorPrimary
             Column(Modifier.fillMaxWidth().background(ColorSurface, RoundedCornerShape(16.dp))
-                .clickable { open[s.id] = !isOpen }.padding(14.dp),
+                .clickable { onOpenSubject(s.id, revMode) }.padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -122,60 +160,98 @@ fun ChaptersScreen(onBack: () -> Unit) {
                         Text("$shown / ${s.total} ${if (revMode) "revised" else "done"}  \u00B7  ${shown * 100 / s.total}%",
                             style = MaterialTheme.typography.bodySmall, color = if (shown == s.total) accent else ColorMuted)
                     }
-                    Text(if (isOpen) "\u25B4" else "\u25BE", color = ColorMuted, style = MaterialTheme.typography.titleMedium)
+                    Text("\u203A", color = ColorMuted, style = MaterialTheme.typography.headlineSmall)
                 }
                 LinearProgressIndicator(progress = { shown / s.total.toFloat() },
                     modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
                     color = accent, trackColor = ColorDivider)
-                if (isOpen) {
-                    fun tap(n: Int) {
-                        val isDone = n in doneSet
-                        val isRev = n in revSet
-                        if (revMode) {
-                            if (!isDone) Toast.makeText(ctx, "Study $n first", Toast.LENGTH_SHORT).show()
-                            else save("rev", s, if (isRev) revSet - n else revSet + n)
-                        } else {
-                            save("done", s, if (isDone) doneSet - n else doneSet + n)
-                            if (isDone) save("rev", s, revSet - n)   // un-studied chapters cannot stay revised
-                        }
-                        tick++
-                    }
-                    (1..s.base).chunked(6).forEach { rowNums ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                            rowNums.forEach { n ->
-                                ChapterCell(n.toString(), n in doneSet, n in revSet, revMode, Modifier.weight(1f)) { tap(n) }
-                            }
-                            repeat(6 - rowNums.size) { Spacer(Modifier.weight(1f)) }
-                        }
-                    }
-                    if (s.extras.isNotEmpty()) {
-                        Text("Sections", style = MaterialTheme.typography.labelLarge, color = ColorMuted)
-                        s.extras.forEachIndexed { i, name ->
-                            val n = s.base + i + 1
-                            ChapterCell(name, n in doneSet, n in revSet, revMode, Modifier.fillMaxWidth()) { tap(n) }
-                        }
-                    }
-                }
             }
         }
         Spacer(Modifier.height(16.dp))
     }
 }
 
+/** One subject on its own page: every chapter with its exact name. Tap to tick (Study) or tick revised (Revision). */
 @Composable
-private fun ChapterCell(label: String, isDone: Boolean, isRev: Boolean, revMode: Boolean, modifier: Modifier, onTap: () -> Unit) {
-    val bg = when {
-        revMode && isRev -> ColorAccent
-        revMode && isDone -> ColorPrimary.copy(alpha = 0.30f)
-        !revMode && isDone -> ColorPrimary
-        else -> ColorSurfaceHigh
+fun ChapterSubjectScreen(subjectId: String, startRev: Boolean, onBack: () -> Unit) {
+    val s = SUBJECTS.firstOrNull { it.id == subjectId } ?: run { onBack(); return }
+    val ctx = LocalContext.current
+    val sp = remember { ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE) }
+    var tick by remember { mutableIntStateOf(0) }
+    var revMode by remember { mutableStateOf(startRev) }
+    val doneSet = remember(tick) { readSet(sp, "done", s) }
+    val revSet = remember(tick) { readSet(sp, "rev", s).intersect(doneSet) }
+    val shown = if (revMode) revSet.size else doneSet.size
+    val accent = if (revMode) ColorAccent else ColorPrimary
+
+    fun tap(n: Int) {
+        val isDone = n in doneSet
+        val isRev = n in revSet
+        if (revMode) {
+            if (!isDone) Toast.makeText(ctx, "Study it first", Toast.LENGTH_SHORT).show()
+            else saveSet(sp, "rev", s, if (isRev) revSet - n else revSet + n)
+        } else {
+            saveSet(sp, "done", s, if (isDone) doneSet - n else doneSet + n)
+            if (isDone) saveSet(sp, "rev", s, revSet - n)
+        }
+        tick++
     }
-    val solid = (revMode && isRev) || (!revMode && isDone)
-    Box(
-        modifier.height(42.dp).clip(RoundedCornerShape(10.dp)).background(bg).clickable { onTap() },
-        contentAlignment = Alignment.Center,
+
+    @Composable
+    fun ChapterRow(n: Int, label: String, numLabel: String) {
+        val isDone = n in doneSet
+        val isRev = n in revSet
+        val solid = (revMode && isRev) || (!revMode && isDone)
+        val bg = when {
+            revMode && isRev -> ColorAccent
+            revMode && isDone -> ColorPrimary.copy(alpha = 0.30f)
+            !revMode && isDone -> ColorPrimary
+            else -> ColorSurface
+        }
+        val fg = if (solid) ColorOnPrimary else if (revMode && !isDone) ColorMuted else ColorText
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(bg)
+                .clickable { tap(n) }.padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(if (solid) "\u2713" else numLabel, color = fg, fontWeight = FontWeight.Bold, modifier = Modifier.width(26.dp))
+            Text(label, color = fg, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        }
+    }
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(if (solid) "\u2713 $label" else label, fontWeight = FontWeight.SemiBold,
-            color = if (solid) ColorOnPrimary else if (revMode && !isDone) ColorMuted else ColorText)
+        Spacer(Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
+            Column {
+                Text(s.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
+                Text("$shown / ${s.total} ${if (revMode) "revised" else "studied"}  \u00B7  ${shown * 100 / s.total}%",
+                    style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            }
+        }
+        Row(Modifier.fillMaxWidth().background(ColorSurfaceHigh, RoundedCornerShape(50)).padding(4.dp)) {
+            listOf(false to "\uD83D\uDCD6 Study", true to "\uD83D\uDD01 Revision").forEach { (mode, label) ->
+                Box(
+                    Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(50))
+                        .background(if (revMode == mode) (if (mode) ColorAccent else ColorPrimary) else ColorSurfaceHigh)
+                        .clickable { revMode = mode },
+                    contentAlignment = Alignment.Center,
+                ) { Text(label, fontWeight = FontWeight.SemiBold,
+                    color = if (revMode == mode) ColorOnPrimary else ColorText) }
+            }
+        }
+        LinearProgressIndicator(progress = { shown / s.total.toFloat() },
+            modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
+            color = accent, trackColor = ColorDivider)
+        s.names.forEachIndexed { i, name -> ChapterRow(i + 1, name, "${i + 1}.") }
+        if (s.extras.isNotEmpty()) {
+            Text(if (s.id == "H") "\u0916\u0902\u0921 / \u0935\u093f\u0937\u092f" else "Sections", style = MaterialTheme.typography.labelLarge, color = ColorMuted)
+            s.extras.forEachIndexed { i, name -> ChapterRow(s.base + i + 1, name, "\u2022") }
+        }
+        Spacer(Modifier.height(16.dp))
     }
 }
