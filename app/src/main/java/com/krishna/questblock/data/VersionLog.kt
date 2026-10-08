@@ -3,6 +3,15 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("108.0.0", "Hindi and English counts",
+        listOf(
+            "Hindi 18 and English 19 chapters filled from your books; Chemistry is 10 chapters",
+        )),
+    VersionEntry("107.0.0", "MP Board chapter counts",
+        listOf(
+            "Chapters: Physics 14, Chemistry 10, Maths 13, Hindi 18 and English 19 pre-filled for MP Board Class 12 (you can change them)",
+            "Countdown to the 17 Nov exam with chapters left and chapters needed per week (last 10 days kept for revision)",
+        )),
     VersionEntry("106.0.0", "Chapters + study first",
         listOf(
             "New Chapters checklist (Home -> Chapters): type the chapter count for Physics, Chemistry, Maths, Hindi and English, tick them off, see syllabus %",

@@ -19,6 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
+// MP Board Class 12: Physics 14, Chemistry 10, Maths 13, Hindi 18 (Aroh 15 + Vitan 3), English 19 (Flamingo 8 prose + 5 poems, Vistas 6). You can change any of them.
+private val DEFAULT_CHAPTERS = mapOf("P" to 14, "C" to 10, "M" to 13, "H" to 18, "E" to 19)
 private val SUBJECTS = listOf("P" to "Physics", "C" to "Chemistry", "M" to "Maths", "H" to "Hindi", "E" to "English")
 
 /** Chapter checklist for PCMHE. You type how many chapters a subject has, then tick them off. Saved on the phone. */
@@ -28,7 +30,7 @@ fun ChaptersScreen(onBack: () -> Unit) {
     val sp = remember { ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE) }
     var rev by remember { mutableIntStateOf(0) }   // bump to re-read after every change
 
-    fun total(id: String) = sp.getInt("chap_total_$id", 0)
+    fun total(id: String) = sp.getInt("chap_total_$id", DEFAULT_CHAPTERS[id] ?: 0)
     fun done(id: String): Set<Int> =
         (sp.getString("chap_done_$id", "") ?: "").split(",").mapNotNull { it.toIntOrNull() }.toSet()
 
@@ -52,6 +54,16 @@ fun ChaptersScreen(onBack: () -> Unit) {
                 color = ColorText, fontWeight = FontWeight.SemiBold)
             if (allTotal > 0) {
                 LinearProgressIndicator(progress = { allPct / 100f }, modifier = Modifier.fillMaxWidth(), color = ColorPrimary, trackColor = ColorDivider)
+                val exam = java.util.GregorianCalendar(2026, java.util.Calendar.NOVEMBER, 17).timeInMillis
+                val days = Math.ceil((exam - System.currentTimeMillis()) / 86_400_000.0).toInt()
+                val left = allTotal - allDone
+                if (days > 0 && left > 0) {
+                    val studyDays = if (days > 20) days - 10 else days   // keep the last 10 days for revision
+                    val perWeek = Math.ceil(left / (studyDays / 7.0)).toInt()
+                    Text("$days days to exam (17 Nov)  \u00B7  $left chapters left  \u00B7  about $perWeek chapters / week" +
+                        if (days > 20) ", then 10 days revision" else "",
+                        style = MaterialTheme.typography.bodySmall, color = ColorWarning, fontWeight = FontWeight.SemiBold)
+                } else if (days <= 0) Text("Exam time. All the best!", style = MaterialTheme.typography.bodySmall, color = ColorWarning)
                 Text(when {
                     allPct < 30 -> "Long way to go. Study first, everything else after."
                     allPct < 70 -> "Good pace. Keep ticking."
