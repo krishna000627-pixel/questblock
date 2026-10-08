@@ -3,6 +3,21 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("120.0.0", "Chapters: Study page + School page",
+        listOf(
+            "Chapters now has two pages with a switch at the top (also on every subject page). Study opens by default",
+            "Study page: tap a chapter = studied (the big % is studied out of the whole course). The 🔁 chip = revised this week, only after studied. Revised % = chapters revised this week out of chapters studied",
+            "Revised this week resets every Monday. The last weeks' percentages are kept and shown as Past weeks",
+            "School page: tap a chapter = taught in school (shown as a count, no %). The 📓 chip = copy complete, only after taught. Copy % = copy complete out of the chapters taught",
+            "Copies ticked in v119 stay, and count as taught. Studied ticks stay. Old yes/no revision ticks start fresh",
+        )),
+    VersionEntry("119.0.0", "Study + Copy complete merged",
+        listOf(
+            "Chapters: the Study / Revision toggle is gone. One page now tracks two things per chapter: Studied (tap the chapter) and Copy complete (tap the notebook chip, only after studied)",
+            "Copy complete is counted out of the chapters you have studied, e.g. 6 / 9 copy complete, so you can see how much of the course done is also written in your copy",
+            "Overview shows studied % (out of the whole course) and copy complete % (out of studied) side by side, per subject too",
+            "Old Revision ticks are no longer used (they were separate data, nothing else read them)",
+        )),
     VersionEntry("118.0.0", "Marks: pass / fail",
         listOf(
             "Marks: a subject under 33% is a FAIL (33% exactly passes). It shows in red with a cross, the test card says FAIL, and the summary names the failed subjects",

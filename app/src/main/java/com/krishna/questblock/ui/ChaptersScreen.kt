@@ -26,6 +26,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.krishna.questblock.data.dowIndex
+import com.krishna.questblock.data.startOfToday
 
 private data class Subj(val id: String, val name: String, val names: List<String>, val extras: List<String> = emptyList()) {
     val base: Int get() = names.size
@@ -116,7 +118,62 @@ private fun Ring(pct: Int, color: Color, size: Int = 58) {
 
 private fun labelOf(s: Subj, n: Int): String = if (n <= s.base) s.names[n - 1] else s.extras[n - s.base - 1]
 
-/** PCMHE chapter checklist overview. Study mode counts chapters done; Revision mode counts chapters revised (only done ones). */
+// ── Week handling (week starts on Monday) ───────────────────────────────────
+private fun weekStartMs(now: Long): Long {
+    val c = java.util.Calendar.getInstance()
+    c.timeInMillis = startOfToday(now)
+    c.add(java.util.Calendar.DAY_OF_YEAR, -dowIndex(now))
+    return c.timeInMillis
+}
+
+/** When a new week (Monday) has started: save last week's revised % to the history and clear the revise ticks. */
+private fun rolloverWeek(sp: android.content.SharedPreferences) {
+    val cur = weekStartMs(System.currentTimeMillis())
+    val stored = sp.getLong("chap_wrev_week", 0L)
+    if (stored == cur) return
+    val ed = sp.edit()
+    if (stored != 0L) {
+        val studied = SUBJECTS.sumOf { readSet(sp, "done", it).size }
+        val rev = SUBJECTS.sumOf { sub -> readSet(sp, "wrev", sub).intersect(readSet(sp, "done", sub)).size }
+        val pct = if (studied == 0) 0 else rev * 100 / studied
+        val old = (sp.getString("chap_wrev_hist", "") ?: "").split(",").filter { it.contains(":") }
+        ed.putString("chap_wrev_hist", (old + "$stored:$pct").takeLast(4).joinToString(","))
+    }
+    SUBJECTS.forEach { ed.remove("chap_wrev_${it.id}") }
+    ed.putLong("chap_wrev_week", cur).apply()
+}
+
+private fun historyText(sp: android.content.SharedPreferences): String? {
+    val items = (sp.getString("chap_wrev_hist", "") ?: "").split(",").mapNotNull {
+        val p = it.split(":"); val ms = p.getOrNull(0)?.toLongOrNull(); val pc = p.getOrNull(1)?.toIntOrNull()
+        if (ms != null && pc != null) ms to pc else null
+    }.takeLast(3).reversed()
+    if (items.isEmpty()) return null
+    val f = java.text.SimpleDateFormat("d MMM", java.util.Locale.getDefault())
+    return "Past weeks: " + items.joinToString("  \u00B7  ") { "${f.format(java.util.Date(it.first))} ${it.second}%" }
+}
+
+// ── Readers ─────────────────────────────────────────────────────────────────
+/** Taught in school. A chapter that already has a finished copy counts as taught (v119 copies keep working). */
+private fun taughtSet(sp: android.content.SharedPreferences, s: Subj): Set<Int> = readSet(sp, "taught", s) + readSet(sp, "copy", s)
+private fun copyDone(sp: android.content.SharedPreferences, s: Subj): Set<Int> = readSet(sp, "copy", s)
+private fun revisedWeek(sp: android.content.SharedPreferences, s: Subj): Set<Int> = readSet(sp, "wrev", s).intersect(readSet(sp, "done", s))
+
+@Composable
+private fun PageSwitch(school: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().background(ColorSurfaceHigh, RoundedCornerShape(50)).padding(4.dp)) {
+        listOf(false to "\uD83D\uDCD6 Study", true to "\uD83C\uDFEB School").forEach { (mode, label) ->
+            Box(
+                Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(50))
+                    .background(if (school == mode) (if (mode) ColorAccent else ColorPrimary) else ColorSurfaceHigh)
+                    .clickable { onChange(mode) },
+                contentAlignment = Alignment.Center,
+            ) { Text(label, fontWeight = FontWeight.SemiBold, color = if (school == mode) ColorOnPrimary else ColorText) }
+        }
+    }
+}
+
+/** Chapters overview. Study page (default): studied % + revised this week %. School page: taught count + copy complete % out of taught. */
 @Composable
 fun ChaptersScreen(
     onBack: () -> Unit,
@@ -125,15 +182,17 @@ fun ChaptersScreen(
 ) {
     val ctx = LocalContext.current
     val sp = remember { ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE) }
-    var revMode by rememberSaveable { mutableStateOf(false) }
+    remember { rolloverWeek(sp) }
+    var school by rememberSaveable { mutableStateOf(false) }
 
-    // Re-read on every composition (returning from a subject page recomposes this screen).
     val allTotal = SUBJECTS.sumOf { it.total }
     val allDone = SUBJECTS.sumOf { readSet(sp, "done", it).size }
-    val allRev = SUBJECTS.sumOf { s -> readSet(sp, "rev", s).intersect(readSet(sp, "done", s)).size }
+    val allRevWk = SUBJECTS.sumOf { revisedWeek(sp, it).size }
+    val allTaught = SUBJECTS.sumOf { taughtSet(sp, it).size }
+    val allCopy = SUBJECTS.sumOf { copyDone(sp, it).size }
     val donePct = allDone * 100 / allTotal
-    val revPct = allRev * 100 / allTotal
-    val accent = if (revMode) ColorAccent else ColorPrimary
+    val revPct = if (allDone == 0) 0 else allRevWk * 100 / allDone
+    val copyPct = if (allTaught == 0) 0 else allCopy * 100 / allTaught
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp),
@@ -145,19 +204,7 @@ fun ChaptersScreen(
             Text("\uD83D\uDCDA Chapters", style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold, color = ColorText)
         }
-
-        // Study / Revision toggle (only here; subject pages follow it)
-        Row(Modifier.fillMaxWidth().background(ColorSurfaceHigh, RoundedCornerShape(50)).padding(4.dp)) {
-            listOf(false to "\uD83D\uDCD6 Study", true to "\uD83D\uDD01 Revision").forEach { (mode, label) ->
-                Box(
-                    Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(50))
-                        .background(if (revMode == mode) (if (mode) ColorAccent else ColorPrimary) else ColorSurfaceHigh)
-                        .clickable { revMode = mode },
-                    contentAlignment = Alignment.Center,
-                ) { Text(label, fontWeight = FontWeight.SemiBold,
-                    color = if (revMode == mode) ColorOnPrimary else ColorText) }
-            }
-        }
+        PageSwitch(school) { school = it }
 
         // Overall card: tap = Marks page
         Column(
@@ -165,21 +212,40 @@ fun ChaptersScreen(
                 .clickable { onOpenMarks() }.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(if (revMode) "$revPct%" else "$donePct%", style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.Bold, color = accent)
-                    Text(if (revMode) "revised  ($allRev / $allTotal)" else "studied  ($allDone / $allTotal)",
-                        style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            Row(verticalAlignment = Alignment.Top) {
+                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                    if (!school) {
+                        Column {
+                            Text("$donePct%", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = ColorPrimary)
+                            Text("studied ($allDone / $allTotal)", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                        }
+                        Column {
+                            Text("$revPct%", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = ColorAccent)
+                            Text("revised this week", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                        }
+                    } else {
+                        Column {
+                            Text("$allTaught / $allTotal", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = ColorText)
+                            Text("taught in school", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                        }
+                        Column {
+                            Text("$copyPct%", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = ColorAccent)
+                            Text("copy complete ($allCopy / $allTaught)", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                        }
+                    }
                 }
                 Box(Modifier.clip(RoundedCornerShape(50)).background(ColorSurfaceHigh).padding(horizontal = 12.dp, vertical = 6.dp)) {
                     Text("\uD83D\uDCDD Marks \u203A", color = ColorText, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
                 }
             }
-            LinearProgressIndicator(progress = { (if (revMode) allRev else allDone) / allTotal.toFloat() },
-                modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
-                color = accent, trackColor = ColorDivider)
-            if (!revMode) {
+            if (!school) {
+                LinearProgressIndicator(progress = { allDone / allTotal.toFloat() },
+                    modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
+                    color = ColorPrimary, trackColor = ColorDivider)
+                LinearProgressIndicator(progress = { if (allDone == 0) 0f else allRevWk / allDone.toFloat() },
+                    modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
+                    color = ColorAccent, trackColor = ColorDivider)
+                historyText(sp)?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = ColorMuted) }
                 val exam = java.util.GregorianCalendar(2026, java.util.Calendar.NOVEMBER, 17).timeInMillis
                 val days = Math.ceil((exam - System.currentTimeMillis()) / 86_400_000.0).toInt()
                 val left = allTotal - allDone
@@ -190,39 +256,48 @@ fun ChaptersScreen(
                         if (days > 20) ", then 10 days revision" else "",
                         style = MaterialTheme.typography.bodySmall, color = ColorWarning, fontWeight = FontWeight.SemiBold)
                 } else if (days > 0) {
-                    Text("$days days to exam. Everything studied. Revise!", style = MaterialTheme.typography.bodySmall,
+                    Text("$days days to exam. Everything studied. Revise every week!", style = MaterialTheme.typography.bodySmall,
                         color = ColorWarning, fontWeight = FontWeight.SemiBold)
                 } else Text("Exam time. All the best!", style = MaterialTheme.typography.bodySmall, color = ColorWarning)
+            } else {
+                LinearProgressIndicator(progress = { if (allTaught == 0) 0f else allCopy / allTaught.toFloat() },
+                    modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
+                    color = ColorAccent, trackColor = ColorDivider)
             }
         }
 
-        // Subject cards: tap opens that subject's own page
         SUBJECTS.forEach { s ->
             val st = styleOf(s.id)
             val doneSet = readSet(sp, "done", s)
-            val revSet = readSet(sp, "rev", s).intersect(doneSet)
-            val shown = if (revMode) revSet.size else doneSet.size
-            val pct = shown * 100 / s.total
-            val next: String? = if (revMode) (1..s.total).firstOrNull { it in doneSet && it !in revSet }?.let { labelOf(s, it) }
-                                else (1..s.total).firstOrNull { it !in doneSet }?.let { labelOf(s, it) }
+            val revWk = revisedWeek(sp, s)
+            val taught = taughtSet(sp, s)
+            val copies = copyDone(sp, s)
+            val pct = if (!school) doneSet.size * 100 / s.total else (if (taught.isEmpty()) 0 else copies.size * 100 / taught.size)
+            val nextText: String = if (!school)
+                ((1..s.total).firstOrNull { it !in doneSet }?.let { "Next: " + labelOf(s, it) } ?: "All studied \u2713")
+            else
+                ((1..s.total).firstOrNull { it in taught && it !in copies }?.let { "Copy next: " + labelOf(s, it) }
+                    ?: if (taught.isEmpty()) "Nothing taught yet" else "All taught chapters copied \u2713")
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(ColorSurface)
-                    .clickable { onOpenSubject(s.id, revMode) }.padding(14.dp),
+                    .clickable { onOpenSubject(s.id, school) }.padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Ring(pct, st.color)
+                Ring(pct, if (school) ColorAccent else st.color)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text("${st.emoji}  ${s.name}", color = ColorText, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    Text("$shown / ${s.total} ${if (revMode) "revised" else "done"}",
-                        style = MaterialTheme.typography.bodySmall, color = if (shown == s.total) st.color else ColorMuted)
-                    Text(
-                        when {
-                            next != null -> (if (revMode) "Revise next: " else "Next: ") + next
-                            revMode -> "All revised \u2713"
-                            else -> "All chapters done \u2713"
-                        },
-                        style = MaterialTheme.typography.labelMedium, color = ColorMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (!school) {
+                        Text("${doneSet.size} / ${s.total} studied", style = MaterialTheme.typography.bodySmall,
+                            color = if (doneSet.size == s.total) st.color else ColorMuted)
+                        Text("\uD83D\uDD01 ${if (doneSet.isEmpty()) 0 else revWk.size * 100 / doneSet.size}% revised this week",
+                            style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                    } else {
+                        Text("\uD83C\uDFEB ${taught.size} / ${s.total} taught in school", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                        Text("\uD83D\uDCD3 ${copies.size} / ${taught.size} copy complete", style = MaterialTheme.typography.bodySmall,
+                            color = if (taught.isNotEmpty() && copies.size == taught.size) ColorAccent else ColorMuted)
+                    }
+                    Text(nextText, style = MaterialTheme.typography.labelMedium, color = ColorMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Text("\u203A", color = ColorMuted, style = MaterialTheme.typography.headlineMedium)
             }
@@ -231,65 +306,82 @@ fun ChaptersScreen(
     }
 }
 
-/** One subject on its own page. The mode (Study / Revision) is the one picked on the Chapters page. */
+/** One subject on its own page, with the same Study / School switch. */
 @Composable
-fun ChapterSubjectScreen(subjectId: String, startRev: Boolean, onBack: () -> Unit) {
+fun ChapterSubjectScreen(subjectId: String, startSchool: Boolean, onBack: () -> Unit) {
     val s = SUBJECTS.firstOrNull { it.id == subjectId } ?: run { onBack(); return }
     val st = styleOf(s.id)
-    val revMode = startRev
     val ctx = LocalContext.current
     val sp = remember { ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE) }
+    remember { rolloverWeek(sp) }
+    var school by rememberSaveable { mutableStateOf(startSchool) }
     var tick by remember { mutableIntStateOf(0) }
     val doneSet = remember(tick) { readSet(sp, "done", s) }
-    val revSet = remember(tick) { readSet(sp, "rev", s).intersect(doneSet) }
-    val shown = if (revMode) revSet.size else doneSet.size
-    val pct = shown * 100 / s.total
+    val revWk = remember(tick) { revisedWeek(sp, s) }
+    val taught = remember(tick) { taughtSet(sp, s) }
+    val copies = remember(tick) { copyDone(sp, s) }
 
-    fun tap(n: Int) {
-        val isDone = n in doneSet
-        val isRev = n in revSet
-        if (revMode) {
-            if (!isDone) Toast.makeText(ctx, "Study it first", Toast.LENGTH_SHORT).show()
-            else saveSet(sp, "rev", s, if (isRev) revSet - n else revSet + n)
-        } else {
-            saveSet(sp, "done", s, if (isDone) doneSet - n else doneSet + n)
-            if (isDone) saveSet(sp, "rev", s, revSet - n)
-        }
+    fun toggleStudy(n: Int) {
+        if (n in doneSet) {
+            saveSet(sp, "done", s, doneSet - n)
+            saveSet(sp, "wrev", s, readSet(sp, "wrev", s) - n)   // not studied = cannot be revised
+        } else saveSet(sp, "done", s, doneSet + n)
+        tick++
+    }
+    fun toggleRevise(n: Int) {
+        if (n !in doneSet) { Toast.makeText(ctx, "Mark it studied first", Toast.LENGTH_SHORT).show(); return }
+        val cur = readSet(sp, "wrev", s)
+        saveSet(sp, "wrev", s, if (n in cur) cur - n else cur + n)
+        tick++
+    }
+    fun toggleTaught(n: Int) {
+        if (n in taught) {
+            saveSet(sp, "taught", s, readSet(sp, "taught", s) - n)
+            saveSet(sp, "copy", s, copies - n)   // not taught = no copy tick
+        } else saveSet(sp, "taught", s, readSet(sp, "taught", s) + n)
+        tick++
+    }
+    fun toggleCopy(n: Int) {
+        if (n !in taught) { Toast.makeText(ctx, "Mark it taught in school first", Toast.LENGTH_SHORT).show(); return }
+        saveSet(sp, "copy", s, if (n in copies) copies - n else copies + n)
         tick++
     }
 
     @Composable
     fun ChapterRow(n: Int) {
-        val isDone = n in doneSet
-        val isRev = n in revSet
-        val lit = if (revMode) isRev else isDone
-        val tag = when {
-            revMode && isRev -> "Revised"
-            revMode && isDone -> "Revise"
-            revMode -> "Study first"
-            isDone -> "Studied"
-            else -> ""
-        }
+        val main = if (school) n in taught else n in doneSet
+        val chipOn = if (school) n in copies else n in revWk
+        val chipAllowed = if (school) n in taught else n in doneSet
+        val chipColor = if (school) ColorAccent else ColorAccent
         Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                .background(if (lit) st.color.copy(alpha = 0.16f) else ColorSurface)
-                .clickable { tap(n) }.padding(horizontal = 12.dp, vertical = 11.dp),
+                .background(if (main) (if (school) ColorAccent else st.color).copy(alpha = 0.16f) else ColorSurface)
+                .clickable { if (school) toggleTaught(n) else toggleStudy(n) }
+                .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Box(
-                Modifier.size(32.dp).clip(RoundedCornerShape(50)).background(if (lit) st.color else ColorSurfaceHigh),
+                Modifier.size(32.dp).clip(RoundedCornerShape(50)).background(if (main) (if (school) ColorAccent else st.color) else ColorSurfaceHigh),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(if (lit) "\u2713" else (if (n <= s.base) "$n" else "\u2022"), fontWeight = FontWeight.Bold,
-                    color = if (lit) ColorOnPrimary else ColorMuted, style = MaterialTheme.typography.labelLarge)
+                Text(if (main) "\u2713" else (if (n <= s.base) "$n" else "\u2022"), fontWeight = FontWeight.Bold,
+                    color = if (main) ColorOnPrimary else ColorMuted, style = MaterialTheme.typography.labelLarge)
             }
-            Text(labelOf(s, n), color = if (revMode && !isDone) ColorMuted else ColorText,
-                fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-            if (tag.isNotEmpty()) Text(tag, color = if (lit) st.color else ColorMuted, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            Text(labelOf(s, n), color = ColorText, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Box(
+                Modifier.clip(RoundedCornerShape(50))
+                    .background(if (chipOn) chipColor else ColorSurfaceHigh)
+                    .clickable { if (school) toggleCopy(n) else toggleRevise(n) }.padding(horizontal = 10.dp, vertical = 7.dp),
+            ) {
+                val icon = if (school) "\uD83D\uDCD3" else "\uD83D\uDD01"
+                Text(if (chipOn) "$icon \u2713" else icon, style = MaterialTheme.typography.labelMedium,
+                    color = if (chipOn) ColorOnPrimary else (if (chipAllowed) ColorText else ColorMuted), fontWeight = FontWeight.Bold)
+            }
         }
     }
 
+    val pct = if (!school) doneSet.size * 100 / s.total else (if (taught.isEmpty()) 0 else copies.size * 100 / taught.size)
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -299,22 +391,31 @@ fun ChapterSubjectScreen(subjectId: String, startRev: Boolean, onBack: () -> Uni
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
             Text("${st.emoji}  ${s.name}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
         }
+        PageSwitch(school) { school = it }
         Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(ColorSurface).padding(16.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Ring(pct, st.color, 72)
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("$shown / ${s.total} ${if (revMode) "revised" else "studied"}", color = ColorText,
-                    fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                Box(Modifier.clip(RoundedCornerShape(50)).background((if (revMode) ColorAccent else ColorPrimary).copy(alpha = 0.18f))
-                    .padding(horizontal = 10.dp, vertical = 3.dp)) {
-                    Text(if (revMode) "\uD83D\uDD01 Revision mode" else "\uD83D\uDCD6 Study mode",
-                        color = if (revMode) ColorAccent else ColorPrimary, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Ring(pct, if (school) ColorAccent else st.color, 72)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (!school) {
+                    Text("${doneSet.size} / ${s.total} studied", color = ColorText, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Box(Modifier.clip(RoundedCornerShape(50)).background(ColorAccent.copy(alpha = 0.18f)).padding(horizontal = 10.dp, vertical = 3.dp)) {
+                        Text("\uD83D\uDD01 ${if (doneSet.isEmpty()) 0 else revWk.size * 100 / doneSet.size}% revised this week",
+                            color = ColorAccent, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    }
+                } else {
+                    Text("${taught.size} / ${s.total} taught in school", color = ColorText, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Box(Modifier.clip(RoundedCornerShape(50)).background(ColorAccent.copy(alpha = 0.18f)).padding(horizontal = 10.dp, vertical = 3.dp)) {
+                        Text("\uD83D\uDCD3 ${copies.size} / ${taught.size} copy complete ($pct%)",
+                            color = ColorAccent, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         }
-        Spacer(Modifier.height(2.dp))
+        Text(if (school) "Tap a chapter = taught in school.  Tap \uD83D\uDCD3 = copy complete."
+             else "Tap a chapter = studied.  Tap \uD83D\uDD01 = revised this week (resets every Monday).",
+            style = MaterialTheme.typography.labelSmall, color = ColorMuted, modifier = Modifier.padding(start = 4.dp))
         for (n in 1..s.total) {
             st.groups.firstOrNull { it.first == n }?.let { (_, title) ->
                 Text(title, style = MaterialTheme.typography.labelLarge, color = st.color,
