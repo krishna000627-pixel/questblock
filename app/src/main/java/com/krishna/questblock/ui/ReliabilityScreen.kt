@@ -97,7 +97,7 @@ fun ReliabilityScreen(onBack: () -> Unit, vm: ReliabilityViewModel = hiltViewMod
                 }, colors = SwitchDefaults.colors(checkedThumbColor = ColorOnPrimary, checkedTrackColor = ColorPrimary,
                     uncheckedThumbColor = ColorMuted, uncheckedTrackColor = ColorSurfaceHigh))
             }
-            Text("🔒 Strict is on by default. Turning it off takes effect at midnight, and the 5-minute pause can be used once a day.",
+            Text("🔒 Strict is off by default. Once on, turning it off takes effect at midnight, and the 5-minute pause can be used once a day.",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             if (note.contains("strict")) Text(note, style = MaterialTheme.typography.bodySmall, color = ColorWarning, fontWeight = FontWeight.SemiBold)
             if (strict) {

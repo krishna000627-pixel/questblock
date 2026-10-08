@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("92.0.0", "No Instagram, no Reels",
+        listOf(
+            "If Instagram is not installed, the Instagram Reels lock row (Vault) and the Reels counter/stats are hidden",
+            "Strict mode is now off by default (turn it on in Reliability)",
+        )),
     VersionEntry("91.0.0", "Roadmap removed",
         listOf(
             "The Roadmap page and its Roadmap button on the Quest board are gone",

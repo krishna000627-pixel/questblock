@@ -55,3 +55,8 @@ fun pseudoLabel(key: String): String? = when (key) {
 
 /** Key used for the unlock time of a "site:" or "short:" lock page target. */
 fun lockKeyOf(target: String): String = if (target.startsWith("site:")) target.removePrefix("site:") else target
+
+
+/** True when Instagram is installed (it has a launcher icon, so the manifest's launcher query makes it visible). */
+fun isInstagramInstalled(ctx: android.content.Context): Boolean =
+    try { ctx.packageManager.getPackageInfo("com.instagram.android", 0); true } catch (e: Exception) { false }

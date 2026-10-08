@@ -135,7 +135,8 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
     val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
     var showStudyPicker by remember { mutableStateOf(false) }
     var ytOn by remember { mutableStateOf(vm.clipsOn("yt")) }
-    var igOn by remember { mutableStateOf(vm.clipsOn("ig")) }
+    val igInstalled = isInstagramInstalled(androidx.compose.ui.platform.LocalContext.current)
+    var igOn by remember { mutableStateOf(igInstalled && vm.clipsOn("ig")) }
     var optionsFor by remember { mutableStateOf<AppRow?>(null) }
     val rate = remember { vm.rate() }
     val studyMin = remember { vm.studyMin() }
@@ -222,20 +223,20 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
             item { Text("Toggle an app below to lock it.", style = MaterialTheme.typography.bodySmall, color = ColorMuted) }
         }
         if (ytOn) item(key = "clip_yt") { ClipCard("YouTube Shorts", true, vm.clipsUntil("yt")) { vm.setClips("yt", it); ytOn = vm.clipsOn("yt") } }
-        if (igOn) item(key = "clip_ig") { ClipCard("Instagram Reels", true, vm.clipsUntil("ig")) { vm.setClips("ig", it); igOn = vm.clipsOn("ig") } }
+        if (igInstalled && igOn) item(key = "clip_ig") { ClipCard("Instagram Reels", true, vm.clipsUntil("ig")) { vm.setClips("ig", it); igOn = vm.clipsOn("ig") } }
         items(lockedRows, key = { it.app.pkg }) { row ->
             AppCard(row, studyMin, onToggle = { vm.setBlocked(row.app, it) }, onOptions = { optionsFor = row })
         }
 
         // ── Everything else ──────────────────────────────────────────────
-        if (!ytOn || !igOn) {
+        if (!ytOn || (igInstalled && !igOn)) {
             item { Text("All apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
                 fontWeight = FontWeight.SemiBold) }
             if (!ytOn) item(key = "clip_yt_off") { ClipCard("YouTube Shorts", false, 0L) { vm.setClips("yt", it); ytOn = vm.clipsOn("yt") } }
-            if (!igOn) item(key = "clip_ig_off") { ClipCard("Instagram Reels", false, 0L) { vm.setClips("ig", it); igOn = vm.clipsOn("ig") } }
+            if (igInstalled && !igOn) item(key = "clip_ig_off") { ClipCard("Instagram Reels", false, 0L) { vm.setClips("ig", it); igOn = vm.clipsOn("ig") } }
         }
         if (freeRows.isNotEmpty()) {
-            if (ytOn && igOn) item { Text("All apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
+            if (ytOn && (igOn || !igInstalled)) item { Text("All apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
                 fontWeight = FontWeight.SemiBold) }
             items(freeRows, key = { "u_${it.app.pkg}" }) { row ->
                 AppCard(row, studyMin, onToggle = { vm.setBlocked(row.app, it) })

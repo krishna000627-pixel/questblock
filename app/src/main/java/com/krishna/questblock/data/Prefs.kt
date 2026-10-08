@@ -348,10 +348,10 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         sp.edit().putString("fun_safe", s.joinToString("\n")).apply()
     }
 
-    /** Strict mode is ON by default (v87). Turning it off is loosening, so it waits until midnight like the fun rules. */
+    /** Strict mode is OFF by default (v92). Turning it off is loosening, so it waits until midnight like the fun rules. */
     var strictMode: Boolean
-        get() { applyDue(); return sp.getBoolean("strict", true) }
-        set(value) { commitFlag("strict", "strict", value, true) }
+        get() { applyDue(); return sp.getBoolean("strict", false) }
+        set(value) { commitFlag("strict", "strict", value, false) }
 
     var strictPausedUntil: Long
         get() = sp.getLong("strict_paused_until", 0L)
