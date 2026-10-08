@@ -135,7 +135,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
     val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
     var showStudyPicker by remember { mutableStateOf(false) }
     var ytOn by remember { mutableStateOf(vm.clipsOn("yt")) }
-    val igInstalled = isInstagramInstalled(androidx.compose.ui.platform.LocalContext.current)
+    val igInstalled = com.krishna.questblock.data.isInstagramInstalled(androidx.compose.ui.platform.LocalContext.current)
     var igOn by remember { mutableStateOf(igInstalled && vm.clipsOn("ig")) }
     var optionsFor by remember { mutableStateOf<AppRow?>(null) }
     val rate = remember { vm.rate() }
