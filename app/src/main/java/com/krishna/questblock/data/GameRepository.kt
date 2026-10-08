@@ -115,6 +115,7 @@ class GameRepository @Inject constructor(
     // ── Settings shortcuts ────────────────────────────────────────────────
     fun ratePer5(): Int = prefs.ratePer5
     fun siteUnlockedUntil(domain: String): Long = prefs.siteUnlockedUntil(domain)
+    fun awayAt(pkg: String): Long = prefs.awayAt(pkg)
     fun shortPicked(kind: String): Boolean = prefs.shortPicked(kind)
     fun changeShortPicked(kind: String, on: Boolean) = prefs.changeShortPicked(kind, on)
     fun shortPending(kind: String): Boolean? = prefs.pendingFlag("opt:short_$kind")

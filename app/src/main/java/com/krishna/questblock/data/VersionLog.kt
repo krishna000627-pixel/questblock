@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("105.0.0", "Same time left everywhere",
+        listOf(
+            "Vault now shows the same unlock time as the notification: while you are away it says Paused with the time saved, instead of counting down",
+        )),
     VersionEntry("104.0.0", "Shorts locked by default",
         listOf(
             "YouTube Shorts lock is on by default (turn it off in the Vault if you want)",

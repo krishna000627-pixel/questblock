@@ -35,6 +35,8 @@ import androidx.lifecycle.viewModelScope
 import com.krishna.questblock.data.BlockedApp
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.fmtLeft
+import com.krishna.questblock.data.frozenAt
+import com.krishna.questblock.data.leftMs
 import com.krishna.questblock.data.fmtMinute
 import kotlinx.coroutines.delay
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -121,6 +123,7 @@ class AppsViewModel @Inject constructor(
     fun clipsOn(kind: String): Boolean = repo.shortPicked(kind)
     fun setClips(kind: String, on: Boolean) { repo.changeShortPicked(kind, on) }
     fun clipsUntil(kind: String): Long = repo.siteUnlockedUntil("short:$kind")
+    fun awayAt(pkg: String): Long = repo.awayAt(pkg)
     fun setBlocked(app: InstalledApp, on: Boolean) =
         viewModelScope.launch { repo.setBlocked(app.pkg, app.label, on) }
     fun setStudyApp(app: InstalledApp, isStudy: Boolean) =
@@ -225,7 +228,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
         if (ytOn) item(key = "clip_yt") { ClipCard("YouTube Shorts", true, vm.clipsUntil("yt")) { vm.setClips("yt", it); ytOn = vm.clipsOn("yt") } }
         if (igInstalled && igOn) item(key = "clip_ig") { ClipCard("Instagram Reels", true, vm.clipsUntil("ig")) { vm.setClips("ig", it); igOn = vm.clipsOn("ig") } }
         items(lockedRows, key = { it.app.pkg }) { row ->
-            AppCard(row, studyMin, onToggle = { vm.setBlocked(row.app, it) }, onOptions = { optionsFor = row })
+            AppCard(row, studyMin, onToggle = { vm.setBlocked(row.app, it) }, onOptions = { optionsFor = row }, awayOf = { vm.awayAt(it) })
         }
 
         // ── Everything else ──────────────────────────────────────────────
@@ -319,7 +322,7 @@ private fun ClipCard(label: String, isOn: Boolean, unlockEnd: Long, onToggle: (B
 }
 
 @Composable
-private fun AppCard(row: AppRow, studyMin: Int, onToggle: (Boolean) -> Unit, onOptions: (() -> Unit)? = null) {
+private fun AppCard(row: AppRow, studyMin: Int, onToggle: (Boolean) -> Unit, onOptions: (() -> Unit)? = null, awayOf: (String) -> Long = { 0L }) {
     val rule = row.rule
     val isOn = rule != null
     val isStudy = rule?.isStudyApp == true
@@ -335,8 +338,11 @@ private fun AppCard(row: AppRow, studyMin: Int, onToggle: (Boolean) -> Unit, onO
             }
         }
     }
-    val leftMs = if (unlockEnd > now) unlockEnd - now else 0L
-    val justExpired = unlockEnd in 1..now && now - unlockEnd < EXPIRED_SHOW_MS
+    // same rule as the notification: while you are away the unlock time is paused (saved), not running down
+    val frozen = rule != null && !isStudy && rule.frozenAt(awayOf(row.app.pkg), now)
+    val shownLeft = if (frozen) rule!!.leftMs(awayOf(row.app.pkg), now)
+                 else if (unlockEnd > now) unlockEnd - now else 0L
+    val justExpired = !frozen && unlockEnd in 1..now && now - unlockEnd < EXPIRED_SHOW_MS
 
     Card(colors = CardDefaults.cardColors(containerColor = if (isOn) ColorSurface else ColorSurface.copy(alpha = 0.6f)),
         shape = RoundedCornerShape(12.dp)) {
@@ -360,9 +366,9 @@ private fun AppCard(row: AppRow, studyMin: Int, onToggle: (Boolean) -> Unit, onO
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 when {
                     isStudy -> Text("Earning 1🪙 / $studyMin min", style = MaterialTheme.typography.labelSmall, color = ColorPrimary)
-                    leftMs > 0 -> Text("Unlocked · ${fmtLeft(leftMs)} left",
+                    shownLeft > 0 -> Text(if (frozen) "Paused · ${fmtLeft(shownLeft)} saved" else "Unlocked · ${fmtLeft(shownLeft)} left",
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (leftMs <= 60_000L) ColorWarning else ColorCoin)
+                        color = if (shownLeft <= 60_000L) ColorWarning else ColorCoin)
                     justExpired -> Text("⌛ Expired · locked again",
                         style = MaterialTheme.typography.labelSmall, color = ColorDanger)
                     isOn && rule != null -> Text(lockSummary(rule), style = MaterialTheme.typography.labelSmall, color = ColorMuted,
