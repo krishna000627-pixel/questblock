@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("102.0.0", "Starter Vault + app types",
+        listOf(
+            "Categories pre-set for the apps on your phone (study, coding, fun, neutral); your own changes still win",
+            "One-time starter Vault: games, Telegram, Pocket FM, JioHotstar, Pinterest, Snaptube, Web Video Caster, Tor Browser and FF Bio are locked, PW is a study app. Anything already in your Vault is left alone",
+        )),
     VersionEntry("101.0.0", "App list copier",
         listOf(
             "Settings -> Apps: Copy my apps list copies every app's name, package and category so you can paste it into a chat",
