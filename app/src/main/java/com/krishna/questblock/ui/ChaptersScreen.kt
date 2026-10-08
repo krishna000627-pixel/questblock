@@ -19,12 +19,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-private data class Subj(val id: String, val name: String, val total: Int)
+private data class Subj(val id: String, val name: String, val base: Int, val extras: List<String> = emptyList()) {
+    val total: Int get() = base + extras.size
+}
 
-// MP Board Class 12 (fixed): Physics 14, Chemistry 10, Maths 13, Hindi 18 (Aroh 15 + Vitan 3), English 19 (Flamingo 13 + Vistas 6)
+// MP Board Class 12 (fixed): Physics 14, Chemistry 10, Maths 13, Hindi 18 lessons + 7 sections, English 19 lessons + 3 sections
 private val SUBJECTS = listOf(
     Subj("P", "Physics", 14), Subj("C", "Chemistry", 10), Subj("M", "Maths", 13),
-    Subj("H", "Hindi", 18), Subj("E", "English", 19),
+    Subj("H", "Hindi", 18, listOf("Hindi sahitya ka itihas", "Vyakaran", "Patra lekhan", "Anuchhed lekhan", "Nibandh lekhan", "Apathit bodh", "Abhivyakti aur madhyam")),
+    Subj("E", "English", 19, listOf("Reading comprehension", "Writing skills", "Grammar")),
 )
 
 /** PCMHE chapter checklist. Study mode ticks chapters done; Revision mode ticks chapters revised (only done ones). */
@@ -77,20 +80,17 @@ fun ChaptersScreen(onBack: () -> Unit) {
         // Overall card
         Column(Modifier.fillMaxWidth().background(ColorSurface, RoundedCornerShape(16.dp)).padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text("$donePct%", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = ColorPrimary)
-                    Text("studied  ($allDone / $allTotal)", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("$revPct%", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = ColorAccent)
-                    Text("revised  ($allRev / $allTotal)", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-                }
+            Column {
+                Text(if (revMode) "$revPct%" else "$donePct%", style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold, color = if (revMode) ColorAccent else ColorPrimary)
+                Text(if (revMode) "revised  ($allRev / $allTotal)" else "studied  ($allDone / $allTotal)",
+                    style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             }
             LinearProgressIndicator(progress = { (if (revMode) allRev else allDone) / allTotal.toFloat() },
                 modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
                 color = if (revMode) ColorAccent else ColorPrimary, trackColor = ColorDivider)
             val exam = java.util.GregorianCalendar(2026, java.util.Calendar.NOVEMBER, 17).timeInMillis
+            if (!revMode) {
             val days = Math.ceil((exam - System.currentTimeMillis()) / 86_400_000.0).toInt()
             val left = allTotal - allDone
             if (days > 0 && left > 0) {
@@ -103,6 +103,7 @@ fun ChaptersScreen(onBack: () -> Unit) {
                 Text("$days days to exam. Everything studied. Revise!", style = MaterialTheme.typography.bodySmall,
                     color = ColorWarning, fontWeight = FontWeight.SemiBold)
             } else Text("Exam time. All the best!", style = MaterialTheme.typography.bodySmall, color = ColorWarning)
+            }
         }
 
         // Subjects (tap a card to open its chapters)
@@ -127,41 +128,54 @@ fun ChaptersScreen(onBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
                     color = accent, trackColor = ColorDivider)
                 if (isOpen) {
-                    (1..s.total).chunked(6).forEach { rowNums ->
+                    fun tap(n: Int) {
+                        val isDone = n in doneSet
+                        val isRev = n in revSet
+                        if (revMode) {
+                            if (!isDone) Toast.makeText(ctx, "Study $n first", Toast.LENGTH_SHORT).show()
+                            else save("rev", s, if (isRev) revSet - n else revSet + n)
+                        } else {
+                            save("done", s, if (isDone) doneSet - n else doneSet + n)
+                            if (isDone) save("rev", s, revSet - n)   // un-studied chapters cannot stay revised
+                        }
+                        tick++
+                    }
+                    (1..s.base).chunked(6).forEach { rowNums ->
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                             rowNums.forEach { n ->
-                                val isDone = n in doneSet
-                                val isRev = n in revSet
-                                val bg = when {
-                                    revMode && isRev -> ColorAccent
-                                    revMode && isDone -> ColorPrimary.copy(alpha = 0.30f)
-                                    !revMode && isDone -> ColorPrimary
-                                    else -> ColorSurfaceHigh
-                                }
-                                val solid = (revMode && isRev) || (!revMode && isDone)
-                                Box(
-                                    Modifier.weight(1f).height(42.dp).clip(RoundedCornerShape(10.dp)).background(bg)
-                                        .clickable {
-                                            if (revMode) {
-                                                if (!isDone) {
-                                                    Toast.makeText(ctx, "Study chapter $n first", Toast.LENGTH_SHORT).show()
-                                                } else save("rev", s, if (isRev) revSet - n else revSet + n)
-                                            } else {
-                                                save("done", s, if (isDone) doneSet - n else doneSet + n)
-                                                if (isDone) save("rev", s, revSet - n)   // un-studied chapters cannot stay revised
-                                            }
-                                            tick++
-                                        },
-                                    contentAlignment = Alignment.Center,
-                                ) { Text(if (solid) "\u2713$n" else "$n", fontWeight = FontWeight.SemiBold,
-                                    color = if (solid) ColorOnPrimary else if (revMode && !isDone) ColorMuted else ColorText) }
+                                ChapterCell(n.toString(), n in doneSet, n in revSet, revMode, Modifier.weight(1f)) { tap(n) }
                             }
                             repeat(6 - rowNums.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                    if (s.extras.isNotEmpty()) {
+                        Text("Sections", style = MaterialTheme.typography.labelLarge, color = ColorMuted)
+                        s.extras.forEachIndexed { i, name ->
+                            val n = s.base + i + 1
+                            ChapterCell(name, n in doneSet, n in revSet, revMode, Modifier.fillMaxWidth()) { tap(n) }
                         }
                     }
                 }
             }
         }
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun ChapterCell(label: String, isDone: Boolean, isRev: Boolean, revMode: Boolean, modifier: Modifier, onTap: () -> Unit) {
+    val bg = when {
+        revMode && isRev -> ColorAccent
+        revMode && isDone -> ColorPrimary.copy(alpha = 0.30f)
+        !revMode && isDone -> ColorPrimary
+        else -> ColorSurfaceHigh
+    }
+    val solid = (revMode && isRev) || (!revMode && isDone)
+    Box(
+        modifier.height(42.dp).clip(RoundedCornerShape(10.dp)).background(bg).clickable { onTap() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(if (solid) "\u2713 $label" else label, fontWeight = FontWeight.SemiBold,
+            color = if (solid) ColorOnPrimary else if (revMode && !isDone) ColorMuted else ColorText)
     }
 }

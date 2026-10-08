@@ -40,18 +40,42 @@ fun loadThemeMode(ctx: Context) {
     (ctx as? Activity)?.window?.setBackgroundDrawable(ColorDrawable(ColorBg.toArgb()))
 }
 
+/** Shop theme equipped right now ("default", "theme_sunset", ...). Recolours the whole app live. */
+var ShopTheme by mutableStateOf("default")
+
+/** accent + 5 colours each for dark and light: background, surface, surface-high, card, divider */
+private class ShopPalette(val accent: Long, val dark: LongArray, val light: LongArray)
+private val SHOP_PALETTES = mapOf(
+    "theme_sunset" to ShopPalette(0xFFFF7A59,
+        longArrayOf(0xFF1A0F12, 0xFF251519, 0xFF331D22, 0xFF2B191E, 0xFF3D2329),
+        longArrayOf(0xFFFFF1EA, 0xFFFFFFFF, 0xFFFFE0D2, 0xFFFFFFFF, 0xFFF3D3C6)),
+    "theme_ocean" to ShopPalette(0xFF3FA7FF,
+        longArrayOf(0xFF08121C, 0xFF0E1C2B, 0xFF16293D, 0xFF12243A, 0xFF1D3350),
+        longArrayOf(0xFFE8F2FB, 0xFFFFFFFF, 0xFFD8E8F7, 0xFFFFFFFF, 0xFFC9DBEC)),
+    "theme_forest" to ShopPalette(0xFF6BCB77,
+        longArrayOf(0xFF0B140E, 0xFF121F16, 0xFF1B2D21, 0xFF16261B, 0xFF22372A),
+        longArrayOf(0xFFEDF5EE, 0xFFFFFFFF, 0xFFDDEBDF, 0xFFFFFFFF, 0xFFCFE0D2)),
+    "theme_neon" to ShopPalette(0xFFC86BFF,
+        longArrayOf(0xFF0D0716, 0xFF160C26, 0xFF21133A, 0xFF1B0F31, 0xFF2D1A4F),
+        longArrayOf(0xFFF3ECFB, 0xFFFFFFFF, 0xFFE6D9F6, 0xFFFFFFFF, 0xFFD8C8EE)),
+)
+private fun themed(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (LightMode) it.light[i] else it.dark[i]) }
+
 private fun pick(dark: Long, light: Long) = Color(if (LightMode) light else dark)
 
 // ── Palette (same names as before; each one switches between dark and light) ──
-val ColorBg: Color          get() = pick(0xFF0A0D12, 0xFFEEF2F7)
-val ColorSurface: Color     get() = pick(0xFF111720, 0xFFFFFFFF)
-val ColorSurfaceHigh: Color get() = pick(0xFF1A2230, 0xFFE3E9F1)
-val ColorCard: Color        get() = pick(0xFF16202E, 0xFFFFFFFF)
+val ColorBg: Color          get() = themed(0) ?: pick(0xFF0A0D12, 0xFFEEF2F7)
+val ColorSurface: Color     get() = themed(1) ?: pick(0xFF111720, 0xFFFFFFFF)
+val ColorSurfaceHigh: Color get() = themed(2) ?: pick(0xFF1A2230, 0xFFE3E9F1)
+val ColorCard: Color        get() = themed(3) ?: pick(0xFF16202E, 0xFFFFFFFF)
 
 /** Accent colour. A state, so changing it in Settings recolours the app live. Darkened a little on light so it stays readable. */
 private var accentRaw by mutableStateOf(Color(0xFF00E5A0))
 var ColorPrimary: Color
-    get() = if (LightMode) Color(accentRaw.red * 0.75f, accentRaw.green * 0.75f, accentRaw.blue * 0.75f, accentRaw.alpha) else accentRaw
+    get() {
+        val base = SHOP_PALETTES[ShopTheme]?.let { Color(it.accent) } ?: accentRaw
+        return if (LightMode) Color(base.red * 0.75f, base.green * 0.75f, base.blue * 0.75f, base.alpha) else base
+    }
     set(value) { accentRaw = value }
 
 val ColorOnPrimary: Color   get() = pick(0xFF001A10, 0xFFFFFFFF)
@@ -61,7 +85,7 @@ val ColorDanger: Color      get() = pick(0xFFFF5C5C, 0xFFD93636)
 val ColorWarning: Color     get() = pick(0xFFFFAA00, 0xFFC47A00)
 val ColorText: Color        get() = pick(0xFFEAEFF5, 0xFF121A24)
 val ColorMuted: Color       get() = pick(0xFF5A6A7E, 0xFF6B7A8D)
-val ColorDivider: Color     get() = pick(0xFF1E2A3A, 0xFFDDE4EE)
+val ColorDivider: Color     get() = themed(4) ?: pick(0xFF1E2A3A, 0xFFDDE4EE)
 
 // Category colours
 val CatColors: Map<String, Color>

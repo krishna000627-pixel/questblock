@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.flow.map
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewModelScope
@@ -26,6 +27,7 @@ object UndoBus {
 class UndoViewModel @javax.inject.Inject constructor(private val repo: com.krishna.questblock.data.GameRepository) : androidx.lifecycle.ViewModel() {
     fun undo(u: com.krishna.questblock.data.GameRepository.CompletionUndo) =
         viewModelScope.launch { repo.undoCompletion(u) }
+    val theme = repo.player.map { it.equippedTheme }
 }
 
 private data class NavItem(val route: String, val label: String, val icon: ImageVector)
@@ -65,6 +67,12 @@ fun MainScreen() {
     val activeTab = if (route != null && route in TAB_ROUTES) route else lastTab
 
     val undoVm: UndoViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val themeCtx = androidx.compose.ui.platform.LocalContext.current
+    val themeId by undoVm.theme.collectAsState(initial = ShopTheme)
+    LaunchedEffect(themeId) {
+        ShopTheme = themeId
+        themeCtx.getSharedPreferences("questblock", android.content.Context.MODE_PRIVATE).edit().putString("shop_theme", themeId).apply()
+    }
     val snack = remember { SnackbarHostState() }
     LaunchedEffect(Unit) {
         UndoBus.events.collect { u ->

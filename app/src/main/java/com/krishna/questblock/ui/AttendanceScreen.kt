@@ -42,6 +42,7 @@ fun AttendanceScreen(onBack: () -> Unit) {
     }
 
     val refresh = tick
+    val startDay = sp.getString("att_start", "20261008") ?: "20261008"   // counting starts here; earlier days are ignored
     val monthCal = Calendar.getInstance().apply { set(Calendar.DAY_OF_MONTH, 1); add(Calendar.MONTH, monthOffset) }
     val monthPrefix = String.format(Locale.US, "%04d%02d", monthCal.get(Calendar.YEAR), monthCal.get(Calendar.MONTH) + 1)
 
@@ -50,6 +51,7 @@ fun AttendanceScreen(onBack: () -> Unit) {
     sp.all.forEach { (k, v) ->
         if (!k.startsWith("att_") || k.length < 14) return@forEach
         val day = k.substring(4, 12); val what = k.substring(13)
+        if (day < startDay) return@forEach
         val inMonth = day.startsWith(monthPrefix)
         if (what == "s") { if (v == "P") { sP++; if (inMonth) msP++ } else if (v == "A") { sA++; if (inMonth) msA++ } }
         else if (what == "c1" || what == "c2") { if (v == "P") { cP++; if (inMonth) mcP++ } else if (v == "A") { cA++; if (inMonth) mcA++ } }
@@ -118,7 +120,7 @@ fun AttendanceScreen(onBack: () -> Unit) {
         Column(Modifier.fillMaxWidth().background(ColorSurface, RoundedCornerShape(16.dp)).padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { monthOffset-- }) { Text("\u2039") }
+                TextButton(onClick = { monthOffset-- }, enabled = monthPrefix > startDay.substring(0, 6)) { Text("\u2039") }
                 Text(SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(monthCal.time), color = ColorText,
                     fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 TextButton(onClick = { if (monthOffset < 0) monthOffset++ }, enabled = monthOffset < 0) { Text("\u203A") }
@@ -144,7 +146,7 @@ fun AttendanceScreen(onBack: () -> Unit) {
                                 vals.any { it == "P" } -> ColorWarning.copy(alpha = 0.30f)
                                 else -> ColorSurfaceHigh
                             }
-                            val future = key > todayKey
+                            val future = key > todayKey || key < startDay
                             Box(
                                 Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(10.dp)).background(bg)
                                     .then(if (key == selected) Modifier.border(2.dp, ColorText, RoundedCornerShape(10.dp)) else Modifier)
@@ -156,8 +158,11 @@ fun AttendanceScreen(onBack: () -> Unit) {
                     repeat(7 - week.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
-            Text("Green = all present, orange = some marked, red = absent somewhere", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            Text("Counting from ${startDay.substring(6, 8)}/${startDay.substring(4, 6)}/${startDay.substring(0, 4)}. Green = all present, orange = some marked, red = absent somewhere", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
+        TextButton(onClick = {
+            sp.edit().putString("att_start", todayKey).apply(); monthOffset = 0; selected = todayKey; tick++
+        }, modifier = Modifier.fillMaxWidth()) { Text("Start counting from today", color = ColorMuted) }
         Spacer(Modifier.height(16.dp))
     }
 }

@@ -3,6 +3,21 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("115.0.0", "Cleaner sections",
+        listOf(
+            "Chapters: Hindi and English sections (grammar, writing, etc.) are shown as named rows under the numbered chapters",
+        )),
+    VersionEntry("114.0.0", "Themes work + more",
+        listOf(
+            "Shop themes (Sunset, Ocean, Forest, Neon) now really recolour the app; unequip to go back to your own colours",
+            "Chapters: Hindi (7) and English (3) writing and grammar sections are now part of the checklist",
+            "Attendance: Start counting from today button",
+        )),
+    VersionEntry("113.0.0", "Attendance from today",
+        listOf(
+            "Attendance counts and the calendar start from 8 Oct 2026; earlier days are ignored",
+            "Chapters: the top card shows only the percent for the mode you are in (studied or revised)",
+        )),
     VersionEntry("112.0.0", "Home pills",
         listOf(
             "Home: Chapters and Attendance pills side by side, each opens its own page",

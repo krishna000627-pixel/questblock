@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
         onboardingDone = prefs.onboardingDone
         if (onboardingDone) KeepAlive.start(this)
         ColorPrimary = ComposeColor(prefs.accentArgb)
+        ShopTheme = getSharedPreferences("questblock", MODE_PRIVATE).getString("shop_theme", "default") ?: "default"
         loadThemeMode(this)
         enableEdgeToEdge(
             statusBarStyle     = SystemBarStyle.dark(Color.TRANSPARENT),
