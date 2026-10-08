@@ -3,6 +3,12 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("121.0.0", "Study % out of taught",
+        listOf(
+            "Chapters, Study page: the percent is now studied out of the chapters taught in school (for example 4 of 8 taught = 50%), not out of the whole course. A chapter you studied before school taught it counts once it is marked taught",
+            "Chapters: removed the second big revision number and bar. Revised this week is now one small line under the studied percent",
+            "Subject cards and pages show 'studied X of Y taught'; Next shows the next taught chapter you have not studied",
+        )),
     VersionEntry("120.0.0", "Chapters: Study page + School page",
         listOf(
             "Chapters now has two pages with a switch at the top (also on every subject page). Study opens by default",

@@ -156,6 +156,8 @@ private fun historyText(sp: android.content.SharedPreferences): String? {
 // ── Readers ─────────────────────────────────────────────────────────────────
 /** Taught in school. A chapter that already has a finished copy counts as taught (v119 copies keep working). */
 private fun taughtSet(sp: android.content.SharedPreferences, s: Subj): Set<Int> = readSet(sp, "taught", s) + readSet(sp, "copy", s)
+/** Studied chapters that school has also taught. Study % is counted out of the taught chapters. */
+private fun studiedTaught(sp: android.content.SharedPreferences, s: Subj): Set<Int> = readSet(sp, "done", s).intersect(taughtSet(sp, s))
 private fun copyDone(sp: android.content.SharedPreferences, s: Subj): Set<Int> = readSet(sp, "copy", s)
 private fun revisedWeek(sp: android.content.SharedPreferences, s: Subj): Set<Int> = readSet(sp, "wrev", s).intersect(readSet(sp, "done", s))
 
@@ -189,8 +191,9 @@ fun ChaptersScreen(
     val allDone = SUBJECTS.sumOf { readSet(sp, "done", it).size }
     val allRevWk = SUBJECTS.sumOf { revisedWeek(sp, it).size }
     val allTaught = SUBJECTS.sumOf { taughtSet(sp, it).size }
+    val allStudT = SUBJECTS.sumOf { studiedTaught(sp, it).size }
     val allCopy = SUBJECTS.sumOf { copyDone(sp, it).size }
-    val donePct = allDone * 100 / allTotal
+    val donePct = if (allTaught == 0) 0 else allStudT * 100 / allTaught
     val revPct = if (allDone == 0) 0 else allRevWk * 100 / allDone
     val copyPct = if (allTaught == 0) 0 else allCopy * 100 / allTaught
 
@@ -217,11 +220,8 @@ fun ChaptersScreen(
                     if (!school) {
                         Column {
                             Text("$donePct%", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = ColorPrimary)
-                            Text("studied ($allDone / $allTotal)", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-                        }
-                        Column {
-                            Text("$revPct%", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = ColorAccent)
-                            Text("revised this week", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                            Text("studied of taught ($allStudT / $allTaught)", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                            Text("$revPct% revised this week", style = MaterialTheme.typography.labelMedium, color = ColorAccent)
                         }
                     } else {
                         Column {
@@ -239,12 +239,9 @@ fun ChaptersScreen(
                 }
             }
             if (!school) {
-                LinearProgressIndicator(progress = { allDone / allTotal.toFloat() },
+                LinearProgressIndicator(progress = { if (allTaught == 0) 0f else allStudT / allTaught.toFloat() },
                     modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
                     color = ColorPrimary, trackColor = ColorDivider)
-                LinearProgressIndicator(progress = { if (allDone == 0) 0f else allRevWk / allDone.toFloat() },
-                    modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
-                    color = ColorAccent, trackColor = ColorDivider)
                 historyText(sp)?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = ColorMuted) }
                 val exam = java.util.GregorianCalendar(2026, java.util.Calendar.NOVEMBER, 17).timeInMillis
                 val days = Math.ceil((exam - System.currentTimeMillis()) / 86_400_000.0).toInt()
@@ -272,9 +269,11 @@ fun ChaptersScreen(
             val revWk = revisedWeek(sp, s)
             val taught = taughtSet(sp, s)
             val copies = copyDone(sp, s)
-            val pct = if (!school) doneSet.size * 100 / s.total else (if (taught.isEmpty()) 0 else copies.size * 100 / taught.size)
+            val studT = doneSet.intersect(taught)
+            val pct = if (!school) (if (taught.isEmpty()) 0 else studT.size * 100 / taught.size) else (if (taught.isEmpty()) 0 else copies.size * 100 / taught.size)
             val nextText: String = if (!school)
-                ((1..s.total).firstOrNull { it !in doneSet }?.let { "Next: " + labelOf(s, it) } ?: "All studied \u2713")
+                ((1..s.total).firstOrNull { it in taught && it !in doneSet }?.let { "Next: " + labelOf(s, it) }
+                    ?: if (taught.isEmpty()) "Nothing taught yet (School page)" else "All taught chapters studied \u2713")
             else
                 ((1..s.total).firstOrNull { it in taught && it !in copies }?.let { "Copy next: " + labelOf(s, it) }
                     ?: if (taught.isEmpty()) "Nothing taught yet" else "All taught chapters copied \u2713")
@@ -288,8 +287,8 @@ fun ChaptersScreen(
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text("${st.emoji}  ${s.name}", color = ColorText, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     if (!school) {
-                        Text("${doneSet.size} / ${s.total} studied", style = MaterialTheme.typography.bodySmall,
-                            color = if (doneSet.size == s.total) st.color else ColorMuted)
+                        Text("studied ${studT.size} of ${taught.size} taught", style = MaterialTheme.typography.bodySmall,
+                            color = if (taught.isNotEmpty() && studT.size == taught.size) st.color else ColorMuted)
                         Text("\uD83D\uDD01 ${if (doneSet.isEmpty()) 0 else revWk.size * 100 / doneSet.size}% revised this week",
                             style = MaterialTheme.typography.bodySmall, color = ColorMuted)
                     } else {
@@ -381,7 +380,8 @@ fun ChapterSubjectScreen(subjectId: String, startSchool: Boolean, onBack: () -> 
         }
     }
 
-    val pct = if (!school) doneSet.size * 100 / s.total else (if (taught.isEmpty()) 0 else copies.size * 100 / taught.size)
+    val studT = doneSet.intersect(taught)
+    val pct = if (!school) (if (taught.isEmpty()) 0 else studT.size * 100 / taught.size) else (if (taught.isEmpty()) 0 else copies.size * 100 / taught.size)
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -399,7 +399,7 @@ fun ChapterSubjectScreen(subjectId: String, startSchool: Boolean, onBack: () -> 
             Ring(pct, if (school) ColorAccent else st.color, 72)
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (!school) {
-                    Text("${doneSet.size} / ${s.total} studied", color = ColorText, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text("studied ${studT.size} of ${taught.size} taught", color = ColorText, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     Box(Modifier.clip(RoundedCornerShape(50)).background(ColorAccent.copy(alpha = 0.18f)).padding(horizontal = 10.dp, vertical = 3.dp)) {
                         Text("\uD83D\uDD01 ${if (doneSet.isEmpty()) 0 else revWk.size * 100 / doneSet.size}% revised this week",
                             color = ColorAccent, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
@@ -414,7 +414,7 @@ fun ChapterSubjectScreen(subjectId: String, startSchool: Boolean, onBack: () -> 
             }
         }
         Text(if (school) "Tap a chapter = taught in school.  Tap \uD83D\uDCD3 = copy complete."
-             else "Tap a chapter = studied.  Tap \uD83D\uDD01 = revised this week (resets every Monday).",
+             else "Tap a chapter = studied (counts once school has taught it).  Tap \uD83D\uDD01 = revised this week (resets every Monday).",
             style = MaterialTheme.typography.labelSmall, color = ColorMuted, modifier = Modifier.padding(start = 4.dp))
         for (n in 1..s.total) {
             st.groups.firstOrNull { it.first == n }?.let { (_, title) ->
