@@ -18,15 +18,32 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.krishna.questblock.data.GameRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
 private fun dayKey(c: Calendar) = String.format(Locale.US, "%04d%02d%02d", c.get(Calendar.YEAR), c.get(Calendar.MONTH) + 1, c.get(Calendar.DAY_OF_MONTH))
 
+@HiltViewModel
+class AttendanceViewModel @Inject constructor(private val repo: GameRepository) : ViewModel() {
+    fun coins(delta: Int, detail: String) { viewModelScope.launch { repo.attendanceCoins(delta, detail) } }
+}
+
+private const val SCHOOL_COINS = 5
+private const val COACHING_COINS = 3
+private fun rewardFor(what: String) = if (what == "s") SCHOOL_COINS else COACHING_COINS
+private fun labelFor(what: String) = when (what) { "s" -> "School"; "c1" -> "Coaching 1"; else -> "Coaching 2" }
+
 /** School (once a day) and coaching (two classes a day) attendance. Saved on the phone as att_<yyyymmdd>_<s|c1|c2> = P or A. */
 @Composable
-fun AttendanceScreen(onBack: () -> Unit) {
+fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel()) {
     val ctx = LocalContext.current
     val sp = remember { ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE) }
     var tick by remember { mutableIntStateOf(0) }
@@ -38,7 +55,26 @@ fun AttendanceScreen(onBack: () -> Unit) {
     fun set(day: String, what: String, v: String) {
         val e = sp.edit()
         if (v.isEmpty()) e.remove("att_${day}_$what") else e.putString("att_${day}_$what", v)
+        // coins: Present earns, anything else takes back exactly what this slot gave (attcoin_<day>_<slot>)
+        val given = sp.getInt("attcoin_${day}_$what", 0)
+        val reward = if (v == "P") rewardFor(what) else 0
+        if (reward != given) {
+            vm.coins(reward - given, (if (reward > given) "Present: " else "Changed: ") + labelFor(what) + " " + day.substring(6, 8) + "/" + day.substring(4, 6))
+            if (reward == 0) e.remove("attcoin_${day}_$what") else e.putInt("attcoin_${day}_$what", reward)
+        }
         e.apply(); tick++
+    }
+
+    // coins for today's slots that were marked Present before attendance coins existed (once per slot)
+    LaunchedEffect(Unit) {
+        val e = sp.edit(); var changed = false
+        listOf("s", "c1", "c2").forEach { what ->
+            if (get(todayKey, what) == "P" && sp.getInt("attcoin_${todayKey}_$what", 0) == 0) {
+                vm.coins(rewardFor(what), "Present: " + labelFor(what) + " " + todayKey.substring(6, 8) + "/" + todayKey.substring(4, 6))
+                e.putInt("attcoin_${todayKey}_$what", rewardFor(what)); changed = true
+            }
+        }
+        if (changed) { e.apply(); tick++ }
     }
 
     val refresh = tick
@@ -158,7 +194,7 @@ fun AttendanceScreen(onBack: () -> Unit) {
                     repeat(7 - week.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
-            Text("Counting from ${startDay.substring(6, 8)}/${startDay.substring(4, 6)}/${startDay.substring(0, 4)}. Green = all present, orange = some marked, red = absent somewhere", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            Text("Present = coins (school +$SCHOOL_COINS, coaching +$COACHING_COINS each); changing it takes them back. Counting from ${startDay.substring(6, 8)}/${startDay.substring(4, 6)}/${startDay.substring(0, 4)}. Green = all present, orange = some marked, red = absent somewhere", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
         TextButton(onClick = {
             sp.edit().putString("att_start", todayKey).apply(); monthOffset = 0; selected = todayKey; tick++

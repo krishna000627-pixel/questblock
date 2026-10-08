@@ -3,6 +3,20 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("125.0.0", "Today's attendance coins",
+        listOf(
+            "Attendance: anything already marked Present today before coins existed now gets its coins when you open the Attendance page (once per slot, and taken back if you change it)",
+        )),
+    VersionEntry("124.0.0", "Quest board back to normal",
+        listOf(
+            "Quest board: removed the Update history list that v123 added. The Version info page still has the full history",
+        )),
+    VersionEntry("123.0.0", "Attendance coins + fixed marks",
+        listOf(
+            "Attendance: marking Present gives coins (school +5, each coaching class +3). Change it to Absent or clear it and those coins are taken back. Every change shows in the coin log as Attendance",
+            "Marks: the out-of is now fixed, no typing. Tests MT 1, MT 2, MT 3 are out of 20 in every subject. Quarterly and Half-yearly: Physics and Chemistry out of 70, Maths, Hindi and English out of 80. Marks saved earlier with a different out-of show as + add again",
+            "Fix: pass is 33% of each subject's own total, not 33 marks. The pass mark is shown when you edit (for example 6.6 of 20), and exactly 33% passes with no rounding slip",
+        )),
     VersionEntry("122.0.0", "Study only what is taught",
         listOf(
             "Chapters, Study page: a chapter that school has not taught yet is greyed with a lock and cannot be ticked as studied. Mark it taught on the School page first. Chapters already studied can still be unticked",

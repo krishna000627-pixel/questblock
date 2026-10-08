@@ -41,8 +41,14 @@ private data class Mark(val got: Float, val max: Float) {
     val pct: Float get() = if (max > 0f) got * 100f / max else 0f
 }
 
-private const val PASS_PCT = 33f
-private fun Mark.failed(): Boolean = pct < PASS_PCT
+// Fixed totals: MT tests are out of 20 in every subject; Quarterly and Half-yearly are Physics/Chemistry 70, Maths/Hindi/English 80
+private fun maxFor(testId: String, subj: String): Float =
+    if (testId.startsWith("mt")) 20f else if (subj == "P" || subj == "C") 70f else 80f
+
+// Pass = 33% of this subject's own total (not 33 marks); tiny slack so exactly 33% never fails on float rounding
+private const val PASS_FRAC = 0.33f
+private fun passMark(max: Float): Float = max * PASS_FRAC
+private fun Mark.failed(): Boolean = got < passMark(max) - 0.001f
 
 private fun fmt(v: Float): String = if (v == v.toInt().toFloat()) v.toInt().toString() else "%.1f".format(v)
 private fun pctColor(p: Float): Color = when { p >= 75f -> ColorPrimary; p >= 50f -> ColorWarning; else -> ColorDanger }   // below 33% is a fail (also red)
@@ -51,8 +57,8 @@ private fun readMark(sp: android.content.SharedPreferences, test: String, subj: 
     val v = sp.getString("marks_${test}_$subj", null) ?: return null
     val p = v.split("|")
     val g = p.getOrNull(0)?.toFloatOrNull() ?: return null
-    val m = p.getOrNull(1)?.toFloatOrNull() ?: return null
-    return if (m > 0f && g in 0f..m) Mark(g, m) else null
+    val m = maxFor(test, subj)
+    return if (g in 0f..m) Mark(g, m) else null
 }
 
 /** Marks feeder: MT 1, Quarterly, MT 2, Half-yearly, MT 3 for every subject. Saved on the phone only. */
@@ -77,11 +83,10 @@ fun MarksScreen(onBack: () -> Unit) {
 
     editing?.let { (test, subj) ->
         val cur = data[test.id]?.get(subj.first)
-        // out-of remembered from the last entry of this subject in this test, else the last used anywhere, else 100
+        val m = maxFor(test.id, subj.first)
         var got by remember { mutableStateOf(cur?.let { fmt(it.got) } ?: "") }
-        var max by remember { mutableStateOf(cur?.let { fmt(it.max) } ?: (sp.getString("marks_lastmax", "100") ?: "100")) }
-        val g = got.toFloatOrNull(); val m = max.toFloatOrNull()
-        val valid = g != null && m != null && m > 0f && g in 0f..m
+        val g = got.toFloatOrNull()
+        val valid = g != null && g in 0f..m
         AlertDialog(
             onDismissRequest = { editing = null },
             containerColor = ColorSurface,
@@ -90,14 +95,13 @@ fun MarksScreen(onBack: () -> Unit) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(got, { got = it.filter { c -> c.isDigit() || c == '.' }.take(6) }, singleLine = true,
                         label = { Text("Marks obtained") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
-                    OutlinedTextField(max, { max = it.filter { c -> c.isDigit() || c == '.' }.take(6) }, singleLine = true,
-                        label = { Text("Out of") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
-                    if (!valid && got.isNotEmpty()) Text("Marks must be between 0 and the total", color = ColorDanger, style = MaterialTheme.typography.labelSmall)
+                    Text("Out of ${fmt(m)}  \u00B7  pass at ${fmt(Math.round(passMark(m) * 10f) / 10f)} (33%)", color = ColorMuted, style = MaterialTheme.typography.bodySmall)
+                    if (!valid && got.isNotEmpty()) Text("Marks must be between 0 and ${fmt(m)}", color = ColorDanger, style = MaterialTheme.typography.labelSmall)
                 }
             },
             confirmButton = {
                 TextButton(enabled = valid, onClick = {
-                    sp.edit().putString("marks_${test.id}_${subj.first}", "${fmt(g!!)}|${fmt(m!!)}").putString("marks_lastmax", fmt(m)).apply()
+                    sp.edit().putString("marks_${test.id}_${subj.first}", "${fmt(g!!)}|${fmt(m)}").apply()
                     tick++; editing = null
                 }) { Text("Save", fontWeight = FontWeight.Bold) }
             },

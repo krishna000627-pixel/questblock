@@ -435,6 +435,16 @@ class GameRepository @Inject constructor(
         logCoin(coins, source, detail)
     }
 
+    /** Attendance coins: +delta when marked Present, -delta when changed back. Never takes the balance below 0. */
+    suspend fun attendanceCoins(delta: Int, detail: String) = db.withTransaction {
+        val p = playerDao.get() ?: Player()
+        val applied = if (delta < 0) -minOf(-delta, p.coins) else delta
+        if (applied != 0) {
+            playerDao.upsert(p.copy(coins = p.coins + applied))
+            logCoin(applied, "Attendance", detail)
+        }
+    }
+
     // ── Focus ─────────────────────────────────────────────────────────────
     suspend fun startFocus(durationMs: Long, task: TaskEntity? = null): Boolean = db.withTransaction {
         val now = System.currentTimeMillis()
