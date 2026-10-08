@@ -116,6 +116,15 @@ private fun Ring(pct: Int, color: Color, size: Int = 58) {
     }
 }
 
+/** Plain progress bar without the small end dot the Material bar draws. */
+@Composable
+private fun Bar(progress: Float, color: Color) {
+    Box(Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)).background(ColorDivider)) {
+        val f = progress.coerceIn(0f, 1f)
+        if (f > 0f) Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(color))
+    }
+}
+
 private fun labelOf(s: Subj, n: Int): String = if (n <= s.base) s.names[n - 1] else s.extras[n - s.base - 1]
 
 // ── Week handling (week starts on Monday) ───────────────────────────────────
@@ -239,9 +248,7 @@ fun ChaptersScreen(
                 }
             }
             if (!school) {
-                LinearProgressIndicator(progress = { if (allTaught == 0) 0f else allStudT / allTaught.toFloat() },
-                    modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
-                    color = ColorPrimary, trackColor = ColorDivider)
+                Bar(if (allTaught == 0) 0f else allStudT / allTaught.toFloat(), ColorPrimary)
                 historyText(sp)?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = ColorMuted) }
                 val exam = java.util.GregorianCalendar(2026, java.util.Calendar.NOVEMBER, 17).timeInMillis
                 val days = Math.ceil((exam - System.currentTimeMillis()) / 86_400_000.0).toInt()
@@ -257,9 +264,7 @@ fun ChaptersScreen(
                         color = ColorWarning, fontWeight = FontWeight.SemiBold)
                 } else Text("Exam time. All the best!", style = MaterialTheme.typography.bodySmall, color = ColorWarning)
             } else {
-                LinearProgressIndicator(progress = { if (allTaught == 0) 0f else allCopy / allTaught.toFloat() },
-                    modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
-                    color = ColorAccent, trackColor = ColorDivider)
+                Bar(if (allTaught == 0) 0f else allCopy / allTaught.toFloat(), ColorAccent)
             }
         }
 
@@ -321,6 +326,9 @@ fun ChapterSubjectScreen(subjectId: String, startSchool: Boolean, onBack: () -> 
     val copies = remember(tick) { copyDone(sp, s) }
 
     fun toggleStudy(n: Int) {
+        if (n !in doneSet && n !in taught) {
+            Toast.makeText(ctx, "School has not taught this yet (School page)", Toast.LENGTH_SHORT).show(); return
+        }
         if (n in doneSet) {
             saveSet(sp, "done", s, doneSet - n)
             saveSet(sp, "wrev", s, readSet(sp, "wrev", s) - n)   // not studied = cannot be revised
@@ -367,8 +375,10 @@ fun ChapterSubjectScreen(subjectId: String, startSchool: Boolean, onBack: () -> 
                 Text(if (main) "\u2713" else (if (n <= s.base) "$n" else "\u2022"), fontWeight = FontWeight.Bold,
                     color = if (main) ColorOnPrimary else ColorMuted, style = MaterialTheme.typography.labelLarge)
             }
-            Text(labelOf(s, n), color = ColorText, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-            Box(
+            val locked = !school && n !in taught && n !in doneSet
+            Text(labelOf(s, n), color = if (locked) ColorMuted else ColorText, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            if (locked) Text("\uD83D\uDD12 not taught", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
+            else Box(
                 Modifier.clip(RoundedCornerShape(50))
                     .background(if (chipOn) chipColor else ColorSurfaceHigh)
                     .clickable { if (school) toggleCopy(n) else toggleRevise(n) }.padding(horizontal = 10.dp, vertical = 7.dp),
@@ -414,7 +424,7 @@ fun ChapterSubjectScreen(subjectId: String, startSchool: Boolean, onBack: () -> 
             }
         }
         Text(if (school) "Tap a chapter = taught in school.  Tap \uD83D\uDCD3 = copy complete."
-             else "Tap a chapter = studied (counts once school has taught it).  Tap \uD83D\uDD01 = revised this week (resets every Monday).",
+             else "Tap a chapter = studied (only chapters taught in school).  Tap \uD83D\uDD01 = revised this week (resets every Monday).",
             style = MaterialTheme.typography.labelSmall, color = ColorMuted, modifier = Modifier.padding(start = 4.dp))
         for (n in 1..s.total) {
             st.groups.firstOrNull { it.first == n }?.let { (_, title) ->

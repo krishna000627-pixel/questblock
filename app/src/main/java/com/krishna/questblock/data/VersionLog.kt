@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("122.0.0", "Study only what is taught",
+        listOf(
+            "Chapters, Study page: a chapter that school has not taught yet is greyed with a lock and cannot be ticked as studied. Mark it taught on the School page first. Chapters already studied can still be unticked",
+            "Chapters: progress bars no longer show the small dot at the end of the bar (own plain bar instead of the Material one)",
+        )),
     VersionEntry("121.0.0", "Study % out of taught",
         listOf(
             "Chapters, Study page: the percent is now studied out of the chapters taught in school (for example 4 of 8 taught = 50%), not out of the whole course. A chapter you studied before school taught it counts once it is marked taught",
