@@ -104,6 +104,7 @@ fun MainScreen() {
                     onOpenStats = { navController.openPage("stats") },
                     onOpenHub = { navController.openPage("hub") },
                     onOpenChapters = { navController.openPage("chapters") },
+                    onOpenAttendance = { navController.openPage("attendance") },
                 )
             }
             composable("quests") {
@@ -158,6 +159,7 @@ fun MainScreen() {
             }
             composable("versions") { VersionScreen(onBack = { navController.popBackStack() }) }
             composable("selftest") { SelfTestScreen(onBack = { navController.popBackStack() }) }
+            composable("attendance") { AttendanceScreen(onBack = { navController.popBackStack() }) }
             composable("chapters") { ChaptersScreen(onBack = { navController.popBackStack() }) }
             composable("weekly") { WeeklyReviewScreen(onBack = { navController.popBackStack() }) }
             composable("debuglog") { DebugLogScreen(onBack = { navController.popBackStack() }) }

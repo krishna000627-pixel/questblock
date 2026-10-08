@@ -93,7 +93,7 @@ class HomeViewModel @Inject constructor(
 }
 
 @Composable
-fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenHub: () -> Unit, onOpenChapters: () -> Unit = {}, vm: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenHub: () -> Unit, onOpenChapters: () -> Unit = {}, onOpenAttendance: () -> Unit = {}, vm: HomeViewModel = hiltViewModel()) {
     val player       by vm.player.collectAsStateWithLifecycle()
     val tasks        by vm.tasks.collectAsStateWithLifecycle()
     val achievements by vm.achievements.collectAsStateWithLifecycle()
@@ -251,7 +251,10 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                     SlimPill("\uD83D\uDCCA Stats", false, onOpenStats, Modifier.weight(1f))
                     SlimPill("\uD83E\uDDED Hub", false, onOpenHub, Modifier.weight(1f))
                 }
-                SlimPill("\uD83D\uDCDA Chapters (PCMHE)", true, onOpenChapters, Modifier.fillMaxWidth())
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SlimPill("\uD83D\uDCDA Chapters", true, onOpenChapters, Modifier.weight(1f))
+                    SlimPill("\uD83D\uDCC5 Attendance", true, onOpenAttendance, Modifier.weight(1f))
+                }
             }
         }
 

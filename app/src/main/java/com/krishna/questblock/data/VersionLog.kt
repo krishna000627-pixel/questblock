@@ -3,6 +3,15 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("112.0.0", "Home pills",
+        listOf(
+            "Home: Chapters and Attendance pills side by side, each opens its own page",
+        )),
+    VersionEntry("110.0.0", "Revision + Attendance",
+        listOf(
+            "Chapters: counts are fixed to the MP Board syllabus (no typing), Study / Revision toggle, tap a subject to open its chapters",
+            "New Attendance tracker (Home -> Attendance): school once a day, coaching twice a day, monthly calendar and percentages",
+        )),
     VersionEntry("109.0.0", "UI polish",
         listOf(
             "Home: even spacing between the shortcut pills, Chapters pill highlighted",
