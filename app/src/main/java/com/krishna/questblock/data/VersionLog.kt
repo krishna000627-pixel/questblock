@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("104.0.0", "Shorts locked by default",
+        listOf(
+            "YouTube Shorts lock is on by default (turn it off in the Vault if you want)",
+        )),
     VersionEntry("103.0.0", "Fresh start",
         listOf(
             "One-time full reset of the database and settings on first launch of this version",

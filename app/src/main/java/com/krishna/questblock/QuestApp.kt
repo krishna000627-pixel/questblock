@@ -32,6 +32,11 @@ class QuestApp : Application() {
                         .apply()
                     mig.edit().putBoolean("reset_v103", true).apply()
                 }
+                // v104: YouTube Shorts lock on by default (one time, so you can still turn it off)
+                if (!mig.getBoolean("yt_shorts_v104", false)) {
+                    sp.edit().putBoolean("short_yt", true).apply()
+                    mig.edit().putBoolean("yt_shorts_v104", true).apply()
+                }
                 if (!sp.getBoolean("starter_vault_v103", false)) {
                     val pm = packageManager
                     val i = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_LAUNCHER)
