@@ -3,6 +3,15 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("117.0.0", "Marks feeder + new Chapters look",
+        listOf(
+            "New Marks page (tap the top progress card on Chapters): enter marks obtained and out-of for Physics, Chemistry, Maths, Hindi and English in MT 1, Quarterly, MT 2, Half-yearly and MT 3. MT 3 shows Waiting until you add it",
+            "Marks page shows total % per test, a bar per subject, change since the previous test, and your best and weakest subject. Tap a subject to edit or clear. Stored on the phone only",
+            "Chapters redesigned: each subject has its own colour, emoji, progress ring and a Next chapter line; subject pages have a big header, chapter cards with number circles and Studied / Revised tags, and group headings (Hindi: काव्य, गद्य, वितान; English: Prose, Poetry, Vistas)",
+            "Study / Revision toggle now only on the main Chapters page; subject pages follow it and show which mode you are in",
+            "Hindi shows only हिन्दी (the duplicate English Hindi word is gone)",
+            "Next up list cleaned: exam countdown, chapter tracker and mock test scores are done, so they are removed",
+        )),
     VersionEntry("116.0.0", "Subject pages + Home fixes",
         listOf(
             "Fix: a one-time quest you add now shows under Today's quests on Home, not in Coming up or No date",
@@ -386,8 +395,7 @@ val VERSION_LOG: List<VersionEntry> = listOf(
 )
 
 const val NEXT_UP = """
-• Exam countdown with daily study-time pace
-• PCM chapter tracker (feeds Knowledge attribute)
 • Mistake log with spaced revision reminders
-• Mock test score tracker
+• Marks trend in the weekly review
+• Mood check-in (one tap a day) - idea, not decided
 """

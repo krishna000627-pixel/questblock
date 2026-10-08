@@ -169,7 +169,9 @@ fun MainScreen() {
             composable("selftest") { SelfTestScreen(onBack = { navController.popBackStack() }) }
             composable("attendance") { AttendanceScreen(onBack = { navController.popBackStack() }) }
             composable("chapters") { ChaptersScreen(onBack = { navController.popBackStack() },
-                onOpenSubject = { id, rev -> navController.openPage("chapter_subject/$id/$rev") }) }
+                onOpenSubject = { id, rev -> navController.openPage("chapter_subject/$id/$rev") },
+                onOpenMarks = { navController.openPage("marks") }) }
+            composable("marks") { MarksScreen(onBack = { navController.popBackStack() }) }
             composable(
                 route = "chapter_subject/{id}/{rev}",
                 arguments = listOf(
