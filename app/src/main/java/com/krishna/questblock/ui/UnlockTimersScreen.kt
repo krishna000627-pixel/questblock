@@ -42,6 +42,7 @@ private data class TimerRow(val label: String, val leftMs: Long, val paused: Boo
  * Opened only from the unlock notification (no button leads here). Plain text rows, no icons and no usage
  * queries, so it opens at once. Shows every app / website / clip that is unlocked or has saved time.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UnlockTimersScreen(onBack: () -> Unit, vm: UnlockTimersViewModel = hiltViewModel()) {
     val apps by vm.apps.collectAsState()

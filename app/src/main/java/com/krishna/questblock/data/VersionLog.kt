@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("152.0.0", "Build fix for Unlock timers",
+        listOf(
+            "Build fix: the Unlock timers page (v151) did not compile because its top bar uses an experimental Material 3 API; it now opts in like the other pages. No change in how it looks or works",
+        )),
     VersionEntry("151.0.0", "Unlock timers page",
         listOf(
             "New page: Unlock timers. It opens only from the unlock notification (no button leads to it) and lists every app, website and Shorts/Reels lock that is unlocked or has saved time, with a live countdown and Running or Saved (paused) status. Plain text rows with no icons or usage queries, so it opens instantly, unlike Vault. The unlock line used to open Vault (v150); the other notifications are unchanged",
