@@ -60,3 +60,9 @@ fun lockKeyOf(target: String): String = if (target.startsWith("site:")) target.r
 /** True when Instagram is installed (it has a launcher icon, so the manifest's launcher query makes it visible). */
 fun isInstagramInstalled(ctx: android.content.Context): Boolean =
     try { ctx.packageManager.getPackageInfo("com.instagram.android", 0); true } catch (e: Exception) { false }
+
+/** True when YouTube (or a YouTube mod) is installed and not disabled. */
+fun isYouTubeInstalled(ctx: android.content.Context): Boolean =
+    listOf("com.google.android.youtube", "app.revanced.android.youtube", "com.vanced.android.youtube").any {
+        try { ctx.packageManager.getApplicationInfo(it, 0).enabled } catch (e: Exception) { false }
+    }

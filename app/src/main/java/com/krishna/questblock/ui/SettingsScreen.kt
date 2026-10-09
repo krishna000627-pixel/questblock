@@ -290,10 +290,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
             Text("QuestBlock v$version", color = ColorText, fontWeight = FontWeight.SemiBold)
             listOf<Pair<String, () -> Unit>>(
                 "🧪 Self test (checks everything)" to onOpenSelfTest,
-                "📜 Quest board" to onOpenIdeas,
-                "🔭 Version info" to onOpenVersions,
                 "🐞 Debug log" to onOpenDebug,
-                "👨‍💻 About me" to onOpenAbout,
             ).forEach { (label, go) ->
                 OutlinedButton(onClick = go, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) { Text(label) }
             }
@@ -372,14 +369,7 @@ internal fun OptionalFeaturesSection(prefs: Prefs, ctx: Context) {
 
         // ── Fun limit ──
         Text("🎮 Fun limit", color = ColorText, fontWeight = FontWeight.SemiBold)
-        var shorts by remember { mutableStateOf(prefs.pendingFlag("opt:shorts_block") ?: prefs.shortsBlockOn) }
         var note by remember { mutableStateOf(prefs.pendingSummary()) }
-        ToggleRow("Block YouTube Shorts after the limit",
-            "YouTube itself is never blocked. Shorts minutes count as fun time. Opening Shorts sends you back.", shorts) {
-            prefs.changeShortsBlock(it)
-            shorts = prefs.pendingFlag("opt:shorts_block") ?: prefs.shortsBlockOn
-            note = prefs.pendingSummary()
-        }
         var ghost by remember { mutableStateOf(prefs.pendingFlag("opt:ghost_counts") ?: prefs.ghostCountsOn) }
         ToggleRow("Music from Fun apps counts toward the limit", "Off: only time on screen counts", ghost) {
             prefs.changeGhostCounts(it)

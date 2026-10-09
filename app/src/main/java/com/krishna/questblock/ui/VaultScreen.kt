@@ -137,7 +137,8 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
     val candidates by vm.studyCandidates.collectAsStateWithLifecycle()
     val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
     var showStudyPicker by remember { mutableStateOf(false) }
-    var ytOn by remember { mutableStateOf(vm.clipsOn("yt")) }
+    val ytInstalled = com.krishna.questblock.data.isYouTubeInstalled(androidx.compose.ui.platform.LocalContext.current)
+    var ytOn by remember { mutableStateOf(ytInstalled && vm.clipsOn("yt")) }
     val igInstalled = com.krishna.questblock.data.isInstagramInstalled(androidx.compose.ui.platform.LocalContext.current)
     var igOn by remember { mutableStateOf(igInstalled && vm.clipsOn("ig")) }
     var optionsFor by remember { mutableStateOf<AppRow?>(null) }
@@ -232,14 +233,14 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
         }
 
         // ── Everything else ──────────────────────────────────────────────
-        if (!ytOn || (igInstalled && !igOn)) {
+        if ((ytInstalled && !ytOn) || (igInstalled && !igOn)) {
             item { Text("All apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
                 fontWeight = FontWeight.SemiBold) }
-            if (!ytOn) item(key = "clip_yt_off") { ClipCard("YouTube Shorts", false, 0L) { vm.setClips("yt", it); ytOn = vm.clipsOn("yt") } }
+            if (ytInstalled && !ytOn) item(key = "clip_yt_off") { ClipCard("YouTube Shorts", false, 0L) { vm.setClips("yt", it); ytOn = vm.clipsOn("yt") } }
             if (igInstalled && !igOn) item(key = "clip_ig_off") { ClipCard("Instagram Reels", false, 0L) { vm.setClips("ig", it); igOn = vm.clipsOn("ig") } }
         }
         if (freeRows.isNotEmpty()) {
-            if (ytOn && (igOn || !igInstalled)) item { Text("All apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
+            if ((!ytInstalled || ytOn) && (igOn || !igInstalled)) item { Text("All apps", style = MaterialTheme.typography.labelLarge, color = ColorMuted,
                 fontWeight = FontWeight.SemiBold) }
             items(freeRows, key = { "u_${it.app.pkg}" }) { row ->
                 AppCard(row, studyMin, onToggle = { vm.setBlocked(row.app, it) })

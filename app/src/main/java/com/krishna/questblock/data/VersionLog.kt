@@ -3,6 +3,25 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("136.0.0", "Shorts only with YouTube",
+        listOf(
+            "Vault: the YouTube Shorts option shows, and its lock works, only when YouTube is installed and not disabled, the same way Instagram Reels needs Instagram. The saved choice is kept and comes back if you install or enable YouTube again",
+        )),
+    VersionEntry("135.0.0", "Self test back in Developer",
+        listOf(
+            "Settings: the Developer box now holds Self test and Debug log",
+        )),
+    VersionEntry("134.0.0", "About me back on Profile",
+        listOf(
+            "Profile: About me is back as a card, placed above the Equipped (badge) card. Tapping it opens the About me page",
+            "Settings: the Developer box now holds only Debug log (corrects v133, which removed it). Quest board and Version info are still reachable from the About me page",
+        )),
+    VersionEntry("133.0.0", "Shorts, Bedtime and Developer fixes",
+        listOf(
+            "Fix: YouTube Shorts are now handled exactly like Instagram Reels. They are only locked when you pick them in the Vault (Clips), and never because of a hidden switch. The 'Block YouTube Shorts after the limit' switch is removed from Experiments",
+            "Fix: Bedtime mode now swipes the panel open twice so the full tiles show, reads the tile's colour when it gives no on/off info (so it does not switch Bedtime off by mistake), and presses back until the panel is closed so you stay on your screen, not in the notifications. If it cannot read colours, turn the QuestBlock accessibility service off and on once",
+            "Settings: the Developer box no longer has Debug log or About me. Self test, Quest board and Version info stay",
+        )),
     VersionEntry("132.0.0", "Less clutter",
         listOf(
             "Settings: one 🛠️ Developer section now holds Self test, Quest board, Version info, Debug log and About me (they were spread over Settings, Profile and About me)",

@@ -5,10 +5,14 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.graphics.Rect
 import android.os.Build
 import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
+import android.view.Display
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Toast
@@ -34,6 +38,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import java.util.Calendar
 import javax.inject.Inject
 
@@ -361,8 +367,6 @@ class BlockerAccessibilityService : AccessibilityService() {
                     showSiteBlock("short:$kind")
                     return@launch
                 }
-            } else if (locked && kind == ShortsStats.YT && prefs.shortsBlockOn) {
-                blockShort(kind); return@launch
             }
             startShortTimer(kind)
         }
@@ -464,7 +468,7 @@ class BlockerAccessibilityService : AccessibilityService() {
                     if (ticks % 3 == 0) {
                         val st = FunLimit.state(this@BlockerAccessibilityService, prefs, force = true)
                         val locked = st.reached || prefs.funBlockedNow()
-                        if (locked && (prefs.shortPicked(kind) || (kind == ShortsStats.YT && prefs.shortsBlockOn))) { blockShort(kind); break }
+                        if (locked && prefs.shortPicked(kind)) { blockShort(kind); break }
                     }
                 }
             } finally {
@@ -535,7 +539,9 @@ class BlockerAccessibilityService : AccessibilityService() {
 
     private suspend fun toggleBedtime(): String {
         performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
-        delay(1_200L)
+        delay(700L)
+        performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)   // second swipe opens the full tile panel
+        delay(1_000L)
         var tile: AccessibilityNodeInfo? = null
         for (i in 0 until 5) {
             tile = findBedtimeTile()
@@ -546,7 +552,7 @@ class BlockerAccessibilityService : AccessibilityService() {
             closeShade()
             return "Tile not found. Keep Bedtime on the first page of Quick Settings."
         }
-        val state = tileState(tile)
+        val state = tileState(tile) ?: tileIsLit(tile)   // no state info from the tile: read its colour
         if (state == true) {
             closeShade()
             return "Bedtime mode is already on."
@@ -558,7 +564,49 @@ class BlockerAccessibilityService : AccessibilityService() {
         return if (tapped) "Tapped the Bedtime tile ($was)." else "Found the tile but the tap did not work."
     }
 
-    private fun closeShade() { performGlobalAction(GLOBAL_ACTION_BACK) }
+    /** Press BACK until the panel is really gone, so you land on the app screen and not in the notifications. */
+    private suspend fun closeShade() {
+        for (i in 0 until 3) {
+            performGlobalAction(GLOBAL_ACTION_BACK)
+            delay(500L)
+            val open = findBedtimeTile() != null || rootInActiveWindow?.packageName?.toString() == "com.android.systemui"
+            if (!open) return
+        }
+    }
+
+    /** Reads the tile's colour from a screenshot: coloured = on, grey = off. null = cannot tell. */
+    private suspend fun tileIsLit(tile: AccessibilityNodeInfo): Boolean? {
+        if (Build.VERSION.SDK_INT < 30) return null
+        val r = Rect()
+        tile.getBoundsInScreen(r)
+        if (r.isEmpty) return null
+        val bmp: Bitmap = suspendCancellableCoroutine<Bitmap?> { cont ->
+            takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : TakeScreenshotCallback {
+                override fun onSuccess(shot: ScreenshotResult) {
+                    val hb = shot.hardwareBuffer
+                    val b = runCatching { Bitmap.wrapHardwareBuffer(hb, shot.colorSpace)?.copy(Bitmap.Config.ARGB_8888, false) }.getOrNull()
+                    hb.close()
+                    if (cont.isActive) cont.resume(b)
+                }
+                override fun onFailure(errorCode: Int) { if (cont.isActive) cont.resume(null) }
+            })
+        } ?: return null
+        val dx = (r.width() * 0.15f).toInt()
+        val dy = (r.height() * 0.15f).toInt()
+        val pts = listOf(r.left + dx to r.top + dy, r.right - dx to r.top + dy, r.left + dx to r.bottom - dy, r.right - dx to r.bottom - dy)
+        var sat = 0f
+        var n = 0
+        val hsv = FloatArray(3)
+        for ((x, y) in pts) {
+            if (x !in 0 until bmp.width || y !in 0 until bmp.height) continue
+            Color.colorToHSV(bmp.getPixel(x, y), hsv)
+            sat += hsv[1]; n++
+        }
+        bmp.recycle()
+        if (n == 0) return null
+        DebugLog.d("service: Bedtime tile colour saturation ${"%.2f".format(sat / n)}")
+        return sat / n > 0.22f
+    }
 
     private fun findBedtimeTile(): AccessibilityNodeInfo? {
         val roots = ArrayList<AccessibilityNodeInfo>()

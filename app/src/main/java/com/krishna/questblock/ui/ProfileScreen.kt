@@ -182,6 +182,24 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
             }
 
 
+            // ── About me ────────────────────────────────────────────────────
+            Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().clickable { onOpenAbout() }) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("👨‍💻", fontSize = 24.sp)
+                    Column(Modifier.weight(1f)) {
+                        Text("About me", style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold, color = ColorText)
+                        Text(com.krishna.questblock.data.AboutMe.TAGLINE,
+                            style = MaterialTheme.typography.bodySmall, color = ColorMuted,
+                            maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    }
+                    Text("›", color = ColorMuted, fontSize = 20.sp)
+                }
+            }
+
             // ── Equipped cosmetics ──────────────────────────────────────────
             if (true) {
                 Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
