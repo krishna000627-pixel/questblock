@@ -160,8 +160,7 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("\u2713 Present   \u2715 Absent   \uD83C\uDF34 Leave", color = ColorMuted,
-                    style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
+                Spacer(Modifier.weight(1f))
                 TextButton(onClick = {
                     set(selected, "s", "L"); set(selected, "c1", "L"); set(selected, "c2", "L")
                 }) { Text("All leave", color = ColorMuted) }
@@ -193,10 +192,15 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                             val key = monthPrefix + String.format(Locale.US, "%02d", d)
                             val vals = listOf(eff(key, "s"), get(key, "c1"), get(key, "c2"))
                             val counted = vals.filter { it != "L" }
+                            val pN = vals.count { it == "P" }
+                            val aN = vals.count { it == "A" }
+                            val openN = counted.count { it.isEmpty() }
                             val bg = when {
-                                vals.any { it == "A" } -> ColorDanger.copy(alpha = 0.30f)
-                                counted.isNotEmpty() && counted.all { it == "P" } -> ColorPrimary.copy(alpha = 0.35f)
-                                vals.any { it == "P" } -> ColorWarning.copy(alpha = 0.30f)
+                                aN > 0 && pN > 0 -> ColorWarning.copy(alpha = 0.65f)                 // present + absent mixed: orange
+                                aN > 0 && openN == 0 -> ColorDanger.copy(alpha = 0.65f)              // everything absent: strong red
+                                aN > 0 -> ColorDanger.copy(alpha = 0.38f)                            // absent, rest not marked yet: light red
+                                pN > 0 && openN == 0 -> ColorPrimary.copy(alpha = 0.70f)             // everything present: strong green
+                                pN > 0 -> androidx.compose.ui.graphics.lerp(ColorPrimary, ColorWarning, 0.5f).copy(alpha = 0.50f) // some present, rest not marked: olive
                                 vals.any { it == "L" } -> ColorMuted.copy(alpha = 0.30f)
                                 else -> ColorSurfaceHigh
                             }
@@ -212,7 +216,7 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                     repeat(7 - week.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
-            Text("Present = coins (school +$SCHOOL_COINS, coaching +$COACHING_COINS each); changing it takes them back. Counting from ${startDay.substring(6, 8)}/${startDay.substring(4, 6)}/${startDay.substring(0, 4)}. Green = all present, orange = some marked, red = absent somewhere, grey = leave (not counted; school is leave on Sundays)", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            Text("Counting from ${startDay.substring(6, 8)}/${startDay.substring(4, 6)}/${startDay.substring(0, 4)}. Grey = leave.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
         // 📃 Mood: one tap a day, follows the selected day above. Saved as mood_<yyyymmdd> = 1..5
         val moods = listOf("\uD83D\uDE1E", "\uD83D\uDE15", "\uD83D\uDE10", "\uD83D\uDE42", "\uD83D\uDE04")

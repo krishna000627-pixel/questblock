@@ -3,6 +3,14 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("140.0.0", "Clearer attendance colours",
+        listOf(
+            "Attendance calendar: stronger, more different colours. All present = strong green, all absent = strong red, present + absent mixed = orange, some present with the rest not marked = olive, absent with the rest not marked = light red. Leave stays grey",
+        )),
+    VersionEntry("139.0.0", "Less text in attendance",
+        listOf(
+            "Attendance: removed the icon legend line and cut the long note under the calendar to one short line (start date and grey = leave). All leave stays",
+        )),
     VersionEntry("138.0.0", "Cleaner attendance buttons",
         listOf(
             "Attendance: each row is back to a tidy label with three small round buttons (tick = Present, cross = Absent, palm = Leave) instead of wide text buttons, with a one-line legend and All leave under the rows. Nothing else changed from v137",
