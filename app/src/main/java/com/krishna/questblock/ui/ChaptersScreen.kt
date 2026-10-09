@@ -26,8 +26,23 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.krishna.questblock.data.GameRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 import com.krishna.questblock.data.dowIndex
 import com.krishna.questblock.data.startOfToday
+
+@HiltViewModel
+class ChapterViewModel @Inject constructor(private val repo: GameRepository) : ViewModel() {
+    fun reward(coins: Int, detail: String) { viewModelScope.launch { repo.grantBonus(coins, 0, "Chapter", detail) } }
+}
+
+/** Coins for finishing (studying) a chapter. Paid once per chapter, ever: not per day, and unticking then ticking again pays nothing more. */
+private const val CHAPTER_COINS = 10
 
 private data class Subj(val id: String, val name: String, val names: List<String>, val extras: List<String> = emptyList()) {
     val base: Int get() = names.size
@@ -312,7 +327,7 @@ fun ChaptersScreen(
 
 /** One subject on its own page, with the same Study / School switch. */
 @Composable
-fun ChapterSubjectScreen(subjectId: String, startSchool: Boolean, onBack: () -> Unit) {
+fun ChapterSubjectScreen(subjectId: String, startSchool: Boolean, onBack: () -> Unit, vm: ChapterViewModel = hiltViewModel()) {
     val s = SUBJECTS.firstOrNull { it.id == subjectId } ?: run { onBack(); return }
     val st = styleOf(s.id)
     val ctx = LocalContext.current
@@ -332,7 +347,15 @@ fun ChapterSubjectScreen(subjectId: String, startSchool: Boolean, onBack: () -> 
         if (n in doneSet) {
             saveSet(sp, "done", s, doneSet - n)
             saveSet(sp, "wrev", s, readSet(sp, "wrev", s) - n)   // not studied = cannot be revised
-        } else saveSet(sp, "done", s, doneSet + n)
+        } else {
+            saveSet(sp, "done", s, doneSet + n)
+            val paid = "chapcoin_${s.id}_$n"
+            if (!sp.getBoolean(paid, false)) {
+                sp.edit().putBoolean(paid, true).apply()
+                vm.reward(CHAPTER_COINS, "Chapter studied: " + labelOf(s, n))
+                Toast.makeText(ctx, "+$CHAPTER_COINS coins", Toast.LENGTH_SHORT).show()
+            }
+        }
         tick++
     }
     fun toggleRevise(n: Int) {

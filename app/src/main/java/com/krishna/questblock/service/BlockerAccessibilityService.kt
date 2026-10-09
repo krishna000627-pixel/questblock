@@ -116,6 +116,11 @@ class BlockerAccessibilityService : AccessibilityService() {
         val t = SystemClock.elapsedRealtime()
         if (t - lastBeat > 30_000L) { lastBeat = t; prefs.lastActiveAt = System.currentTimeMillis() }
         val pkg = event.packageName?.toString() ?: return
+        // Leaving YouTube/Instagram for any other screen (also QuestBlock's own lock screen) removes the Shorts/Reels counter
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && kindOf(pkg) == null &&
+            pkg !in IGNORED_PKGS && pkg != imePackage()) {
+            if (shortsJob != null) stopShortTimer() else CounterBubble.hide(this)
+        }
         if (pkg == packageName) return
         if (pkg in BROWSERS) checkWebsite(pkg)
         if (pkg in YOUTUBE_PKGS || pkg == INSTAGRAM_PKG) checkShorts(pkg, event)
@@ -151,7 +156,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     }
 
     private fun markForeground(pkg: String) {
-        if (kindOf(pkg) == null && shortsJob != null) stopShortTimer()
+        if (kindOf(pkg) == null) { if (shortsJob != null) stopShortTimer() else CounterBubble.hide(this) }
         if (currentPkg != pkg) {
             funCutJob?.cancel(); funCutPkg = null
             safeSession?.let { if (it != pkg) { safeLeftAt[it] = System.currentTimeMillis(); safeSession = null } }

@@ -68,8 +68,11 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
         if (v.isEmpty()) e.remove("att_${day}_$what") else e.putString("att_${day}_$what", v)
         // coins: Present earns, anything else takes back exactly what this slot gave (attcoin_<day>_<slot>)
         val given = sp.getInt("attcoin_${day}_$what", 0)
-        val reward = if (v == "P") rewardFor(what) else 0
+        // each slot earns its coins once per day: after they were given (even if taken back later) Present gives no more
+        val done = "attdone_${day}_$what"
+        val reward = if (v == "P" && (given > 0 || !sp.getBoolean(done, false))) rewardFor(what) else 0
         if (reward != given) {
+            e.putBoolean(done, true)
             vm.coins(reward - given, (if (reward > given) "Present: " else "Changed: ") + labelFor(what) + " " + day.substring(6, 8) + "/" + day.substring(4, 6))
             if (reward == 0) e.remove("attcoin_${day}_$what") else e.putInt("attcoin_${day}_$what", reward)
         }
@@ -80,9 +83,9 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
     LaunchedEffect(Unit) {
         val e = sp.edit(); var changed = false
         listOf("s", "c1", "c2").forEach { what ->
-            if (get(todayKey, what) == "P" && sp.getInt("attcoin_${todayKey}_$what", 0) == 0) {
+            if (get(todayKey, what) == "P" && sp.getInt("attcoin_${todayKey}_$what", 0) == 0 && !sp.getBoolean("attdone_${todayKey}_$what", false)) {
                 vm.coins(rewardFor(what), "Present: " + labelFor(what) + " " + todayKey.substring(6, 8) + "/" + todayKey.substring(4, 6))
-                e.putInt("attcoin_${todayKey}_$what", rewardFor(what)); changed = true
+                e.putInt("attcoin_${todayKey}_$what", rewardFor(what)); e.putBoolean("attdone_${todayKey}_$what", true); changed = true
             }
         }
         if (changed) { e.apply(); tick++ }

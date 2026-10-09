@@ -3,6 +3,15 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("149.0.0", "Coins for finished chapters",
+        listOf(
+            "Chapters: ticking a chapter as studied on the Study page now gives 10 coins (shown in the coin log as Chapter studied). It is paid once per chapter for all days; unticking and ticking again gives nothing more. Quests made for the same chapter are separate and still give their own coins for the day",
+        )),
+    VersionEntry("148.0.0", "Counter and attendance coin fixes",
+        listOf(
+            "Fix: the Shorts/Reels counter stayed on screen (for example over a lock screen) after leaving Shorts. It now disappears as soon as you move to any other screen, including QuestBlock's own lock screen",
+            "Fix: attendance coins could be earned again and again (Present, spend, change to Absent, Present again). Each slot now gives its coins once per day, so a day gives at most 11 (School 5 + Coaching 3 + 3); changing the mark later still takes the coins back, but marking Present again gives nothing more",
+        )),
     VersionEntry("147.0.0", "Leave has its own colour",
         listOf(
             "Attendance: Leave is now purple (button and calendar days) instead of grey, so it no longer looks like an empty day",
