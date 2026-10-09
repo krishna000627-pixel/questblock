@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("146.0.0", "Attendance buttons stay visible",
+        listOf(
+            "Fix: on the Attendance page some round buttons lost their background (looked hidden) and sometimes needed a second tap. The buttons are now drawn as proper Material buttons (Surface) so their colour is always painted and one tap is enough",
+        )),
     VersionEntry("145.0.0", "No fade on locked days",
         listOf(
             "Attendance: closed days no longer fade the buttons. They keep their normal colours and just do not respond; All leave is hidden on past days instead of greyed out",

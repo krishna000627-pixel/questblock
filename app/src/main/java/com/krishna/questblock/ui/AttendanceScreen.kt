@@ -152,13 +152,21 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                         val on = cur == v
                         val c = when (v) { "P" -> ColorPrimary; "A" -> ColorDanger; else -> ColorMuted }
                         val locked = selected < todayKey || (selected > todayKey && v != "L")
-                        Box(
-                            Modifier.height(36.dp).width(46.dp).clip(RoundedCornerShape(50))
-                                .background(if (on) c else ColorSurfaceHigh)
-                                .clickable(enabled = !locked) { set(selected, what, if (on) "" else v) },
-                            contentAlignment = Alignment.Center,
-                        ) { Text(t, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
-                            color = if (on && v != "L") ColorOnPrimary else ColorText) }
+                        // key per day+slot+button so a chip is never reused for another one; Surface always paints its colour
+                        key(selected, what, v) {
+                            Surface(
+                                onClick = { set(selected, what, if (on) "" else v) },
+                                enabled = !locked,
+                                shape = RoundedCornerShape(50),
+                                color = if (on) c else ColorSurfaceHigh,
+                                modifier = Modifier.height(36.dp).width(46.dp),
+                            ) {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(t, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                                        color = if (on && v != "L") ColorOnPrimary else ColorText)
+                                }
+                            }
+                        }
                     }
                 }
             }
