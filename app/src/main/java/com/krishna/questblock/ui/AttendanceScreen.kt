@@ -63,6 +63,7 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
         return if (v.isEmpty() && what == "s" && isSunday(day)) "L" else v
     }
     fun set(day: String, what: String, v: String) {
+        if (day < todayKey) return                              // past days are closed
         if (day > todayKey && (v == "P" || v == "A")) return   // no Present/Absent for days that have not come yet
         val e = sp.edit()
         if (v.isEmpty()) e.remove("att_${day}_$what") else e.putString("att_${day}_$what", v)
@@ -151,7 +152,7 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                     listOf("P" to "\u2713", "A" to "\u2715", "L" to "\uD83C\uDF34").forEach { (v, t) ->
                         val on = cur == v
                         val c = when (v) { "P" -> ColorPrimary; "A" -> ColorDanger; else -> ColorMuted }
-                        val locked = selected > todayKey && v != "L"
+                        val locked = selected < todayKey || (selected > todayKey && v != "L")
                         Box(
                             Modifier.height(36.dp).width(46.dp).clip(RoundedCornerShape(50))
                                 .background(if (on) c else ColorSurfaceHigh)
@@ -165,7 +166,7 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = {
+                TextButton(enabled = selected >= todayKey, onClick = {
                     set(selected, "s", "L"); set(selected, "c1", "L"); set(selected, "c2", "L")
                 }) { Text("All leave", color = ColorMuted) }
             }

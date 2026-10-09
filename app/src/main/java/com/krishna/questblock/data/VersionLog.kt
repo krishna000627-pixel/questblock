@@ -3,6 +3,18 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("144.0.0", "No marking past days",
+        listOf(
+            "Attendance: past days are closed. Present, Absent, Leave and All leave only work for today (Leave also for a coming day, as in v141). Past days stay viewable on the calendar",
+        )),
+    VersionEntry("143.0.0", "Coding app lines",
+        listOf(
+            "Apps sorted as Coding now show a motivation line in the notification while they are open (for example Claude or Termux): twelve lines with a tint of failing and fixing, one picked each time you open the app. No coins or timer, the line only shows. The lock screen lines from v142 are unchanged",
+        )),
+    VersionEntry("142.0.0", "New motivation lines",
+        listOf(
+            "Lock screen: the five motivation lines are replaced by twelve new, more motivating ones with a playful touch. The streak line still shows when you have a streak, and the Motivational quotes switch in Settings still turns them off",
+        )),
     VersionEntry("141.0.0", "No marking future days",
         listOf(
             "Attendance: Present and Absent are locked (dimmed) for days that have not come yet, so you can only mark today and past days. Leave still works on a future day for a planned holiday",

@@ -736,6 +736,15 @@ class BlockerAccessibilityService : AccessibilityService() {
     }
 
     private suspend fun evaluateApp(pkg: String) {
+        evaluateAppInner(pkg)
+        // coding-category app on screen -> notification line; anything else clears it
+        if (currentPkg == pkg && AppCategorizer.categoryOf(prefs, packageManager, pkg) == "coding") {
+            val label = runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)
+            com.krishna.questblock.data.CodingSignal.enter(pkg, label)
+        } else com.krishna.questblock.data.CodingSignal.leave()
+    }
+
+    private suspend fun evaluateAppInner(pkg: String) {
         if (checkFunLimit(pkg)) return
         val app = repo.getBlockedApp(pkg)?.let { applyCarryOver(it) }
 

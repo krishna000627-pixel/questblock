@@ -80,6 +80,36 @@ object StudySignal {
         if (pkg != p) { pkg = p; label = l; since = System.currentTimeMillis(); pokes.trySend(Unit) }
     }
     fun leave() {
+        CodingSignal.leave()
         if (pkg != null) { pkg = null; pokes.trySend(Unit) }
+    }
+}
+
+/** A coding-category app is on screen: the notification shows one motivation line (a little about failing and fixing). */
+object CodingSignal {
+    @Volatile var pkg: String? = null
+    @Volatile var label: String = ""
+    @Volatile var line: String = ""
+
+    private val LINES = listOf(
+        "Bugs are lessons in disguise. Fail fast, fix faster.",
+        "Every red error is XP loading.",
+        "Failed build? Good, now you know where to look.",
+        "Fail, patch, ship. Repeat.",
+        "Nobody gets it right the first time. Keep typing.",
+        "Compile errors are free coaching.",
+        "Crash today, crash-proof tomorrow.",
+        "You didn't fail. You found one more way it doesn't work.",
+        "Ship it ugly, fix it pretty.",
+        "CI is red? That's the map to the bug.",
+        "Stuck means you're close. Keep going.",
+        "Fail forward. Commit often.",
+    )
+
+    fun enter(p: String, l: String) {
+        if (pkg != p) { pkg = p; label = l; line = LINES.random(); StudySignal.pokes.trySend(Unit) }
+    }
+    fun leave() {
+        if (pkg != null) { pkg = null; StudySignal.pokes.trySend(Unit) }
     }
 }

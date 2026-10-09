@@ -206,6 +206,9 @@ class KeepAliveService : Service() {
             text = "1 \uD83E\uDE99 every ${prefs.studyMinPerCoin} min$unlockHint"
             whenMs = now + toGo
             progress = ((carry * 100) / unitMs).toInt().coerceIn(0, 100)
+        } else if (com.krishna.questblock.data.CodingSignal.pkg != null) {
+            title = "💻 ${com.krishna.questblock.data.CodingSignal.label} · coding"
+            text = com.krishna.questblock.data.CodingSignal.line
         } else if (FunSignal.pkg != null && FunLimit.last?.enabled == true) {
             // a fun app is on screen and a daily limit is set: show how much is left
             val fs = FunLimit.last!!

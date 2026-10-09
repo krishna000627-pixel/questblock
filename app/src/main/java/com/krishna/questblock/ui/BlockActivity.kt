@@ -237,11 +237,18 @@ class BlockActivity : ComponentActivity() {
 }
 
 private val MOTIVATIONAL_LINES = listOf(
-    "Your future self will thank you.",
-    "One distraction avoided. One step forward.",
-    "Focus is a superpower. Use it.",
-    "Real quests don't pause for reels.",
-    "Close it. You don't need it right now.",
+    "Your future self just high-fived you. Keep going.",
+    "The reel will wait. Your rank won't climb itself.",
+    "Scrolling gives zero XP. Quests give real XP.",
+    "Plot twist: you're the main character, not the scroller.",
+    "Tiny discipline today, big flex tomorrow.",
+    "Close it. Level up instead.",
+    "Legends skip the doomscroll.",
+    "Boss level is waiting. Your thumb is not the boss.",
+    "You didn't come this far to only come this far.",
+    "Five focused minutes beat fifty scrolled ones.",
+    "Be the person your streak thinks you are.",
+    "Future you is cheering from the topper's list.",
 )
 
 @Composable
