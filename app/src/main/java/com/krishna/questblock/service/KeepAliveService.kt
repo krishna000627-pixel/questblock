@@ -190,6 +190,7 @@ class KeepAliveService : Service() {
         var whenMs = 0L
         var progress = -1
         var visible = false
+        var countUp = false
         var route = "vault"   // page the notification opens
         // Priority: a study app on screen -> study line. Otherwise (unlocked app open, or nothing) -> unlock line.
         val sigPkg = StudySignal.pkg
@@ -212,6 +213,8 @@ class KeepAliveService : Service() {
             route = "usage"
             title = "💻 ${com.krishna.questblock.data.CodingSignal.label} · coding"
             text = com.krishna.questblock.data.CodingSignal.line
+            whenMs = com.krishna.questblock.data.CodingSignal.since   // count-up clock: time in this coding app
+            countUp = true
         } else if (FunSignal.pkg != null && FunLimit.last?.enabled == true) {
             // a fun app is on screen and a daily limit is set: show how much is left
             route = "usage"
@@ -281,10 +284,10 @@ class KeepAliveService : Service() {
             title = "QuestBlock is on"; text = "Blocking is active · $strictLine"
         }
         val screenOn = getSystemService(PowerManager::class.java).isInteractive
-        val key = "$title|$text|${progress / 2}"
+        val key = "$title|$text|${progress / 2}" + if (countUp) "|$whenMs" else ""
         if (key != lastTitle && (screenOn || active.isEmpty())) {
             lastTitle = key; lastText = ""
-            nm.notify(ID_ONGOING, ongoing(title, text, whenMs, progress, visible, route))
+            nm.notify(ID_ONGOING, ongoing(title, text, whenMs, progress, visible, route, countUp))
         }
 
         // Watchdog (every 20 s, only after setup)
@@ -317,7 +320,7 @@ class KeepAliveService : Service() {
 
     private fun openApp(route: String): PendingIntent = com.krishna.questblock.ui.openRoutePending(this, route)
 
-    private fun ongoing(title: String, text: String, countdownTo: Long = 0L, progress: Int = -1, visible: Boolean = countdownTo > 0L, route: String = "vault"): Notification =
+    private fun ongoing(title: String, text: String, countdownTo: Long = 0L, progress: Int = -1, visible: Boolean = countdownTo > 0L, route: String = "vault", countUp: Boolean = false): Notification =
         NotificationCompat.Builder(this, if (visible || countdownTo > 0L) KeepAlive.CH_KEEPALIVE else KeepAlive.CH_IDLE)
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentTitle(title)
@@ -330,7 +333,7 @@ class KeepAliveService : Service() {
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .apply {
                 if (countdownTo > 0L) {   // system-drawn countdown keeps ticking even if our updates are paused
-                    setWhen(countdownTo); setShowWhen(true); setUsesChronometer(true); setChronometerCountDown(true)
+                    setWhen(countdownTo); setShowWhen(true); setUsesChronometer(true); setChronometerCountDown(!countUp)
                 }
                 if (progress >= 0) setProgress(100, progress, false)
             }

@@ -164,6 +164,7 @@ private fun rolloverWeek(sp: android.content.SharedPreferences) {
         ed.putString("chap_wrev_hist", (old + "$stored:$pct").takeLast(4).joinToString(","))
     }
     SUBJECTS.forEach { ed.remove("chap_wrev_${it.id}") }
+    ed.putString("chapq_open", pendingQ(sp).filterNot { it.startsWith("Revise: ") }.joinToString("\n"))
     ed.putLong("chap_wrev_week", cur).apply()
 }
 
@@ -184,6 +185,84 @@ private fun taughtSet(sp: android.content.SharedPreferences, s: Subj): Set<Int> 
 private fun studiedTaught(sp: android.content.SharedPreferences, s: Subj): Set<Int> = readSet(sp, "done", s).intersect(taughtSet(sp, s))
 private fun copyDone(sp: android.content.SharedPreferences, s: Subj): Set<Int> = readSet(sp, "copy", s)
 private fun revisedWeek(sp: android.content.SharedPreferences, s: Subj): Set<Int> = readSet(sp, "wrev", s).intersect(readSet(sp, "done", s))
+
+private val CQ_PREFIXES = listOf("Study: ", "Revise: ", "Complete copy: ")
+
+private fun pendingQ(sp: android.content.SharedPreferences): Set<String> =
+    (sp.getString("chapq_open", "") ?: "").split("\n").filter { it.isNotBlank() }.toSet()
+private fun savePendingQ(sp: android.content.SharedPreferences, v: Set<String>) =
+    sp.edit().putString("chapq_open", v.joinToString("\n")).apply()
+
+/** Finds the chapter a suggested quest title points at: (prefix, subject, chapter number), or null for any other quest. */
+private fun chapterOfTitle(title: String): Triple<String, Subj, Int>? {
+    val t = title.trim()
+    val pre = CQ_PREFIXES.firstOrNull { t.startsWith(it) } ?: return null
+    val name = t.removePrefix(pre)
+    SUBJECTS.forEach { s -> (1..s.total).forEach { n -> if (labelOf(s, n) == name) return Triple(pre, s, n) } }
+    return null
+}
+
+/** A chapter quest was added: do not suggest it again while it is open. */
+fun chapterQuestAdded(ctx: Context, title: String) {
+    if (chapterOfTitle(title) == null) return
+    val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
+    savePendingQ(sp, pendingQ(sp) + title.trim())
+}
+
+/** A chapter quest was finished (ticks the chapter) or deleted (only frees the suggestion). */
+fun chapterQuestEnded(ctx: Context, title: String, completed: Boolean) {
+    val (pre, s, n) = chapterOfTitle(title) ?: return
+    val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
+    savePendingQ(sp, pendingQ(sp) - title.trim())
+    if (!completed) return
+    when (pre) {
+        "Study: " -> if (n in taughtSet(sp, s)) {
+            saveSet(sp, "done", s, readSet(sp, "done", s) + n)
+            sp.edit().putBoolean("chapcoin_${s.id}_$n", true).apply()   // the quest paid already: no second 10 coins
+        }
+        "Revise: " -> if (n in readSet(sp, "done", s)) saveSet(sp, "wrev", s, readSet(sp, "wrev", s) + n)
+        else -> if (n in taughtSet(sp, s)) saveSet(sp, "copy", s, readSet(sp, "copy", s) + n)
+    }
+}
+
+/** A finished chapter quest was undone: take the tick back. */
+fun chapterQuestUndone(ctx: Context, title: String) {
+    val (pre, s, n) = chapterOfTitle(title) ?: return
+    val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
+    when (pre) {
+        "Study: " -> { saveSet(sp, "done", s, readSet(sp, "done", s) - n); saveSet(sp, "wrev", s, readSet(sp, "wrev", s) - n) }
+        "Revise: " -> saveSet(sp, "wrev", s, readSet(sp, "wrev", s) - n)
+        else -> saveSet(sp, "copy", s, readSet(sp, "copy", s) - n)
+    }
+}
+
+/**
+ * Quests that follow chapter progress: next taught chapter to study, a studied one to revise this week, a studied one still missing from the copy.
+ * A chapter already ticked, or whose quest is still open, is not suggested again; completing the quest ticks it (until you untick it on Chapters).
+ */
+fun chapterSuggestions(ctx: Context): List<com.krishna.questblock.data.StarterQuest> {
+    val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
+    rolloverWeek(sp)
+    val open = pendingQ(sp)
+    val out = mutableListOf<com.krishna.questblock.data.StarterQuest>()
+    fun add(q: com.krishna.questblock.data.StarterQuest) { if (q.title !in open) out += q }
+    SUBJECTS.forEach { s ->
+        val sub = when (s.id) { "P" -> "Physics"; "C" -> "Chemistry"; "M" -> "Maths"; else -> "Boards" }
+        val done = readSet(sp, "done", s)
+        val taught = taughtSet(sp, s)
+        val emoji = styleOf(s.id).emoji
+        taught.filter { it !in done }.minOrNull()?.let {
+            add(com.krishna.questblock.data.StarterQuest(emoji, "Study: " + labelOf(s, it), "${s.name} \u00b7 taught in school, not studied yet", sub, 2))
+        }
+        done.filter { it !in readSet(sp, "wrev", s) }.minOrNull()?.let {
+            add(com.krishna.questblock.data.StarterQuest("\uD83D\uDD01", "Revise: " + labelOf(s, it), "${s.name} \u00b7 not revised this week", sub, 1))
+        }
+        done.filter { it !in copyDone(sp, s) }.minOrNull()?.let {
+            add(com.krishna.questblock.data.StarterQuest("\uD83D\uDCD3", "Complete copy: " + labelOf(s, it), "${s.name} \u00b7 studied, copy not complete", sub, 1))
+        }
+    }
+    return out
+}
 
 @Composable
 private fun PageSwitch(school: Boolean, onChange: (Boolean) -> Unit) {

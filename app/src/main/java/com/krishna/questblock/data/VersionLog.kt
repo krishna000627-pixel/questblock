@@ -3,6 +3,20 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("155.0.0", "Clock for coding apps",
+        listOf(
+            "Coding apps (Claude, Termux, GitHub and every other app sorted as Coding) now show a running clock in the notification header, counting up from when you opened the app, next to the motivation line. It restarts each time you open a coding app. No coins or timer rules change",
+        )),
+    VersionEntry("154.0.0", "Chapter quests and Chapters linked",
+        listOf(
+            "Finishing a Study quest now ticks that chapter as studied, a Revise quest ticks it revised this week, and a Complete copy quest ticks the copy. No extra 10 chapter coins are paid on top of the quest coins",
+            "A chapter quest you already added is not suggested again while it is open, and a ticked chapter is not suggested until you untick it on Chapters (so the Revise quest no longer repeats within a week). An open Revise quest is freed when a new week starts",
+            "Undoing a finished chapter quest takes the tick back; deleting an open one makes it suggestible again",
+        )),
+    VersionEntry("153.0.0", "Quests follow your chapters",
+        listOf(
+            "Suggested quests now follow Chapters: they offer the next taught chapter you have not studied (Study), a studied chapter not revised this week (Revise) and a studied chapter missing from your copy (Complete copy). Two of the three suggestions on Home and Quests come from this when something is due, and the Suggested tab shows up to three per subject filter. Finished chapters stop appearing; the old starter quests fill the rest",
+        )),
     VersionEntry("152.0.0", "Build fix for Unlock timers",
         listOf(
             "Build fix: the Unlock timers page (v151) did not compile because its top bar uses an experimental Material 3 API; it now opts in like the other pages. No change in how it looks or works",

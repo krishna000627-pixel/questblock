@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -47,7 +48,11 @@ fun SuggestedQuests(
     title: String = "Suggested to start",
 ) {
     var seed by remember { mutableIntStateOf(0) }
-    val picks = remember(seed) { STARTER_QUESTS.shuffled().take(3) }
+    val ctx = LocalContext.current
+    val picks = remember(seed) {
+        val ch = chapterSuggestions(ctx).shuffled().take(2)
+        (ch + STARTER_QUESTS.shuffled()).take(3)
+    }
     Card(
         colors = CardDefaults.cardColors(containerColor = ColorCard),
         shape = RoundedCornerShape(14.dp),
@@ -98,8 +103,10 @@ fun SuggestedPage(header: String, onAdd: (StarterQuest) -> Unit) {
     val subjects = listOf("All", "Physics", "Chemistry", "Maths", "Boards")
     var subject by remember { mutableStateOf("All") }
     var seed by remember { mutableIntStateOf(0) }
+    val ctx = LocalContext.current
     val picks = remember(subject, seed) {
-        STARTER_QUESTS.filter { subject == "All" || it.subject == subject }.shuffled().take(6)
+        val ch = chapterSuggestions(ctx).filter { subject == "All" || it.subject == subject }.shuffled().take(3)
+        (ch + STARTER_QUESTS.filter { subject == "All" || it.subject == subject }.shuffled()).take(6)
     }
     Column(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(header, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ColorText)

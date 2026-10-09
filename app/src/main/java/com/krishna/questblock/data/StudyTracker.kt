@@ -90,6 +90,7 @@ object CodingSignal {
     @Volatile var pkg: String? = null
     @Volatile var label: String = ""
     @Volatile var line: String = ""
+    @Volatile var since: Long = 0L
 
     private val LINES = listOf(
         "Bugs are lessons in disguise. Fail fast, fix faster.",
@@ -107,7 +108,7 @@ object CodingSignal {
     )
 
     fun enter(p: String, l: String) {
-        if (pkg != p) { pkg = p; label = l; line = LINES.random(); StudySignal.pokes.trySend(Unit) }
+        if (pkg != p) { pkg = p; label = l; line = LINES.random(); since = System.currentTimeMillis(); StudySignal.pokes.trySend(Unit) }
     }
     fun leave() {
         if (pkg != null) { pkg = null; StudySignal.pokes.trySend(Unit) }

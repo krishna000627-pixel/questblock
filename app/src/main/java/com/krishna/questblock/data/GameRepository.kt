@@ -167,6 +167,7 @@ class GameRepository @Inject constructor(
         if (d.questType == "routine")
             d.steps.map { it.trim() }.filter { it.isNotEmpty() }.forEach { subTaskDao.insert(SubTask(taskId = id, title = it)) }
         taskDao.get(id)?.let { scheduleReminder(it) }
+        com.krishna.questblock.ui.chapterQuestAdded(ctx, d.title)
         return id
     }
 
@@ -297,15 +298,19 @@ class GameRepository @Inject constructor(
         ))
         prefs.streakFreezes = u.freezes
         if (u.coinsGained != 0) logCoin(-u.coinsGained, "Undo quest", u.task.title)
+        com.krishna.questblock.ui.chapterQuestUndone(ctx, u.task.title)
+        com.krishna.questblock.ui.chapterQuestAdded(ctx, u.task.title)
     }
 
     suspend fun deleteTask(task: TaskEntity) {
         cancelReminder(task.id)
         subTaskDao.deleteAll(task.id)
         taskDao.delete(task)
+        if (!task.done) com.krishna.questblock.ui.chapterQuestEnded(ctx, task.title, false)
     }
 
     suspend fun completeTask(task: TaskEntity) {
+        val wasOpen = taskDao.get(task.id)?.done == false
         db.withTransaction {
             val fresh = taskDao.get(task.id) ?: return@withTransaction
             if (fresh.done) return@withTransaction
@@ -383,6 +388,7 @@ class GameRepository @Inject constructor(
                 }
             }
         }
+        if (wasOpen && taskDao.get(task.id)?.done == true) com.krishna.questblock.ui.chapterQuestEnded(ctx, task.title, true)
     }
 
     private suspend fun spawnNext(src: TaskEntity, dueAt: Long?, availableFrom: Long, now: Long, streak: Int, today: Long) {
