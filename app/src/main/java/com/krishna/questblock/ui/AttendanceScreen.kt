@@ -150,7 +150,7 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                     Text(label, color = ColorText, modifier = Modifier.weight(1f))
                     listOf("P" to "\u2713", "A" to "\u2715", "L" to "\uD83C\uDF34").forEach { (v, t) ->
                         val on = cur == v
-                        val c = when (v) { "P" -> ColorPrimary; "A" -> ColorDanger; else -> ColorMuted }
+                        val c = when (v) { "P" -> ColorPrimary; "A" -> ColorDanger; else -> ColorAccent }
                         val locked = selected < todayKey || (selected > todayKey && v != "L")
                         // key per day+slot+button so a chip is never reused for another one; Surface always paints its colour
                         key(selected, what, v) {
@@ -212,7 +212,7 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                                 aN > 0 -> ColorDanger.copy(alpha = 0.38f)                            // absent, rest not marked yet: light red
                                 pN > 0 && openN == 0 -> ColorPrimary.copy(alpha = 0.70f)             // everything present: strong green
                                 pN > 0 -> androidx.compose.ui.graphics.lerp(ColorPrimary, ColorWarning, 0.5f).copy(alpha = 0.50f) // some present, rest not marked: olive
-                                vals.any { it == "L" } -> ColorMuted.copy(alpha = 0.30f)
+                                vals.any { it == "L" } -> ColorAccent.copy(alpha = 0.45f)
                                 else -> ColorSurfaceHigh
                             }
                             val future = key > todayKey || key < startDay
@@ -227,7 +227,7 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                     repeat(7 - week.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
-            Text("Counting from ${startDay.substring(6, 8)}/${startDay.substring(4, 6)}/${startDay.substring(0, 4)}. Grey = leave.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            Text("Counting from ${startDay.substring(6, 8)}/${startDay.substring(4, 6)}/${startDay.substring(0, 4)}. Purple = leave.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
         // 📃 Mood: one tap a day, follows the selected day above. Saved as mood_<yyyymmdd> = 1..5
         val moods = listOf("\uD83D\uDE1E", "\uD83D\uDE15", "\uD83D\uDE10", "\uD83D\uDE42", "\uD83D\uDE04")

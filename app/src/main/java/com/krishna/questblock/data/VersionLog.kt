@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("147.0.0", "Leave has its own colour",
+        listOf(
+            "Attendance: Leave is now purple (button and calendar days) instead of grey, so it no longer looks like an empty day",
+        )),
     VersionEntry("146.0.0", "Attendance buttons stay visible",
         listOf(
             "Fix: on the Attendance page some round buttons lost their background (looked hidden) and sometimes needed a second tap. The buttons are now drawn as proper Material buttons (Surface) so their colour is always painted and one tap is enough",
