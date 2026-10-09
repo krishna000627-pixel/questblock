@@ -3,6 +3,14 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("151.0.0", "Unlock timers page",
+        listOf(
+            "New page: Unlock timers. It opens only from the unlock notification (no button leads to it) and lists every app, website and Shorts/Reels lock that is unlocked or has saved time, with a live countdown and Running or Saved (paused) status. Plain text rows with no icons or usage queries, so it opens instantly, unlike Vault. The unlock line used to open Vault (v150); the other notifications are unchanged",
+        )),
+    VersionEntry("150.0.0", "Notifications open their own page",
+        listOf(
+            "Fix: every notification opened the same start page. Now each one opens the page it is about: the live unlock line opens Vault (study, coding and fun-time lines open App usage), \"locked again\" opens Quests, the quest reminder and evening nudge open Home, the 80% fun warning and the music warning open App usage, the daily summary opens Stats, and the self test notification opens Self test. The Fix-it warning still opens its own settings page as before",
+        )),
     VersionEntry("149.0.0", "Coins for finished chapters",
         listOf(
             "Chapters: ticking a chapter as studied on the Study page now gives 10 coins (shown in the coin log as Chapter studied). It is paid once per chapter for all days; unticking and ticking again gives nothing more. Quests made for the same chapter are separate and still give their own coins for the day",

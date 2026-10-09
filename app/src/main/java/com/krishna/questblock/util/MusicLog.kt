@@ -215,7 +215,7 @@ object MusicLog {
         if (p.optMusicWarn && st.reached) {
             if (pauseAt == 0L) {
                 pauseAt = now + 60_000L
-                OptionalAlerts.post(c, OptionalAlerts.ID_MUSIC, "🎧 Music stops in 1 minute", "Fun time is used up. Keep going for +$FUN_EXTEND_MIN min?", extend = true)
+                OptionalAlerts.post(c, OptionalAlerts.ID_MUSIC, "🎧 Music stops in 1 minute", "Fun time is used up. Keep going for +$FUN_EXTEND_MIN min?", extend = true, route = "usage")
                 return
             }
             if (now < pauseAt) return

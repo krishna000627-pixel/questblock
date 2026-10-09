@@ -56,8 +56,14 @@ private fun NavHostController.goTab(route: String) = navigate(route) {
 private fun NavHostController.openPage(route: String) = navigate(route) { launchSingleTop = true }
 
 @Composable
-fun MainScreen() {
+fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
     val navController = rememberNavController()
+    // A notification asked for a page: tabs open on their main page, other pages open on top of Home
+    LaunchedEffect(openRoute) {
+        val r = openRoute ?: return@LaunchedEffect
+        if (r in TAB_ROUTES) navController.goTab(r) else { navController.goTab("home"); navController.openPage(r) }
+        onRouteHandled()
+    }
     val backStack by navController.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
 
@@ -190,6 +196,7 @@ fun MainScreen() {
             composable("weekly") { WeeklyReviewScreen(onBack = { navController.popBackStack() }) }
             composable("debuglog") { DebugLogScreen(onBack = { navController.popBackStack() }) }
             composable("ideas") { IdeasScreen(onBack = { navController.popBackStack() }) }
+            composable("unlock_timers") { UnlockTimersScreen(onBack = { navController.popBackStack() }) }
             composable("usage") { UsageScreen(onBack = { navController.popBackStack() }, onOpenCategories = { navController.openPage("categories") }) }
             composable("categories") { CategoriesScreen(onBack = { navController.popBackStack() }) }
             composable("reliability") { ReliabilityScreen(onBack = { navController.popBackStack() }) }

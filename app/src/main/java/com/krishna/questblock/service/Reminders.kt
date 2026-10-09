@@ -63,10 +63,7 @@ class QuestReminderReceiver : BroadcastReceiver() {
         val id = intent.getLongExtra(Reminders.EXTRA_ID, 0L)
         val title = intent.getStringExtra(Reminders.EXTRA_TITLE).orEmpty()
         Reminders.ensureChannel(ctx)
-        val open = PendingIntent.getActivity(
-            ctx, 0, Intent(ctx, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
+        val open = com.krishna.questblock.ui.openRoutePending(ctx, "home")
         val n = NotificationCompat.Builder(ctx, Reminders.CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Quest time ⚔️")

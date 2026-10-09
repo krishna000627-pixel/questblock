@@ -202,6 +202,7 @@ class SelfTestViewModel @Inject constructor(
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle("QuestBlock self test")
                 .setContentText("If you can read this, notifications work.")
+                .setContentIntent(openRoutePending(ctx, "selftest"))
                 .setAutoCancel(true).build()
             NotificationManagerCompat.from(ctx).notify(9901, n)
             notifSent = true

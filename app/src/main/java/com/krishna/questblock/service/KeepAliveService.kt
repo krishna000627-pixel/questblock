@@ -190,6 +190,7 @@ class KeepAliveService : Service() {
         var whenMs = 0L
         var progress = -1
         var visible = false
+        var route = "vault"   // page the notification opens
         // Priority: a study app on screen -> study line. Otherwise (unlocked app open, or nothing) -> unlock line.
         val sigPkg = StudySignal.pkg
         if (sigPkg != null) {
@@ -202,15 +203,18 @@ class KeepAliveService : Service() {
                 val aw = prefs.awayAt(a.packageName)
                 " · ${a.label} ${(a.leftMs(aw, now) + 59_999L) / 60_000L} min ${if (a.frozenAt(aw, now)) "saved" else "left"}"
             } ?: ""
+            route = "usage"
             title = "📚 ${StudySignal.label} · studying"
             text = "1 \uD83E\uDE99 every ${prefs.studyMinPerCoin} min$unlockHint"
             whenMs = now + toGo
             progress = ((carry * 100) / unitMs).toInt().coerceIn(0, 100)
         } else if (com.krishna.questblock.data.CodingSignal.pkg != null) {
+            route = "usage"
             title = "💻 ${com.krishna.questblock.data.CodingSignal.label} · coding"
             text = com.krishna.questblock.data.CodingSignal.line
         } else if (FunSignal.pkg != null && FunLimit.last?.enabled == true) {
             // a fun app is on screen and a daily limit is set: show how much is left
+            route = "usage"
             val fs = FunLimit.last!!
             val usedNow = fs.usedMs + (now - fs.at).coerceAtLeast(0L)
             val leftFun = fs.limitMs - usedNow
@@ -230,6 +234,7 @@ class KeepAliveService : Service() {
                 visible = true
             }
         } else if (active.isNotEmpty()) {
+            route = "unlock_timers"
             val first = active.first()
             val away = prefs.awayAt(first.packageName)
             val paused = first.frozenAt(away, now)
@@ -253,6 +258,7 @@ class KeepAliveService : Service() {
                 progress = (((blockMs - inBlock) * 100) / blockMs).toInt().coerceIn(0, 100)
             }
         } else if (sites.isNotEmpty()) {
+            route = "unlock_timers"
             val site = sites.first()
             val until = prefs.siteUnlockedUntil(site)
             val left = until - now
@@ -265,8 +271,10 @@ class KeepAliveService : Service() {
             whenMs = until
             progress = (((blockMs - inBlock) * 100) / blockMs).toInt().coerceIn(0, 100)
         } else if (justExpired != null) {
+            route = "quests"
             title = "⌛ ${justExpired.label} locked again"; text = "Unlock ran out. Open QuestBlock to earn more time."
         } else if (siteExpired != null) {
+            route = "quests"
             title = "⌛ ${com.krishna.questblock.data.pseudoLabel(siteExpired) ?: siteExpired} locked again"; text = "Unlock ran out. Open QuestBlock to earn more time."
         } else {
             val strictLine = if (!prefs.strictMode) "🛡 Strict off" else if (prefs.strictPausedUntil > now) "🛡 Strict paused" else "🛡 Strict on"
@@ -276,7 +284,7 @@ class KeepAliveService : Service() {
         val key = "$title|$text|${progress / 2}"
         if (key != lastTitle && (screenOn || active.isEmpty())) {
             lastTitle = key; lastText = ""
-            nm.notify(ID_ONGOING, ongoing(title, text, whenMs, progress, visible))
+            nm.notify(ID_ONGOING, ongoing(title, text, whenMs, progress, visible, route))
         }
 
         // Watchdog (every 20 s, only after setup)
@@ -307,16 +315,14 @@ class KeepAliveService : Service() {
         }
     }
 
-    private fun openApp(): PendingIntent = PendingIntent.getActivity(
-        this, 0, Intent(this, MainActivity::class.java),
-        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    private fun openApp(route: String): PendingIntent = com.krishna.questblock.ui.openRoutePending(this, route)
 
-    private fun ongoing(title: String, text: String, countdownTo: Long = 0L, progress: Int = -1, visible: Boolean = countdownTo > 0L): Notification =
+    private fun ongoing(title: String, text: String, countdownTo: Long = 0L, progress: Int = -1, visible: Boolean = countdownTo > 0L, route: String = "vault"): Notification =
         NotificationCompat.Builder(this, if (visible || countdownTo > 0L) KeepAlive.CH_KEEPALIVE else KeepAlive.CH_IDLE)
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentTitle(title)
             .setContentText(text)
-            .setContentIntent(openApp())
+            .setContentIntent(openApp(route))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)

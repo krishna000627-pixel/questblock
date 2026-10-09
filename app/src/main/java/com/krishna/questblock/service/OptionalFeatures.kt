@@ -47,12 +47,10 @@ object OptionalAlerts {
     const val ID_EVENING = 4303
     const val ID_SUMMARY = 4304
 
-    fun post(ctx: Context, id: Int, title: String, text: String, extend: Boolean = false) {
+    fun post(ctx: Context, id: Int, title: String, text: String, extend: Boolean = false, route: String = "home") {
         if (!Perms.notificationsOk(ctx)) return
         KeepAlive.ensureChannels(ctx)
-        val open = PendingIntent.getActivity(
-            ctx, 0, Intent(ctx, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val open = com.krishna.questblock.ui.openRoutePending(ctx, route)
         val b = NotificationCompat.Builder(ctx, KeepAlive.CH_ALERTS)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
@@ -258,7 +256,7 @@ object OptionalTick {
             if (st.enabled && !st.reached && st.usedMs * 100 >= st.limitMs * 80) {
                 prefs.markToday("warn80")
                 OptionalAlerts.post(ctx, OptionalAlerts.ID_FUN80, "⏳ 80% of fun time used",
-                    "${fmtDur((st.limitMs - st.usedMs).coerceAtLeast(0L))} left today.")
+                    "${fmtDur((st.limitMs - st.usedMs).coerceAtLeast(0L))} left today.", route = "usage")
             }
         }
 
@@ -268,7 +266,7 @@ object OptionalTick {
             val dayEnd = nextRunDayStart(0, now) - 1
             val open = repo.tasks.first().count { !it.done && it.isAvailableNow(now) && it.isForToday(dayEnd) }
             if (open > 0) OptionalAlerts.post(ctx, OptionalAlerts.ID_EVENING, "🎯 $open quest${if (open > 1) "s" else ""} still open today",
-                "There is still time to finish ${if (open > 1) "them" else "it"} before midnight.")
+                "There is still time to finish ${if (open > 1) "them" else "it"} before midnight.", route = "home")
         }
 
         // Daily summary at the chosen time
@@ -280,7 +278,7 @@ object OptionalTick {
             val st = FunLimit.state(ctx, prefs)
             val fun0 = if (st.enabled) " · 🎮 ${fmtDur(st.usedMs)} of ${fmtDur(st.limitMs)}" else ""
             OptionalAlerts.post(ctx, OptionalAlerts.ID_SUMMARY, "📊 Today in QuestBlock",
-                "✅ $done quest${if (done == 1) "" else "s"} done · 🪙 ${player.coins} · 🔥 ${player.streak}d$fun0")
+                "✅ $done quest${if (done == 1) "" else "s"} done · 🪙 ${player.coins} · 🔥 ${player.streak}d$fun0", route = "stats")
         }
     }
 }
