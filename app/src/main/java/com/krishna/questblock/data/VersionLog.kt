@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("145.0.0", "No fade on locked days",
+        listOf(
+            "Attendance: closed days no longer fade the buttons. They keep their normal colours and just do not respond; All leave is hidden on past days instead of greyed out",
+        )),
     VersionEntry("144.0.0", "No marking past days",
         listOf(
             "Attendance: past days are closed. Present, Absent, Leave and All leave only work for today (Leave also for a coming day, as in v141). Past days stay viewable on the calendar",

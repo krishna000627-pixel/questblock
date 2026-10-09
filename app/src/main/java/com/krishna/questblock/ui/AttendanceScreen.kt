@@ -14,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -156,7 +155,6 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                         Box(
                             Modifier.height(36.dp).width(46.dp).clip(RoundedCornerShape(50))
                                 .background(if (on) c else ColorSurfaceHigh)
-                                .alpha(if (locked) 0.35f else 1f)
                                 .clickable(enabled = !locked) { set(selected, what, if (on) "" else v) },
                             contentAlignment = Alignment.Center,
                         ) { Text(t, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
@@ -164,9 +162,9 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                     }
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            if (selected >= todayKey) Row(verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.weight(1f))
-                TextButton(enabled = selected >= todayKey, onClick = {
+                TextButton(onClick = {
                     set(selected, "s", "L"); set(selected, "c1", "L"); set(selected, "c2", "L")
                 }) { Text("All leave", color = ColorMuted) }
             }
