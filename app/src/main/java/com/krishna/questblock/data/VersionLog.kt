@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("156.0.0", "Coding clock counts down",
+        listOf(
+            "Coding apps: the clock in the notification (v155) now counts down the unlock time that app has left, instead of counting up. A coding app with no unlock time shows only the motivation line",
+            "Notification: an app that is running now is listed before apps that are paused with saved time (for example Termux 00:11 saved no longer sits on top of the one you are using)",
+        )),
     VersionEntry("155.0.0", "Clock for coding apps",
         listOf(
             "Coding apps (Claude, Termux, GitHub and every other app sorted as Coding) now show a running clock in the notification header, counting up from when you opened the app, next to the motivation line. It restarts each time you open a coding app. No coins or timer rules change",

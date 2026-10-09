@@ -172,7 +172,7 @@ class KeepAliveService : Service() {
 
         // an app counts as unlocked while time is running, or while it is paused (user away) with time saved
         val active = apps.filter { !it.isStudyApp && (it.unlockedUntil > now || it.frozenAt(prefs.awayAt(it.packageName), now)) }
-            .sortedBy { it.leftMs(prefs.awayAt(it.packageName), now) }
+            .sortedWith(compareBy({ it.frozenAt(prefs.awayAt(it.packageName), now) }, { it.leftMs(prefs.awayAt(it.packageName), now) }))
 
         // websites unlocked with coins show up here too, like apps
         val sites = liveKeys().filter { prefs.siteUnlockedUntil(it) > now }.sortedBy { prefs.siteUnlockedUntil(it) }
@@ -190,7 +190,7 @@ class KeepAliveService : Service() {
         var whenMs = 0L
         var progress = -1
         var visible = false
-        var countUp = false
+        var pinWhen = false
         var route = "vault"   // page the notification opens
         // Priority: a study app on screen -> study line. Otherwise (unlocked app open, or nothing) -> unlock line.
         val sigPkg = StudySignal.pkg
@@ -213,8 +213,9 @@ class KeepAliveService : Service() {
             route = "usage"
             title = "💻 ${com.krishna.questblock.data.CodingSignal.label} · coding"
             text = com.krishna.questblock.data.CodingSignal.line
-            whenMs = com.krishna.questblock.data.CodingSignal.since   // count-up clock: time in this coding app
-            countUp = true
+            // coding apps are Vault apps too: while one is open and has unlock time, count that time down
+            apps.firstOrNull { it.packageName == com.krishna.questblock.data.CodingSignal.pkg && it.unlockedUntil > now }
+                ?.let { whenMs = it.unlockedUntil; pinWhen = true }
         } else if (FunSignal.pkg != null && FunLimit.last?.enabled == true) {
             // a fun app is on screen and a daily limit is set: show how much is left
             route = "usage"
@@ -284,10 +285,10 @@ class KeepAliveService : Service() {
             title = "QuestBlock is on"; text = "Blocking is active · $strictLine"
         }
         val screenOn = getSystemService(PowerManager::class.java).isInteractive
-        val key = "$title|$text|${progress / 2}" + if (countUp) "|$whenMs" else ""
+        val key = "$title|$text|${progress / 2}" + if (pinWhen) "|$whenMs" else ""
         if (key != lastTitle && (screenOn || active.isEmpty())) {
             lastTitle = key; lastText = ""
-            nm.notify(ID_ONGOING, ongoing(title, text, whenMs, progress, visible, route, countUp))
+            nm.notify(ID_ONGOING, ongoing(title, text, whenMs, progress, visible, route))
         }
 
         // Watchdog (every 20 s, only after setup)
@@ -320,7 +321,7 @@ class KeepAliveService : Service() {
 
     private fun openApp(route: String): PendingIntent = com.krishna.questblock.ui.openRoutePending(this, route)
 
-    private fun ongoing(title: String, text: String, countdownTo: Long = 0L, progress: Int = -1, visible: Boolean = countdownTo > 0L, route: String = "vault", countUp: Boolean = false): Notification =
+    private fun ongoing(title: String, text: String, countdownTo: Long = 0L, progress: Int = -1, visible: Boolean = countdownTo > 0L, route: String = "vault"): Notification =
         NotificationCompat.Builder(this, if (visible || countdownTo > 0L) KeepAlive.CH_KEEPALIVE else KeepAlive.CH_IDLE)
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentTitle(title)
@@ -333,7 +334,7 @@ class KeepAliveService : Service() {
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .apply {
                 if (countdownTo > 0L) {   // system-drawn countdown keeps ticking even if our updates are paused
-                    setWhen(countdownTo); setShowWhen(true); setUsesChronometer(true); setChronometerCountDown(!countUp)
+                    setWhen(countdownTo); setShowWhen(true); setUsesChronometer(true); setChronometerCountDown(true)
                 }
                 if (progress >= 0) setProgress(100, progress, false)
             }
