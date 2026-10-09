@@ -3,6 +3,14 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("138.0.0", "Cleaner attendance buttons",
+        listOf(
+            "Attendance: each row is back to a tidy label with three small round buttons (tick = Present, cross = Absent, palm = Leave) instead of wide text buttons, with a one-line legend and All leave under the rows. Nothing else changed from v137",
+        )),
+    VersionEntry("137.0.0", "Leave in attendance",
+        listOf(
+            "Attendance: school is a Leave on every Sunday by itself (you can still mark it Present or Absent if you went). Any slot on any day can now be marked Leave (a holiday that is not in the calendar, a coaching or school reason), and All leave sets the whole day. Leave is not counted in the percentages and gives no coins; if the slot had Present coins they are taken back. Leave days show grey on the calendar",
+        )),
     VersionEntry("136.0.0", "Shorts only with YouTube",
         listOf(
             "Vault: the YouTube Shorts option shows, and its lock works, only when YouTube is installed and not disabled, the same way Instagram Reels needs Instagram. The saved choice is kept and comes back if you install or enable YouTube again",

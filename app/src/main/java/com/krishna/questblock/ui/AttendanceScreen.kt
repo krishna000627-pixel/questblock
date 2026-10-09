@@ -53,6 +53,14 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
     var selected by remember { mutableStateOf(todayKey) }
 
     fun get(day: String, what: String): String = sp.getString("att_${day}_$what", "") ?: ""
+    // School is a leave on Sundays unless you marked it yourself. Leave (L) is never counted and gives no coins.
+    fun isSunday(day: String): Boolean = Calendar.getInstance().apply {
+        set(day.substring(0, 4).toInt(), day.substring(4, 6).toInt() - 1, day.substring(6, 8).toInt())
+    }.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY
+    fun eff(day: String, what: String): String {
+        val v = get(day, what)
+        return if (v.isEmpty() && what == "s" && isSunday(day)) "L" else v
+    }
     fun set(day: String, what: String, v: String) {
         val e = sp.edit()
         if (v.isEmpty()) e.remove("att_${day}_$what") else e.putString("att_${day}_$what", v)
@@ -135,21 +143,28 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                 }) { Text("All present") }
             }
             listOf("s" to "\uD83C\uDFEB School", "c1" to "\uD83D\uDCDA Coaching 1", "c2" to "\uD83D\uDCDA Coaching 2").forEach { (what, label) ->
-                val cur = get(selected, what)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val cur = eff(selected, what)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(label, color = ColorText, modifier = Modifier.weight(1f))
-                    listOf("P" to "Present", "A" to "Absent").forEach { (v, t) ->
+                    listOf("P" to "\u2713", "A" to "\u2715", "L" to "\uD83C\uDF34").forEach { (v, t) ->
                         val on = cur == v
-                        val c = if (v == "P") ColorPrimary else ColorDanger
+                        val c = when (v) { "P" -> ColorPrimary; "A" -> ColorDanger; else -> ColorMuted }
                         Box(
-                            Modifier.height(36.dp).width(84.dp).clip(RoundedCornerShape(50))
+                            Modifier.height(36.dp).width(46.dp).clip(RoundedCornerShape(50))
                                 .background(if (on) c else ColorSurfaceHigh)
                                 .clickable { set(selected, what, if (on) "" else v) },
                             contentAlignment = Alignment.Center,
-                        ) { Text(t, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
-                            color = if (on) ColorOnPrimary else ColorText) }
+                        ) { Text(t, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                            color = if (on && v != "L") ColorOnPrimary else ColorText) }
                     }
                 }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("\u2713 Present   \u2715 Absent   \uD83C\uDF34 Leave", color = ColorMuted,
+                    style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
+                TextButton(onClick = {
+                    set(selected, "s", "L"); set(selected, "c1", "L"); set(selected, "c2", "L")
+                }) { Text("All leave", color = ColorMuted) }
             }
         }
 
@@ -176,11 +191,13 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                     week.forEach { d ->
                         if (d == 0) { Spacer(Modifier.weight(1f)) } else {
                             val key = monthPrefix + String.format(Locale.US, "%02d", d)
-                            val vals = listOf(get(key, "s"), get(key, "c1"), get(key, "c2"))
+                            val vals = listOf(eff(key, "s"), get(key, "c1"), get(key, "c2"))
+                            val counted = vals.filter { it != "L" }
                             val bg = when {
                                 vals.any { it == "A" } -> ColorDanger.copy(alpha = 0.30f)
-                                vals.all { it == "P" } -> ColorPrimary.copy(alpha = 0.35f)
+                                counted.isNotEmpty() && counted.all { it == "P" } -> ColorPrimary.copy(alpha = 0.35f)
                                 vals.any { it == "P" } -> ColorWarning.copy(alpha = 0.30f)
+                                vals.any { it == "L" } -> ColorMuted.copy(alpha = 0.30f)
                                 else -> ColorSurfaceHigh
                             }
                             val future = key > todayKey || key < startDay
@@ -195,7 +212,7 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                     repeat(7 - week.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
-            Text("Present = coins (school +$SCHOOL_COINS, coaching +$COACHING_COINS each); changing it takes them back. Counting from ${startDay.substring(6, 8)}/${startDay.substring(4, 6)}/${startDay.substring(0, 4)}. Green = all present, orange = some marked, red = absent somewhere", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            Text("Present = coins (school +$SCHOOL_COINS, coaching +$COACHING_COINS each); changing it takes them back. Counting from ${startDay.substring(6, 8)}/${startDay.substring(4, 6)}/${startDay.substring(0, 4)}. Green = all present, orange = some marked, red = absent somewhere, grey = leave (not counted; school is leave on Sundays)", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
         // 📃 Mood: one tap a day, follows the selected day above. Saved as mood_<yyyymmdd> = 1..5
         val moods = listOf("\uD83D\uDE1E", "\uD83D\uDE15", "\uD83D\uDE10", "\uD83D\uDE42", "\uD83D\uDE04")
