@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("141.0.0", "No marking future days",
+        listOf(
+            "Attendance: Present and Absent are locked (dimmed) for days that have not come yet, so you can only mark today and past days. Leave still works on a future day for a planned holiday",
+        )),
     VersionEntry("140.0.0", "Clearer attendance colours",
         listOf(
             "Attendance calendar: stronger, more different colours. All present = strong green, all absent = strong red, present + absent mixed = orange, some present with the rest not marked = olive, absent with the rest not marked = light red. Leave stays grey",

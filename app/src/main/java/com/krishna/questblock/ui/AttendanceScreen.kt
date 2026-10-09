@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -62,6 +63,7 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
         return if (v.isEmpty() && what == "s" && isSunday(day)) "L" else v
     }
     fun set(day: String, what: String, v: String) {
+        if (day > todayKey && (v == "P" || v == "A")) return   // no Present/Absent for days that have not come yet
         val e = sp.edit()
         if (v.isEmpty()) e.remove("att_${day}_$what") else e.putString("att_${day}_$what", v)
         // coins: Present earns, anything else takes back exactly what this slot gave (attcoin_<day>_<slot>)
@@ -149,10 +151,12 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                     listOf("P" to "\u2713", "A" to "\u2715", "L" to "\uD83C\uDF34").forEach { (v, t) ->
                         val on = cur == v
                         val c = when (v) { "P" -> ColorPrimary; "A" -> ColorDanger; else -> ColorMuted }
+                        val locked = selected > todayKey && v != "L"
                         Box(
                             Modifier.height(36.dp).width(46.dp).clip(RoundedCornerShape(50))
                                 .background(if (on) c else ColorSurfaceHigh)
-                                .clickable { set(selected, what, if (on) "" else v) },
+                                .alpha(if (locked) 0.35f else 1f)
+                                .clickable(enabled = !locked) { set(selected, what, if (on) "" else v) },
                             contentAlignment = Alignment.Center,
                         ) { Text(t, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
                             color = if (on && v != "L") ColorOnPrimary else ColorText) }
