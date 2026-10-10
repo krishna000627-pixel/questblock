@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("178.0.0", "Build fix",
+        listOf(
+            "Fix: v177 did not compile (Unresolved reference DebugLog in YtInfo.kt) because the file never imported DebugLog. Import added; nothing else changed",
+        )),
     VersionEntry("177.0.0", "Online second opinion for YouTube videos",
         listOf(
             "A few seconds after a video starts, the gate looks it up on YouTube itself in the background, the way video downloaders do (YouTube's own web search and player data, no key of ours): category, tags and description. The video is found by searching its title and channel, and accepted only when a result has the same title",
