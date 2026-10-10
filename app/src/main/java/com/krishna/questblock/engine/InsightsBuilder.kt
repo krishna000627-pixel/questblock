@@ -5,6 +5,7 @@ import com.krishna.questblock.data.AppCategorizer
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.UsageTracker
+import com.krishna.questblock.data.YtSplit
 import com.krishna.questblock.data.isAvailableNow
 import com.krishna.questblock.data.dayNumber
 import com.krishna.questblock.data.level
@@ -39,7 +40,7 @@ class InsightsBuilder @Inject constructor(
             var st = 0; var co = 0; var ne = 0; var fu = 0
             if (access && withUsage) {
                 val to = if (i == 0) now else end
-                UsageTracker.foreground(ctx, from, to).perPkg.forEach { (pkg, ms) ->
+                YtSplit.apply(ctx, prefs, UsageTracker.foreground(ctx, from, to).perPkg, from, to).forEach { (pkg, ms) ->
                     val m = (ms / 60_000L).toInt()
                     when (AppCategorizer.categoryOf(prefs, pm, pkg)) {
                         "study" -> st += m

@@ -28,6 +28,7 @@ import com.krishna.questblock.data.FunSignal
 import com.krishna.questblock.data.ShortsStats
 import com.krishna.questblock.data.StudySignal
 import com.krishna.questblock.data.YtGate
+import com.krishna.questblock.data.YtSplit
 import com.krishna.questblock.util.DebugLog
 import com.krishna.questblock.data.UsageTracker
 import com.krishna.questblock.ui.BlockActivity
@@ -158,7 +159,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     }
 
     private fun markForeground(pkg: String) {
-        if (pkg !in YOUTUBE_PKGS) { if (ytLatchKey.isNotEmpty()) DebugLog.d("yt: verdict cleared, left YouTube for $pkg"); ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytExpiryJob?.cancel(); ytSettleJob?.cancel(); ytGraceJob?.cancel(); ytTapTitle = "" }   // coming back judges the video again
+        if (pkg !in YOUTUBE_PKGS) { if (ytLatchKey.isNotEmpty()) DebugLog.d("yt: verdict cleared, left YouTube for $pkg"); ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytExpiryJob?.cancel(); ytSettleJob?.cancel(); ytGraceJob?.cancel(); ytTapTitle = ""; ytCountKind = null; FunSignal.ytFunOn = false }   // coming back judges the video again
         if (kindOf(pkg) == null) { if (shortsJob != null) stopShortTimer() else CounterBubble.hide(this) }
         if (currentPkg != pkg) {
             funCutJob?.cancel(); funCutPkg = null
@@ -543,6 +544,8 @@ class BlockerAccessibilityService : AccessibilityService() {
     private var ytTapAt = 0L
     private var ytGraceJob: Job? = null
     private var ytNoAccessLogAt = 0L
+    private var ytCountKind: String? = null   // v173: what the playing video is counted as: YtSplit.KIND_FUN or KIND_STUDY
+    private var ytTickJob: Job? = null
     private var ytShortKey = ""        // v169: the title of a Short the gate already skipped
 
     private class YtNode(val label: String, val top: Int, val bottom: Int)
@@ -611,7 +614,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         }
         if (sess == null || !sess.playing) {
             // nothing playing: the next video, or this one played again, is judged fresh
-            ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytNoTitleCount = 0
+            ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytNoTitleCount = 0; ytCountKind = null; FunSignal.ytFunOn = false
             return
         }
         var title = sess.title
@@ -636,7 +639,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         }
         val root = rootInActiveWindow ?: run { scheduleYtRead(pkg, 1_500L); return }    // v172: the window is not ready yet (opening, full screen): try again, do not let the video through
         if (root.packageName?.toString() != pkg) return
-        if (isShortForm(root, ShortsStats.YT)) { ytShortKey = key; ytLatchKey = ""; ytPendingKey = ""; return }    // Shorts never use the title
+        if (isShortForm(root, ShortsStats.YT)) { ytShortKey = key; ytLatchKey = ""; ytPendingKey = ""; ytCountKind = null; FunSignal.ytFunOn = false; return }    // Shorts never use the title
         ytShortKey = ""
         ytPendingKey = ""
         ytLatchKey = key
@@ -764,11 +767,35 @@ class BlockerAccessibilityService : AccessibilityService() {
         )
     }.getOrNull()
 
+    /** v173: every 5 s, while a judged video plays in YouTube, 5 s go to its fun or study counter. Stops by itself after 15 s of nothing to count. */
+    private fun ensureYtTicker() {
+        if (ytTickJob?.isActive == true) return
+        ytTickJob = scope.launch {
+            var idle = 0
+            while (idle < 3) {
+                delay(5_000L)
+                val kind = ytCountKind
+                val playing = ytSession()?.playing ?: (ytLatchKey.isNotEmpty() && !com.krishna.questblock.util.Perms.notificationAccess(this@BlockerAccessibilityService))
+                if (kind != null && playing && currentPkg?.let { it in YOUTUBE_PKGS } == true) {
+                    ShortsStats.add(this@BlockerAccessibilityService, kind, 5_000L, 0)
+                    FunSignal.ytFunOn = kind == YtSplit.KIND_FUN
+                    idle = 0
+                } else { idle++; FunSignal.ytFunOn = false }
+            }
+            FunSignal.ytFunOn = false
+        }
+    }
+
     private fun judgeYt(title: String, hint: String, graceMs: Long = 0L) {
         ytLastTitle = title; ytLastHint = hint
         val d = YtGate.decide(this, title, hint)
         DebugLog.d("yt: '${title.take(70)}' hint='${hint.take(50)}' -> ${d.kind} ${d.chapter}" + if (graceMs > 0L && d.kind != YtGate.Kind.FREE) " (waits ${graceMs / 1000} s)" else "")
         ytLatchFun = d.kind == YtGate.Kind.FUN
+        // v173: from now on the playing time counts as a fun video or a study video (App usage page, fun limit)
+        ytCountKind = when (d.kind) { YtGate.Kind.FUN -> YtSplit.KIND_FUN; YtGate.Kind.FREE -> YtSplit.KIND_STUDY; YtGate.Kind.STUDY_FIRST -> null }
+        if (ytCountKind != null) ensureYtTicker()
+        FunSignal.ytFunOn = d.kind == YtGate.Kind.FUN
+        if (d.kind == YtGate.Kind.FUN) scope.launch { FunLimit.state(this@BlockerAccessibilityService, prefs, force = true) }   // the counter starts from now, not from a stale read
         if (d.kind != YtGate.Kind.FREE && graceMs > 0L) {
             // v165: YouTube sometimes starts a video on its own. Lock only if the same video is still the one on screen after the wait.
             val k = ytLatchKey

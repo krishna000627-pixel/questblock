@@ -51,6 +51,7 @@ import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.StudyTracker
 import com.krishna.questblock.data.USAGE_CATEGORIES
 import com.krishna.questblock.data.UsageTracker
+import com.krishna.questblock.data.YtSplit
 import com.krishna.questblock.data.usageCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -87,10 +88,22 @@ class UsageViewModel @Inject constructor(
                 val pm = ctx.packageManager
                 val hidden = UsageTracker.hiddenPackages(ctx)
                 val fgRes = UsageTracker.foreground(ctx, from, to)
-                val raw = fgRes.perPkg
+                val raw = YtSplit.apply(ctx, prefs, fgRes.perPkg, from, to)
+                // v173: YouTube shows as two rows, (study) and (fun)
+                val ytPkg = YtSplit.PKGS.firstOrNull { raw.containsKey(it) } ?: YtSplit.PKGS[0]
+                val ytSplit = raw.containsKey(YtSplit.FUN_KEY) || raw.containsKey(YtSplit.STUDY_KEY)
                 val apps = raw.entries
-                    .filter { it.key !in hidden && it.value >= 30_000L && pm.getLaunchIntentForPackage(it.key) != null }
-                    .map { AppUse(it.key, UsageTracker.labelOf(pm, it.key), it.value, AppCategorizer.categoryOf(prefs, pm, it.key)) }
+                    .filter { it.value >= 30_000L && (YtSplit.isPseudo(it.key) || (it.key !in hidden && pm.getLaunchIntentForPackage(it.key) != null)) }
+                    .map { e ->
+                        val k = e.key
+                        val cat = AppCategorizer.categoryOf(prefs, pm, k)
+                        when {
+                            k == YtSplit.FUN_KEY -> AppUse(ytPkg, "YouTube (fun)", e.value, "fun")
+                            k == YtSplit.STUDY_KEY -> AppUse(ytPkg, "YouTube (study)", e.value, "study")
+                            k == ytPkg && ytSplit -> AppUse(k, if (cat == "fun") "YouTube (fun)" else if (cat == "study") "YouTube (study)" else "YouTube", e.value, cat)
+                            else -> AppUse(k, UsageTracker.labelOf(pm, k), e.value, cat)
+                        }
+                    }
                     .sortedByDescending { it.ms }
                 val byCat = apps.groupBy { it.cat }.mapValues { e -> e.value.sumOf { it.ms } }
                 val music = runCatching { UsageTracker.musicByApp(ctx, from, to, fgRes.spans) }.getOrDefault(emptyMap())

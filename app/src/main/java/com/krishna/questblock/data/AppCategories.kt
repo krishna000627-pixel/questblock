@@ -84,6 +84,9 @@ object AppCategorizer {
         }
     }
 
-    fun categoryOf(prefs: Prefs, pm: PackageManager, pkg: String): String =
-        prefs.categoryOverride(pkg) ?: autoCategory(pm, pkg)
+    fun categoryOf(prefs: Prefs, pm: PackageManager, pkg: String): String = when (pkg) {
+        YtSplit.FUN_KEY -> "fun"          // v173: the two parts of YouTube
+        YtSplit.STUDY_KEY -> "study"
+        else -> prefs.categoryOverride(pkg) ?: autoCategory(pm, pkg)
+    }
 }

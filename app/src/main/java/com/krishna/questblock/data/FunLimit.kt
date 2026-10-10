@@ -11,6 +11,8 @@ object FunSignal {
     @Volatile var quiet: Boolean = false
     /** True while YouTube Shorts is on screen (so the time-left bubble can show there too). */
     @Volatile var shortsOn: Boolean = false
+    /** v174: a YouTube video the study gate judged FUN is playing (so the fun counter and bubble run for it too). */
+    @Volatile var ytFunOn: Boolean = false
     /** Which clips screen is on right now ("yt" or "ig"), or null. */
     @Volatile var shortsKind: String? = null
     fun enter(p: String) { pkg = p }
@@ -46,12 +48,10 @@ object FunLimit {
             val pm = ctx.packageManager
             val from = UsageTracker.dayStart(0)
             val res = UsageTracker.foreground(ctx, from, now)
-            val per = res.perPkg
+            val per = YtSplit.apply(ctx, prefs, res.perPkg, from, now)   // v173: fun videos and Shorts are 'YouTube (fun)', counted here
             val onScreen = per.entries.filter { AppCategorizer.categoryOf(prefs, pm, it.key) == "fun" }.sumOf { it.value }
             val ghostMs = if (prefs.ghostCountsOn) runCatching { UsageTracker.ghost(ctx, prefs, from, now, res.spans).values.sum() }.getOrDefault(0L) else 0L
-            // Shorts time counts as fun time, unless YouTube itself is already a Fun & Games app (then it is counted above)
-            val shortsMs = if (AppCategorizer.categoryOf(prefs, pm, "com.google.android.youtube") == "fun") 0L else prefs.shortsMsToday()
-            onScreen + ghostMs + shortsMs
+            onScreen + ghostMs
         }
         val s = State(used, limitMs, now)
         last = s

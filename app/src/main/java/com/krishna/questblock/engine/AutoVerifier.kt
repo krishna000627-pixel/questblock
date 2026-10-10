@@ -2,6 +2,7 @@ package com.krishna.questblock.engine
 
 import android.content.Context
 import com.krishna.questblock.data.AppCategorizer
+import com.krishna.questblock.data.YtSplit
 import com.krishna.questblock.data.GameRepository
 import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.TaskEntity
@@ -59,7 +60,7 @@ class AutoVerifier @Inject constructor(
             val now = System.currentTimeMillis()
             val today = dayNumber(now)
             val pm = ctx.packageManager
-            val per = UsageTracker.foreground(ctx, UsageTracker.dayStart(0), now).perPkg
+            val per = YtSplit.apply(ctx, prefs, UsageTracker.foreground(ctx, UsageTracker.dayStart(0), now).perPkg, UsageTracker.dayStart(0), now)
             fun usedMin(cat: String): Int =
                 (per.entries.filter { AppCategorizer.categoryOf(prefs, pm, it.key) == cat }.sumOf { it.value } / 60_000L).toInt()
 

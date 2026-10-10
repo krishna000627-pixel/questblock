@@ -3,6 +3,18 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("174.0.0", "Fun counter runs for YouTube fun videos and Shorts",
+        listOf(
+            "The live fun counter (notification line \"Fun X of Y\" and the time-left bubble) now runs while a YouTube video judged fun plays, and for Shorts, not only in fun apps. It is the same total as the fun limit: YouTube (fun) = fun videos + Shorts, plus the fun apps. Study videos never count",
+            "The counter starts from the moment the fun video starts (the fun total is read again then), and stops when the video is paused, locked or closed",
+        )),
+    VersionEntry("173.0.0", "YouTube (fun) and YouTube (study) are two things",
+        listOf(
+            "App usage: YouTube now shows as two rows. YouTube (fun) is the time of videos the study gate judged fun, plus Shorts. YouTube (study) is the time of chapter videos and the rest. Each row sits in its own category (Fun & Games or Study), so the totals and the category cards follow",
+            "Fun limit: the fun counter counts YouTube (fun) only, so a study video no longer counts as fun and a fun video counts as fun even though YouTube is a Study app. Shorts are counted through the same row, not twice",
+            "Study quests that check Study and Fun minutes (auto verify, insights) use the split too. Study coins for a study app are paid as before",
+            "How: while a judged video plays in YouTube, the gate adds 5 s every 5 s to a fun or a study counter for the day (kept 30 days). The part is taken out of YouTube's screen time, so it can never be more than what Android recorded",
+        )),
     VersionEntry("172.0.0", "YouTube gate: hardening",
         listOf(
             "Fix: a video whose title has no Latin letters (Hindi, emoji only) was never judged and played free, because the same-video key was made of Latin words only. The key is now the whole title, so such videos are judged (fun unless a chapter is named) and two different titles never count as the same video",

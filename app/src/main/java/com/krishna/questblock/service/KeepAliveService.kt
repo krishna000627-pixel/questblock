@@ -141,7 +141,7 @@ class KeepAliveService : Service() {
                 while (true) {
                     render()
                     runCatching { OptionalTick.run(applicationContext, repo, prefs) }
-                    delay(if (hasActiveUnlock() || StudySignal.pkg != null || FunSignal.pkg != null || FunSignal.shortsOn) 1000L else 5000L)
+                    delay(if (hasActiveUnlock() || StudySignal.pkg != null || FunSignal.pkg != null || FunSignal.shortsOn || FunSignal.ytFunOn) 1000L else 5000L)
                 }
             }
         }
@@ -165,7 +165,7 @@ class KeepAliveService : Service() {
 
         // v73: optional time-left bubble over a fun app (or Shorts)
         val fl = FunLimit.last
-        if (prefs.optBubble && fl != null && fl.enabled && (FunSignal.pkg != null || FunSignal.shortsOn)) {
+        if (prefs.optBubble && fl != null && fl.enabled && (FunSignal.pkg != null || FunSignal.shortsOn || FunSignal.ytFunOn)) {
             val left = fl.limitMs - (fl.usedMs + (now - fl.at).coerceAtLeast(0L))
             FunBubble.show(this, if (left > 0L) "🎮 " + fmtDur(left) + " left" else "🎮 limit reached")
         } else FunBubble.hide(this)
@@ -216,7 +216,7 @@ class KeepAliveService : Service() {
             // coding apps are Vault apps too: while one is open and has unlock time, count that time down
             apps.firstOrNull { it.packageName == com.krishna.questblock.data.CodingSignal.pkg && it.unlockedUntil > now }
                 ?.let { whenMs = it.unlockedUntil; pinWhen = true }
-        } else if (FunSignal.pkg != null && FunLimit.last?.enabled == true) {
+        } else if ((FunSignal.pkg != null || FunSignal.shortsOn || FunSignal.ytFunOn) && FunLimit.last?.enabled == true) {
             // a fun app is on screen and a daily limit is set: show how much is left
             route = "usage"
             val fs = FunLimit.last!!
