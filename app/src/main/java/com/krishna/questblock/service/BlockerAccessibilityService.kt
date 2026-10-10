@@ -533,9 +533,11 @@ class BlockerAccessibilityService : AccessibilityService() {
     private var ytSettleJob: Job? = null
     private var ytExpiryJob: Job? = null
     private var ytNoTitleLogAt = 0L
+    private var ytNoTitleCount = 0
+    private var ytNotWatchLogAt = 0L
 
     private class YtCand(val top: Int, val text: String, val id: String, val byId: Boolean)
-    private class YtRead(val onWatch: Boolean, val title: String?, val hint: String, val byId: Boolean)
+    private class YtRead(val onWatch: Boolean, val title: String?, val hint: String, val byId: Boolean, val playerFound: Boolean = false)
 
     private fun checkYtGate(pkg: String, e: AccessibilityEvent) {
         if (!prefs.ytGateOn) return
@@ -582,12 +584,26 @@ class BlockerAccessibilityService : AccessibilityService() {
         if (root.packageName?.toString() != pkg) return
         if (isShortForm(root, ShortsStats.YT)) { ytLatchKey = ""; ytPendingKey = ""; return }    // 7: Shorts never use the title
         val r = readYtWatch(root, pkg)
-        if (!r.onWatch) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; return }       // home / search: free
-        val title = r.title
-        if (title == null) {      // watch page, title not on screen (scrolled away): the verdict stays
-            if (now - ytNoTitleLogAt > 5_000L) { ytNoTitleLogAt = now; DebugLog.d("yt: watch page, no title read (keeping verdict)") }
+        if (!r.onWatch) {                                                                          // home / search: free
+            ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytNoTitleCount = 0
+            if (now - ytNotWatchLogAt > 10_000L) {
+                ytNotWatchLogAt = now
+                val ids = LinkedHashSet<String>(); sampleAllIds(root, ids, 0)
+                DebugLog.d("yt: not a watch page, ids=$ids")
+            }
             return
         }
+        val title = r.title
+        if (title == null) {
+            // Player on screen but no title text read. Scrolled away after a verdict: keep it. Never judged: after 3 reads it is treated as fun (locked).
+            if (now - ytNoTitleLogAt > 5_000L) { ytNoTitleLogAt = now; DebugLog.d("yt: watch page, no title read (player=${r.playerFound}, verdict='${ytLatchKey.take(30)}')") }
+            if (r.playerFound && ytLatchKey.isEmpty()) {
+                ytNoTitleCount++
+                if (ytNoTitleCount >= 3) { ytNoTitleCount = 0; ytLatchKey = "?unreadable"; judgeYt("", "") } else scheduleYtRead(pkg, 900L)
+            }
+            return
+        }
+        ytNoTitleCount = 0
         val key = YtGate.key(title)
         if (key.isEmpty() || key == ytLatchKey) { ytPendingKey = ""; return }                     // 4: same video, already judged
         val tapped = now - ytClickAt < 6_000L
@@ -621,7 +637,7 @@ class BlockerAccessibilityService : AccessibilityService() {
             if (n == null || depth > 20 || cands.size >= 60) return
             val id = n.viewIdResourceName.orEmpty().substringAfter(":id/").lowercase()
             if (YT_SKIP_IDS.any { id.contains(it) }) return
-            val s = n.text?.toString()
+            val s = (n.text ?: n.contentDescription)?.toString()
             if (s != null && s.length >= 4 && s.any { it.isLetter() } && n.isVisibleToUser) {
                 n.getBoundsInScreen(br)
                 if (!br.isEmpty && br.top >= playerBottom - 4) cands += YtCand(br.top, s, id, id in YT_TITLE_IDS)
@@ -631,9 +647,17 @@ class BlockerAccessibilityService : AccessibilityService() {
         walk(root, 0)
         val sorted = cands.sortedBy { it.top }
         val pick = sorted.firstOrNull { it.byId } ?: sorted.firstOrNull()
-        if (pick == null || (!pick.byId && playerBottom == 0)) return YtRead(true, null, "", false)   // cannot place the title: do not guess
+        if (pick == null || (!pick.byId && playerBottom == 0)) return YtRead(true, null, "", false, playerBottom > 0)   // cannot place the title: do not guess
         val hint = sorted.filter { it !== pick && it.top > pick.top }.take(3).joinToString(" | ") { it.text }
-        return YtRead(true, pick.text, hint, pick.byId)
+        DebugLog.d("yt: read id=${pick.id} byId=${pick.byId} top=${pick.top} playerBottom=$playerBottom text='${pick.text.take(50)}'")
+        return YtRead(true, pick.text, hint, pick.byId, playerBottom > 0)
+    }
+
+    /** For the Debug log: a few view ids of this window. */
+    private fun sampleAllIds(n: AccessibilityNodeInfo?, out: MutableSet<String>, depth: Int) {
+        if (n == null || depth > 14 || out.size >= 14) return
+        n.viewIdResourceName?.substringAfter(":id/")?.let { out += it }
+        for (i in 0 until n.childCount) sampleAllIds(n.getChild(i), out, depth + 1)
     }
 
     private fun judgeYt(title: String, hint: String) {
@@ -1117,8 +1141,8 @@ class BlockerAccessibilityService : AccessibilityService() {
         private val SHORTS_IDS = listOf("reel_recycler", "reel_player_page_container", "shorts_container")
         private const val SETTLE_MS = 180L
         private const val YT_SCROLL_QUIET_MS = 1_500L
-        private val YT_WATCH_PARTS = listOf("watch_player", "watch_while", "watch_metadata", "player_view")
-        private val YT_PLAYER_IDS = listOf("watch_player", "player_view", "watch_while_player")
+        private val YT_WATCH_PARTS = listOf("watch_", "player", "metadata", "time_bar")
+        private val YT_PLAYER_IDS = listOf("watch_player", "player_view", "watch_while_player", "player_container", "player_layout")
         private val YT_TITLE_IDS = setOf("title", "video_title", "watch_title", "player_title", "metadata_title")
         private val YT_SKIP_IDS = listOf("comment", "engagement", "related", "recommend", "shelf", "results", "live_chat", "ad_", "promo", "shorts")
         private const val RELAUNCH_GUARD_MS = 800L

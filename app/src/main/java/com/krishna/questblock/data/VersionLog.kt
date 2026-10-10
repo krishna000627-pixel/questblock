@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("159.0.0", "YouTube gate reads more title views",
+        listOf(
+            "The YouTube study gate now also reads titles that YouTube shows as a description instead of text, and spots the video page more widely. A video page whose title cannot be read at all is treated as fun and asks for coins. The Debug log shows what was read (lines starting with yt:)",
+        )),
     VersionEntry("158.0.0", "YouTube study gate",
         listOf(
             "YouTube now checks the title of the video you are playing against the Class 12 chapters (Physics, Chemistry, Maths). A chapter video is free. Any other video costs 2 coins a minute (10 for 5 minutes). Home and search stay free. Offline, no AI, one hash lookup per word group. Switch: Hub, Experiments, YouTube study gate (off waits until midnight)",
