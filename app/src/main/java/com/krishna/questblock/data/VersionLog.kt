@@ -3,6 +3,12 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("165.0.0", "YouTube gate: judged by the video you tapped",
+        listOf(
+            "The video you tap (on home, search or in the recommendations under a video) is judged by the title of that card, so ads and scrolling cannot confuse it. When a tapped title is known, ad waiting is skipped",
+            "A video that starts by itself (autoplay, feed preview) gets 10 seconds before any lock, and is only locked if it is still the video on screen. Tapped videos are judged at once",
+            "Taps on buttons (Like, Share, Subscribe, comments) are ignored for this. The Debug log shows \"yt: tapped\" and where the title came from",
+        )),
     VersionEntry("164.0.0", "YouTube gate: videos playing in the home feed",
         listOf(
             "Fix: a video that autoplays inside the YouTube home feed (the card with Mute and captions buttons) was treated as home and never judged, so a fun video played free. It is now judged by the title under the player, like any other video. The Debug log shows \"yt: feed preview playing\"",

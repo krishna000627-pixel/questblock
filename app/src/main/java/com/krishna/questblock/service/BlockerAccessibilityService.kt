@@ -158,7 +158,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     }
 
     private fun markForeground(pkg: String) {
-        if (pkg !in YOUTUBE_PKGS) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytExpiryJob?.cancel(); ytSettleJob?.cancel() }   // coming back judges the video again
+        if (pkg !in YOUTUBE_PKGS) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytExpiryJob?.cancel(); ytSettleJob?.cancel(); ytGraceJob?.cancel(); ytTapTitle = "" }   // coming back judges the video again
         if (kindOf(pkg) == null) { if (shortsJob != null) stopShortTimer() else CounterBubble.hide(this) }
         if (currentPkg != pkg) {
             funCutJob?.cancel(); funCutPkg = null
@@ -539,6 +539,9 @@ class BlockerAccessibilityService : AccessibilityService() {
     private var ytLastTitle = ""
     private var ytLastHint = ""
     private var ytNotWatchLogAt = 0L
+    private var ytTapTitle = ""        // v165: the title of the card you tapped (home, search or recommendations)
+    private var ytTapAt = 0L
+    private var ytGraceJob: Job? = null
 
     private class YtNode(val label: String, val top: Int, val bottom: Int)
     /** What one read of the YouTube screen found. [byId] now means "the title was placed from the Subscribe row" (this YouTube build has no view ids). */
@@ -560,7 +563,12 @@ class BlockerAccessibilityService : AccessibilityService() {
                 return
             }
             // a tap may start another video: for a few seconds a new title is accepted at once
-            AccessibilityEvent.TYPE_VIEW_CLICKED -> { ytClickAt = t; scheduleYtRead(pkg, 1_000L); return }
+            AccessibilityEvent.TYPE_VIEW_CLICKED -> {
+                ytClickAt = t
+                // v165: remember which video card was tapped; its title is the verdict source (no ad or scroll guessing)
+                tappedTitle(e.source)?.let { ytTapTitle = it; ytTapAt = t; DebugLog.d("yt: tapped '${it.take(60)}'") }
+                scheduleYtRead(pkg, 1_000L); return
+            }
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> { scheduleYtRead(pkg, 1_000L) }
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {}
             else -> return
@@ -601,6 +609,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         // comments and ad cards can never be mistaken for it. The screen is only the fallback.
         val sess = ytSession()
         val playing = sess?.playing == true
+        val tapFresh = ytTapTitle.isNotEmpty() && now - ytTapAt < YT_TAP_TITLE_MS   // v165: a video you just tapped is judged by the title you tapped
         // YouTube home with nothing playing: free, and the next video is judged fresh. A video playing in the small player (or in
         // full screen, where YouTube shows no buttons) is still a video: it is judged from the media session.
         if (r.home && !playing && !r.preview) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytNoTitleCount = 0; ytUnjudgedSince = 0L; return }
@@ -609,7 +618,7 @@ class BlockerAccessibilityService : AccessibilityService() {
             if (now - ytNotWatchLogAt > 10_000L) { ytNotWatchLogAt = now; DebugLog.d("yt: not a watch page, labels=[${r.sample}]") }
             return
         }
-        if (r.ad) {            // an ad is playing in the player: its texts may not be the video's title, so wait a few seconds only
+        if (r.ad && !tapFresh) {            // an ad is playing in the player: its texts may not be the video's title, so wait a few seconds only
             if (ytAdSince == 0L) ytAdSince = now
             if (now - ytAdSince < YT_AD_GRACE_MS) {
                 if (now - ytNotWatchLogAt > 4_000L) { ytNotWatchLogAt = now; DebugLog.d("yt: ad playing, waiting (max ${YT_AD_GRACE_MS / 1000} s)") }
@@ -618,9 +627,9 @@ class BlockerAccessibilityService : AccessibilityService() {
             }
         } else ytAdSince = 0L
         val sTitle = sess?.title.orEmpty()
-        val title = sTitle.ifEmpty { r.title }
-        val hint = if (sTitle.isNotEmpty()) sess?.artist.orEmpty() else r.hint
-        val strong = sTitle.isNotEmpty() || r.byId
+        val title = if (tapFresh) ytTapTitle else sTitle.ifEmpty { r.title }
+        val hint = if (tapFresh) "" else if (sTitle.isNotEmpty()) sess?.artist.orEmpty() else r.hint
+        val strong = tapFresh || sTitle.isNotEmpty() || r.byId
         if (title == null) {
             // Video page but no title read. Scrolled away after a verdict: keep it. Never judged: after 3 reads it is treated as fun (locked).
             if (now - ytNoTitleLogAt > 5_000L) { ytNoTitleLogAt = now; DebugLog.d("yt: watch page, no title read, labels=[${r.sample}] verdict='${ytLatchKey.take(30)}'") }
@@ -629,7 +638,7 @@ class BlockerAccessibilityService : AccessibilityService() {
                 ytNoTitleCount++
                 // title row scrolled away: wait for it to come back (12 s); title row on screen but unreadable: 3 tries
                 val give = if (r.anchorMissing) now - ytUnjudgedSince >= 12_000L else ytNoTitleCount >= 3
-                if (give) { ytNoTitleCount = 0; ytUnjudgedSince = 0L; ytLatchKey = "?unreadable"; judgeYt("", "") } else scheduleYtRead(pkg, 1_500L)
+                if (give) { ytNoTitleCount = 0; ytUnjudgedSince = 0L; ytLatchKey = "?unreadable"; judgeYt("", "", YT_GRACE_MS) } else scheduleYtRead(pkg, 1_500L)
             }
             return
         }
@@ -645,8 +654,8 @@ class BlockerAccessibilityService : AccessibilityService() {
         }
         ytPendingKey = ""
         ytLatchKey = key
-        DebugLog.d("yt: title from ${if (sTitle.isNotEmpty()) "media session" else "screen"}")
-        judgeYt(title, hint)
+        DebugLog.d("yt: title from ${if (tapFresh) "tapped card" else if (sTitle.isNotEmpty()) "media session" else "screen"}")
+        judgeYt(title, hint, if (tapFresh) 0L else YT_GRACE_MS)   // v165: a video that started by itself gets 10 s before any lock
     }
 
     /**
@@ -709,6 +718,29 @@ class BlockerAccessibilityService : AccessibilityService() {
         return Pair(pick?.label, "")
     }
 
+    /** v165: the title of the card that was tapped. Climbs from the tapped view to the first parent that holds readable text. Buttons (Like, Share, ...) give nothing. */
+    private fun tappedTitle(src: AccessibilityNodeInfo?): String? {
+        var n: AccessibilityNodeInfo = src ?: return null
+        val labels = ArrayList<String>()
+        for (up in 0 until 6) {
+            labels.clear()
+            collectLabels(n, 0, labels)
+            if (labels.isNotEmpty()) {
+                if (labels.any { YT_CTRL_RE.containsMatchIn(it) }) return null
+                return labels.firstOrNull { !YT_META_RE.containsMatchIn(it) } ?: labels.first()
+            }
+            n = n.parent ?: return null
+        }
+        return null
+    }
+
+    private fun collectLabels(x: AccessibilityNodeInfo?, depth: Int, out: ArrayList<String>) {
+        if (x == null || depth > 4 || out.size >= 30) return
+        val s = (x.text ?: x.contentDescription)?.toString()?.trim()
+        if (!s.isNullOrEmpty() && s.length >= 6 && s.any { it.isLetter() } && !YT_DUR_RE.matches(s)) out += s
+        for (i in 0 until x.childCount) collectLabels(x.getChild(i), depth + 1, out)
+    }
+
     /** The video must not keep playing behind (or after) a lock. */
     private fun pauseYoutube() {
         runCatching {
@@ -735,11 +767,21 @@ class BlockerAccessibilityService : AccessibilityService() {
         )
     }.getOrNull()
 
-    private fun judgeYt(title: String, hint: String) {
+    private fun judgeYt(title: String, hint: String, graceMs: Long = 0L) {
         ytLastTitle = title; ytLastHint = hint
         val d = YtGate.decide(this, title, hint)
-        DebugLog.d("yt: '${title.take(70)}' hint='${hint.take(50)}' -> ${d.kind} ${d.chapter}")
+        DebugLog.d("yt: '${title.take(70)}' hint='${hint.take(50)}' -> ${d.kind} ${d.chapter}" + if (graceMs > 0L && d.kind != YtGate.Kind.FREE) " (waits ${graceMs / 1000} s)" else "")
         ytLatchFun = d.kind == YtGate.Kind.FUN
+        if (d.kind != YtGate.Kind.FREE && graceMs > 0L) {
+            // v165: YouTube sometimes starts a video on its own. Lock only if the same video is still the one on screen after the wait.
+            val k = ytLatchKey
+            ytGraceJob?.cancel()
+            ytGraceJob = scope.launch {
+                delay(graceMs)
+                if (ytLatchKey == k && currentPkg?.let { it in YOUTUBE_PKGS } == true) judgeYt(title, hint, 0L)
+            }
+            return
+        }
         when (d.kind) {
             YtGate.Kind.FREE -> ytExpiryJob?.cancel()
             YtGate.Kind.STUDY_FIRST -> showSiteBlock("ytstudy:${d.chapter}")
@@ -1219,6 +1261,9 @@ class BlockerAccessibilityService : AccessibilityService() {
         private const val SETTLE_MS = 180L
         private const val YT_SCROLL_QUIET_MS = 1_500L
         private const val YT_AD_GRACE_MS = 8_000L
+        private const val YT_TAP_TITLE_MS = 12_000L
+        private const val YT_GRACE_MS = 10_000L
+        private val YT_CTRL_RE = Regex("(?i)^(like|dislike|share|download|save|remix|clip|thanks|report|subscribe|subscribed|comments?|add a? ?comment|more|hide|cancel|close|cast|pause|play|next|previous|settings|captions|autoplay|minimi[sz]e|video player)\\b")
         private val YT_AD_RE = Regex("(?i)^(skip ads?|visit advertiser|ad\\s*(\u00B7|:|\\d))")
         private val YT_META_RE = Regex("(?i)(^[@#])|(\\b(views?|likes?|subscribers?|ago|watching|premiered|streamed)\\b)|(^\\W*more$)|^subscribe")
         private val YT_PREVIEW_RE = Regex("(?i)^((un)?mute\\b|(turn (on|off) )?(closed )?captions?\\b|subtitles?\\b|cc$)")
