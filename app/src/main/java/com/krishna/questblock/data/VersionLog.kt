@@ -3,6 +3,12 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("163.0.0", "YouTube gate: small player, full screen, ads",
+        listOf(
+            "Small player: a video playing in YouTube's small player on the home page is judged too, from the media session. Full screen: the video is judged even though YouTube shows no buttons there. When coin time runs out the lock comes back with the title already known, so it works in full screen as well",
+            "A video behind a lock is paused, so it cannot keep playing free. After paying, tap play",
+            "Ads: judging waits at most 8 seconds for an ad, then the video is judged. Before, it waited for the whole ad",
+        )),
     VersionEntry("162.0.0", "YouTube gate without the media title",
         listOf(
             "YouTube may not give the video title to the media session when it shows no notification. The gate then reads the title from the screen, and a video you scroll straight away is read at the first scroll, while the title is still there. If the title row is scrolled off and the video was never judged, it waits up to 12 s for you to come back before treating the video as fun. The Debug log says which source the title came from",
