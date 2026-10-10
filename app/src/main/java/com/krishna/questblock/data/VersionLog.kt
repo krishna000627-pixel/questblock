@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("166.0.0", "YouTube gate: taps now reach the service",
+        listOf(
+            "Fix: the service never received tap events (the accessibility config listed no click events), so the tapped-video title from v165 was never read and every video waited 10 seconds. Taps are now received: a video you tap is judged at once by the card you tapped, and only videos that start by themselves wait 10 seconds. The Debug log shows \"yt: tapped\". After installing, turn the QuestBlock accessibility service off and on once if taps still do not log",
+        )),
     VersionEntry("165.0.0", "YouTube gate: judged by the video you tapped",
         listOf(
             "The video you tap (on home, search or in the recommendations under a video) is judged by the title of that card, so ads and scrolling cannot confuse it. When a tapped title is known, ad waiting is skipped",
