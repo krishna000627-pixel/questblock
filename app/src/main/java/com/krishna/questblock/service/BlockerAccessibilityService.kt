@@ -28,6 +28,7 @@ import com.krishna.questblock.data.FunSignal
 import com.krishna.questblock.data.ShortsStats
 import com.krishna.questblock.data.StudySignal
 import com.krishna.questblock.data.YtGate
+import com.krishna.questblock.data.YtInfo
 import com.krishna.questblock.data.YtSplit
 import com.krishna.questblock.util.DebugLog
 import com.krishna.questblock.data.UsageTracker
@@ -119,8 +120,10 @@ class BlockerAccessibilityService : AccessibilityService() {
         if (t - lastBeat > 30_000L) { lastBeat = t; prefs.lastActiveAt = System.currentTimeMillis() }
         val pkg = event.packageName?.toString() ?: return
         // Leaving YouTube/Instagram for any other screen (also QuestBlock's own lock screen) removes the Shorts/Reels counter
+        // v175: QuestBlock's own overlay windows (the time-left bubble) also send this event; they are not a screen change. Only its activities (lock page) are.
+        val ownOverlay = pkg == packageName && event.className?.toString()?.endsWith("Activity") != true
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && kindOf(pkg) == null &&
-            pkg !in IGNORED_PKGS && pkg != imePackage()) {
+            pkg !in IGNORED_PKGS && pkg != imePackage() && !ownOverlay) {
             if (shortsJob != null) stopShortTimer() else CounterBubble.hide(this)
         }
         if (pkg == packageName) return
@@ -333,9 +336,11 @@ class BlockerAccessibilityService : AccessibilityService() {
         val onClips = isShortForm(root, kind)
         logClips(kind, root, onClips, event)
         if (!onClips) {
-            if (!scrolled && shortsKind == kind) stopShortTimer()
+            // v175: one failed look (comments panel, ad, a screen still changing) must not kill the counter: it stops on the second miss
+            if (!scrolled && shortsKind == kind) { shortsMiss++; if (shortsMiss >= 2) { shortsMiss = 0; stopShortTimer() } }
             return
         }
+        shortsMiss = 0
         // Backup count: some versions of the apps do not send a scroll event for every swipe. A new title/caption on screen
         // while the timer runs means a new video. Not used within 1.2 s of a swipe that was already counted.
         if (!scrolled && shortsKind == kind && shortsJob?.isActive == true) {
@@ -431,6 +436,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     }
 
     private var lastClipsLog = 0L
+    private var shortsMiss = 0
     private fun logClips(kind: String, root: AccessibilityNodeInfo, found: Boolean, event: AccessibilityEvent?) {
         val t = SystemClock.uptimeMillis()
         if (t - lastClipsLog < 4_000L) return
@@ -462,19 +468,22 @@ class BlockerAccessibilityService : AccessibilityService() {
         shortsJob = scope.launch {
             val pm = getSystemService(PowerManager::class.java)
             var ticks = 0
+            var miss = 0
             try {
                 while (true) {
                     delay(5_000L)
                     if (!pm.isInteractive) break
                     val root = rootInActiveWindow
                     val pkgOk = root?.packageName?.toString()?.let { kindOf(it) == kind } == true
-                    if (!pkgOk || !isShortForm(root!!, kind)) break
+                    if (!(pkgOk && isShortForm(root!!, kind))) { miss++; if (miss >= 2) break else continue }   // v175: one miss is not leaving
+                    miss = 0
                     ShortsStats.add(this@BlockerAccessibilityService, kind, 5_000L, 0)
                     if (kind == ShortsStats.YT) prefs.addShortsMs(5_000L)   // Shorts time counts as fun time
                     showCounter(kind)
                     ticks++
                     // coin time ran out
                     if (shortNeedsCoins(kind) && prefs.siteUnlockedUntil("short:$kind") <= System.currentTimeMillis()) {
+                        if (kind == ShortsStats.YT) pauseYoutube()
                         showSiteBlock("short:$kind"); break
                     }
                     if (ticks % 3 == 0) {
@@ -516,6 +525,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         shortsBackCount = if (t - shortsBackAt > 10_000L) 1 else shortsBackCount + 1
         shortsBackAt = t
         DebugLog.d("service: $kind clips blocked (fun limit / lock window), back x$shortsBackCount")
+        if (kind == ShortsStats.YT) pauseYoutube()
         Toast.makeText(this, (if (kind == ShortsStats.YT) "Shorts" else "Reels") + " is locked. Fun limit reached.", Toast.LENGTH_SHORT).show()
         // BACK leaves the clips screen and lands on the YouTube / Instagram page; only if the app keeps landing on clips (3rd time), go to the phone's home
         performGlobalAction(if (shortsBackCount > 2) GLOBAL_ACTION_HOME else GLOBAL_ACTION_BACK)
@@ -546,6 +556,11 @@ class BlockerAccessibilityService : AccessibilityService() {
     private var ytNoAccessLogAt = 0L
     private var ytCountKind: String? = null   // v173: what the playing video is counted as: YtSplit.KIND_FUN or KIND_STUDY
     private var ytTickJob: Job? = null
+    private var ytInfoJob: Job? = null
+    private var ytInfoKey = ""            // v177: the video the online second opinion belongs to
+    private var ytInfoDecision: YtGate.Decision? = null
+    private var ytGraceAt = 0L            // v176: when the last 10 s wait was given
+    private var ytShortAt = 0L
     private var ytShortKey = ""        // v169: the title of a Short the gate already skipped
 
     private class YtNode(val label: String, val top: Int, val bottom: Int)
@@ -631,7 +646,7 @@ class BlockerAccessibilityService : AccessibilityService() {
             DebugLog.d("yt: no session title, screen title '${t2.take(60)}'")
         }
         val key = title.trim().lowercase(java.util.Locale.ROOT).replace(Regex("\\s+"), " ")    // v172: the whole title (a Hindi or emoji-only title has no Latin words, so the word key was empty and the video was never judged)
-        if (key.isEmpty() || key == ytLatchKey || key == ytShortKey) { ytPendingKey = ""; return }    // same video, already judged
+        if (key.isEmpty() || key == ytLatchKey || (key == ytShortKey && now - ytShortAt < 3_000L)) { ytPendingKey = ""; return }    // v176: a Short's title is trusted for 3 s only (a long video can have the same title)    // same video, already judged
         val tapped = now - ytClickAt < 6_000L
         if (ytLatchKey.isNotEmpty() && !tapped) {
             // another title with no tap: autoplay or a recommendation. Two identical reads first.
@@ -639,13 +654,22 @@ class BlockerAccessibilityService : AccessibilityService() {
         }
         val root = rootInActiveWindow ?: run { scheduleYtRead(pkg, 1_500L); return }    // v172: the window is not ready yet (opening, full screen): try again, do not let the video through
         if (root.packageName?.toString() != pkg) return
-        if (isShortForm(root, ShortsStats.YT)) { ytShortKey = key; ytLatchKey = ""; ytPendingKey = ""; ytCountKind = null; FunSignal.ytFunOn = false; return }    // Shorts never use the title
+        if (isShortForm(root, ShortsStats.YT)) { ytShortKey = key; ytShortAt = now; ytLatchKey = ""; ytPendingKey = ""; ytCountKind = null; FunSignal.ytFunOn = false; return }    // Shorts never use the title
         ytShortKey = ""
         ytPendingKey = ""
         ytLatchKey = key
+        // v177: second opinion from YouTube itself (category, tags, description): at once if this video was looked up before, else in the background
+        ytInfoDecision = null; ytInfoKey = ""
+        if (prefs.ytInfoOn) {
+            YtInfo.peek(title)?.let { info ->
+                ytInfoDecision = YtGate.refine(title, hint, YtGate.decide(this, title, hint), info); ytInfoKey = key
+            }
+            if (ytInfoDecision == null) startYtInfo(title, hint, key)
+        }
         val byTap = now - ytClickAt < YT_TAP_TITLE_MS
         DebugLog.d("yt: media session '${title.take(70)}' channel='${hint.take(30)}' ${if (byTap) "after a tap" else "no tap"}")
-        judgeYt(title, hint, if (byTap) 0L else YT_GRACE_MS)    // a video that started by itself gets 10 s before any lock
+        // a video that started by itself gets 10 s before any lock, but only once in 2 minutes (v176: pausing, flipping videos or a resume must not give 10 s again and again)
+        judgeYt(title, hint, if (byTap || now - ytGraceAt < 120_000L) 0L else YT_GRACE_MS)
     }
 
     /** v172: stand-in for the media session when notification access is off: a video page with a readable title counts as playing. */
@@ -742,13 +766,38 @@ class BlockerAccessibilityService : AccessibilityService() {
     }
 
     /** The video must not keep playing behind (or after) a lock. */
+    private var ytPauseJob: Job? = null
+
+    /**
+     * v175: pause YouTube and check with the media session that it really paused. A pause that did not take (an ad, a player that was still
+     * starting, a stale session) is sent again up to 5 times; from the 3rd try the phone's pause key is sent too. The Debug log says what the session reported.
+     */
     private fun pauseYoutube() {
-        runCatching {
+        ytPauseJob?.cancel()
+        ytPauseJob = scope.launch {
             val msm = getSystemService(Context.MEDIA_SESSION_SERVICE) as android.media.session.MediaSessionManager
-            val cn = android.content.ComponentName(this, MediaListenerService::class.java)
-            msm.getActiveSessions(cn).firstOrNull { it.packageName in YOUTUBE_PKGS }?.transportControls?.pause()
+            val cn = android.content.ComponentName(this@BlockerAccessibilityService, MediaListenerService::class.java)
+            for (attempt in 1..5) {
+                val c = runCatching { msm.getActiveSessions(cn).filter { it.packageName in YOUTUBE_PKGS } }.getOrNull()
+                    ?.let { list -> list.firstOrNull { sessionOn(it.playbackState?.state) } ?: list.firstOrNull() }
+                if (c == null) { DebugLog.d("yt: pause: no media session (notification access?)"); break }
+                val st = c.playbackState?.state
+                if (!sessionOn(st)) { DebugLog.d("yt: pause: media session says paused/stopped (state=$st) after $attempt look(s)"); break }
+                runCatching { c.transportControls.pause() }
+                if (attempt >= 3) runCatching {
+                    val am = getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+                    am.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE))
+                    am.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE))
+                }
+                DebugLog.d("yt: pause sent (try $attempt, session state was $st)")
+                delay(600L)
+            }
         }
     }
+
+    /** Playing, buffering or connecting counts as on. */
+    private fun sessionOn(st: Int?): Boolean = st == android.media.session.PlaybackState.STATE_PLAYING ||
+        st == android.media.session.PlaybackState.STATE_BUFFERING || st == android.media.session.PlaybackState.STATE_CONNECTING
 
     private class YtSession(val title: String, val artist: String, val playing: Boolean)
 
@@ -786,9 +835,23 @@ class BlockerAccessibilityService : AccessibilityService() {
         }
     }
 
+    /** v177: look the video up on YouTube without waiting (about 2-3 s). If its category or tags disagree with the title verdict, the video is judged again. */
+    private fun startYtInfo(title: String, hint: String, key: String) {
+        ytInfoJob?.cancel()
+        ytInfoJob = scope.launch {
+            val info = YtInfo.lookup(title, hint) ?: return@launch
+            if (ytLatchKey != key) return@launch                       // another video by now
+            val base = YtGate.decide(this@BlockerAccessibilityService, title, hint)
+            val better = YtGate.refine(title, hint, base, info)
+            DebugLog.d("yt: info category='${info.category}' tags=${info.keywords.size}: title verdict ${base.kind} -> ${better.kind}")
+            ytInfoKey = key; ytInfoDecision = better
+            if (better.kind != base.kind) judgeYt(title, hint, 0L)
+        }
+    }
+
     private fun judgeYt(title: String, hint: String, graceMs: Long = 0L) {
         ytLastTitle = title; ytLastHint = hint
-        val d = YtGate.decide(this, title, hint)
+        val d = ytInfoDecision?.takeIf { ytInfoKey.isNotEmpty() && ytInfoKey == ytLatchKey } ?: YtGate.decide(this, title, hint)
         DebugLog.d("yt: '${title.take(70)}' hint='${hint.take(50)}' -> ${d.kind} ${d.chapter}" + if (graceMs > 0L && d.kind != YtGate.Kind.FREE) " (waits ${graceMs / 1000} s)" else "")
         ytLatchFun = d.kind == YtGate.Kind.FUN
         // v173: from now on the playing time counts as a fun video or a study video (App usage page, fun limit)
@@ -797,6 +860,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         FunSignal.ytFunOn = d.kind == YtGate.Kind.FUN
         if (d.kind == YtGate.Kind.FUN) scope.launch { FunLimit.state(this@BlockerAccessibilityService, prefs, force = true) }   // the counter starts from now, not from a stale read
         if (d.kind != YtGate.Kind.FREE && graceMs > 0L) {
+            ytGraceAt = SystemClock.uptimeMillis()
             // v165: YouTube sometimes starts a video on its own. Lock only if the same video is still the one on screen after the wait.
             val k = ytLatchKey
             ytGraceJob?.cancel()
@@ -808,7 +872,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         }
         when (d.kind) {
             YtGate.Kind.FREE -> ytExpiryJob?.cancel()
-            YtGate.Kind.STUDY_FIRST -> showSiteBlock("ytstudy:${d.chapter}")
+            YtGate.Kind.STUDY_FIRST -> { pauseYoutube(); showSiteBlock("ytstudy:${d.chapter}") }
             YtGate.Kind.FUN -> scope.launch {
                 val st = FunLimit.state(this@BlockerAccessibilityService, prefs)
                 if (st.reached || prefs.funBlockedNow()) {

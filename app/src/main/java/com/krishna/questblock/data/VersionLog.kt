@@ -3,6 +3,26 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("177.0.0", "Online second opinion for YouTube videos",
+        listOf(
+            "A few seconds after a video starts, the gate looks it up on YouTube itself in the background, the way video downloaders do (YouTube's own web search and player data, no key of ours): category, tags and description. The video is found by searching its title and channel, and accepted only when a result has the same title",
+            "If the title said study but the category is Gaming, Entertainment, Comedy, Music, Film, Sports, Pets, Autos or Travel with no study sign in the tags or description, the video is fun. If the title said fun, the category is Education and the tags or description name a chapter with a study sign, it is free. Anything else keeps the title verdict",
+            "Any failure (no internet, YouTube changed something, no matching result) keeps the title-only verdict. Results are remembered per title; a failed lookup is not tried again for 60 s",
+            "New permission: Internet. New switch in Settings, YouTube study gate: Check the video online too (on; off waits until midnight). The Debug log shows yt: info lookup and the verdict change",
+        )),
+    VersionEntry("176.0.0", "YouTube gate: fewer fun videos get through",
+        listOf(
+            "A chapter name that is also an everyday word (Atoms, Solutions, Probability, Integration, Vectors, Nuclei, Amines, Semiconductors ...) frees a video only with a study sign next to it: a subject word, Class 12 / JEE / NEET / CBSE / NCERT / board / revision / one shot, a chapter number, or such a word in the channel. \"Probability of a Free Fire win\" is fun again",
+            "\"Lecture 3\", \"Lec 2\" and a bare \"shot\" no longer count as study words by themselves (a TED lecture or \"last shot\" was freed). They still work together with a subject or Class 12",
+            "The 10 s wait for a video that started by itself is given once in 2 minutes (pausing, resuming or flipping videos gave 10 free seconds every time)",
+            "A Short's title is trusted for 3 s only, so a long video with the same title as a Short you just saw is judged",
+        )),
+    VersionEntry("175.0.0", "Shorts counter stays, pause is checked",
+        listOf(
+            "Fix: the Shorts counter blinked and the Shorts timer kept restarting (so Shorts time and coin time were not counted properly). QuestBlock's own time-left bubble window was read as leaving YouTube and stopped the timer, then the timer started again and showed the bubble again, in a loop. Own overlay windows no longer count as a screen change",
+            "The Shorts counter also stops only after two misses in a row (a comments panel or an ad for a moment no longer kills it), in the check on events and in the 5 s timer",
+            "Pause is now checked with the media session: it is sent again up to 5 times (the phone's pause key from the 3rd try) until the session says paused, and the Debug log shows the state it reported. Study-first locks and the Shorts lock now pause the video too",
+        )),
     VersionEntry("174.0.0", "Fun counter runs for YouTube fun videos and Shorts",
         listOf(
             "The live fun counter (notification line \"Fun X of Y\" and the time-left bubble) now runs while a YouTube video judged fun plays, and for Shorts, not only in fun apps. It is the same total as the fun limit: YouTube (fun) = fun videos + Shorts, plus the fun apps. Study videos never count",

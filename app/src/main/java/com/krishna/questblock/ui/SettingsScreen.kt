@@ -404,6 +404,12 @@ internal fun OptionalFeaturesSection(prefs: Prefs, ctx: Context) {
             ytg = prefs.pendingFlag("opt:yt_gate") ?: prefs.ytGateOn
             note = prefs.pendingSummary()
         }
+        var yti by remember { mutableStateOf(prefs.pendingFlag("opt:yt_info") ?: prefs.ytInfoOn) }
+        ToggleRow("Check the video online too", "A few seconds after a video starts, its title and channel go to YouTube's own search to read its category, tags and description: a game or comedy video named like a chapter is caught, a study video with a plain title is freed. Needs internet. Off waits until midnight.", yti) {
+            prefs.changeYtInfo(it)
+            yti = prefs.pendingFlag("opt:yt_info") ?: prefs.ytInfoOn
+            note = prefs.pendingSummary()
+        }
 
         HorizontalDivider(color = ColorDivider)
         // ── Music ──

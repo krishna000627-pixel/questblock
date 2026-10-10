@@ -138,6 +138,7 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
                 k == "opt:shorts_block" -> "Shorts block \u2192 " + if (v.first == "1") "on" else "off"
                 k.startsWith("opt:short_") -> "a Shorts/Reels lock is removed"
                 k == "opt:yt_gate" -> "YouTube study gate \u2192 " + if (v.first == "1") "on" else "off"
+                k == "opt:yt_info" -> "online video check \u2192 " + if (v.first == "1") "on" else "off"
                 k == "opt:ghost_counts" -> "music counts as fun time \u2192 " + if (v.first == "1") "on" else "off"
                 k.startsWith("cat:") -> "an app leaves Fun & Games"
                 k.startsWith("safe:") -> "a \uD83D\uDEE1 switch turns on"
@@ -544,6 +545,12 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     fun changeYtGate(on: Boolean) {
         if (!sp.contains("yt_gate")) setFlag("yt_gate", true)
         commitFlag("opt:yt_gate", "yt_gate", on, def = true)
+    }
+    /** v177: look the playing video up on YouTube (category, tags, description) for a second opinion. A commitment: off waits for midnight. */
+    val ytInfoOn: Boolean get() { applyDue(); return flag("yt_info", true) }
+    fun changeYtInfo(on: Boolean) {
+        if (!sp.contains("yt_info")) setFlag("yt_info", true)
+        commitFlag("opt:yt_info", "yt_info", on, def = true)
     }
     /** Live Shorts / Reels counter over the app (default on; needs Draw over other apps). */
     var optCounter: Boolean get() = flag("opt_counter", true); set(v) = setFlag("opt_counter", v)

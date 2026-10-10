@@ -87,10 +87,17 @@ object YtGate {
     /** "ch 1", "chapter 1", "lecture 1", "adhyay 1": the number after these words is the chapter number. */
     private val CHAPTER_WORDS = hashSetOf("ch", "chap", "chapter", "adhyay", "adhyaay", "lecture", "lec", "lect")
     /** A number-only title ("Ch 1") counts only when it also looks like study content, so "Naruto Ch 5" stays FUN. */
+    // v176: "lecture", "lec" and a bare "shot" are not study words on their own ("TED Lecture 1", "last shot" are not Class 12); "one shot" is checked as a pair
     private val STUDY_WORDS = hashSetOf(
         "class", "12th", "xii", "jee", "neet", "cbse", "ncert", "board", "boards",
-        "lecture", "lec", "lect", "revision", "oneshot", "shot", "pyq", "pyqs",
+        "revision", "oneshot", "pyq", "pyqs",
     )
+    /** Chapter names that are also everyday words: they count only with a study sign next to them (subject, Class 12, JEE, NEET, one shot, a chapter number...). */
+    private val NEEDS_CONTEXT = hashSetOf(
+        "atoms", "nuclei", "solutions", "integration", "integral", "integrals", "vectors", "differentiation", "probability", "amines", "semiconductors",
+    )
+    private fun studyContext(w: List<String>): Boolean =
+        w.any { it in STUDY_WORDS } || (0 until w.size - 1).any { w[it] == "one" && w[it + 1] == "shot" }
     private val GLUED = Regex("^(ch|chap|chapter|adhyay|adhyaay|lecture|lec|lect)(\\d{1,2})$")   // "ch1" -> "ch" "1"
 
     /**
@@ -114,11 +121,11 @@ object YtGate {
     fun key(title: String): String = words(title).joinToString(" ")
 
     /** Longest word group first (4 down to 1); every probe is one hash lookup. */
-    private fun find(w: List<String>): Ch? {
+    private fun find(w: List<String>): Pair<Ch, Boolean>? {
         for (n in 4 downTo 1) {
             for (i in 0..(w.size - n)) {
                 val p = w.subList(i, i + n).joinToString(" ")
-                CHAPTERS[ALIAS[p] ?: p]?.let { return it }
+                CHAPTERS[ALIAS[p] ?: p]?.let { return it to (n == 1 && p in NEEDS_CONTEXT) }
             }
         }
         return null
@@ -164,15 +171,42 @@ object YtGate {
         val w = words(title)
         if (w.isEmpty() || isClass11(w)) return Decision(Kind.FUN)
         val inTitle = subjectsOf(w)
-        find(w)?.let { c -> if (inTitle.isEmpty() || c.subj in inTitle) return verdict(c.name, listOf(c), studied) }
-        val n = chapterNumber(w) ?: return Decision(Kind.FUN)
         val h = words(hint.replace(Regex("(?i)physics\\s*wallah"), " "))     // "Physics Wallah" teaches all subjects: not a hint
+        // v176: "Solutions", "Atoms", "Probability" ... alone in a fun title ("Probability of a Free Fire win") must not free it
+        val ctx = inTitle.isNotEmpty() || studyContext(w) || studyContext(h) || subjectsOf(h).isNotEmpty() || chapterNumber(w) != null
+        find(w)?.let { (c, everyday) -> if ((inTitle.isEmpty() || c.subj in inTitle) && (!everyday || ctx)) return verdict(c.name, listOf(c), studied) }
+        val n = chapterNumber(w) ?: return Decision(Kind.FUN)
         val subjects = inTitle.ifEmpty { subjectsOf(h) }
-        val studyLike = subjects.isNotEmpty() || w.any { it in STUDY_WORDS } || h.any { it in STUDY_WORDS }
+        val studyLike = subjects.isNotEmpty() || studyContext(w) || studyContext(h)
         if (!studyLike) return Decision(Kind.FUN)
         val cands = (if (subjects.isEmpty()) SIZE.keys else subjects).mapNotNull { BY_NUM[it + n] }
         if (cands.isEmpty()) return Decision(Kind.FUN)
         return verdict(if (cands.size == 1) cands[0].name else "Chapter $n", cands, studied)
+    }
+
+    /** YouTube's own categories: a video in one of these is not study unless its tags or description say so. */
+    private val FUN_CATEGORIES = hashSetOf("gaming", "entertainment", "comedy", "music", "film & animation", "sports", "pets & animals", "autos & vehicles", "travel & events")
+
+    /**
+     * v177: second look with what YouTube says about the video ([YtInfo]).
+     *  - title said FREE, but the category is Gaming / Entertainment / Comedy / Music ... and neither tags nor description show a study sign -> FUN
+     *  - title said FUN, the category is Education, and the title with the tags and description names a chapter (with a study sign) -> FREE
+     * Anything else keeps the title verdict.
+     */
+    fun refine(title: String, hint: String, base: Decision, info: YtInfo.Info): Decision {
+        val cat = info.category.trim().lowercase(Locale.ROOT)
+        if (cat.isEmpty()) return base
+        val extra = info.keywords.joinToString(" ") + " " + info.description.take(400)
+        val ew = words(extra)
+        val sign = studyContext(ew) || subjectsOf(ew).isNotEmpty()
+        return when {
+            base.kind == Kind.FREE && cat in FUN_CATEGORIES && !sign -> Decision(Kind.FUN)
+            base.kind == Kind.FUN && cat == "education" -> {
+                val d = classify("$title $extra", hint) { _, _ -> false }
+                if (d.kind == Kind.FREE) d else base
+            }
+            else -> base
+        }
     }
 
     /** The tick on the Chapters page ("chap_done_<subject>" holds the studied chapter numbers). */
