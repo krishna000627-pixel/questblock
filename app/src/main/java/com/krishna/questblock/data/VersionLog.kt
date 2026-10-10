@@ -3,6 +3,27 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("172.0.0", "YouTube gate: hardening",
+        listOf(
+            "Fix: a video whose title has no Latin letters (Hindi, emoji only) was never judged and played free, because the same-video key was made of Latin words only. The key is now the whole title, so such videos are judged (fun unless a chapter is named) and two different titles never count as the same video",
+            "If the window cannot be read yet when a new video starts (opening, full screen), the gate tries again after 1.5 s instead of dropping it",
+            "If notification access is off there is no media session: the Debug log says so (once a minute) and the title is read from the screen, instead of letting every video through silently",
+            "Scrolling checks the gate at most every 1.2 s (was 0.4 s), a small battery saving",
+        )),
+    VersionEntry("171.0.0", "YouTube gate: screen title when the session has none",
+        listOf(
+            "When the media session has no title, the gate reads the title from the screen instead of skipping the video. While it cannot be read (an ad, a page still loading) nothing is locked and nothing waits: the next event reads again, and the title shows up by itself. The screen is only read in this rare case",
+        )),
+    VersionEntry("170.0.0", "YouTube gate: no special case for a missing title",
+        listOf(
+            "A video playing with no title in the media session is no longer counted and locked as fun after 3 reads. It is very rare, so it is simply not judged. Less code to run on every YouTube event",
+        )),
+    VersionEntry("169.0.0", "YouTube gate: media session only, less battery",
+        listOf(
+            "The YouTube gate now reads only YouTube's media session (the video that is playing, also a preview in the home feed). The screen is no longer read for the title, ads, home or watch page, so there is far less work on every YouTube event. The screen is looked at once per new video, only to skip Shorts",
+            "Nothing playing (paused, locked, closed) clears the verdict, so the same video played again is judged again. A paid video keeps its coin time, so it does not charge twice",
+            "Taps are used only to know you started the video yourself (no 10 s wait). Reading the card title from a tap is gone, because the tap carries no card. Events are read at most every 1.2 s",
+        )),
     VersionEntry("168.0.0", "YouTube gate: no ad waiting, any tap skips the 10 s",
         listOf(
             "Removed ad waiting: the gate no longer pauses its judging when it thinks an ad is playing (it also mistook Sponsored cards for ads). The title comes from the card you tapped, otherwise from the media session",

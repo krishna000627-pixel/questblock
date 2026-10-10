@@ -542,7 +542,8 @@ class BlockerAccessibilityService : AccessibilityService() {
     private var ytTapTitle = ""        // v165: the title of the card you tapped (home, search or recommendations)
     private var ytTapAt = 0L
     private var ytGraceJob: Job? = null
-    private var ytSrcLog = ""
+    private var ytNoAccessLogAt = 0L
+    private var ytShortKey = ""        // v169: the title of a Short the gate already skipped
 
     private class YtNode(val label: String, val top: Int, val bottom: Int)
     /** What one read of the YouTube screen found. [byId] now means "the title was placed from the Subscribe row" (this YouTube build has no view ids). */
@@ -560,16 +561,13 @@ class BlockerAccessibilityService : AccessibilityService() {
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
                 ytScrollAt = t
                 // video not judged yet and the user already scrolls: read the title NOW, while it is still on screen
-                if (ytLatchKey.isEmpty() && t - ytLastRead >= 400L) { ytLastRead = t; evalYtGate(pkg) }
+                if (ytLatchKey.isEmpty() && t - ytLastRead >= 1_200L) { ytLastRead = t; evalYtGate(pkg) }
                 return
             }
             // a tap may start another video: for a few seconds a new title is accepted at once
             AccessibilityEvent.TYPE_VIEW_CLICKED -> {
                 ytClickAt = t
                 // v165: remember which video card was tapped; its title is the verdict source (no ad or scroll guessing)
-                val card = tappedTitle(e.source)
-                if (card != null) { ytTapTitle = card; ytTapAt = t; DebugLog.d("yt: tapped '${card.take(60)}'") }
-                else DebugLog.d("yt: click, no card title (source=${e.source != null})")
                 scheduleYtRead(pkg, 1_000L); return
             }
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> { scheduleYtRead(pkg, 1_000L) }
@@ -582,7 +580,7 @@ class BlockerAccessibilityService : AccessibilityService() {
             if (left > 0L) armYtExpiry(left)
         }
         if (ytLatchKey.isNotEmpty() && t - ytScrollAt < YT_SCROLL_QUIET_MS) return    // a judged video is left alone while scrolling
-        if (t - ytLastRead < 800L) return          // 4: a burst of events is one read
+        if (t - ytLastRead < 1_200L) return        // 4: a burst of events is one read
         ytLastRead = t
         evalYtGate(pkg)
     }
@@ -603,58 +601,58 @@ class BlockerAccessibilityService : AccessibilityService() {
     private fun evalYtGate(pkg: String) {
         if (!prefs.ytGateOn) return
         val now = SystemClock.uptimeMillis()
-        val root = rootInActiveWindow ?: return
-        if (root.packageName?.toString() != pkg) return
-        if (isShortForm(root, ShortsStats.YT)) { ytLatchKey = ""; ytPendingKey = ""; return }    // 7: Shorts never use the title
-        val r = readYtWatch(root)
-        if (r.short) { ytLatchKey = ""; ytPendingKey = ""; return }
-        // v161: the playing video's title comes from YouTube's media session. It does not move when you scroll, and recommendations,
-        // comments and ad cards can never be mistaken for it. The screen is only the fallback.
-        val sess = ytSession()
-        val playing = sess?.playing == true
-        val tapFresh = ytTapTitle.isNotEmpty() && now - ytTapAt < YT_TAP_TITLE_MS   // v165: a video you just tapped is judged by the title you tapped
-        // YouTube home with nothing playing: free, and the next video is judged fresh. A video playing in the small player (or in
-        // full screen, where YouTube shows no buttons) is still a video: it is judged from the media session.
-        if (r.home && !playing && !r.preview) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytNoTitleCount = 0; ytUnjudgedSince = 0L; return }
-        if (sess == null && ytLatchKey.isNotEmpty() && now - ytScrollAt < YT_SCROLL_QUIET_MS) { scheduleYtRead(pkg, YT_SCROLL_QUIET_MS); return }   // screen reads wait for the scroll to stop; the session does not need to
-        if (!r.onWatch && !playing && !r.preview) {      // search, channel, a page still loading: free, the verdict is kept
-            if (now - ytNotWatchLogAt > 10_000L) { ytNotWatchLogAt = now; DebugLog.d("yt: not a watch page, session='${sess?.title.orEmpty().take(60)}' playing=$playing labels=[${r.sample}]") }
+        // v169: only YouTube's media session is read, no walk over the screen. It is cheap, it does not move when you scroll,
+        // and it names the playing video (also a preview in the home feed). The screen is looked at once, only to skip Shorts.
+        var sess = ytSession()
+        if (sess == null && !com.krishna.questblock.util.Perms.notificationAccess(this)) {
+            // v172: without notification access there is no media session: say so in the Debug log and judge from the screen instead of letting everything through
+            if (now - ytNoAccessLogAt > 60_000L) { ytNoAccessLogAt = now; DebugLog.d("yt: notification access is off, reading the title from the screen") }
+            sess = ytScreenSession(pkg)
+        }
+        if (sess == null || !sess.playing) {
+            // nothing playing: the next video, or this one played again, is judged fresh
+            ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytNoTitleCount = 0
             return
         }
-        // v168: no ad waiting. A tapped video is judged by the card you tapped, any other by the media session title.
-        val sTitle = sess?.title.orEmpty()
-        // v167: every source of the title in the Debug log (media session, screen, tapped card), written when any of them changes
-        val srcLog = "session='${sTitle.take(70)}' playing=$playing screen='${r.title.orEmpty().take(70)}' tapped='${if (tapFresh) ytTapTitle.take(70) else ""}'"
-        if (srcLog != ytSrcLog) { ytSrcLog = srcLog; DebugLog.d("yt: src $srcLog") }
-        val title = if (tapFresh) ytTapTitle else sTitle.ifEmpty { r.title }
-        val hint = if (tapFresh) "" else if (sTitle.isNotEmpty()) sess?.artist.orEmpty() else r.hint
-        val strong = tapFresh || sTitle.isNotEmpty() || r.byId
-        if (title == null) {
-            // Video page but no title read. Scrolled away after a verdict: keep it. Never judged: after 3 reads it is treated as fun (locked).
-            if (now - ytNoTitleLogAt > 5_000L) { ytNoTitleLogAt = now; DebugLog.d("yt: watch page, no title read, labels=[${r.sample}] verdict='${ytLatchKey.take(30)}'") }
-            if ((r.playerFound || playing) && ytLatchKey.isEmpty()) {
-                if (ytUnjudgedSince == 0L) ytUnjudgedSince = now
-                ytNoTitleCount++
-                // title row scrolled away: wait for it to come back (12 s); title row on screen but unreadable: 3 tries
-                val give = if (r.anchorMissing) now - ytUnjudgedSince >= 12_000L else ytNoTitleCount >= 3
-                if (give) { ytNoTitleCount = 0; ytUnjudgedSince = 0L; ytLatchKey = "?unreadable"; judgeYt("", "", YT_GRACE_MS) } else scheduleYtRead(pkg, 1_500L)
-            }
-            return
+        var title = sess.title
+        var hint = sess.artist
+        if (title.isEmpty()) {
+            // v171: the session has no title (rare): read the title from the screen instead. Nothing is locked while it cannot be read
+            // (an ad, a page still loading): the next event reads again, and the title shows up by itself when the video is on screen.
+            val root = rootInActiveWindow ?: return
+            if (root.packageName?.toString() != pkg) return
+            val r = readYtWatch(root)
+            val t2 = r.title
+            if (!r.onWatch || r.ad || t2.isNullOrBlank() || t2.equals("Sponsored", ignoreCase = true)) return
+            title = t2; hint = r.hint
+            DebugLog.d("yt: no session title, screen title '${t2.take(60)}'")
         }
-        ytNoTitleCount = 0
-        ytUnjudgedSince = 0L
-        val key = YtGate.key(title)
-        if (key.isEmpty() || key == ytLatchKey) { ytPendingKey = ""; return }                     // 4: same video, already judged
+        val key = title.trim().lowercase(java.util.Locale.ROOT).replace(Regex("\\s+"), " ")    // v172: the whole title (a Hindi or emoji-only title has no Latin words, so the word key was empty and the video was never judged)
+        if (key.isEmpty() || key == ytLatchKey || key == ytShortKey) { ytPendingKey = ""; return }    // same video, already judged
         val tapped = now - ytClickAt < 6_000L
         if (ytLatchKey.isNotEmpty() && !tapped) {
-            // another title with no tap: autoplay, or a recommendation. Needs the title placed from the Subscribe row and two reads.
-            if (!strong) return
+            // another title with no tap: autoplay or a recommendation. Two identical reads first.
             if (ytPendingKey != key) { ytPendingKey = key; scheduleYtRead(pkg, 900L); return }
         }
+        val root = rootInActiveWindow ?: run { scheduleYtRead(pkg, 1_500L); return }    // v172: the window is not ready yet (opening, full screen): try again, do not let the video through
+        if (root.packageName?.toString() != pkg) return
+        if (isShortForm(root, ShortsStats.YT)) { ytShortKey = key; ytLatchKey = ""; ytPendingKey = ""; return }    // Shorts never use the title
+        ytShortKey = ""
         ytPendingKey = ""
         ytLatchKey = key
-        DebugLog.d("yt: title from ${if (tapFresh) "tapped card" else if (sTitle.isNotEmpty()) "media session" else "screen"}")
-        judgeYt(title, hint, if (tapFresh || now - ytClickAt < YT_TAP_TITLE_MS) 0L else YT_GRACE_MS)   // v165: a video that started by itself gets 10 s before any lock
+        val byTap = now - ytClickAt < YT_TAP_TITLE_MS
+        DebugLog.d("yt: media session '${title.take(70)}' channel='${hint.take(30)}' ${if (byTap) "after a tap" else "no tap"}")
+        judgeYt(title, hint, if (byTap) 0L else YT_GRACE_MS)    // a video that started by itself gets 10 s before any lock
+    }
+
+    /** v172: stand-in for the media session when notification access is off: a video page with a readable title counts as playing. */
+    private fun ytScreenSession(pkg: String): YtSession? {
+        val root = rootInActiveWindow ?: return null
+        if (root.packageName?.toString() != pkg) return null
+        val r = readYtWatch(root)
+        val t = r.title
+        if (!r.onWatch || r.ad || t.isNullOrBlank() || t.equals("Sponsored", ignoreCase = true)) return null
+        return YtSession(t, r.hint, true)
     }
 
     /**
