@@ -137,6 +137,7 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
                 k == "strict" -> "strict mode \u2192 " + if (v.first == "1") "on" else "off"
                 k == "opt:shorts_block" -> "Shorts block \u2192 " + if (v.first == "1") "on" else "off"
                 k.startsWith("opt:short_") -> "a Shorts/Reels lock is removed"
+                k == "opt:yt_gate" -> "YouTube study gate \u2192 " + if (v.first == "1") "on" else "off"
                 k == "opt:ghost_counts" -> "music counts as fun time \u2192 " + if (v.first == "1") "on" else "off"
                 k.startsWith("cat:") -> "an app leaves Fun & Games"
                 k.startsWith("safe:") -> "a \uD83D\uDEE1 switch turns on"
@@ -537,7 +538,13 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     fun shortPicked(kind: String): Boolean = flag("short_$kind")
     fun changeShortPicked(kind: String, on: Boolean) = setFlag("short_$kind", on)
     /** Lock keys whose coin-unlock time is shown in the notification: websites plus the two Vault clips. */
-    fun unlockKeys(): List<String> = blockedSites() + listOf("short:yt", "short:ig")
+    fun unlockKeys(): List<String> = blockedSites() + listOf("short:yt", "short:ig", "yt:fun")
+    /** v157: YouTube study gate. Videos of a studied chapter are free, an unstudied chapter must be studied first, every other video costs coins. A commitment: off waits for midnight. */
+    val ytGateOn: Boolean get() { applyDue(); return flag("yt_gate", true) }
+    fun changeYtGate(on: Boolean) {
+        if (!sp.contains("yt_gate")) setFlag("yt_gate", true)
+        commitFlag("opt:yt_gate", "yt_gate", on, def = true)
+    }
     /** Live Shorts / Reels counter over the app (default on; needs Draw over other apps). */
     var optCounter: Boolean get() = flag("opt_counter", true); set(v) = setFlag("opt_counter", v)
 

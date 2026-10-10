@@ -182,8 +182,8 @@ class BlockActivity : ComponentActivity() {
 
     private fun goHome() {
         // Shorts / Reels lock: go to the app's main screen (home feed), not into Shorts/Reels and not the phone home screen
-        if (target.startsWith("short:")) {
-            val pkgs = if (target.removePrefix("short:") == "yt")
+        if (target.startsWith("short:") || target.startsWith("yt:") || target.startsWith("ytstudy:")) {
+            val pkgs = if (target != "short:ig")
                 listOf("com.google.android.youtube", "app.revanced.android.youtube", "com.vanced.android.youtube")
             else listOf("com.instagram.android")
             val intent = pkgs.firstNotNullOfOrNull { packageManager.getLaunchIntentForPackage(it) }
@@ -222,7 +222,7 @@ class BlockActivity : ComponentActivity() {
         if (opened) return
         opened = true
         launching = true       // ← tell onStop not to destroy us mid-launch
-        if (!target.startsWith("site:") && !target.startsWith("short:")) packageManager.getLaunchIntentForPackage(target)?.let {
+        if (!target.startsWith("site:") && !target.startsWith("short:") && !target.startsWith("yt:")) packageManager.getLaunchIntentForPackage(target)?.let {
             startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
         finishAndRemoveTask()
@@ -261,6 +261,10 @@ fun BlockScreen(
     onUnlocked: () -> Unit,
     vm: BlockViewModel = hiltViewModel(),
 ) {
+    if (pkg.startsWith("ytstudy:")) {
+        StudyFirstPage(chapter = pkg.removePrefix("ytstudy:"), onHome = onHome, onQuests = onQuests)
+        return
+    }
     if (funLimit) {
         FunLimitPage(pkg = pkg, onHome = onHome, onQuests = onQuests)
         return
@@ -270,11 +274,11 @@ fun BlockScreen(
     val player by vm.player.collectAsStateWithLifecycle()
     val rule = blocked.firstOrNull { it.packageName == pkg }
     val label = remember(pkg) {
-        if (pkg.startsWith("site:")) pkg.removePrefix("site:") else if (pkg.startsWith("short:")) (pseudoLabel(pkg) ?: pkg) else runCatching {
+        if (pkg.startsWith("site:")) pkg.removePrefix("site:") else if (pkg.startsWith("short:") || pkg.startsWith("yt:")) (pseudoLabel(pkg) ?: pkg) else runCatching {
             ctx.packageManager.getApplicationLabel(ctx.packageManager.getApplicationInfo(pkg, 0)).toString()
         }.getOrDefault(pkg)
     }
-    val rate = remember { vm.rate() }
+    val rate = remember { if (pkg == "yt:fun") com.krishna.questblock.data.YT_FUN_RATE_PER_5 else vm.rate() }
     val holdSteps = remember { vm.holdSeconds() * 10 }
     val quotesOn = remember { vm.showQuotes() }
     // the streak line only appears when there really is a streak
@@ -305,7 +309,7 @@ fun BlockScreen(
     val notifOk = remember { com.krishna.questblock.util.Perms.notificationsOk(ctx) }
 
     // Already unlocked: exit immediately — single tap scenario covered here too
-    val isSite = pkg.startsWith("site:") || pkg.startsWith("short:")
+    val isSite = pkg.startsWith("site:") || pkg.startsWith("short:") || pkg.startsWith("yt:")
     var siteUntil by remember(pkg, nonce) { mutableLongStateOf(if (isSite) vm.siteUnlockedUntil(lockKeyOf(pkg)) else 0L) }
     val unlockedUntil = if (isSite) siteUntil else (rule?.unlockedUntil ?: 0L)
     LaunchedEffect(unlockedUntil) {

@@ -394,6 +394,18 @@ internal fun OptionalFeaturesSection(prefs: Prefs, ctx: Context) {
         }
 
         HorizontalDivider(color = ColorDivider)
+        // ── YouTube study gate ──
+        Text("📺 YouTube study gate", color = ColorText, fontWeight = FontWeight.SemiBold)
+        Text("A video of a Class 12 chapter (Physics, Chemistry, Maths) is free. Any other video costs ${com.krishna.questblock.data.YT_FUN_RATE_PER_5 / 5} coins a minute. Shorts always cost coins. Home and search stay free.",
+            style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        var ytg by remember { mutableStateOf(prefs.pendingFlag("opt:yt_gate") ?: prefs.ytGateOn) }
+        ToggleRow("Study gate on YouTube", "Reads the video title. Off waits until midnight.", ytg) {
+            prefs.changeYtGate(it)
+            ytg = prefs.pendingFlag("opt:yt_gate") ?: prefs.ytGateOn
+            note = prefs.pendingSummary()
+        }
+
+        HorizontalDivider(color = ColorDivider)
         // ── Music ──
         Text("🎧 Music", color = ColorText, fontWeight = FontWeight.SemiBold)
         Text("Music from Fun apps is paused at the limit (Rules → Pause fun music). YouTube is never paused.",

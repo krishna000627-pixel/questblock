@@ -27,6 +27,7 @@ import com.krishna.questblock.data.FunLimit
 import com.krishna.questblock.data.FunSignal
 import com.krishna.questblock.data.ShortsStats
 import com.krishna.questblock.data.StudySignal
+import com.krishna.questblock.data.YtGate
 import com.krishna.questblock.util.DebugLog
 import com.krishna.questblock.data.UsageTracker
 import com.krishna.questblock.ui.BlockActivity
@@ -124,6 +125,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         if (pkg == packageName) return
         if (pkg in BROWSERS) checkWebsite(pkg)
         if (pkg in YOUTUBE_PKGS || pkg == INSTAGRAM_PKG) checkShorts(pkg, event)
+        if (pkg in YOUTUBE_PKGS) checkYtGate(pkg, event)
         val isWindowChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
 
         if (pkg in GUARDED_PKGS) {
@@ -156,6 +158,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     }
 
     private fun markForeground(pkg: String) {
+        if (pkg !in YOUTUBE_PKGS) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytExpiryJob?.cancel() }   // coming back judges the video again
         if (kindOf(pkg) == null) { if (shortsJob != null) stopShortTimer() else CounterBubble.hide(this) }
         if (currentPkg != pkg) {
             funCutJob?.cancel(); funCutPkg = null
@@ -355,7 +358,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         scope.launch {
             val st = FunLimit.state(this@BlockerAccessibilityService, prefs)
             val locked = st.reached || prefs.funBlockedNow()
-            if (prefs.shortPicked(kind)) {
+            if (shortNeedsCoins(kind)) {
                 // picked in the Vault: needs coins to run, and no coins help once the fun limit is used up
                 if (locked) { blockShort(kind); return@launch }
                 // coin time is only used up while you are inside the clips screen: add back the time you were away
@@ -376,6 +379,9 @@ class BlockerAccessibilityService : AccessibilityService() {
             startShortTimer(kind)
         }
     }
+
+    /** Vault pick, or (YouTube) the study gate: Shorts are always fun, a chapter name in the title never frees them. */
+    private fun shortNeedsCoins(kind: String): Boolean = prefs.shortPicked(kind) || (kind == ShortsStats.YT && prefs.ytGateOn)
 
     private fun isShortForm(root: AccessibilityNodeInfo, kind: String): Boolean {
         val pkg = root.packageName?.toString() ?: return false
@@ -467,13 +473,13 @@ class BlockerAccessibilityService : AccessibilityService() {
                     showCounter(kind)
                     ticks++
                     // coin time ran out
-                    if (prefs.shortPicked(kind) && prefs.siteUnlockedUntil("short:$kind") <= System.currentTimeMillis()) {
+                    if (shortNeedsCoins(kind) && prefs.siteUnlockedUntil("short:$kind") <= System.currentTimeMillis()) {
                         showSiteBlock("short:$kind"); break
                     }
                     if (ticks % 3 == 0) {
                         val st = FunLimit.state(this@BlockerAccessibilityService, prefs, force = true)
                         val locked = st.reached || prefs.funBlockedNow()
-                        if (locked && prefs.shortPicked(kind)) { blockShort(kind); break }
+                        if (locked && shortNeedsCoins(kind)) { blockShort(kind); break }
                     }
                 }
             } finally {
@@ -489,7 +495,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     /** Remember when you left, so coin time you did not use is given back when you return. */
     private fun markClipsAway(kind: String) {
         val key = "short:$kind"
-        if (prefs.shortPicked(kind) && prefs.siteUnlockedUntil(key) > System.currentTimeMillis()) prefs.setAwayAt(key, System.currentTimeMillis())
+        if (shortNeedsCoins(kind) && prefs.siteUnlockedUntil(key) > System.currentTimeMillis()) prefs.setAwayAt(key, System.currentTimeMillis())
     }
 
     private fun stopShortTimer() {
@@ -513,6 +519,141 @@ class BlockerAccessibilityService : AccessibilityService() {
         // BACK leaves the clips screen and lands on the YouTube / Instagram page; only if the app keeps landing on clips (3rd time), go to the phone's home
         performGlobalAction(if (shortsBackCount > 2) GLOBAL_ACTION_HOME else GLOBAL_ACTION_BACK)
         maybeBedtime()
+    }
+
+    // ── v157: YouTube study gate. Judges the PLAYING video once, from its title. ──
+    // chapter studied -> free · chapter not studied -> study first · no chapter -> coins (2 a minute).
+    // Home, search and Shorts are not judged here (Shorts always pay, see shortNeedsCoins).
+    private var ytScrollAt = 0L
+    private var ytClickAt = 0L
+    private var ytLastRead = 0L
+    private var ytLatchKey = ""        // the video already judged: it is not judged again until the video changes
+    private var ytLatchFun = false
+    private var ytPendingKey = ""      // an unprompted new title waits here for a second identical read
+    private var ytSettleJob: Job? = null
+    private var ytExpiryJob: Job? = null
+    private var ytNoTitleLogAt = 0L
+
+    private class YtCand(val top: Int, val text: String, val id: String, val byId: Boolean)
+    private class YtRead(val onWatch: Boolean, val title: String?, val hint: String, val byId: Boolean)
+
+    private fun checkYtGate(pkg: String, e: AccessibilityEvent) {
+        if (!prefs.ytGateOn) return
+        val t = SystemClock.uptimeMillis()
+        when (e.eventType) {
+            // 2: scrolling (recommendations, comments, description) never judges anything, and the read after it is not trusted either
+            AccessibilityEvent.TYPE_VIEW_SCROLLED -> { ytScrollAt = t; return }
+            // a tap may start another video: for a few seconds a new title is accepted at once
+            AccessibilityEvent.TYPE_VIEW_CLICKED -> { ytClickAt = t; scheduleYtRead(pkg, 1_000L); return }
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> { scheduleYtRead(pkg, 1_000L) }
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {}
+            else -> return
+        }
+        // coin time bought for a non-study video: look again the moment it runs out
+        if (ytLatchFun && ytExpiryJob?.isActive != true) {
+            val left = prefs.siteUnlockedUntil("yt:fun") - System.currentTimeMillis()
+            if (left > 0L) armYtExpiry(left)
+        }
+        if (t - ytScrollAt < YT_SCROLL_QUIET_MS) return
+        if (t - ytLastRead < 800L) return          // 4: a burst of events is one read
+        ytLastRead = t
+        evalYtGate(pkg)
+    }
+
+    private fun scheduleYtRead(pkg: String, ms: Long) {
+        ytSettleJob?.cancel()
+        ytSettleJob = scope.launch { delay(ms); evalYtGate(pkg) }
+    }
+
+    private fun armYtExpiry(ms: Long) {
+        ytExpiryJob?.cancel()
+        ytExpiryJob = scope.launch {
+            delay(ms + 300L)
+            ytLatchKey = ""; ytPendingKey = ""
+            currentPkg?.takeIf { it in YOUTUBE_PKGS }?.let { evalYtGate(it) }
+        }
+    }
+
+    private fun evalYtGate(pkg: String) {
+        if (!prefs.ytGateOn) return
+        val now = SystemClock.uptimeMillis()
+        if (now - ytScrollAt < YT_SCROLL_QUIET_MS) { scheduleYtRead(pkg, YT_SCROLL_QUIET_MS); return }
+        val root = rootInActiveWindow ?: return
+        if (root.packageName?.toString() != pkg) return
+        if (isShortForm(root, ShortsStats.YT)) { ytLatchKey = ""; ytPendingKey = ""; return }    // 7: Shorts never use the title
+        val r = readYtWatch(root, pkg)
+        if (!r.onWatch) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; return }       // home / search: free
+        val title = r.title
+        if (title == null) {      // watch page, title not on screen (scrolled away): the verdict stays
+            if (now - ytNoTitleLogAt > 5_000L) { ytNoTitleLogAt = now; DebugLog.d("yt: watch page, no title read (keeping verdict)") }
+            return
+        }
+        val key = YtGate.key(title)
+        if (key.isEmpty() || key == ytLatchKey) { ytPendingKey = ""; return }                     // 4: same video, already judged
+        val tapped = now - ytClickAt < 6_000L
+        if (ytLatchKey.isNotEmpty() && !tapped) {
+            // another title with no tap: autoplay, or a recommendation under the player. Needs the title view and two reads.
+            if (!r.byId) return
+            if (ytPendingKey != key) { ytPendingKey = key; scheduleYtRead(pkg, 900L); return }
+        }
+        ytPendingKey = ""
+        ytLatchKey = key
+        judgeYt(title, r.hint)
+    }
+
+    /**
+     * Playing video's title: the top-most text under the player, preferring the title view (3: the id list is only a first
+     * guess, the position under the player is the fallback, and what was picked goes to the Debug log to fix the list fast).
+     * Comments, recommendations, live chat and ads are skipped.
+     */
+    private fun readYtWatch(root: AccessibilityNodeInfo, pkg: String): YtRead {
+        if (!hasIdPart(root, YT_WATCH_PARTS, 0)) return YtRead(false, null, "", false)
+        var playerBottom = 0
+        val pr = Rect()
+        for (id in YT_PLAYER_IDS) {
+            val n = root.findAccessibilityNodeInfosByViewId("$pkg:id/$id")?.firstOrNull() ?: continue
+            n.getBoundsInScreen(pr)
+            if (!pr.isEmpty) { playerBottom = pr.bottom; break }
+        }
+        val cands = ArrayList<YtCand>()
+        val br = Rect()
+        fun walk(n: AccessibilityNodeInfo?, depth: Int) {
+            if (n == null || depth > 20 || cands.size >= 60) return
+            val id = n.viewIdResourceName.orEmpty().substringAfter(":id/").lowercase()
+            if (YT_SKIP_IDS.any { id.contains(it) }) return
+            val s = n.text?.toString()
+            if (s != null && s.length >= 4 && s.any { it.isLetter() } && n.isVisibleToUser) {
+                n.getBoundsInScreen(br)
+                if (!br.isEmpty && br.top >= playerBottom - 4) cands += YtCand(br.top, s, id, id in YT_TITLE_IDS)
+            }
+            for (i in 0 until n.childCount) walk(n.getChild(i), depth + 1)
+        }
+        walk(root, 0)
+        val sorted = cands.sortedBy { it.top }
+        val pick = sorted.firstOrNull { it.byId } ?: sorted.firstOrNull()
+        if (pick == null || (!pick.byId && playerBottom == 0)) return YtRead(true, null, "", false)   // cannot place the title: do not guess
+        val hint = sorted.filter { it !== pick && it.top > pick.top }.take(3).joinToString(" | ") { it.text }
+        return YtRead(true, pick.text, hint, pick.byId)
+    }
+
+    private fun judgeYt(title: String, hint: String) {
+        val d = YtGate.decide(this, title, hint)
+        DebugLog.d("yt: '${title.take(70)}' hint='${hint.take(50)}' -> ${d.kind} ${d.chapter}")
+        ytLatchFun = d.kind == YtGate.Kind.FUN
+        when (d.kind) {
+            YtGate.Kind.FREE -> ytExpiryJob?.cancel()
+            YtGate.Kind.STUDY_FIRST -> showSiteBlock("ytstudy:${d.chapter}")
+            YtGate.Kind.FUN -> scope.launch {
+                val st = FunLimit.state(this@BlockerAccessibilityService, prefs)
+                if (st.reached || prefs.funBlockedNow()) {
+                    FunSignal.quiet = !st.reached
+                    showFunLimit("yt:fun")
+                    return@launch
+                }
+                val left = prefs.siteUnlockedUntil("yt:fun") - System.currentTimeMillis()
+                if (left > 0L) armYtExpiry(left) else showSiteBlock("yt:fun")
+            }
+        }
     }
 
     // ── v73: Bedtime mode (Digital Wellbeing). No root: the service opens Quick Settings and taps the tile, like a finger would. ──
@@ -975,6 +1116,11 @@ class BlockerAccessibilityService : AccessibilityService() {
         /** Views YouTube uses for the Shorts player (the selected "Shorts" tab is the fallback). */
         private val SHORTS_IDS = listOf("reel_recycler", "reel_player_page_container", "shorts_container")
         private const val SETTLE_MS = 180L
+        private const val YT_SCROLL_QUIET_MS = 1_500L
+        private val YT_WATCH_PARTS = listOf("watch_player", "watch_while", "watch_metadata", "player_view")
+        private val YT_PLAYER_IDS = listOf("watch_player", "player_view", "watch_while_player")
+        private val YT_TITLE_IDS = setOf("title", "video_title", "watch_title", "player_title", "metadata_title")
+        private val YT_SKIP_IDS = listOf("comment", "engagement", "related", "recommend", "shelf", "results", "live_chat", "ad_", "promo", "shorts")
         private const val RELAUNCH_GUARD_MS = 800L
         private const val SAFE_REJOIN_MS = 5 * 60_000L
         private const val USAGE_TICK_MS = 15_000L

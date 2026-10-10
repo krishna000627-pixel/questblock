@@ -3,6 +3,16 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("158.0.0", "YouTube study gate",
+        listOf(
+            "YouTube now checks the title of the video you are playing against the Class 12 chapters (Physics, Chemistry, Maths). A chapter video is free. Any other video costs 2 coins a minute (10 for 5 minutes). Home and search stay free. Offline, no AI, one hash lookup per word group. Switch: Hub, Experiments, YouTube study gate (off waits until midnight)",
+            "Titles like \"Ch 1 | One Shot | Class 12\" work too (a study word is needed with a bare chapter number, so \"Naruto Ch 5\" stays fun). A subject word picks the subject. ALL CAPS and Hinglish words are fine. Class 11 titles are plain fun",
+            "Scrolling recommendations, description or comments never judges a video. A video is judged once, and the same video never charges twice. Shorts always cost coins, a chapter name in the title does not free them",
+        )),
+    VersionEntry("157.0.0", "Chapter checker for the study jail",
+        listOf(
+            "New Termux tool (termux/chapter_check.sh with termux/chapters_12.txt): checks a YouTube title against the Class 12 chapter list. Offline, no AI, no database. Replaced by the in-app YouTube study gate in v158",
+        )),
     VersionEntry("156.0.0", "Coding clock counts down",
         listOf(
             "Coding apps: the clock in the notification (v155) now counts down the unlock time that app has left, instead of counting up. A coding app with no unlock time shows only the motivation line",

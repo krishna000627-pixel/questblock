@@ -50,6 +50,7 @@ object ShortsStats {
 fun pseudoLabel(key: String): String? = when (key) {
     "short:yt" -> "YouTube Shorts"
     "short:ig" -> "Instagram Reels"
+    "yt:fun" -> "YouTube (non-study)"
     else -> null
 }
 

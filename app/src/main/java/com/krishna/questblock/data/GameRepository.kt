@@ -606,7 +606,7 @@ class GameRepository @Inject constructor(
 
     suspend fun unlock(pkg: String, blocks: Int): UnlockResult = unlockMutex.withLock {
         if (pkg.startsWith("site:")) return@withLock unlockSite(pkg.removePrefix("site:"), blocks)
-        if (pkg.startsWith("short:")) return@withLock unlockSite(pkg, blocks)
+        if (pkg.startsWith("short:") || pkg.startsWith("yt:")) return@withLock unlockSite(pkg, blocks)
         val b = blocks.coerceIn(1, MAX_UNLOCK_BLOCKS)
         val up = android.os.SystemClock.elapsedRealtime()
         var label = ""
@@ -655,9 +655,16 @@ class GameRepository @Inject constructor(
         val b = blocks.coerceIn(1, MAX_UNLOCK_BLOCKS)
         var result = UnlockResult(ok = false)
         val pct = routineSurchargePct()
+        val up = android.os.SystemClock.elapsedRealtime()
         db.withTransaction {
+            // 4: two taps / two lock pages for the same video never charge twice
+            val prev = lastPaidAt[domain]
+            if (domain.startsWith("yt:") && prev != null && up - prev < DOUBLE_PAY_WINDOW_MS && prefs.siteUnlockedUntil(domain) > System.currentTimeMillis()) {
+                result = UnlockResult(ok = true, charged = false)
+                return@withTransaction
+            }
             val p = playerDao.get() ?: Player().also { playerDao.upsert(it) }
-            val cost = withSurcharge(unlockCost(b, prefs.ratePer5, null), pct)
+            val cost = withSurcharge(unlockCost(b, if (domain == "yt:fun") YT_FUN_RATE_PER_5 else prefs.ratePer5, null), pct)
             if (playerDao.spend(cost) == 0) {
                 result = UnlockResult(ok = false, cost = cost, before = p.coins, after = p.coins)
                 return@withTransaction
@@ -665,6 +672,7 @@ class GameRepository @Inject constructor(
             val now = System.currentTimeMillis()
             val ms = b * 5 * 60_000L
             prefs.setSiteUnlockedUntil(domain, maxOf(now, prefs.siteUnlockedUntil(domain)) + ms)
+            lastPaidAt[domain] = up
             logCoin(-cost, "Unlock", "${pseudoLabel(domain) ?: domain} \u00b7 ${fmtBlocks(b)}")
             result = UnlockResult(ok = true, charged = true, cost = cost, before = p.coins, after = p.coins - cost, minutes = b * 5, msBought = ms)
         }

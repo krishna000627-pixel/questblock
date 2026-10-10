@@ -29,7 +29,7 @@ import com.krishna.questblock.data.FunLimit
 fun FunLimitPage(pkg: String, onHome: () -> Unit, onQuests: () -> Unit) {
     val ctx = LocalContext.current
     val label = remember(pkg) {
-        if (pkg.startsWith("site:")) pkg.removePrefix("site:") else if (pkg.startsWith("short:")) (com.krishna.questblock.data.pseudoLabel(pkg) ?: pkg) else runCatching {
+        if (pkg.startsWith("site:")) pkg.removePrefix("site:") else if (pkg.startsWith("short:") || pkg.startsWith("yt:")) (com.krishna.questblock.data.pseudoLabel(pkg) ?: pkg) else runCatching {
             ctx.packageManager.getApplicationLabel(ctx.packageManager.getApplicationInfo(pkg, 0)).toString()
         }.getOrDefault(pkg)
     }
