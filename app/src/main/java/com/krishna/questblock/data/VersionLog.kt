@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("164.0.0", "YouTube gate: videos playing in the home feed",
+        listOf(
+            "Fix: a video that autoplays inside the YouTube home feed (the card with Mute and captions buttons) was treated as home and never judged, so a fun video played free. It is now judged by the title under the player, like any other video. The Debug log shows \"yt: feed preview playing\"",
+        )),
     VersionEntry("163.0.0", "YouTube gate: small player, full screen, ads",
         listOf(
             "Small player: a video playing in YouTube's small player on the home page is judged too, from the media session. Full screen: the video is judged even though YouTube shows no buttons there. When coin time runs out the lock comes back with the title already known, so it works in full screen as well",

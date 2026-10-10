@@ -545,6 +545,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     private class YtRead(
         val onWatch: Boolean, val title: String?, val hint: String, val byId: Boolean, val playerFound: Boolean = false,
         val ad: Boolean = false, val home: Boolean = false, val short: Boolean = false, val sample: String = "", val anchorMissing: Boolean = false,
+        val preview: Boolean = false,
     )
 
     private fun checkYtGate(pkg: String, e: AccessibilityEvent) {
@@ -602,9 +603,9 @@ class BlockerAccessibilityService : AccessibilityService() {
         val playing = sess?.playing == true
         // YouTube home with nothing playing: free, and the next video is judged fresh. A video playing in the small player (or in
         // full screen, where YouTube shows no buttons) is still a video: it is judged from the media session.
-        if (r.home && !playing) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytNoTitleCount = 0; ytUnjudgedSince = 0L; return }
+        if (r.home && !playing && !r.preview) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytNoTitleCount = 0; ytUnjudgedSince = 0L; return }
         if (sess == null && ytLatchKey.isNotEmpty() && now - ytScrollAt < YT_SCROLL_QUIET_MS) { scheduleYtRead(pkg, YT_SCROLL_QUIET_MS); return }   // screen reads wait for the scroll to stop; the session does not need to
-        if (!r.onWatch && !playing) {      // search, channel, a page still loading: free, the verdict is kept
+        if (!r.onWatch && !playing && !r.preview) {      // search, channel, a page still loading: free, the verdict is kept
             if (now - ytNotWatchLogAt > 10_000L) { ytNotWatchLogAt = now; DebugLog.d("yt: not a watch page, labels=[${r.sample}]") }
             return
         }
@@ -676,7 +677,13 @@ class BlockerAccessibilityService : AccessibilityService() {
         if (has { it == "remix" }) return YtRead(false, null, "", false, short = true, sample = sample)
         val ad = nodes.any { it.label.length <= 40 && YT_AD_RE.containsMatchIn(it.label) }
         val onWatch = has { it.startsWith("dislike") } && has { it == "share" || it.startsWith("comment") }
-        if (!onWatch) return YtRead(false, null, "", false, ad = ad, home = has { it == "home" } && has { it == "shorts" }, sample = sample)
+        if (!onWatch) {
+            val home = has { it == "home" } && has { it == "shorts" }
+            // v164: a video playing inside the home feed (Mute / captions buttons on the card) is a video too: judge it by the title under it
+            val pv = if (home) feedPreviewTitle(nodes) else null
+            if (pv != null) DebugLog.d("yt: feed preview playing, title='${pv.first.orEmpty().take(60)}'")
+            return YtRead(false, pv?.first, "", pv != null, playerFound = pv != null, ad = ad, home = home, sample = sample, preview = pv != null)
+        }
         val anchor = nodes.filter { val l = it.label.lowercase(); l.startsWith("subscribe") && l.length <= 14 }.minByOrNull { it.top }
             ?: nodes.filter { it.label.lowercase().startsWith("subscribe to") }.minByOrNull { it.top }
             ?: return YtRead(true, null, "", false, playerFound = true, ad = ad, sample = sample, anchorMissing = true)   // title row scrolled off
@@ -689,6 +696,17 @@ class BlockerAccessibilityService : AccessibilityService() {
             ?.label?.substringAfter(" to ")?.trimEnd('.', ' ').orEmpty()
         DebugLog.d("yt: read title='${pick.label.take(60)}' channel='${hint.take(30)}' ad=$ad")
         return YtRead(true, pick.label, hint, true, playerFound = true, ad = ad, sample = sample)
+    }
+
+    /** v164: the home feed plays a muted/unmuted preview inside the card. It has Mute and captions buttons; the title is the first plain text under them. */
+    private fun feedPreviewTitle(nodes: List<YtNode>): Pair<String?, String>? {
+        val ctl = nodes.filter { YT_PREVIEW_RE.containsMatchIn(it.label) }.minByOrNull { it.top } ?: return null
+        val below = nodes.filter {
+            it.top >= ctl.bottom && it.top - ctl.bottom <= 800 && it.label.length >= 4 && it.label.any { c -> c.isLetter() } &&
+                !YT_DUR_RE.matches(it.label) && !YT_CHROME_RE.containsMatchIn(it.label)
+        }.sortedBy { it.top }
+        val pick = below.firstOrNull { !YT_META_RE.containsMatchIn(it.label) } ?: below.firstOrNull()
+        return Pair(pick?.label, "")
     }
 
     /** The video must not keep playing behind (or after) a lock. */
@@ -1203,6 +1221,9 @@ class BlockerAccessibilityService : AccessibilityService() {
         private const val YT_AD_GRACE_MS = 8_000L
         private val YT_AD_RE = Regex("(?i)^(skip ads?|visit advertiser|ad\\s*(\u00B7|:|\\d))")
         private val YT_META_RE = Regex("(?i)(^[@#])|(\\b(views?|likes?|subscribers?|ago|watching|premiered|streamed)\\b)|(^\\W*more$)|^subscribe")
+        private val YT_PREVIEW_RE = Regex("(?i)^((un)?mute\\b|(turn (on|off) )?(closed )?captions?\\b|subtitles?\\b|cc$)")
+        private val YT_DUR_RE = Regex("^\\d{1,2}:\\d{2}(:\\d{2})?$")
+        private val YT_CHROME_RE = Regex("(?i)\\b(progress|seek bar|scrubber|video player|full ?screen)\\b")
         private val YT_SKIP_IDS = listOf("comment", "engagement", "related", "recommend", "shelf", "results", "live_chat", "ad_", "promo", "shorts")
         private const val RELAUNCH_GUARD_MS = 800L
         private const val SAFE_REJOIN_MS = 5 * 60_000L
