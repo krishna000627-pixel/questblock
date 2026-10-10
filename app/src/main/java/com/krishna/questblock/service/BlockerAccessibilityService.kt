@@ -158,7 +158,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     }
 
     private fun markForeground(pkg: String) {
-        if (pkg !in YOUTUBE_PKGS) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytExpiryJob?.cancel(); ytSettleJob?.cancel(); ytGraceJob?.cancel(); ytTapTitle = "" }   // coming back judges the video again
+        if (pkg !in YOUTUBE_PKGS) { if (ytLatchKey.isNotEmpty()) DebugLog.d("yt: verdict cleared, left YouTube for $pkg"); ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytExpiryJob?.cancel(); ytSettleJob?.cancel(); ytGraceJob?.cancel(); ytTapTitle = "" }   // coming back judges the video again
         if (kindOf(pkg) == null) { if (shortsJob != null) stopShortTimer() else CounterBubble.hide(this) }
         if (currentPkg != pkg) {
             funCutJob?.cancel(); funCutPkg = null
@@ -542,6 +542,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     private var ytTapTitle = ""        // v165: the title of the card you tapped (home, search or recommendations)
     private var ytTapAt = 0L
     private var ytGraceJob: Job? = null
+    private var ytSrcLog = ""
 
     private class YtNode(val label: String, val top: Int, val bottom: Int)
     /** What one read of the YouTube screen found. [byId] now means "the title was placed from the Subscribe row" (this YouTube build has no view ids). */
@@ -566,7 +567,9 @@ class BlockerAccessibilityService : AccessibilityService() {
             AccessibilityEvent.TYPE_VIEW_CLICKED -> {
                 ytClickAt = t
                 // v165: remember which video card was tapped; its title is the verdict source (no ad or scroll guessing)
-                tappedTitle(e.source)?.let { ytTapTitle = it; ytTapAt = t; DebugLog.d("yt: tapped '${it.take(60)}'") }
+                val card = tappedTitle(e.source)
+                if (card != null) { ytTapTitle = card; ytTapAt = t; DebugLog.d("yt: tapped '${card.take(60)}'") }
+                else DebugLog.d("yt: click, no card title (source=${e.source != null})")
                 scheduleYtRead(pkg, 1_000L); return
             }
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> { scheduleYtRead(pkg, 1_000L) }
@@ -615,18 +618,14 @@ class BlockerAccessibilityService : AccessibilityService() {
         if (r.home && !playing && !r.preview) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytNoTitleCount = 0; ytUnjudgedSince = 0L; return }
         if (sess == null && ytLatchKey.isNotEmpty() && now - ytScrollAt < YT_SCROLL_QUIET_MS) { scheduleYtRead(pkg, YT_SCROLL_QUIET_MS); return }   // screen reads wait for the scroll to stop; the session does not need to
         if (!r.onWatch && !playing && !r.preview) {      // search, channel, a page still loading: free, the verdict is kept
-            if (now - ytNotWatchLogAt > 10_000L) { ytNotWatchLogAt = now; DebugLog.d("yt: not a watch page, labels=[${r.sample}]") }
+            if (now - ytNotWatchLogAt > 10_000L) { ytNotWatchLogAt = now; DebugLog.d("yt: not a watch page, session='${sess?.title.orEmpty().take(60)}' playing=$playing labels=[${r.sample}]") }
             return
         }
-        if (r.ad && !tapFresh) {            // an ad is playing in the player: its texts may not be the video's title, so wait a few seconds only
-            if (ytAdSince == 0L) ytAdSince = now
-            if (now - ytAdSince < YT_AD_GRACE_MS) {
-                if (now - ytNotWatchLogAt > 4_000L) { ytNotWatchLogAt = now; DebugLog.d("yt: ad playing, waiting (max ${YT_AD_GRACE_MS / 1000} s)") }
-                scheduleYtRead(pkg, 1_500L)
-                return
-            }
-        } else ytAdSince = 0L
+        // v168: no ad waiting. A tapped video is judged by the card you tapped, any other by the media session title.
         val sTitle = sess?.title.orEmpty()
+        // v167: every source of the title in the Debug log (media session, screen, tapped card), written when any of them changes
+        val srcLog = "session='${sTitle.take(70)}' playing=$playing screen='${r.title.orEmpty().take(70)}' tapped='${if (tapFresh) ytTapTitle.take(70) else ""}'"
+        if (srcLog != ytSrcLog) { ytSrcLog = srcLog; DebugLog.d("yt: src $srcLog") }
         val title = if (tapFresh) ytTapTitle else sTitle.ifEmpty { r.title }
         val hint = if (tapFresh) "" else if (sTitle.isNotEmpty()) sess?.artist.orEmpty() else r.hint
         val strong = tapFresh || sTitle.isNotEmpty() || r.byId
@@ -655,7 +654,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         ytPendingKey = ""
         ytLatchKey = key
         DebugLog.d("yt: title from ${if (tapFresh) "tapped card" else if (sTitle.isNotEmpty()) "media session" else "screen"}")
-        judgeYt(title, hint, if (tapFresh) 0L else YT_GRACE_MS)   // v165: a video that started by itself gets 10 s before any lock
+        judgeYt(title, hint, if (tapFresh || now - ytClickAt < YT_TAP_TITLE_MS) 0L else YT_GRACE_MS)   // v165: a video that started by itself gets 10 s before any lock
     }
 
     /**

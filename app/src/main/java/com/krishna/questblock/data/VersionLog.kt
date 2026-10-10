@@ -3,6 +3,16 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("168.0.0", "YouTube gate: no ad waiting, any tap skips the 10 s",
+        listOf(
+            "Removed ad waiting: the gate no longer pauses its judging when it thinks an ad is playing (it also mistook Sponsored cards for ads). The title comes from the card you tapped, otherwise from the media session",
+            "Any tap in YouTube within 12 seconds before a video starts counts as you starting it, even when the card title could not be read, so the 10 s wait is only for videos that start by themselves",
+            "Debug log: every tap writes a yt: tapped or yt: click line, and yt: verdict cleared names the app that cleared a video's verdict",
+        )),
+    VersionEntry("167.0.0", "Debug log shows the media session title",
+        listOf(
+            "The Debug log now writes the video title from every source: the media session (with playing yes/no), the screen and the tapped card (lines starting with yt: src). The not-a-watch-page line shows the media session title too. No change in how the YouTube gate works",
+        )),
     VersionEntry("166.0.0", "YouTube gate: taps now reach the service",
         listOf(
             "Fix: the service never received tap events (the accessibility config listed no click events), so the tapped-video title from v165 was never read and every video waited 10 seconds. Taps are now received: a video you tap is judged at once by the card you tapped, and only videos that start by themselves wait 10 seconds. The Debug log shows \"yt: tapped\". After installing, turn the QuestBlock accessibility service off and on once if taps still do not log",
