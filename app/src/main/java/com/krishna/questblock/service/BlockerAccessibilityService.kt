@@ -158,7 +158,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     }
 
     private fun markForeground(pkg: String) {
-        if (pkg !in YOUTUBE_PKGS) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytExpiryJob?.cancel() }   // coming back judges the video again
+        if (pkg !in YOUTUBE_PKGS) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytExpiryJob?.cancel(); ytSettleJob?.cancel() }   // coming back judges the video again
         if (kindOf(pkg) == null) { if (shortsJob != null) stopShortTimer() else CounterBubble.hide(this) }
         if (currentPkg != pkg) {
             funCutJob?.cancel(); funCutPkg = null
@@ -536,8 +536,12 @@ class BlockerAccessibilityService : AccessibilityService() {
     private var ytNoTitleCount = 0
     private var ytNotWatchLogAt = 0L
 
-    private class YtCand(val top: Int, val text: String, val id: String, val byId: Boolean)
-    private class YtRead(val onWatch: Boolean, val title: String?, val hint: String, val byId: Boolean, val playerFound: Boolean = false)
+    private class YtNode(val label: String, val top: Int, val bottom: Int)
+    /** What one read of the YouTube screen found. [byId] now means "the title was placed from the Subscribe row" (this YouTube build has no view ids). */
+    private class YtRead(
+        val onWatch: Boolean, val title: String?, val hint: String, val byId: Boolean, val playerFound: Boolean = false,
+        val ad: Boolean = false, val home: Boolean = false, val short: Boolean = false, val sample: String = "",
+    )
 
     private fun checkYtGate(pkg: String, e: AccessibilityEvent) {
         if (!prefs.ytGateOn) return
@@ -583,20 +587,22 @@ class BlockerAccessibilityService : AccessibilityService() {
         val root = rootInActiveWindow ?: return
         if (root.packageName?.toString() != pkg) return
         if (isShortForm(root, ShortsStats.YT)) { ytLatchKey = ""; ytPendingKey = ""; return }    // 7: Shorts never use the title
-        val r = readYtWatch(root, pkg)
-        if (!r.onWatch) {                                                                          // home / search: free
-            ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytNoTitleCount = 0
-            if (now - ytNotWatchLogAt > 10_000L) {
-                ytNotWatchLogAt = now
-                val ids = LinkedHashSet<String>(); sampleAllIds(root, ids, 0)
-                DebugLog.d("yt: not a watch page, ids=$ids")
-            }
+        val r = readYtWatch(root)
+        if (r.short) { ytLatchKey = ""; ytPendingKey = ""; return }
+        if (r.home) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytNoTitleCount = 0; return }   // YouTube home: free, and the next video is judged fresh
+        if (!r.onWatch) {      // search, channel, a page still loading: free, the verdict is kept
+            if (now - ytNotWatchLogAt > 10_000L) { ytNotWatchLogAt = now; DebugLog.d("yt: not a watch page, labels=[${r.sample}]") }
+            return
+        }
+        if (r.ad) {            // an ad is playing in the player: its texts are not the video's title
+            if (now - ytNotWatchLogAt > 4_000L) { ytNotWatchLogAt = now; DebugLog.d("yt: ad playing, not judging") }
+            scheduleYtRead(pkg, 1_500L)
             return
         }
         val title = r.title
         if (title == null) {
-            // Player on screen but no title text read. Scrolled away after a verdict: keep it. Never judged: after 3 reads it is treated as fun (locked).
-            if (now - ytNoTitleLogAt > 5_000L) { ytNoTitleLogAt = now; DebugLog.d("yt: watch page, no title read (player=${r.playerFound}, verdict='${ytLatchKey.take(30)}')") }
+            // Video page but no title read. Scrolled away after a verdict: keep it. Never judged: after 3 reads it is treated as fun (locked).
+            if (now - ytNoTitleLogAt > 5_000L) { ytNoTitleLogAt = now; DebugLog.d("yt: watch page, no title read, labels=[${r.sample}] verdict='${ytLatchKey.take(30)}'") }
             if (r.playerFound && ytLatchKey.isEmpty()) {
                 ytNoTitleCount++
                 if (ytNoTitleCount >= 3) { ytNoTitleCount = 0; ytLatchKey = "?unreadable"; judgeYt("", "") } else scheduleYtRead(pkg, 900L)
@@ -608,7 +614,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         if (key.isEmpty() || key == ytLatchKey) { ytPendingKey = ""; return }                     // 4: same video, already judged
         val tapped = now - ytClickAt < 6_000L
         if (ytLatchKey.isNotEmpty() && !tapped) {
-            // another title with no tap: autoplay, or a recommendation under the player. Needs the title view and two reads.
+            // another title with no tap: autoplay, or a recommendation. Needs the title placed from the Subscribe row and two reads.
             if (!r.byId) return
             if (ytPendingKey != key) { ytPendingKey = key; scheduleYtRead(pkg, 900L); return }
         }
@@ -618,46 +624,46 @@ class BlockerAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * Playing video's title: the top-most text under the player, preferring the title view (3: the id list is only a first
-     * guess, the position under the player is the fallback, and what was picked goes to the Debug log to fix the list fast).
-     * Comments, recommendations, live chat and ads are skipped.
+     * v160: this YouTube build gives the service no view ids, only labels, so everything is found from labels and positions.
+     *  - video page   = a "Dislike" label plus "Share" or "Comments"
+     *  - YouTube home = the "Home" and "Shorts" tabs are on screen
+     *  - the title    = the text right above the Subscribe row (the channel / views / likes line is skipped)
+     *  - an ad        = "Skip ad", "Visit advertiser", "Ad 1 of 2" style labels in the player: not judged while it plays
+     *    (ad cards in the recommendation list sit below the Subscribe row, so they are never read as the title)
      */
-    private fun readYtWatch(root: AccessibilityNodeInfo, pkg: String): YtRead {
-        if (!hasIdPart(root, YT_WATCH_PARTS, 0)) return YtRead(false, null, "", false)
-        var playerBottom = 0
-        val pr = Rect()
-        for (id in YT_PLAYER_IDS) {
-            val n = root.findAccessibilityNodeInfosByViewId("$pkg:id/$id")?.firstOrNull() ?: continue
-            n.getBoundsInScreen(pr)
-            if (!pr.isEmpty) { playerBottom = pr.bottom; break }
-        }
-        val cands = ArrayList<YtCand>()
+    private fun readYtWatch(root: AccessibilityNodeInfo): YtRead {
+        val nodes = ArrayList<YtNode>()
         val br = Rect()
         fun walk(n: AccessibilityNodeInfo?, depth: Int) {
-            if (n == null || depth > 20 || cands.size >= 60) return
+            if (n == null || depth > 24 || nodes.size >= 160) return
             val id = n.viewIdResourceName.orEmpty().substringAfter(":id/").lowercase()
-            if (YT_SKIP_IDS.any { id.contains(it) }) return
-            val s = (n.text ?: n.contentDescription)?.toString()
-            if (s != null && s.length >= 4 && s.any { it.isLetter() } && n.isVisibleToUser) {
+            if (id.isNotEmpty() && YT_SKIP_IDS.any { id.contains(it) }) return
+            val s = (n.text ?: n.contentDescription)?.toString()?.trim()
+            if (!s.isNullOrEmpty() && n.isVisibleToUser) {
                 n.getBoundsInScreen(br)
-                if (!br.isEmpty && br.top >= playerBottom - 4) cands += YtCand(br.top, s, id, id in YT_TITLE_IDS)
+                if (!br.isEmpty) nodes += YtNode(s, br.top, br.bottom)
             }
             for (i in 0 until n.childCount) walk(n.getChild(i), depth + 1)
         }
         walk(root, 0)
-        val sorted = cands.sortedBy { it.top }
-        val pick = sorted.firstOrNull { it.byId } ?: sorted.firstOrNull()
-        if (pick == null || (!pick.byId && playerBottom == 0)) return YtRead(true, null, "", false, playerBottom > 0)   // cannot place the title: do not guess
-        val hint = sorted.filter { it !== pick && it.top > pick.top }.take(3).joinToString(" | ") { it.text }
-        DebugLog.d("yt: read id=${pick.id} byId=${pick.byId} top=${pick.top} playerBottom=$playerBottom text='${pick.text.take(50)}'")
-        return YtRead(true, pick.text, hint, pick.byId, playerBottom > 0)
-    }
-
-    /** For the Debug log: a few view ids of this window. */
-    private fun sampleAllIds(n: AccessibilityNodeInfo?, out: MutableSet<String>, depth: Int) {
-        if (n == null || depth > 14 || out.size >= 14) return
-        n.viewIdResourceName?.substringAfter(":id/")?.let { out += it }
-        for (i in 0 until n.childCount) sampleAllIds(n.getChild(i), out, depth + 1)
+        fun has(p: (String) -> Boolean) = nodes.any { p(it.label.lowercase()) }
+        val sample = nodes.take(12).joinToString(" | ") { it.label.take(24) }
+        if (has { it == "remix" }) return YtRead(false, null, "", false, short = true, sample = sample)
+        val onWatch = has { it.startsWith("dislike") } && has { it == "share" || it.startsWith("comment") }
+        if (!onWatch) return YtRead(false, null, "", false, home = has { it == "home" } && has { it == "shorts" }, sample = sample)
+        val ad = nodes.any { it.label.length <= 40 && YT_AD_RE.containsMatchIn(it.label) }
+        val anchor = nodes.filter { val l = it.label.lowercase(); l.startsWith("subscribe") && l.length <= 14 }.minByOrNull { it.top }
+            ?: nodes.filter { it.label.lowercase().startsWith("subscribe to") }.minByOrNull { it.top }
+            ?: return YtRead(true, null, "", false, playerFound = true, ad = ad, sample = sample)
+        val above = nodes.filter {
+            it.bottom <= anchor.top + 4 && anchor.top - it.bottom <= 500 && it.label.length >= 4 && it.label.any { c -> c.isLetter() }
+        }
+        val pick = above.filter { !YT_META_RE.containsMatchIn(it.label) }.ifEmpty { above }.maxByOrNull { it.bottom }
+            ?: return YtRead(true, null, "", false, playerFound = true, ad = ad, sample = sample)
+        val hint = nodes.firstOrNull { it.label.startsWith("Subscribe to ", ignoreCase = true) }
+            ?.label?.substringAfter(" to ")?.trimEnd('.', ' ').orEmpty()
+        DebugLog.d("yt: read title='${pick.label.take(60)}' channel='${hint.take(30)}' ad=$ad")
+        return YtRead(true, pick.label, hint, true, playerFound = true, ad = ad, sample = sample)
     }
 
     private fun judgeYt(title: String, hint: String) {
@@ -1141,9 +1147,8 @@ class BlockerAccessibilityService : AccessibilityService() {
         private val SHORTS_IDS = listOf("reel_recycler", "reel_player_page_container", "shorts_container")
         private const val SETTLE_MS = 180L
         private const val YT_SCROLL_QUIET_MS = 1_500L
-        private val YT_WATCH_PARTS = listOf("watch_", "player", "metadata", "time_bar")
-        private val YT_PLAYER_IDS = listOf("watch_player", "player_view", "watch_while_player", "player_container", "player_layout")
-        private val YT_TITLE_IDS = setOf("title", "video_title", "watch_title", "player_title", "metadata_title")
+        private val YT_AD_RE = Regex("(?i)^(skip ads?|visit advertiser|ad\\s*(\u00B7|:|\\d))")
+        private val YT_META_RE = Regex("(?i)(^[@#])|(\\b(views?|likes?|subscribers?|ago|watching|premiered|streamed)\\b)|(^\\W*more$)|^subscribe")
         private val YT_SKIP_IDS = listOf("comment", "engagement", "related", "recommend", "shelf", "results", "live_chat", "ad_", "promo", "shorts")
         private const val RELAUNCH_GUARD_MS = 800L
         private const val SAFE_REJOIN_MS = 5 * 60_000L

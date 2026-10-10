@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("160.0.0", "YouTube gate works without view ids",
+        listOf(
+            "Fix: the YouTube study gate never saw a video page, because this YouTube build shows no view ids to the service. It now finds the video page from its buttons (Dislike, Share, Comments), YouTube home from the Home and Shorts tabs, and the title from the text right above the Subscribe row",
+            "Ads: while an ad plays in the player (Skip ad, Visit advertiser, Ad 1 of 2) nothing is judged and the video is judged when the ad ends. Ad cards in the list are never read as the title",
+        )),
     VersionEntry("159.0.0", "YouTube gate reads more title views",
         listOf(
             "The YouTube study gate now also reads titles that YouTube shows as a description instead of text, and spots the video page more widely. A video page whose title cannot be read at all is treated as fun and asks for coins. The Debug log shows what was read (lines starting with yt:)",
