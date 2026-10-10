@@ -71,25 +71,37 @@ fun loadThemeMode(ctx: Context) {
 /** Shop theme equipped right now ("default", "theme_sunset", ...). Recolours the whole app live. */
 var ShopTheme by mutableStateOf("default")
 
-/** accent + 5 colours each for dark and light: background, surface, surface-high, card, divider */
-private class ShopPalette(val accent: Long, val dark: LongArray, val light: LongArray)
+/** accent + 5 colours each for dark and light: background, surface, surface-high, card, divider.
+ *  Tones (also one set each for dark and light): text, muted text, warning (fun limit lines), coin, second accent. */
+private class ShopPalette(val accent: Long, val dark: LongArray, val light: LongArray, val dTone: LongArray, val lTone: LongArray)
 private val SHOP_PALETTES = mapOf(
     "theme_sunset" to ShopPalette(0xFFFF7A59,
         longArrayOf(0xFF1A0F12, 0xFF251519, 0xFF331D22, 0xFF2B191E, 0xFF3D2329),
-        longArrayOf(0xFFFFF1EA, 0xFFFFFFFF, 0xFFFFE0D2, 0xFFFFFFFF, 0xFFF3D3C6)),
+        longArrayOf(0xFFFFF1EA, 0xFFFFFFFF, 0xFFFFE0D2, 0xFFFFFFFF, 0xFFF3D3C6),
+        longArrayOf(0xFFFCEEE8, 0xFFA07A6C, 0xFFFF9A59, 0xFFFFC27A, 0xFFFF5C8A),
+        longArrayOf(0xFF2A1812, 0xFF8A6A5E, 0xFFC8561F, 0xFFB4651A, 0xFFD43F6B)),
     "theme_ocean" to ShopPalette(0xFF3FA7FF,
         longArrayOf(0xFF08121C, 0xFF0E1C2B, 0xFF16293D, 0xFF12243A, 0xFF1D3350),
-        longArrayOf(0xFFE8F2FB, 0xFFFFFFFF, 0xFFD8E8F7, 0xFFFFFFFF, 0xFFC9DBEC)),
+        longArrayOf(0xFFE8F2FB, 0xFFFFFFFF, 0xFFD8E8F7, 0xFFFFFFFF, 0xFFC9DBEC),
+        longArrayOf(0xFFE6F1FB, 0xFF6A87A6, 0xFF4DD0E1, 0xFF8FD3FF, 0xFF5C8CFF),
+        longArrayOf(0xFF0F1D2B, 0xFF5F7C99, 0xFF0A8CA0, 0xFF2A7FC4, 0xFF3A5FD6)),
     "theme_forest" to ShopPalette(0xFF6BCB77,
         longArrayOf(0xFF0B140E, 0xFF121F16, 0xFF1B2D21, 0xFF16261B, 0xFF22372A),
-        longArrayOf(0xFFEDF5EE, 0xFFFFFFFF, 0xFFDDEBDF, 0xFFFFFFFF, 0xFFCFE0D2)),
+        longArrayOf(0xFFEDF5EE, 0xFFFFFFFF, 0xFFDDEBDF, 0xFFFFFFFF, 0xFFCFE0D2),
+        longArrayOf(0xFFEAF5EC, 0xFF6F9078, 0xFFB6D957, 0xFFD4E27A, 0xFF3FB68B),
+        longArrayOf(0xFF122018, 0xFF5E7E68, 0xFF5E8A12, 0xFF7A8F1E, 0xFF1F8A66)),
     "theme_neon" to ShopPalette(0xFFC86BFF,
         longArrayOf(0xFF0D0716, 0xFF160C26, 0xFF21133A, 0xFF1B0F31, 0xFF2D1A4F),
-        longArrayOf(0xFFF3ECFB, 0xFFFFFFFF, 0xFFE6D9F6, 0xFFFFFFFF, 0xFFD8C8EE)),
+        longArrayOf(0xFFF3ECFB, 0xFFFFFFFF, 0xFFE6D9F6, 0xFFFFFFFF, 0xFFD8C8EE),
+        longArrayOf(0xFFF3ECFB, 0xFF8470A8, 0xFFFF5CD1, 0xFFE29BFF, 0xFF5CE1FF),
+        longArrayOf(0xFF1D1030, 0xFF7C6A9E, 0xFFC4199A, 0xFF9A3FD0, 0xFF0A8FB0)),
     "theme_scifi" to ShopPalette(0xFF00E5FF,
         longArrayOf(0xFF050B14, 0xFF0A1422, 0xFF11213A, 0xFF0D1A2E, 0xFF173052),
-        longArrayOf(0xFFE9F6FB, 0xFFFFFFFF, 0xFFD3EAF3, 0xFFFFFFFF, 0xFFBFDDE9)),
+        longArrayOf(0xFFE9F6FB, 0xFFFFFFFF, 0xFFD3EAF3, 0xFFFFFFFF, 0xFFBFDDE9),
+        longArrayOf(0xFFE3F4FB, 0xFF5F7C96, 0xFF4DFFC3, 0xFF7DF9FF, 0xFF6C8CFF),
+        longArrayOf(0xFF0C1B27, 0xFF547088, 0xFF0A9A78, 0xFF0A8FA6, 0xFF4A62D6)),
 )
+private fun tone(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (LightMode) it.lTone[i] else it.dTone[i]) }
 private fun themed(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (LightMode) it.light[i] else it.dark[i]) }
 
 private fun pick(dark: Long, light: Long) = Color(if (LightMode) light else dark)
@@ -110,12 +122,12 @@ var ColorPrimary: Color
     set(value) { accentRaw = value }
 
 val ColorOnPrimary: Color   get() = pick(0xFF001A10, 0xFFFFFFFF)
-val ColorAccent: Color      get() = pick(0xFF7C6EF5, 0xFF6552E8)   // purple accent
-val ColorCoin: Color        get() = pick(0xFFFFC857, 0xFFB8800A)
+val ColorAccent: Color      get() = tone(4) ?: pick(0xFF7C6EF5, 0xFF6552E8)   // purple accent
+val ColorCoin: Color        get() = tone(3) ?: pick(0xFFFFC857, 0xFFB8800A)
 val ColorDanger: Color      get() = pick(0xFFFF5C5C, 0xFFD93636)
-val ColorWarning: Color     get() = pick(0xFFFFAA00, 0xFFC47A00)
-val ColorText: Color        get() = pick(0xFFEAEFF5, 0xFF121A24)
-val ColorMuted: Color       get() = pick(0xFF5A6A7E, 0xFF6B7A8D)
+val ColorWarning: Color     get() = tone(2) ?: pick(0xFFFFAA00, 0xFFC47A00)
+val ColorText: Color        get() = tone(0) ?: pick(0xFFEAEFF5, 0xFF121A24)
+val ColorMuted: Color       get() = tone(1) ?: pick(0xFF5A6A7E, 0xFF6B7A8D)
 val ColorDivider: Color     get() = themed(4) ?: pick(0xFF1E2A3A, 0xFFDDE4EE)
 
 // Category colours

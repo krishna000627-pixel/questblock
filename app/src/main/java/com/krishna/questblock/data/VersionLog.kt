@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("182.0.0", "Themes colour the fun-limit lines, in dark and light",
+        listOf(
+            "Fix: the fun time limit line and other warning lines stayed yellowish orange in every theme. Each shop theme now sets its own warning, coin, second accent, text and muted colours, separately for dark and for light, so those lines follow the theme (Sunset keeps a warm orange, Ocean turns aqua, Forest lime, Neon magenta, Sci-Fi mint)",
+            "Danger red and the category colours (Study, Work, Health, Personal) stay the same in every theme so they keep their meaning",
+        )),
     VersionEntry("181.0.0", "All themes free for testing",
         listOf(
             "Sunset, Ocean, Forest, Neon and Sci-Fi themes cost 0 coins for now so they can be tried without spending. Buy in Shop → Themes, equip in Inventory → Themes. Prices (200 / 200 / 200 / 400 / 400) come back after testing",
