@@ -3,6 +3,14 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("162.0.0", "YouTube gate without the media title",
+        listOf(
+            "YouTube may not give the video title to the media session when it shows no notification. The gate then reads the title from the screen, and a video you scroll straight away is read at the first scroll, while the title is still there. If the title row is scrolled off and the video was never judged, it waits up to 12 s for you to come back before treating the video as fun. The Debug log says which source the title came from",
+        )),
+    VersionEntry("161.0.0", "YouTube gate: scrolling no longer breaks it",
+        listOf(
+            "Fix: after opening a video and scrolling down past the title, the gate had nothing to read and could judge a recommendation or lock a lecture by mistake. The playing video's title now comes from YouTube's media session (notification access, same as the music log), which does not move when you scroll. The screen is only the fallback",
+        )),
     VersionEntry("160.0.0", "YouTube gate works without view ids",
         listOf(
             "Fix: the YouTube study gate never saw a video page, because this YouTube build shows no view ids to the service. It now finds the video page from its buttons (Dislike, Share, Comments), YouTube home from the Home and Shorts tabs, and the title from the text right above the Subscribe row",

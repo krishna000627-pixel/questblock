@@ -534,13 +534,14 @@ class BlockerAccessibilityService : AccessibilityService() {
     private var ytExpiryJob: Job? = null
     private var ytNoTitleLogAt = 0L
     private var ytNoTitleCount = 0
+    private var ytUnjudgedSince = 0L
     private var ytNotWatchLogAt = 0L
 
     private class YtNode(val label: String, val top: Int, val bottom: Int)
     /** What one read of the YouTube screen found. [byId] now means "the title was placed from the Subscribe row" (this YouTube build has no view ids). */
     private class YtRead(
         val onWatch: Boolean, val title: String?, val hint: String, val byId: Boolean, val playerFound: Boolean = false,
-        val ad: Boolean = false, val home: Boolean = false, val short: Boolean = false, val sample: String = "",
+        val ad: Boolean = false, val home: Boolean = false, val short: Boolean = false, val sample: String = "", val anchorMissing: Boolean = false,
     )
 
     private fun checkYtGate(pkg: String, e: AccessibilityEvent) {
@@ -548,7 +549,12 @@ class BlockerAccessibilityService : AccessibilityService() {
         val t = SystemClock.uptimeMillis()
         when (e.eventType) {
             // 2: scrolling (recommendations, comments, description) never judges anything, and the read after it is not trusted either
-            AccessibilityEvent.TYPE_VIEW_SCROLLED -> { ytScrollAt = t; return }
+            AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
+                ytScrollAt = t
+                // video not judged yet and the user already scrolls: read the title NOW, while it is still on screen
+                if (ytLatchKey.isEmpty() && t - ytLastRead >= 400L) { ytLastRead = t; evalYtGate(pkg) }
+                return
+            }
             // a tap may start another video: for a few seconds a new title is accepted at once
             AccessibilityEvent.TYPE_VIEW_CLICKED -> { ytClickAt = t; scheduleYtRead(pkg, 1_000L); return }
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> { scheduleYtRead(pkg, 1_000L) }
@@ -560,7 +566,7 @@ class BlockerAccessibilityService : AccessibilityService() {
             val left = prefs.siteUnlockedUntil("yt:fun") - System.currentTimeMillis()
             if (left > 0L) armYtExpiry(left)
         }
-        if (t - ytScrollAt < YT_SCROLL_QUIET_MS) return
+        if (ytLatchKey.isNotEmpty() && t - ytScrollAt < YT_SCROLL_QUIET_MS) return    // a judged video is left alone while scrolling
         if (t - ytLastRead < 800L) return          // 4: a burst of events is one read
         ytLastRead = t
         evalYtGate(pkg)
@@ -583,14 +589,17 @@ class BlockerAccessibilityService : AccessibilityService() {
     private fun evalYtGate(pkg: String) {
         if (!prefs.ytGateOn) return
         val now = SystemClock.uptimeMillis()
-        if (now - ytScrollAt < YT_SCROLL_QUIET_MS) { scheduleYtRead(pkg, YT_SCROLL_QUIET_MS); return }
         val root = rootInActiveWindow ?: return
         if (root.packageName?.toString() != pkg) return
         if (isShortForm(root, ShortsStats.YT)) { ytLatchKey = ""; ytPendingKey = ""; return }    // 7: Shorts never use the title
         val r = readYtWatch(root)
         if (r.short) { ytLatchKey = ""; ytPendingKey = ""; return }
-        if (r.home) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytNoTitleCount = 0; return }   // YouTube home: free, and the next video is judged fresh
-        if (!r.onWatch) {      // search, channel, a page still loading: free, the verdict is kept
+        if (r.home) { ytLatchKey = ""; ytPendingKey = ""; ytLatchFun = false; ytNoTitleCount = 0; ytUnjudgedSince = 0L; return }   // YouTube home: free, and the next video is judged fresh
+        // v161: the playing video's title comes from YouTube's media session. It does not move when you scroll, and recommendations,
+        // comments and ad cards can never be mistaken for it. The screen is only the fallback.
+        val sess = ytSession()
+        if (sess == null && ytLatchKey.isNotEmpty() && now - ytScrollAt < YT_SCROLL_QUIET_MS) { scheduleYtRead(pkg, YT_SCROLL_QUIET_MS); return }   // screen reads wait for the scroll to stop; the session does not need to
+        if (!r.onWatch && sess?.playing != true) {      // search, channel, a page still loading: free, the verdict is kept
             if (now - ytNotWatchLogAt > 10_000L) { ytNotWatchLogAt = now; DebugLog.d("yt: not a watch page, labels=[${r.sample}]") }
             return
         }
@@ -599,28 +608,35 @@ class BlockerAccessibilityService : AccessibilityService() {
             scheduleYtRead(pkg, 1_500L)
             return
         }
-        val title = r.title
+        val title = sess?.title ?: r.title
+        val hint = if (sess != null) sess.artist else r.hint
+        val strong = sess != null || r.byId
         if (title == null) {
             // Video page but no title read. Scrolled away after a verdict: keep it. Never judged: after 3 reads it is treated as fun (locked).
             if (now - ytNoTitleLogAt > 5_000L) { ytNoTitleLogAt = now; DebugLog.d("yt: watch page, no title read, labels=[${r.sample}] verdict='${ytLatchKey.take(30)}'") }
             if (r.playerFound && ytLatchKey.isEmpty()) {
+                if (ytUnjudgedSince == 0L) ytUnjudgedSince = now
                 ytNoTitleCount++
-                if (ytNoTitleCount >= 3) { ytNoTitleCount = 0; ytLatchKey = "?unreadable"; judgeYt("", "") } else scheduleYtRead(pkg, 900L)
+                // title row scrolled away: wait for it to come back (12 s); title row on screen but unreadable: 3 tries
+                val give = if (r.anchorMissing) now - ytUnjudgedSince >= 12_000L else ytNoTitleCount >= 3
+                if (give) { ytNoTitleCount = 0; ytUnjudgedSince = 0L; ytLatchKey = "?unreadable"; judgeYt("", "") } else scheduleYtRead(pkg, 1_500L)
             }
             return
         }
         ytNoTitleCount = 0
+        ytUnjudgedSince = 0L
         val key = YtGate.key(title)
         if (key.isEmpty() || key == ytLatchKey) { ytPendingKey = ""; return }                     // 4: same video, already judged
         val tapped = now - ytClickAt < 6_000L
         if (ytLatchKey.isNotEmpty() && !tapped) {
             // another title with no tap: autoplay, or a recommendation. Needs the title placed from the Subscribe row and two reads.
-            if (!r.byId) return
+            if (!strong) return
             if (ytPendingKey != key) { ytPendingKey = key; scheduleYtRead(pkg, 900L); return }
         }
         ytPendingKey = ""
         ytLatchKey = key
-        judgeYt(title, r.hint)
+        DebugLog.d("yt: title from ${if (sess != null) "media session" else "screen"}")
+        judgeYt(title, hint)
     }
 
     /**
@@ -649,12 +665,12 @@ class BlockerAccessibilityService : AccessibilityService() {
         fun has(p: (String) -> Boolean) = nodes.any { p(it.label.lowercase()) }
         val sample = nodes.take(12).joinToString(" | ") { it.label.take(24) }
         if (has { it == "remix" }) return YtRead(false, null, "", false, short = true, sample = sample)
-        val onWatch = has { it.startsWith("dislike") } && has { it == "share" || it.startsWith("comment") }
-        if (!onWatch) return YtRead(false, null, "", false, home = has { it == "home" } && has { it == "shorts" }, sample = sample)
         val ad = nodes.any { it.label.length <= 40 && YT_AD_RE.containsMatchIn(it.label) }
+        val onWatch = has { it.startsWith("dislike") } && has { it == "share" || it.startsWith("comment") }
+        if (!onWatch) return YtRead(false, null, "", false, ad = ad, home = has { it == "home" } && has { it == "shorts" }, sample = sample)
         val anchor = nodes.filter { val l = it.label.lowercase(); l.startsWith("subscribe") && l.length <= 14 }.minByOrNull { it.top }
             ?: nodes.filter { it.label.lowercase().startsWith("subscribe to") }.minByOrNull { it.top }
-            ?: return YtRead(true, null, "", false, playerFound = true, ad = ad, sample = sample)
+            ?: return YtRead(true, null, "", false, playerFound = true, ad = ad, sample = sample, anchorMissing = true)   // title row scrolled off
         val above = nodes.filter {
             it.bottom <= anchor.top + 4 && anchor.top - it.bottom <= 500 && it.label.length >= 4 && it.label.any { c -> c.isLetter() }
         }
@@ -665,6 +681,24 @@ class BlockerAccessibilityService : AccessibilityService() {
         DebugLog.d("yt: read title='${pick.label.take(60)}' channel='${hint.take(30)}' ad=$ad")
         return YtRead(true, pick.label, hint, true, playerFound = true, ad = ad, sample = sample)
     }
+
+    private class YtSession(val title: String, val artist: String, val playing: Boolean)
+
+    /** YouTube's media session (needs notification access, which the music log already uses): the playing video's title and channel. */
+    private fun ytSession(): YtSession? = runCatching {
+        val msm = getSystemService(Context.MEDIA_SESSION_SERVICE) as android.media.session.MediaSessionManager
+        val cn = android.content.ComponentName(this, MediaListenerService::class.java)
+        val c = msm.getActiveSessions(cn).firstOrNull { it.packageName in YOUTUBE_PKGS } ?: return@runCatching null
+        val md = c.metadata ?: return@runCatching null
+        val title = (md.getString(android.media.MediaMetadata.METADATA_KEY_TITLE)
+            ?: md.getString(android.media.MediaMetadata.METADATA_KEY_DISPLAY_TITLE))?.trim().orEmpty()
+        if (title.isEmpty()) return@runCatching null
+        val st = c.playbackState?.state
+        YtSession(
+            title, md.getString(android.media.MediaMetadata.METADATA_KEY_ARTIST)?.trim().orEmpty(),
+            st == android.media.session.PlaybackState.STATE_PLAYING || st == android.media.session.PlaybackState.STATE_BUFFERING,
+        )
+    }.getOrNull()
 
     private fun judgeYt(title: String, hint: String) {
         val d = YtGate.decide(this, title, hint)
