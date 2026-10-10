@@ -55,11 +55,23 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             repo.settleFocus()
             loginBonus = repo.claimDailyLogin()
+            rentNote = runCatching { repo.chargeThemeRent() }.getOrNull()
+            runCatching {
+                var w = 0
+                while (!com.krishna.questblock.data.TestMode.isLoaded() && w++ < 25) kotlinx.coroutines.delay(200)
+                repo.settleTestMode()
+                val left = com.krishna.questblock.data.TestMode.remainingMs()
+                if (left > 0L) { kotlinx.coroutines.delay(left + 500L); repo.settleTestMode() }
+            }
             runCatching { autoVerifier.run() }
             hubStore.refresh()
         }
     }
     fun dismissBonus() { loginBonus = 0 }
+    /** Once a day: the rent of the equipped theme (or the note that it went back to default). */
+    var rentNote by mutableStateOf<String?>(null)
+        private set
+    fun dismissRent() { rentNote = null }
     /** Turns a suggestion into a real quest due today. */
     val subs = repo.allSubTasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     /** Ticks a routine step; when it was the last one, the routine itself is finished. */
@@ -170,6 +182,16 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                     modifier = Modifier.fillMaxWidth().clickable { vm.dismissBonus() }) {
                     Text("🎁 Daily login: +${vm.loginBonus}🪙", modifier = Modifier.padding(12.dp),
                         style = MaterialTheme.typography.labelLarge, color = ColorCoin, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        vm.rentNote?.let { note ->
+            item {
+                Surface(shape = RoundedCornerShape(12.dp), color = ColorSurfaceHigh,
+                    modifier = Modifier.fillMaxWidth().clickable { vm.dismissRent() }) {
+                    Text(note, modifier = Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.labelLarge, color = ColorMuted, fontWeight = FontWeight.Bold)
                 }
             }
         }

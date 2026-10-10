@@ -52,8 +52,12 @@ class InventoryViewModel @Inject constructor(private val repo: GameRepository) :
             buyResult = "No broken streak to repair (only within 3 days, and not while a shield is on)"
             return@launch
         }
+        if (item.category == "cosmetic_theme" && inventory.value.any { it.itemId == item.id }) {
+            buyResult = "You already have ${item.emoji} ${item.name}. Equip it in My Items"
+            return@launch
+        }
         val ok = repo.buyItem(item)
-        buyResult = if (ok) "Bought ${item.emoji} ${item.name}!" else "Not enough coins 🪙"
+        buyResult = if (ok) (if (item.category == "cosmetic_theme") "Got ${item.emoji} ${item.name}! Equip it in My Items: ${item.price}🪙 a day while it is on" else "Bought ${item.emoji} ${item.name}!") else "Not enough coins 🪙"
     }
 
     fun buyReward(r: CustomReward) = viewModelScope.launch {
@@ -71,7 +75,9 @@ class InventoryViewModel @Inject constructor(private val repo: GameRepository) :
     fun redeem(inv: InventoryItem) = viewModelScope.launch {
         repo.redeemItem(inv); buyResult = "Redeemed ${inv.emoji} ${inv.name}"
     }
-    fun equip(inv: InventoryItem) = viewModelScope.launch { repo.equipItem(inv) }
+    fun equip(inv: InventoryItem) = viewModelScope.launch {
+        if (!repo.equipItem(inv)) buyResult = "Not enough coins for today's ${repo.themeRent(inv.itemId)}🪙 rent"
+    }
     fun unequip(inv: InventoryItem) = viewModelScope.launch { repo.unequipItem(inv) }
     fun clearResult() { buyResult = null }
 }
@@ -237,7 +243,7 @@ private fun ShopTab(
                 }
             } else {
                 items(ShopCatalog.filter(selectedCat), key = { it.id }) { item ->
-                    ShopItemCard(item, canAfford = player.coins >= item.price, onBuy = { onBuy(item) })
+                    ShopItemCard(item, canAfford = item.category == "cosmetic_theme" || player.coins >= item.price, onBuy = { onBuy(item) })
                 }
             }
         }
@@ -274,7 +280,7 @@ private fun ShopItemCard(item: ShopItem, canAfford: Boolean, onBuy: () -> Unit) 
                 color = ColorText, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(item.description, style = MaterialTheme.typography.bodySmall, color = ColorMuted,
                 textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            BuyButton(item.price, canAfford, onBuy)
+            BuyButton(item.price, canAfford, onBuy, if (item.category == "cosmetic_theme") "/day" else "")
         }
     }
 }
@@ -305,7 +311,7 @@ private fun RewardCard(r: CustomReward, canAfford: Boolean, onBuy: () -> Unit, o
 }
 
 @Composable
-private fun BuyButton(price: Int, canAfford: Boolean, onBuy: () -> Unit) {
+private fun BuyButton(price: Int, canAfford: Boolean, onBuy: () -> Unit, suffix: String = "") {
     Button(
         onClick = onBuy,
         modifier = Modifier.fillMaxWidth().height(34.dp),
@@ -315,7 +321,7 @@ private fun BuyButton(price: Int, canAfford: Boolean, onBuy: () -> Unit) {
             disabledContainerColor = ColorSurfaceHigh, disabledContentColor = ColorMuted),
         shape = RoundedCornerShape(8.dp),
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-    ) { Text("🪙 $price", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold) }
+    ) { Text("🪙 $price$suffix", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold) }
 }
 
 @Composable
@@ -430,11 +436,12 @@ private fun InventoryItemCard(item: InventoryItem, onEquip: () -> Unit, onUnequi
             Column(Modifier.weight(1f)) {
                 Text(item.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold,
                     color = ColorText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                val rentTxt = if (item.category == "cosmetic_theme") ShopCatalog.items.firstOrNull { it.id == item.itemId }?.let { " · ${it.price}🪙/day" }.orEmpty() else ""
                 val statusText = when {
-                    item.isEquipped     -> "✓ Equipped"
+                    item.isEquipped     -> "✓ Equipped$rentTxt"
                     isCustom && item.usedAt == null -> "Ready to redeem"
                     item.usedAt != null -> "Used"
-                    else                -> "Not equipped"
+                    else                -> "Not equipped$rentTxt"
                 }
                 Text(statusText, style = MaterialTheme.typography.labelSmall,
                     color = if (item.isEquipped || (isCustom && item.usedAt == null)) ColorPrimary else ColorMuted)

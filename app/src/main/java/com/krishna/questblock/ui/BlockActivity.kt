@@ -391,7 +391,7 @@ fun BlockScreen(
 
     val iconBitmap = remember(pkg) {
         runCatching {
-            val d = ctx.packageManager.getApplicationIcon(pkg)
+            val d = ctx.packageManager.getApplicationIcon(iconPackageFor(ctx, pkg))
             val bmp = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888)
             d.setBounds(0, 0, 128, 128)
             d.draw(Canvas(bmp))

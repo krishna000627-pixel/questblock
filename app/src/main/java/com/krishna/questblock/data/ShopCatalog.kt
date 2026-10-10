@@ -26,12 +26,17 @@ object ShopCatalog {
         ShopItem("frame_ice",    "Ice Frame",         "❄️", "Cool icy avatar frame",         150, "cosmetic_frame", isConsumable = false),
         ShopItem("frame_gold",   "Gold Frame",        "✨", "Legendary golden frame",        300, "cosmetic_frame", isConsumable = false),
         ShopItem("frame_galaxy", "Galaxy Frame",      "🌌", "Cosmic galaxy frame",           500, "cosmetic_frame", isConsumable = false),
-        // ─── Themes (all free for now, for testing: put the old prices back after: Sunset/Ocean/Forest 200, Neon/Sci-Fi 400) ───────────────────────────────────────────────────────
-        ShopItem("theme_sunset", "Sunset Theme",      "🌅", "Warm orange & pink UI",         0, "cosmetic_theme", isConsumable = false),
-        ShopItem("theme_ocean",  "Ocean Theme",       "🌊", "Deep blue calm UI",             0, "cosmetic_theme", isConsumable = false),
-        ShopItem("theme_forest", "Forest Theme",      "🌲", "Earthy green UI",               0, "cosmetic_theme", isConsumable = false),
-        ShopItem("theme_neon",   "Neon Theme",        "💜", "Cyberpunk neon purple UI",      0, "cosmetic_theme", isConsumable = false),
-        ShopItem("theme_scifi",  "Sci-Fi Theme",      "🛸", "Deep-space black with cyan glow", 0, "cosmetic_theme", isConsumable = false),
+        // ─── Themes: the price is coins PER DAY while the theme is equipped (no one-time buy). Not enough coins = back to default ───
+        ShopItem("theme_sunset", "Sunset Theme",      "🌅", "Warm orange & pink UI",           4, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_ocean",  "Ocean Theme",       "🌊", "Deep blue calm UI",               4, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_forest", "Forest Theme",      "🌲", "Earthy green UI",                 4, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_neon",   "Neon Theme",        "💜", "Cyberpunk neon purple UI",        6, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_scifi",  "Sci-Fi Theme",      "🛸", "Deep-space black with cyan glow", 6, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_amoled", "AMOLED Black",      "🖤", "Pure black, soft ice-blue accent", 3, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_terminal","Terminal Theme",   "🖥️", "Green on black hacker screen",    5, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_paper",  "Paper & Ink",       "📜", "Warm sepia, easy on the eyes",    4, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_rose",   "Rose Quartz",       "🌸", "Soft pink and plum",              5, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_indigo", "Midnight Indigo",   "🌌", "Deep indigo night sky",           6, "cosmetic_theme", isConsumable = false),
         // ─── Badges ───────────────────────────────────────────────────────
         ShopItem("badge_star",   "Star Badge",        "⭐", "Show off your star badge",      150, "cosmetic_badge", isConsumable = false),
         ShopItem("badge_crown",  "Crown Badge",       "👑", "You are royalty",               250, "cosmetic_badge", isConsumable = false),

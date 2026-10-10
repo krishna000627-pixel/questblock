@@ -13,6 +13,7 @@ class QuestApp : Application() {
     override fun onCreate() {
         super.onCreate()
         com.krishna.questblock.util.DebugLog.init(this)
+        Thread { runCatching { com.krishna.questblock.data.TestMode.load(this) } }.start()
         Reminders.ensureChannel(this)
         com.krishna.questblock.util.ScreenLog.start(this)
         com.krishna.questblock.util.MusicLog.start(this, prefs)

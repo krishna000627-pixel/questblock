@@ -28,6 +28,11 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         sp.edit().putString("paid_steps", l.joinToString(",")).apply()
     }
 
+    /** Day number the equipped theme's daily rent was last taken (0 = never). */
+    var themeRentDay: Long
+        get() = sp.getLong("theme_rent_day", 0L)
+        set(value) = sp.edit().putLong("theme_rent_day", value).apply()
+
     /** 0 = dark, 1 = light, 2 = follow system */
     var themeMode: Int
         get() = sp.getInt("theme_mode", 2)

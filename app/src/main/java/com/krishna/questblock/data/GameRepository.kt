@@ -782,9 +782,13 @@ class GameRepository @Inject constructor(
 
     suspend fun buyItem(item: ShopItem): Boolean = db.withTransaction {
         val p = playerDao.get() ?: Player()
-        if (p.coins < item.price) return@withTransaction false
-        playerDao.upsert(p.copy(coins = p.coins - item.price))
-        logCoin(-item.price, "Shop", item.name)
+        // a theme is not bought: its price is a daily rent, taken while it is equipped (see chargeThemeRent)
+        val rentOnly = item.category == "cosmetic_theme"
+        if (!rentOnly) {
+            if (p.coins < item.price) return@withTransaction false
+            playerDao.upsert(p.copy(coins = p.coins - item.price))
+            logCoin(-item.price, "Shop", item.name)
+        }
         when (item.category) {
             "powerup" -> {
                 val now = System.currentTimeMillis(); val expiry = now + item.durationMs
@@ -846,11 +850,63 @@ class GameRepository @Inject constructor(
         })
     }
 
-    suspend fun equipItem(inv: InventoryItem) = db.withTransaction {
+    /** Test mode start: adds the test coins on top of the balance. */
+    suspend fun startTestCoins() = db.withTransaction {
+        val p = playerDao.get() ?: Player()
+        playerDao.upsert(p.copy(coins = p.coins + TestMode.COIN_BONUS))
+        logCoin(0, "Test mode", "started")
+    }
+
+    /** After the test window: takes the test coins back (only while they are still on the balance). */
+    suspend fun settleTestMode() = db.withTransaction {
+        if (!TestMode.isLoaded() || TestMode.active()) return@withTransaction
+        val p = playerDao.get() ?: return@withTransaction
+        if (p.coins >= TestMode.COIN_BONUS) {
+            playerDao.upsert(p.copy(coins = p.coins - TestMode.COIN_BONUS))
+            logCoin(0, "Test mode", "ended")
+        }
+    }
+
+    /** Daily rent of a theme in coins (the shop price of a theme is per day). 0 for the default theme. */
+    fun themeRent(id: String): Int = ShopCatalog.items.firstOrNull { it.id == id && it.category == "cosmetic_theme" }?.price ?: 0
+
+    /** Once a day: takes the rent of the equipped theme. If the coins are not enough the theme goes back to default. Returns a short note when something happened. */
+    suspend fun chargeThemeRent(): String? = db.withTransaction {
+        val p = playerDao.get() ?: return@withTransaction null
+        val rent = themeRent(p.equippedTheme)
+        if (rent <= 0) return@withTransaction null
+        val today = dayNumber(System.currentTimeMillis())
+        if (prefs.themeRentDay >= today) return@withTransaction null
+        val name = ShopCatalog.items.firstOrNull { it.id == p.equippedTheme }?.name ?: "Theme"
+        if (p.coins >= rent) {
+            playerDao.upsert(p.copy(coins = p.coins - rent))
+            logCoin(-rent, "Theme rent", name)
+            prefs.themeRentDay = today
+            "\uD83C\uDFA8 $name: -$rent\uD83E\uDE99 for today"
+        } else {
+            inventoryDao.unequipAll("cosmetic_theme")
+            playerDao.upsert(p.copy(equippedTheme = "default"))
+            "\uD83C\uDFA8 $name went back to the default look: not enough coins for its $rent\uD83E\uDE99 a day"
+        }
+    }
+
+    /** Equips the item. A theme takes today's rent first (once a day); false = not enough coins, nothing changed. */
+    suspend fun equipItem(inv: InventoryItem): Boolean = db.withTransaction {
         if (inv.id == -1L) {   // the free Beginner badge is not an inventory row
             inventoryDao.unequipAll("cosmetic_badge")
             playerDao.upsert((playerDao.get() ?: Player()).copy(equippedBadge = "badge_beginner"))
-            return@withTransaction
+            return@withTransaction true
+        }
+        if (inv.category == "cosmetic_theme") {
+            val rent = themeRent(inv.itemId)
+            val today = dayNumber(System.currentTimeMillis())
+            if (rent > 0 && prefs.themeRentDay < today) {
+                val p0 = playerDao.get() ?: Player()
+                if (p0.coins < rent) return@withTransaction false
+                playerDao.upsert(p0.copy(coins = p0.coins - rent))
+                logCoin(-rent, "Theme rent", inv.name)
+                prefs.themeRentDay = today
+            }
         }
         inventoryDao.unequipAll(inv.category); inventoryDao.equip(inv.id)
         val p = playerDao.get() ?: Player()
@@ -860,5 +916,6 @@ class GameRepository @Inject constructor(
             "cosmetic_badge" -> p.copy(equippedBadge = inv.itemId)
             else -> p
         })
+        true
     }
 }

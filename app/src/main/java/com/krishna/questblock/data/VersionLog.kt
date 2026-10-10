@@ -3,6 +3,16 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("184.0.0", "Test mode",
+        listOf(
+            "New in Hub → Experiments: Test mode. One time only per phone, 2 hours: unlimited coins and no fun limit, to try the app. When the 2 hours are over the fun limit is back and the test coins are taken away; your real coins stay as they were. Needs two taps to start",
+        )),
+    VersionEntry("183.0.0", "Ten themes paid by the day, real logos on lock pages",
+        listOf(
+            "Themes are no longer a one-time buy. Shop → Themes: get a theme free, equip it in My Items, and its price is taken once a day while it is equipped (3 to 6 coins a day). Equipping takes today's rent first; with not enough coins it does not equip. Each morning the rent is taken when the app opens, shown on Home and in the Coin log (Theme rent). With not enough coins the theme goes back to the default look",
+            "Five new themes with their own feel, each with its own dark and light colours: AMOLED Black (3/day), Terminal (5), Paper & Ink (4), Rose Quartz (5), Midnight Indigo (6). Sunset, Ocean, Forest 4 a day; Neon, Sci-Fi 6 a day",
+            "Fix: the lock page for YouTube (non-study) showed a plain letter Y instead of a logo. YouTube, YouTube Shorts and the YouTube rows now show the installed YouTube's icon, and Instagram Reels shows Instagram's, on the fun-limit page and on the unlock page",
+        )),
     VersionEntry("182.0.0", "Themes colour the fun-limit lines, in dark and light",
         listOf(
             "Fix: the fun time limit line and other warning lines stayed yellowish orange in every theme. Each shop theme now sets its own warning, coin, second accent, text and muted colours, separately for dark and for light, so those lines follow the theme (Sunset keeps a warm orange, Ocean turns aqua, Forest lime, Neon magenta, Sci-Fi mint)",
