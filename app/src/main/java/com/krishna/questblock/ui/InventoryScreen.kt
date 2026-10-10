@@ -335,6 +335,7 @@ private fun RewardDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.grayWindow(),
         containerColor = ColorSurface,
         title = { Text(if (initial == null) "Gift for me" else "Edit reward", color = ColorText, fontWeight = FontWeight.Bold) },
         text = {

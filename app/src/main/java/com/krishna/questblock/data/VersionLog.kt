@@ -3,6 +3,20 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("181.0.0", "All themes free for testing",
+        listOf(
+            "Sunset, Ocean, Forest, Neon and Sci-Fi themes cost 0 coins for now so they can be tried without spending. Buy in Shop → Themes, equip in Inventory → Themes. Prices (200 / 200 / 200 / 400 / 400) come back after testing",
+        )),
+    VersionEntry("180.0.0", "Sci-Fi theme",
+        listOf(
+            "New shop theme: Sci-Fi Theme (400 coins, Shop → Themes). Deep-space black with a cyan glow in dark, icy white-blue in light. Buy it, then equip it in Inventory → Themes like the other themes",
+            "It works with the grayscale switch: equip it any time; while grayscale is on you see its light and dark shades, and the cyan shows when grayscale is off",
+        )),
+    VersionEntry("179.0.0", "Grayscale look, emojis included",
+        listOf(
+            "New optional switch in Hub → Experiments: Draw QuestBlock in grayscale (off by default). The whole window is drawn through a zero-saturation colour filter, the way the phone's own grayscale does it, so emojis, icons and images turn gray at full sharpness, not only the theme colours. Applies live, no restart",
+            "Dialogs (pickers, confirms, reward editor) follow the switch too. Only inside QuestBlock: other apps stay in colour, and the Bedtime mode tile option is unchanged. The small counter and time-left bubbles over other apps keep their own colours",
+        )),
     VersionEntry("178.0.0", "Build fix",
         listOf(
             "Fix: v177 did not compile (Unresolved reference DebugLog in YtInfo.kt) because the file never imported DebugLog. Import added; nothing else changed",

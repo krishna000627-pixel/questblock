@@ -92,6 +92,7 @@ fun CultivationStrip(xp: Int, modifier: Modifier = Modifier, onAddQuest: ((Start
     celebrate?.let { name ->
         AlertDialog(
             onDismissRequest = { celebrate = null },
+            modifier = Modifier.grayWindow(),
             confirmButton = { TextButton(onClick = { celebrate = null }) { Text("Onward", fontWeight = FontWeight.Bold) } },
             title = { Text("⚡ Breakthrough!", fontWeight = FontWeight.Black) },
             text = { Text("The heavens part. You broke through into $name.") },

@@ -26,11 +26,12 @@ object ShopCatalog {
         ShopItem("frame_ice",    "Ice Frame",         "❄️", "Cool icy avatar frame",         150, "cosmetic_frame", isConsumable = false),
         ShopItem("frame_gold",   "Gold Frame",        "✨", "Legendary golden frame",        300, "cosmetic_frame", isConsumable = false),
         ShopItem("frame_galaxy", "Galaxy Frame",      "🌌", "Cosmic galaxy frame",           500, "cosmetic_frame", isConsumable = false),
-        // ─── Themes ───────────────────────────────────────────────────────
-        ShopItem("theme_sunset", "Sunset Theme",      "🌅", "Warm orange & pink UI",         200, "cosmetic_theme", isConsumable = false),
-        ShopItem("theme_ocean",  "Ocean Theme",       "🌊", "Deep blue calm UI",             200, "cosmetic_theme", isConsumable = false),
-        ShopItem("theme_forest", "Forest Theme",      "🌲", "Earthy green UI",               200, "cosmetic_theme", isConsumable = false),
-        ShopItem("theme_neon",   "Neon Theme",        "💜", "Cyberpunk neon purple UI",      400, "cosmetic_theme", isConsumable = false),
+        // ─── Themes (all free for now, for testing: put the old prices back after: Sunset/Ocean/Forest 200, Neon/Sci-Fi 400) ───────────────────────────────────────────────────────
+        ShopItem("theme_sunset", "Sunset Theme",      "🌅", "Warm orange & pink UI",         0, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_ocean",  "Ocean Theme",       "🌊", "Deep blue calm UI",             0, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_forest", "Forest Theme",      "🌲", "Earthy green UI",               0, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_neon",   "Neon Theme",        "💜", "Cyberpunk neon purple UI",      0, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_scifi",  "Sci-Fi Theme",      "🛸", "Deep-space black with cyan glow", 0, "cosmetic_theme", isConsumable = false),
         // ─── Badges ───────────────────────────────────────────────────────
         ShopItem("badge_star",   "Star Badge",        "⭐", "Show off your star badge",      150, "cosmetic_badge", isConsumable = false),
         ShopItem("badge_crown",  "Crown Badge",       "👑", "You are royalty",               250, "cosmetic_badge", isConsumable = false),

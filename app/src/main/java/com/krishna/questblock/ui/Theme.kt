@@ -9,6 +9,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -19,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import android.view.View
 
 // ── Theme mode ───────────────────────────────────────────────────────────────
 /** What the user picked: 0 = dark, 1 = light, 2 = follow the phone. Saved in Prefs.themeMode. */
@@ -31,11 +34,36 @@ fun applyThemeMode(mode: Int, systemDark: Boolean) {
     LightMode = when (mode) { 1 -> true; 2 -> !systemDark; else -> false }
 }
 
+// ── Grayscale look ───────────────────────────────────────────────────────────
+/** Optional (Hub → Experiments). On = the whole window is drawn through a zero-saturation colour filter, like the phone's own grayscale: emojis, icons and images go gray too, at full sharpness. */
+var GrayMode by mutableStateOf(false)
+
+private val GRAY_PAINT: android.graphics.Paint by lazy {
+    android.graphics.Paint().apply {
+        colorFilter = android.graphics.ColorMatrixColorFilter(android.graphics.ColorMatrix().apply { setSaturation(0f) })
+    }
+}
+
+/** Puts the filter on (or takes it off) the window that [view] lives in. Works for activities and for dialog windows. */
+fun setWindowGray(view: View, on: Boolean) {
+    val root = view.rootView ?: return
+    if (on) root.setLayerType(View.LAYER_TYPE_HARDWARE, GRAY_PAINT) else if (root.layerType != View.LAYER_TYPE_NONE) root.setLayerType(View.LAYER_TYPE_NONE, null)
+}
+
+/** Add to a dialog (modifier = Modifier.grayWindow()) so its own window follows the grayscale switch too. */
+fun Modifier.grayWindow(): Modifier = composed {
+    val gray = GrayMode
+    val v = LocalView.current
+    SideEffect { setWindowGray(v, gray) }
+    Modifier
+}
+
 /** Call from every activity before setContent so the first frame is already the right theme. */
 fun loadThemeMode(ctx: Context) {
     val mode = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getInt("theme_mode", 2)
     val sysDark = (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
     applyThemeMode(mode, sysDark)
+    GrayMode = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getBoolean("gray_mode", false)
     // paint the chosen background before the first frame so the XML window colour never shows
     (ctx as? Activity)?.window?.setBackgroundDrawable(ColorDrawable(ColorBg.toArgb()))
 }
@@ -58,6 +86,9 @@ private val SHOP_PALETTES = mapOf(
     "theme_neon" to ShopPalette(0xFFC86BFF,
         longArrayOf(0xFF0D0716, 0xFF160C26, 0xFF21133A, 0xFF1B0F31, 0xFF2D1A4F),
         longArrayOf(0xFFF3ECFB, 0xFFFFFFFF, 0xFFE6D9F6, 0xFFFFFFFF, 0xFFD8C8EE)),
+    "theme_scifi" to ShopPalette(0xFF00E5FF,
+        longArrayOf(0xFF050B14, 0xFF0A1422, 0xFF11213A, 0xFF0D1A2E, 0xFF173052),
+        longArrayOf(0xFFE9F6FB, 0xFFFFFFFF, 0xFFD3EAF3, 0xFFFFFFFF, 0xFFBFDDE9)),
 )
 private fun themed(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (LightMode) it.light[i] else it.dark[i]) }
 
@@ -147,8 +178,10 @@ fun QuestTheme(content: @Composable () -> Unit) {
 
     // status/nav bar icon colours + window background follow the theme
     val view = LocalView.current
+    val gray = GrayMode
     if (!view.isInEditMode) {
         SideEffect {
+            setWindowGray(view, gray)
             val window = (view.context as? Activity)?.window
             if (window != null) {
                 val c = WindowCompat.getInsetsController(window, view)

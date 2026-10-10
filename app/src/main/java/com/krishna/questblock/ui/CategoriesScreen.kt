@@ -264,6 +264,7 @@ private fun CategoryChangeDialog(app: CatApp, current: String, target: String?, 
 
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.grayWindow(),
         title = { Text("${app.label} \u2192 " + (if (target == null) "automatic (${usageCategory(app.auto).short})" else usageCategory(target).label), fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

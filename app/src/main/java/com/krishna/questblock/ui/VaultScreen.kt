@@ -396,6 +396,7 @@ private fun AppCard(row: AppRow, studyMin: Int, onToggle: (Boolean) -> Unit, onO
 private fun StudyPickerDialog(apps: List<InstalledApp>, onPick: (InstalledApp) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.grayWindow(),
         containerColor = ColorSurface,
         title = { Text("Add a study app", color = ColorText, fontWeight = FontWeight.Bold) },
         text = {
@@ -465,6 +466,7 @@ private fun AppOptionsDialog(row: AppRow, onSave: (Int, Int, Int, Int, Int) -> U
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.grayWindow(),
         containerColor = ColorSurface,
         title = { Text(row.app.label, color = ColorText, fontWeight = FontWeight.Bold, maxLines = 1,
             overflow = TextOverflow.Ellipsis) },

@@ -89,6 +89,7 @@ fun MarksScreen(onBack: () -> Unit) {
         val valid = g != null && g in 0f..m
         AlertDialog(
             onDismissRequest = { editing = null },
+            modifier = Modifier.grayWindow(),
             containerColor = ColorSurface,
             title = { Text("${test.name} \u00B7 ${subj.second}", color = ColorText, fontWeight = FontWeight.Bold) },
             text = {

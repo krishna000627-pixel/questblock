@@ -114,6 +114,7 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
     askDelete?.let { t ->
         AlertDialog(
             onDismissRequest = { askDelete = null },
+            modifier = Modifier.grayWindow(),
             containerColor = ColorSurface,
             title = { Text("Delete this quest?", color = ColorText, fontWeight = FontWeight.Bold) },
             text = { Text(t.title, color = ColorMuted) },

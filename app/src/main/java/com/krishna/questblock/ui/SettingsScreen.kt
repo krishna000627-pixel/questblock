@@ -301,6 +301,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
     if (confirmReset) {
         AlertDialog(
             onDismissRequest = { confirmReset = false },
+            modifier = Modifier.grayWindow(),
             containerColor = ColorSurface,
             title = { Text("Reset everything?", color = ColorText, fontWeight = FontWeight.Bold) },
             text = { Text("Deletes all quests, coins, XP, rewards and blocked apps, and clears settings. This can't be undone.",
@@ -433,6 +434,13 @@ internal fun OptionalFeaturesSection(prefs: Prefs, ctx: Context) {
             else svc.runBedtimeTest { msg -> Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show() }
         }, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) { Text("Test now") }
         Text("Test taps the tile once. If it turned Bedtime mode on, switch it off yourself.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+
+        HorizontalDivider(color = ColorDivider)
+        // ── Grayscale look ──
+        Text("⚫ Grayscale look", color = ColorText, fontWeight = FontWeight.SemiBold)
+        var gray by remember { mutableStateOf(prefs.optGray) }
+        ToggleRow("Draw QuestBlock in grayscale",
+            "Like the phone's own grayscale: the whole app, emojis and icons included, in sharp gray. Only inside QuestBlock; other apps stay in colour. Off by default.", gray) { gray = it; prefs.optGray = it; GrayMode = it }
 
         HorizontalDivider(color = ColorDivider)
         // ── Focus ──

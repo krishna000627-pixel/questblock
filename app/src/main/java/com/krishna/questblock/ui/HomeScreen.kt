@@ -107,6 +107,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
     askSkip?.let { (t, sub, all) ->
         AlertDialog(
             onDismissRequest = { askSkip = null },
+            modifier = Modifier.grayWindow(),
             containerColor = ColorSurface,
             title = { Text("Skip this step?", color = ColorText, fontWeight = FontWeight.Bold) },
             text = { Text("${sub.title}\nCosts $STEP_SKIP_COST🪙, no reward.", color = ColorMuted) },

@@ -623,6 +623,7 @@ private fun AppPickerDialog(
     var sel by remember { mutableStateOf(selected) }
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.grayWindow(),
         containerColor = ColorSurface,
         title = { Text("Select apps to unlock", color = ColorText, fontWeight = FontWeight.Bold) },
         text = {
