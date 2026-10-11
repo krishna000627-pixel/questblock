@@ -850,20 +850,12 @@ class GameRepository @Inject constructor(
         })
     }
 
-    /** Test mode start: adds the test coins on top of the balance. */
-    suspend fun startTestCoins() = db.withTransaction {
-        val p = playerDao.get() ?: Player()
-        playerDao.upsert(p.copy(coins = p.coins + TestMode.COIN_BONUS))
-        logCoin(0, "Test mode", "started")
-    }
-
-    /** After the test window: takes the test coins back (only while they are still on the balance). */
-    suspend fun settleTestMode() = db.withTransaction {
-        if (!TestMode.isLoaded() || TestMode.active()) return@withTransaction
+    /** One-time clean-up: v184 test coins (9,999,999) that may still sit on the balance are taken off. Real balances never get near that. */
+    suspend fun removeLeftoverTestCoins() = db.withTransaction {
         val p = playerDao.get() ?: return@withTransaction
-        if (p.coins >= TestMode.COIN_BONUS) {
-            playerDao.upsert(p.copy(coins = p.coins - TestMode.COIN_BONUS))
-            logCoin(0, "Test mode", "ended")
+        if (p.coins >= 9_999_999) {
+            playerDao.upsert(p.copy(coins = p.coins - 9_999_999))
+            logCoin(0, "Test coins", "removed")
         }
     }
 

@@ -33,8 +33,8 @@ object FunLimit {
 
     /** Today's fun time. Cached for 45 s unless [force]. Without Usage access the limit is simply off. */
     suspend fun state(ctx: Context, prefs: Prefs, force: Boolean = false): State {
-        if (!TestMode.isLoaded()) withContext(Dispatchers.IO) { TestMode.load(ctx) }
-        if (TestMode.active()) { val off = State(0L, 0L, System.currentTimeMillis()); last = off; return off }
+        // a free day (weekend, holiday): no fun limit at all, it ends by itself at midnight. Fun time is still counted.
+        if (prefs.funFreeToday) { val off = State(0L, 0L, System.currentTimeMillis()); last = off; return off }
         val baseMs = prefs.effectiveFunLimitMin * 60_000L
         // "+5 min" bought with coins today is added on top (only when a limit is set)
         val limitMs = if (baseMs > 0L) baseMs + prefs.funBonusTodayMs() else 0L

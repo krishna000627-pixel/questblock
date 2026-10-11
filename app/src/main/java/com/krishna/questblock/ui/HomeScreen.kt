@@ -56,13 +56,7 @@ class HomeViewModel @Inject constructor(
             repo.settleFocus()
             loginBonus = repo.claimDailyLogin()
             rentNote = runCatching { repo.chargeThemeRent() }.getOrNull()
-            runCatching {
-                var w = 0
-                while (!com.krishna.questblock.data.TestMode.isLoaded() && w++ < 25) kotlinx.coroutines.delay(200)
-                repo.settleTestMode()
-                val left = com.krishna.questblock.data.TestMode.remainingMs()
-                if (left > 0L) { kotlinx.coroutines.delay(left + 500L); repo.settleTestMode() }
-            }
+            runCatching { repo.removeLeftoverTestCoins() }
             runCatching { autoVerifier.run() }
             hubStore.refresh()
         }

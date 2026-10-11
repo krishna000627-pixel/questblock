@@ -143,6 +143,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                     ) { Text(label, color = if (sel) ColorPrimary else ColorText, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal) }
                 }
             }
+            Text("A shop theme picks its own white or black by itself. This choice is for the default look.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             Spacer(Modifier.height(8.dp))
             Text("Accent colour", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
             var accent by remember { mutableLongStateOf(prefs.accentArgb) }

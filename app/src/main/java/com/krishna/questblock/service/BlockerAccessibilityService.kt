@@ -304,6 +304,8 @@ class BlockerAccessibilityService : AccessibilityService() {
         else -> null
     }
 
+    private var lastLockLog = 0L
+
     private fun checkShorts(pkg: String, event: AccessibilityEvent) {
         val kind = kindOf(pkg) ?: return
         val scrolled = event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED
@@ -364,6 +366,10 @@ class BlockerAccessibilityService : AccessibilityService() {
         scope.launch {
             val st = FunLimit.state(this@BlockerAccessibilityService, prefs)
             val locked = st.reached || prefs.funBlockedNow()
+            if (SystemClock.uptimeMillis() - lastLockLog > 8_000L) {
+                lastLockLog = SystemClock.uptimeMillis()
+                DebugLog.d("clips: lock check $kind needsCoins=${shortNeedsCoins(kind)} picked=${prefs.shortPicked(kind)} ytGate=${prefs.ytGateOn} reached=${st.reached} used=${st.usedMs / 60_000L}m limit=${st.limitMs / 60_000L}m hoursLock=${prefs.funBlockedNow()} freeDay=${prefs.funFreeToday}")
+            }
             if (shortNeedsCoins(kind)) {
                 // picked in the Vault: needs coins to run, and no coins help once the fun limit is used up
                 if (locked) { blockShort(kind); return@launch }

@@ -31,8 +31,16 @@ var LightMode by mutableStateOf(false)
 
 fun applyThemeMode(mode: Int, systemDark: Boolean) {
     ThemeMode = mode
-    LightMode = when (mode) { 1 -> true; 2 -> !systemDark; else -> false }
+    LightMode = themeForcedLight() ?: when (mode) { 1 -> true; 2 -> !systemDark; else -> false }
 }
+
+/** Each shop theme has its own type: true = a light theme (white), false = a dark theme (black). It picks that by itself, whatever Dark / Light / System says. Default look: null = follow the setting. */
+private val SHOP_THEME_LIGHT = mapOf(
+    "theme_sunset" to true, "theme_paper" to true, "theme_rose" to true,
+    "theme_ocean" to false, "theme_forest" to false, "theme_neon" to false, "theme_scifi" to false,
+    "theme_amoled" to false, "theme_terminal" to false, "theme_indigo" to false,
+)
+fun themeForcedLight(id: String = ShopTheme): Boolean? = SHOP_THEME_LIGHT[id]
 
 // ── Grayscale look ───────────────────────────────────────────────────────────
 /** Optional (Hub → Experiments). On = the whole window is drawn through a zero-saturation colour filter, like the phone's own grayscale: emojis, icons and images go gray too, at full sharpness. */
@@ -60,6 +68,7 @@ fun Modifier.grayWindow(): Modifier = composed {
 
 /** Call from every activity before setContent so the first frame is already the right theme. */
 fun loadThemeMode(ctx: Context) {
+    ShopTheme = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getString("shop_theme", "default") ?: "default"
     val mode = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getInt("theme_mode", 2)
     val sysDark = (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
     applyThemeMode(mode, sysDark)
@@ -183,7 +192,7 @@ val ACCENTS: List<Pair<String, Long>> = listOf(
 @Composable
 fun QuestTheme(content: @Composable () -> Unit) {
     val sysDark = isSystemInDarkTheme()
-    val light = when (ThemeMode) { 1 -> true; 2 -> !sysDark; else -> false }
+    val light = themeForcedLight(ShopTheme) ?: when (ThemeMode) { 1 -> true; 2 -> !sysDark; else -> false }
     SideEffect { if (LightMode != light) LightMode = light }
 
     val primary = ColorPrimary

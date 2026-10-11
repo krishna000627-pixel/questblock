@@ -3,6 +3,13 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("185.0.0", "Themes pick white or black, test mode removed, free fun day",
+        listOf(
+            "Each shop theme now picks its own white or black by itself: Sunset, Paper & Ink and Rose Quartz are light themes; Ocean, Forest, Neon, Sci-Fi, AMOLED Black, Terminal and Midnight Indigo are dark themes. The Dark / Light / System choice in Settings now applies to the default look only",
+            "Removed the v184 Test mode completely (card, 2 hour window, saved record in the app). Any test coins still on the balance are taken off once; real coins are untouched. A small leftover file in Download/QuestBlock can be deleted by hand",
+            "Sunday 11 Oct 2026 is a free fun day: no fun limit all day, and study hours / exam mode do not lock fun apps. Fun time is still counted. Quiet hours (night) still apply. It ends by itself at midnight",
+            "Shorts / Reels lock: the debug log now writes a 'clips: lock check' line (needs coins, picked, YouTube gate, fun time used / limit, hours lock, free day) so a missed block can be traced",
+        )),
     VersionEntry("184.0.0", "Test mode",
         listOf(
             "New in Hub → Experiments: Test mode. One time only per phone, 2 hours: unlimited coins and no fun limit, to try the app. When the 2 hours are over the fun limit is back and the test coins are taken away; your real coins stay as they were. Needs two taps to start",

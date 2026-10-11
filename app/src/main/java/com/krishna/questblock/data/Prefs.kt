@@ -502,12 +502,19 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         get() = sp.getInt("studyblock_end", 20 * 60)
         set(value) = sp.edit().putInt("studyblock_end", ((value % 1440) + 1440) % 1440).apply()
 
+    /** A day with no fun limit (weekend, holiday): its dayNumber(). Ends by itself at midnight. Set for Sun 11 Oct 2026. */
+    var funFreeDay: Long
+        get() = sp.getLong("fun_free_day", java.util.Calendar.getInstance().apply { clear(); set(2026, 9, 11, 12, 0, 0) }.timeInMillis.let { dayNumber(it) })
+        set(value) = sp.edit().putLong("fun_free_day", value).apply()
+    val funFreeToday: Boolean get() = funFreeDay == dayNumber(System.currentTimeMillis())
+
     /** True while Fun & Games apps must stay locked: quiet hours, study hours, or exam mode (08:00-20:00 unless study hours are set). */
     fun funBlockedNow(): Boolean {
         val cal = java.util.Calendar.getInstance()
         val m = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
         fun inWin(s: Int, e: Int) = if (s == e) false else if (s < e) m in s until e else (m >= s || m < e)
         if (quietEnabled && inWin(quietStartMin, quietEndMin)) return true
+        if (funFreeToday) return false   // free day: study hours and exam mode are lifted, quiet hours (night) stay
         return if (studyBlockEnabled) inWin(studyStartMin, studyEndMin) else examMode && inWin(8 * 60, 20 * 60)
     }
 
