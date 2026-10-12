@@ -1,5 +1,10 @@
 package com.krishna.questblock.ui
 
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.border
 import android.app.admin.DevicePolicyManager
 import android.content.Context
 import android.content.Intent
@@ -283,7 +288,12 @@ private fun InfoContent(step: OnboardStep.InfoStep) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(step.emoji, style = MaterialTheme.typography.displayLarge)
+        Box(Modifier.size(112.dp).clip(HexShape)
+            .background(Brush.verticalGradient(listOf(ColorPrimary.copy(0.55f), ColorPrimary.copy(0.10f))))
+            .border(2.dp, ColorPrimary, HexShape),
+            contentAlignment = Alignment.Center) {
+            Text(step.emoji, style = MaterialTheme.typography.displayMedium)
+        }
         Text(step.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
             color = ColorText, textAlign = TextAlign.Center)
         Text(step.body, style = MaterialTheme.typography.bodyMedium, color = ColorMuted, textAlign = TextAlign.Center)

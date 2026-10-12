@@ -66,7 +66,7 @@ fun RulesScreen(onBack: () -> Unit, onOpenSites: () -> Unit, vm: RulesViewModel 
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-                Text("Rules", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
+                TitleWithIcon("\uD83D\uDCDC", "Rules")
             }
         }
         item {

@@ -3,6 +3,25 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("189.0.0", "New look, step 3: the rest of the screens",
+        listOf(
+            "Every main screen title now has a small icon tile in front, like the concept: Quests, Focus, Vault, Stats, Chapters, Attendance, Badges, Settings, Rules and Experiments (new TitleWithIcon in ui/Glass.kt)",
+            "Focus: the timer ring is a mint-to-second-colour gradient, the duration pills (5m, 10m...) are filled with the accent colour when picked, and the Today / Sessions / Best tiles have the glowing outline",
+            "Profile: the level badge is a hexagon in your frame colour. Badges: each badge is a hexagon (lit when unlocked, a lock when not). Stats: the Today / Week / Month / All filter is pill tabs. Welcome and intro pages: the big emoji sits in a hexagon badge",
+            "Not changed on purpose: Vault, Chapters, Attendance, Rules and Settings keep their layouts and options (they only get the new titles, colours and glowing cards), so nothing there moved or was lost",
+        )),
+    VersionEntry("188.0.0", "New look, step 2: Home, pill tabs, icon tiles",
+        listOf(
+            "Home rebuilt like the concept: header with the QuestBlock icon and a greeting by time of day (Good Morning / Afternoon / Evening) with your name; level card with a hexagon level badge (your frame colour and badge still show), a thick XP bar and XP numbers; three glowing stat tiles (Coins, Streak, Quests). Tapping Coins still opens the Shop. Routines, suggestions, power-ups, shortcuts and achievements are unchanged",
+            "Quest rows on Home have a coloured icon tile (the quest type's emoji in the category colour), the category, the due time and the coins. The thin colour bar on the left is gone",
+            "New shared pieces in ui/Glass.kt for the next screens: PillTabs, IconTile, StatTile, GlowBar and HexShape. Shop (Shop / My Items) and the Quests filter tabs (All, Today, Active, Done, Overdue, Suggested) use the pill tabs",
+        )),
+    VersionEntry("187.0.0", "New look, step 1: colours, glowing cards, bottom bar",
+        listOf(
+            "First step of the concept-art redesign (the sheet with Home, Quests, Focus, Vault, Profile and more). The default dark look changes from blue-black to deep green-black with a mint glow: background, cards, bars, dividers, text and muted text. Shop themes and the light look keep their own colours",
+            "Every card in the app now has a thin glowing outline in the accent colour (so it follows the equipped theme). It is done in one place, ui/Glass.kt, by replacing Material's Card with one that has the same parameters, so no screen had to be edited",
+            "The bottom bar has a thin glowing line along its top edge. Screens are rebuilt to match the concept one batch at a time in the next versions, starting with Home",
+        )),
     VersionEntry("186.0.0", "Poster theme demo: Mist Hashira",
         listOf(
             "New demo theme with a picture: Mist Hashira (free). The poster is drawn behind every screen and the lock pages, in one teal colour and dimmed so text stays readable; cards and bars are slightly see-through. It is a dark theme, and works with the grayscale switch. Shop → Themes to get it, Inventory → Themes to equip",

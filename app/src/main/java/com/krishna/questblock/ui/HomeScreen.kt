@@ -3,6 +3,7 @@ package com.krishna.questblock.ui
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -167,6 +168,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
         if (problems.isNotEmpty()) item { HealthBanner(problems.first(), problems.size) }
 
         // ── Hero card ──────────────────────────────────────────────────────
+        item { HomeHeader(player.name) }
         item { HeroCard(player = player, doneToday = shownDone, total = shownTotal, hideCoins = vm.prefs.optHideCoins, onCoinsClick = onOpenShop, onAddQuest = { vm.addSuggestion(it) }) }
 
         // ── Daily login bonus ──────────────────────────────────────────────
@@ -330,6 +332,24 @@ fun TaskEntity.isForToday(endOfToday: Long): Boolean =
 
 // ── Hero card ──────────────────────────────────────────────────────────────
 @Composable
+private fun HomeHeader(name: String) {
+    val hour = remember { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
+    val greet = when { hour < 12 -> "Good Morning,"; hour < 17 -> "Good Afternoon,"; else -> "Good Evening," }
+    Column(Modifier.fillMaxWidth().padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            IconTile("\u2694\uFE0F", ColorPrimary, 34.dp)
+            Text("QuestBlock", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = ColorText)
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(greet, style = MaterialTheme.typography.bodyMedium, color = ColorMuted)
+        Text(name.ifBlank { "Hero" }, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = ColorText,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text("Keep going, legends build habits.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+    }
+}
+
+// ?? Hero card ??????????????????????????????????????????????????????????????
+@Composable
 private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Boolean = false, onCoinsClick: () -> Unit, onAddQuest: ((StarterQuest) -> Unit)? = null) {
     val level = player.level()
     val xp    = player.xpIntoLevel()
@@ -340,85 +360,55 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Bool
         "frame_galaxy" -> androidx.compose.ui.graphics.Color(0xFF9C27B0)
         else           -> ColorPrimary
     }
-
-    // Animated XP bar
     val xpAnim by animateFloatAsState(targetValue = xp / 100f,
         animationSpec = tween(800, easing = EaseOutCubic), label = "xp")
 
     Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
         shape = RoundedCornerShape(20.dp),
         modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Avatar
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                // Level badge (hexagon)
                 Box(contentAlignment = Alignment.Center) {
-                    Box(Modifier.size(64.dp).background(
-                        Brush.radialGradient(listOf(frameColor.copy(0.5f), frameColor.copy(0.05f))), CircleShape))
-                    Box(Modifier.size(54.dp).clip(CircleShape).background(frameColor.copy(0.2f)),
+                    Box(Modifier.size(68.dp).clip(HexShape)
+                        .background(Brush.verticalGradient(listOf(frameColor.copy(0.55f), frameColor.copy(0.12f))))
+                        .border(2.dp, frameColor, HexShape),
                         contentAlignment = Alignment.Center) {
                         Text("$level", style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Black, color = frameColor)
+                            fontWeight = FontWeight.Black, color = ColorText)
                     }
-                    // Badge
                     val badgeEmoji = when (com.krishna.questblock.data.shownBadgeOf(player)) {
-                        "badge_beginner" -> "\uD83C\uDF31"; "badge_star" -> "⭐"; "badge_crown" -> "👑"
-                        "badge_sword" -> "⚔️"; "badge_dragon" -> "🐉"; else -> ""
+                        "badge_beginner" -> "\uD83C\uDF31"; "badge_star" -> "\u2B50"; "badge_crown" -> "\uD83D\uDC51"
+                        "badge_sword" -> "\u2694\uFE0F"; "badge_dragon" -> "\uD83D\uDC09"; else -> ""
                     }
                     if (badgeEmoji.isNotBlank()) {
-                        Box(Modifier.align(Alignment.BottomEnd).size(22.dp)
+                        Box(Modifier.align(Alignment.BottomEnd).size(24.dp)
                             .background(ColorCard, CircleShape), contentAlignment = Alignment.Center) {
-                            Text(badgeEmoji, fontSize = 12.sp)
+                            Text(badgeEmoji, fontSize = 13.sp)
                         }
                     }
                 }
-
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(player.name.ifBlank { "Hero" }, style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black, color = ColorText, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("Level $level · ${player.xp} XP total",
-                        style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                        Text("Lv. $level", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = ColorText)
+                        Text("$xp / 100 XP", style = MaterialTheme.typography.labelMedium, color = ColorMuted)
+                    }
+                    GlowBar(xpAnim, height = 10.dp)
+                    Text("${player.xp} XP total", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
                     if (player.goal.isNotBlank()) {
-                        Surface(shape = RoundedCornerShape(6.dp), color = ColorPrimary.copy(0.12f)) {
-                            Text("🎯 ${player.goal}", modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                style = MaterialTheme.typography.labelSmall, color = ColorPrimary,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
+                        Text("\uD83C\uDFAF ${player.goal}", style = MaterialTheme.typography.labelSmall, color = ColorPrimary,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
 
-            // Stats chips
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatPill(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable { onCoinsClick() }, "🪙", if (hideCoins) "•••" else "${player.coins}", "coins · shop")
-                StatPill(Modifier.weight(1f), "🔥", "${player.streak}d", "streak")
-                StatPill(Modifier.weight(1f), "✅", "$doneToday/$total", "done")
-            }
-
-            // XP bar
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("XP to Level ${level + 1}", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
-                    Text("$xp / 100", style = MaterialTheme.typography.labelSmall, color = ColorPrimary)
-                }
-                Box(Modifier.fillMaxWidth().height(8.dp).clip(CircleShape).background(ColorSurfaceHigh)) {
-                    Box(Modifier.fillMaxWidth(xpAnim).fillMaxHeight()
-                        .background(Brush.horizontalGradient(listOf(ColorPrimary, ColorAccent)), CircleShape))
-                }
+                StatTile("\uD83E\uDE99", if (hideCoins) "???" else "${player.coins}", "Coins", Modifier.weight(1f).clickable { onCoinsClick() })
+                StatTile("\uD83D\uDD25", "${player.streak}d", "Streak", Modifier.weight(1f))
+                StatTile("\u2705", "$doneToday/$total", "Quests", Modifier.weight(1f))
             }
 
             CultivationStrip(player.xp, onAddQuest = onAddQuest)
-        }
-    }
-}
-
-@Composable
-private fun StatPill(modifier: Modifier, emoji: String, value: String, label: String) {
-    Surface(modifier = modifier, shape = RoundedCornerShape(10.dp), color = ColorSurfaceHigh) {
-        Column(Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            Text(emoji, fontSize = 16.sp)
-            Text(value, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = ColorText)
-            Text(label, style = MaterialTheme.typography.labelSmall, color = ColorMuted)
         }
     }
 }
@@ -557,35 +547,31 @@ private fun HomeQuestRow(task: TaskEntity, now: Long, onComplete: () -> Unit) {
     val tf  = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
 
     Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-            Box(Modifier.width(3.dp).fillMaxHeight().background(catColor))
-            Row(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(task.title, style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold, color = ColorText,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(questTypeInfo(task.questType).emoji, fontSize = 12.sp)
-                        Surface(shape = RoundedCornerShape(4.dp), color = catColor.copy(0.15f)) {
-                            Text(task.category, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall, color = catColor)
-                        }
-                        if (task.dueAt != null) {
-                            Text((if (task.isRecurring) tf else sdf).format(Date(task.dueAt)),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (isOverdue) ColorDanger else ColorMuted,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            IconTile(questTypeInfo(task.questType).emoji, catColor, 42.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(task.title, style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold, color = ColorText,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(task.category, style = MaterialTheme.typography.labelSmall, color = catColor, fontWeight = FontWeight.Bold)
+                    if (task.dueAt != null) {
+                        Text((if (task.isRecurring) tf else sdf).format(Date(task.dueAt)),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isOverdue) ColorDanger else ColorMuted,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
+                    Text("\uD83E\uDE99 ${baseReward(task.difficulty)}", style = MaterialTheme.typography.labelSmall,
+                        color = ColorCoin, fontWeight = FontWeight.Bold)
                 }
-                IconButton(onClick = onComplete, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = "Complete",
-                        tint = ColorPrimary, modifier = Modifier.size(22.dp))
-                }
+            }
+            IconButton(onClick = onComplete, modifier = Modifier.size(34.dp)) {
+                Icon(Icons.Default.CheckCircle, contentDescription = "Complete",
+                    tint = ColorPrimary, modifier = Modifier.size(26.dp))
             }
         }
     }

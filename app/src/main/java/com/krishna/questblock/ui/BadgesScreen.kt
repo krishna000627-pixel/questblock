@@ -1,6 +1,11 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.krishna.questblock.ui
 
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,7 +35,7 @@ fun BadgesScreen(onBack: () -> Unit, vm: HubViewModel = hiltViewModel()) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-                Text("Badges", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
+                TitleWithIcon("\uD83C\uDFC5", "Badges")
             }
         }
         if (list.isEmpty()) return@LazyColumn
@@ -46,7 +51,12 @@ fun BadgesScreen(onBack: () -> Unit, vm: HubViewModel = hiltViewModel()) {
             Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(if (b.unlocked) b.emoji else "🔒", fontSize = 30.sp)
+                    Box(Modifier.size(54.dp).clip(HexShape)
+                            .background(if (b.unlocked) Brush.verticalGradient(listOf(ColorPrimary.copy(0.55f), ColorPrimary.copy(0.12f))) else Brush.verticalGradient(listOf(ColorSurfaceHigh, ColorSurfaceHigh)))
+                            .border(2.dp, if (b.unlocked) ColorPrimary else ColorDivider, HexShape),
+                            contentAlignment = Alignment.Center) {
+                            Text(if (b.unlocked) b.emoji else "\uD83D\uDD12", fontSize = 24.sp)
+                        }
                     Column(Modifier.weight(1f)) {
                         Text(if (shown) b.name else "???", fontWeight = FontWeight.Bold,
                             color = if (b.unlocked) ColorText else ColorMuted)

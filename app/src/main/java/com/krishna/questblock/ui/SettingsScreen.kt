@@ -103,8 +103,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-            Text("Settings", style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold, color = ColorText)
+            TitleWithIcon("\u2699\uFE0F", "Settings")
         }
 
         // ── Profile ──────────────────────────────────────────────────────

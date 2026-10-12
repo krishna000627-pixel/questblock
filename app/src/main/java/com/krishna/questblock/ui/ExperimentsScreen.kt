@@ -42,7 +42,7 @@ fun ExperimentsScreen(onBack: () -> Unit, vm: ExperimentsViewModel = hiltViewMod
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-            Text("Experiments", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
+            TitleWithIcon("\uD83E\uDDEA", "Experiments")
         }
         OptionalFeaturesSection(vm.prefs, ctx)
         Spacer(Modifier.height(12.dp))

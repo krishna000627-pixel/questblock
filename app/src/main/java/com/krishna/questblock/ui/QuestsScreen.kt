@@ -139,27 +139,16 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically) {
-                        Text("Quests", style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold, color = ColorText)
+                        TitleWithIcon("\uD83D\uDCCB", "Quests")
                         Text("${tasks.count { it.done }}/${tasks.size} done",
                             style = MaterialTheme.typography.labelMedium, color = ColorPrimary)
                     }
                     // Filter tabs
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(FILTER_TABS) { tab ->
-                            val sel = filterTab == tab
-                            Surface(
-                                shape = RoundedCornerShape(20.dp),
-                                color = if (sel) ColorPrimary.copy(0.2f) else ColorSurface,
-                                modifier = Modifier.clickable { filterTab = tab },
-                            ) {
-                                Text(if (tab == "Suggested") "\uD83D\uDCA1 Suggested" else tab, modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
-                                    color = if (sel) ColorPrimary else ColorMuted,
-                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                                    style = MaterialTheme.typography.labelMedium)
-                            }
-                        }
-                    }
+                    PillTabs(
+                        labels = FILTER_TABS.map { if (it == "Suggested") "\uD83D\uDCA1 Suggested" else it },
+                        selected = FILTER_TABS.indexOf(filterTab).coerceAtLeast(0),
+                        onSelect = { filterTab = FILTER_TABS[it] },
+                    )
                     // Category filter (the Suggested tab has its own subject chips)
                     if (filterTab != "Suggested") LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         item {

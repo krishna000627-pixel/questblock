@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.*
 import kotlinx.coroutines.flow.map
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -91,7 +93,10 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
         containerColor = ColorBg,
         snackbarHost = { SnackbarHost(snack) },
         bottomBar = {
-            NavigationBar(containerColor = ColorSurface) {
+            NavigationBar(
+                containerColor = ColorSurface,
+                modifier = Modifier.glowLine(),
+            ) {
                 NAV_ITEMS.forEach { item ->
                     NavigationBarItem(
                         selected = activeTab == item.route,
@@ -220,3 +225,15 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
         }
     }
 }
+
+/** A thin glowing line along the top edge of the bottom bar (concept style). */
+private fun Modifier.glowLine(): Modifier = this.then(
+    Modifier.drawBehind {
+        drawLine(
+            color = ColorPrimary.copy(alpha = 0.35f),
+            start = androidx.compose.ui.geometry.Offset(0f, 0f),
+            end = androidx.compose.ui.geometry.Offset(size.width, 0f),
+            strokeWidth = 1.dp.toPx(),
+        )
+    }
+)

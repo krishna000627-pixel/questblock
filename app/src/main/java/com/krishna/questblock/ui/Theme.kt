@@ -154,10 +154,10 @@ private fun themed(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (L
 private fun pick(dark: Long, light: Long) = Color(if (LightMode) light else dark)
 
 // ── Palette (same names as before; each one switches between dark and light) ──
-val ColorBg: Color          get() = themed(0) ?: pick(0xFF0A0D12, 0xFFEEF2F7)
-val ColorSurface: Color     get() = themed(1) ?: pick(0xFF111720, 0xFFFFFFFF)
-val ColorSurfaceHigh: Color get() = themed(2) ?: pick(0xFF1A2230, 0xFFE3E9F1)
-val ColorCard: Color        get() = themed(3) ?: pick(0xFF16202E, 0xFFFFFFFF)
+val ColorBg: Color          get() = themed(0) ?: pick(0xFF050E0C, 0xFFEEF2F7)
+val ColorSurface: Color     get() = themed(1) ?: pick(0xFF0A1A15, 0xFFFFFFFF)
+val ColorSurfaceHigh: Color get() = themed(2) ?: pick(0xFF12261F, 0xFFE3E9F1)
+val ColorCard: Color        get() = themed(3) ?: pick(0xFF0B1D17, 0xFFFFFFFF)
 
 /** Accent colour. A state, so changing it in Settings recolours the app live. Darkened a little on light so it stays readable. */
 private var accentRaw by mutableStateOf(Color(0xFF00E5A0))
@@ -173,9 +173,9 @@ val ColorAccent: Color      get() = tone(4) ?: pick(0xFF7C6EF5, 0xFF6552E8)   //
 val ColorCoin: Color        get() = tone(3) ?: pick(0xFFFFC857, 0xFFB8800A)
 val ColorDanger: Color      get() = pick(0xFFFF5C5C, 0xFFD93636)
 val ColorWarning: Color     get() = tone(2) ?: pick(0xFFFFAA00, 0xFFC47A00)
-val ColorText: Color        get() = tone(0) ?: pick(0xFFEAEFF5, 0xFF121A24)
-val ColorMuted: Color       get() = tone(1) ?: pick(0xFF5A6A7E, 0xFF6B7A8D)
-val ColorDivider: Color     get() = themed(4) ?: pick(0xFF1E2A3A, 0xFFDDE4EE)
+val ColorText: Color        get() = tone(0) ?: pick(0xFFE6F5EE, 0xFF121A24)
+val ColorMuted: Color       get() = tone(1) ?: pick(0xFF6E9487, 0xFF6B7A8D)
+val ColorDivider: Color     get() = themed(4) ?: pick(0xFF15362B, 0xFFDDE4EE)
 
 // Category colours
 val CatColors: Map<String, Color>

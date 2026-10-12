@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.krishna.questblock.ui
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -94,8 +95,7 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text("Focus", style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold, color = ColorText, modifier = Modifier.fillMaxWidth())
+        TitleWithIcon("\u26A1", "Focus", Modifier.fillMaxWidth())
 
         if (running) {
             ActiveFocus(
@@ -137,7 +137,7 @@ private fun Setup(timerQuests: List<TaskEntity>, bonus: Int, onStart: (Long, Tas
             Canvas(Modifier.fillMaxSize()) {
                 val stroke = Stroke(width = 14.dp.toPx(), cap = StrokeCap.Round)
                 drawArc(ColorPrimary.copy(0.15f), -90f, 360f, false, style = stroke)
-                drawArc(ColorPrimary, -90f, 360f * frac, false, style = stroke)
+                drawArc(androidx.compose.ui.graphics.Brush.sweepGradient(listOf(ColorPrimary, ColorAccent, ColorPrimary)), -90f, 360f * frac, false, style = stroke)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("$shownMin", fontSize = 56.sp, fontWeight = FontWeight.Black, color = ColorText)
@@ -159,11 +159,11 @@ private fun Setup(timerQuests: List<TaskEntity>, bonus: Int, onStart: (Long, Tas
                 val sel = minutes == m
                 Box(
                     Modifier.weight(1f).height(36.dp).clip(RoundedCornerShape(50))
-                        .background(if (sel) ColorPrimary.copy(0.2f) else ColorSurfaceHigh)
+                        .background(if (sel) ColorPrimary else ColorSurfaceHigh)
                         .clickable { minutes = m },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("${m}m", maxLines = 1, color = if (sel) ColorPrimary else ColorMuted,
+                    Text("${m}m", maxLines = 1, color = if (sel) ColorOnPrimary else ColorMuted,
                         fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
                         style = MaterialTheme.typography.labelMedium)
                 }
@@ -235,7 +235,7 @@ private fun TodayStrip(logs: List<FocusLog>, now: Long) {
 @Composable
 private fun StripCell(label: String, value: String, modifier: Modifier) {
     Column(
-        modifier.clip(RoundedCornerShape(14.dp)).background(ColorCard).padding(vertical = 10.dp),
+        modifier.clip(RoundedCornerShape(14.dp)).background(ColorCard).border(1.dp, ColorPrimary.copy(0.22f), RoundedCornerShape(14.dp)).padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ColorText)

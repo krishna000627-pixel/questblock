@@ -80,19 +80,7 @@ fun StatsSection(vm: StatsViewModel = hiltViewModel()) {
             Text("📊 Stats", style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold, color = ColorText)
             Spacer(Modifier.height(8.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(DATE_FILTERS) { f ->
-                    val sel = dateFilter == f
-                    Surface(shape = RoundedCornerShape(20.dp),
-                        color = if (sel) ColorPrimary.copy(0.2f) else ColorSurface,
-                        modifier = Modifier.clickable { dateFilter = f }) {
-                        Text(f, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                            color = if (sel) ColorPrimary else ColorMuted,
-                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                            style = MaterialTheme.typography.labelMedium)
-                    }
-                }
-            }
+            PillTabs(DATE_FILTERS, DATE_FILTERS.indexOf(dateFilter).coerceAtLeast(0), { dateFilter = DATE_FILTERS[it] })
         }
 
         // Summary cards
@@ -276,8 +264,7 @@ fun StatsScreen(onBack: () -> Unit, onOpenUsage: () -> Unit, vm: StatsViewModel 
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-            Text("Stats", style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold, color = ColorText)
+            TitleWithIcon("\uD83D\uDCCA", "Stats")
         }
         OutlinedButton(onClick = onOpenUsage, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
             Text("\uD83D\uDCF1 Daily app usage")

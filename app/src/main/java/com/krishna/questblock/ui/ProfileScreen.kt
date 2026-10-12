@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.krishna.questblock.ui
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -73,11 +74,13 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                         Box(Modifier.size(80.dp).background(
                             Brush.radialGradient(listOf(frameColor.copy(0.5f), frameColor.copy(0.1f))), CircleShape))
                         Box(
-                            Modifier.size(68.dp).clip(CircleShape).background(frameColor.copy(alpha = 0.2f)),
+                            Modifier.size(72.dp).clip(HexShape)
+                                .background(Brush.verticalGradient(listOf(frameColor.copy(0.55f), frameColor.copy(0.12f))))
+                                .border(2.dp, frameColor, HexShape),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text("${player.level()}", fontSize = 28.sp,
-                                fontWeight = FontWeight.Black, color = frameColor)
+                                fontWeight = FontWeight.Black, color = ColorText)
                         }
                         // Badge overlay
                         val shownBadge = com.krishna.questblock.data.shownBadgeOf(player)

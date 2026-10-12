@@ -155,8 +155,7 @@ fun VaultScreen(vm: AppsViewModel = hiltViewModel()) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
-            Text("Vault", style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold, color = ColorText)
+            TitleWithIcon("\uD83D\uDD12", "Vault")
             Text("${lockedRows.size} locked · ${studyRows.size} study",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }

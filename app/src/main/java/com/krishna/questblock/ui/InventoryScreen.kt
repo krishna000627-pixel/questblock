@@ -120,11 +120,7 @@ fun InventoryScreen(onBack: () -> Unit, vm: InventoryViewModel = hiltViewModel()
 
             ActivePowerUpsRow(player)
 
-            TabRow(selectedTabIndex = tab, containerColor = ColorSurface, contentColor = ColorPrimary) {
-                listOf("Shop", "My Items").forEachIndexed { i, label ->
-                    Tab(selected = tab == i, onClick = { tab = i }, text = { Text(label) })
-                }
-            }
+            PillTabs(listOf("Shop", "My Items"), tab, { tab = it }, Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
 
             when (tab) {
                 0 -> ShopTab(

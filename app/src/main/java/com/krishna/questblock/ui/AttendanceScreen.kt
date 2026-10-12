@@ -116,8 +116,7 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-            Text("\uD83D\uDCC5 Attendance", style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold, color = ColorText)
+            TitleWithIcon("\uD83D\uDCC5", "Attendance")
         }
 
         // Summary

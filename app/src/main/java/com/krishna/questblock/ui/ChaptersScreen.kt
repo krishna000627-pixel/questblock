@@ -307,8 +307,7 @@ fun ChaptersScreen(
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-            Text("\uD83D\uDCDA Chapters", style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold, color = ColorText)
+            TitleWithIcon("\uD83D\uDCDA", "Chapters")
         }
         PageSwitch(school) { school = it }
 
