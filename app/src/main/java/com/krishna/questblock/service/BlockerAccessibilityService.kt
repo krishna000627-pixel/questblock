@@ -393,7 +393,7 @@ class BlockerAccessibilityService : AccessibilityService() {
     }
 
     /** Vault pick, or (YouTube) the study gate: Shorts are always fun, a chapter name in the title never frees them. */
-    private fun shortNeedsCoins(kind: String): Boolean = prefs.shortPicked(kind) || (kind == ShortsStats.YT && prefs.ytGateOn)
+    private fun shortNeedsCoins(kind: String): Boolean = !prefs.funFreeToday && (prefs.shortPicked(kind) || (kind == ShortsStats.YT && prefs.ytGateOn))
 
     private fun isShortForm(root: AccessibilityNodeInfo, kind: String): Boolean {
         val pkg = root.packageName?.toString() ?: return false
@@ -887,6 +887,7 @@ class BlockerAccessibilityService : AccessibilityService() {
                     showFunLimit("yt:fun")
                     return@launch
                 }
+                if (prefs.funFreeToday) { ytExpiryJob?.cancel(); return@launch }   // free fun day: fun videos are free (still counted)
                 val left = prefs.siteUnlockedUntil("yt:fun") - System.currentTimeMillis()
                 if (left > 0L) armYtExpiry(left) else { pauseYoutube(); showSiteBlock("yt:fun") }
             }

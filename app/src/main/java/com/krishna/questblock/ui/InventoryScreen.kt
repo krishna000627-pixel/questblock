@@ -271,7 +271,7 @@ private fun ShopItemCard(item: ShopItem, canAfford: Boolean, onBuy: () -> Unit) 
     Card(colors = CardDefaults.cardColors(containerColor = ColorSurface), shape = RoundedCornerShape(14.dp)) {
         Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(item.emoji, fontSize = 28.sp)
+            ArtIcon(Art.shop(item.id), item.emoji, 52.dp)
             Text(item.name, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
                 color = ColorText, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(item.description, style = MaterialTheme.typography.bodySmall, color = ColorMuted,
@@ -390,7 +390,7 @@ private fun MyItemsTab(inventory0: List<InventoryItem>, shownBadge: String, onEq
     if (inventory.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("🎒", style = MaterialTheme.typography.displayMedium)
+                androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(com.krishna.questblock.R.drawable.art_empty_chest), null, Modifier.size(120.dp))
                 Text("Your inventory is empty", style = MaterialTheme.typography.titleMedium, color = ColorText)
                 Text("Buy items from the shop!", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             }
@@ -427,7 +427,7 @@ private fun InventoryItemCard(item: InventoryItem, onEquip: () -> Unit, onUnequi
         Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(40.dp).background(ColorSurfaceHigh, RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center) { Text(item.emoji, fontSize = 20.sp) }
+                contentAlignment = Alignment.Center) { ArtIcon(Art.shop(item.itemId), item.emoji, 36.dp) }
 
             Column(Modifier.weight(1f)) {
                 Text(item.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold,

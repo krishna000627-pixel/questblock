@@ -51,12 +51,7 @@ fun BadgesScreen(onBack: () -> Unit, vm: HubViewModel = hiltViewModel()) {
             Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.size(54.dp).clip(HexShape)
-                            .background(if (b.unlocked) Brush.verticalGradient(listOf(ColorPrimary.copy(0.55f), ColorPrimary.copy(0.12f))) else Brush.verticalGradient(listOf(ColorSurfaceHigh, ColorSurfaceHigh)))
-                            .border(2.dp, if (b.unlocked) ColorPrimary else ColorDivider, HexShape),
-                            contentAlignment = Alignment.Center) {
-                            Text(if (b.unlocked) b.emoji else "\uD83D\uDD12", fontSize = 24.sp)
-                        }
+                    BadgeArt(b.id, b.emoji, b.unlocked, 56.dp)
                     Column(Modifier.weight(1f)) {
                         Text(if (shown) b.name else "???", fontWeight = FontWeight.Bold,
                             color = if (b.unlocked) ColorText else ColorMuted)

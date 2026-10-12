@@ -149,11 +149,19 @@ object YtGate {
         return null
     }
 
-    /** Class 11 is not part of this gate for now: such titles are plain FUN. */
-    private fun isClass11(w: List<String>): Boolean {
-        if ("11th" in w || "xi" in w) return true
-        val i = w.indexOf("class")
-        return i >= 0 && w.getOrNull(i + 1) == "11"
+    /** Only Class 12 is part of this gate. A title for another class (Class 6 to 11, "10th", "XI") is plain FUN, unless it also says 12. */
+    private val OTHER_CLASS_WORDS = hashSetOf("6th", "7th", "8th", "9th", "10th", "11th", "xi")
+    private fun isOtherClass(w: List<String>): Boolean {
+        if ("12th" in w || "xii" in w) return false
+        val c = w.indexOf("class")
+        if (c >= 0 && w.getOrNull(c + 1) == "12") return false
+        if (w.any { it in OTHER_CLASS_WORDS }) return true
+        for (k in 0 until w.size - 1) {
+            if (w[k] != "class") continue
+            val n = w[k + 1].removeSuffix("th").toIntOrNull() ?: continue
+            if (n in 1..11) return true
+        }
+        return false
     }
 
     /** A chapter lecture is study time: free, whether the chapter is ticked or not. */
@@ -169,7 +177,7 @@ object YtGate {
      */
     fun classify(title: String, hint: String = "", studied: (String, Int) -> Boolean): Decision {
         val w = words(title)
-        if (w.isEmpty() || isClass11(w)) return Decision(Kind.FUN)
+        if (w.isEmpty() || isOtherClass(w)) return Decision(Kind.FUN)
         val inTitle = subjectsOf(w)
         val h = words(hint.replace(Regex("(?i)physics\\s*wallah"), " "))     // "Physics Wallah" teaches all subjects: not a hint
         // v176: "Solutions", "Atoms", "Probability" ... alone in a fun title ("Probability of a Free Fire win") must not free it

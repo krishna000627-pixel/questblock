@@ -3,6 +3,17 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("191.0.0", "Drawn art: badges, ranks, shop items, icon",
+        listOf(
+            "Vector art drawn for the app (sharp at any size, tiny files): all 25 badges (Badges page; locked ones are grey and faded), the 12 achievements on Home, the 6 ranks (Player hub), the 15 shop items (power-ups, frames, badges) in the Shop and My Items, and two empty-screen pictures (no quests, empty inventory). Files are res/drawable/art_*.xml; ui/Art.kt maps ids to them, and anything without art keeps its emoji",
+            "New launcher icon: a mint hexagon with a star on a deep green-black background, matching the new look",
+        )),
+    VersionEntry("190.0.0", "Poster from your gallery, YouTube fixes",
+        listOf(
+            "New in Hub → Experiments: Poster background. Pick any picture from the gallery; it is copied into the app (nothing is uploaded) and drawn dimmed behind every screen and the lock pages. You can switch it on/off, tint it in the accent colour, and set how dark it is. While it is on the look is dark and cards are slightly see-through; the Mist Hashira theme keeps its own poster",
+            "Fix: YouTube titles for another class (Class 6 to 11, '10th', 'XI') were judged as Class 12 chapters ('Class 10 Maths Chapter 1: Real Numbers' became free as 'Relations and Functions'). Only Class 12 is part of the gate now; any other class is plain fun. A title that also says 12 still counts",
+            "Free fun day (Sun 11 Oct 2026 was the first): fun YouTube videos and picked Shorts / Reels are free too, not only the daily limit and the study hours. Still counted as fun time",
+        )),
     VersionEntry("189.0.0", "New look, step 3: the rest of the screens",
         listOf(
             "Every main screen title now has a small icon tile in front, like the concept: Quests, Focus, Vault, Stats, Chapters, Attendance, Badges, Settings, Rules and Experiments (new TitleWithIcon in ui/Glass.kt)",

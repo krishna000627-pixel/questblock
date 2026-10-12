@@ -573,6 +573,12 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     var optBubble: Boolean get() = flag("opt_bubble"); set(v) = setFlag("opt_bubble", v)
     var optBedtime: Boolean get() = flag("opt_bedtime"); set(v) = setFlag("opt_bedtime", v)
     var optGray: Boolean get() = flag("gray_mode"); set(v) = setFlag("gray_mode", v)
+    /** A picture picked from the gallery, drawn dimmed behind every screen. The copy is filesDir/poster_user.jpg. */
+    var posterOn: Boolean get() = flag("poster_on"); set(v) = setFlag("poster_on", v)
+    var posterTint: Boolean get() = flag("poster_tint", true); set(v) = setFlag("poster_tint", v)
+    var posterDim: Int
+        get() = sp.getInt("poster_dim", 60)
+        set(value) = sp.edit().putInt("poster_dim", value).apply()
     var optFocusDnd: Boolean get() = flag("opt_focus_dnd"); set(v) = setFlag("opt_focus_dnd", v)
     var optFocusAwake: Boolean get() = flag("opt_focus_awake"); set(v) = setFlag("opt_focus_awake", v)
     var optBreakVibrate: Boolean get() = flag("opt_break_vibrate"); set(v) = setFlag("opt_break_vibrate", v)

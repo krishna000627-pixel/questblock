@@ -2,5 +2,5 @@
     <!-- Window colour shown by the system before the app draws. Matches the white theme. -->
     <color name="bg">#FFEEF2F7</color>
     <color name="splash_bg">#FFEEF2F7</color>
-    <color name="ic_bg">#FF12101C</color>
+    <color name="ic_bg">#FF06130F</color>
 </resources>

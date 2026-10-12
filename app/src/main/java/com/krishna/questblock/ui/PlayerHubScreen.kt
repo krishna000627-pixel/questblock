@@ -98,10 +98,13 @@ fun PlayerHubScreen(
             item {
                 HubCard {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Art.rank(st.rank)?.let { androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(it), null, Modifier.size(60.dp)) }
                         Column {
                             Text(st.rank, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = ColorPrimary)
                             Text("Level ${snap.level}" + (st.toNext?.let { " • $it to next" } ?: ""),
                                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                        }
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text("${st.score}", fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = ColorText)
