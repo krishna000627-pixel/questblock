@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("186.0.0", "Poster theme demo: Mist Hashira",
+        listOf(
+            "New demo theme with a picture: Mist Hashira (free). The poster is drawn behind every screen and the lock pages, in one teal colour and dimmed so text stays readable; cards and bars are slightly see-through. It is a dark theme, and works with the grayscale switch. Shop → Themes to get it, Inventory → Themes to equip",
+            "How it works: a theme can now have a picture (drawable-nodpi/poster_mist.jpg); windowBackgroundFor() in Theme.kt tints, dims and crops it to the screen. More poster themes only need a picture and one line in SHOP_POSTERS",
+        )),
     VersionEntry("185.0.0", "Themes pick white or black, test mode removed, free fun day",
         listOf(
             "Each shop theme now picks its own white or black by itself: Sunset, Paper & Ink and Rose Quartz are light themes; Ocean, Forest, Neon, Sci-Fi, AMOLED Black, Terminal and Midnight Indigo are dark themes. The Dark / Light / System choice in Settings now applies to the default look only",

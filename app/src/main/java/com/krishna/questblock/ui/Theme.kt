@@ -22,6 +22,14 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import android.view.View
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.LayerDrawable
+import com.krishna.questblock.R
 
 // ── Theme mode ───────────────────────────────────────────────────────────────
 /** What the user picked: 0 = dark, 1 = light, 2 = follow the phone. Saved in Prefs.themeMode. */
@@ -38,7 +46,7 @@ fun applyThemeMode(mode: Int, systemDark: Boolean) {
 private val SHOP_THEME_LIGHT = mapOf(
     "theme_sunset" to true, "theme_paper" to true, "theme_rose" to true,
     "theme_ocean" to false, "theme_forest" to false, "theme_neon" to false, "theme_scifi" to false,
-    "theme_amoled" to false, "theme_terminal" to false, "theme_indigo" to false,
+    "theme_amoled" to false, "theme_terminal" to false, "theme_indigo" to false, "theme_mist" to false,
 )
 fun themeForcedLight(id: String = ShopTheme): Boolean? = SHOP_THEME_LIGHT[id]
 
@@ -74,7 +82,7 @@ fun loadThemeMode(ctx: Context) {
     applyThemeMode(mode, sysDark)
     GrayMode = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getBoolean("gray_mode", false)
     // paint the chosen background before the first frame so the XML window colour never shows
-    (ctx as? Activity)?.window?.setBackgroundDrawable(ColorDrawable(ColorBg.toArgb()))
+    (ctx as? Activity)?.window?.setBackgroundDrawable(windowBackgroundFor(ctx))
 }
 
 /** Shop theme equipped right now ("default", "theme_sunset", ...). Recolours the whole app live. */
@@ -134,6 +142,11 @@ private val SHOP_PALETTES = mapOf(
         longArrayOf(0xFFEEF0FF, 0xFFFFFFFF, 0xFFDDE0FF, 0xFFFFFFFF, 0xFFC9CEF5),
         longArrayOf(0xFFE8EAFF, 0xFF7479B0, 0xFF9BE7FF, 0xFFC7B9FF, 0xFFFF7BD5),
         longArrayOf(0xFF12143A, 0xFF5F649A, 0xFF2A6FD6, 0xFF5A4FCF, 0xFFC23FA0)),
+    "theme_mist" to ShopPalette(0xFF5CE0D0,
+        longArrayOf(0x8006100F, 0xE60B1A1A, 0xEB12292A, 0xE60F2222, 0xFF1E3A3A),
+        longArrayOf(0x8006100F, 0xE60B1A1A, 0xEB12292A, 0xE60F2222, 0xFF1E3A3A),
+        longArrayOf(0xFFE6F7F5, 0xFF7FA3A0, 0xFF7FFFD4, 0xFFA8F0E6, 0xFF8FB8FF),
+        longArrayOf(0xFFE6F7F5, 0xFF7FA3A0, 0xFF7FFFD4, 0xFFA8F0E6, 0xFF8FB8FF)),
 )
 private fun tone(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (LightMode) it.lTone[i] else it.dTone[i]) }
 private fun themed(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (LightMode) it.light[i] else it.dark[i]) }
@@ -189,6 +202,40 @@ val ACCENTS: List<Pair<String, Long>> = listOf(
     "Coral"  to 0xFFFF7A59,
 )
 
+// ── Poster themes ────────────────────────────────────────────────────────────
+/** A theme with a picture: it is drawn as the window background, tinted and dimmed, and the screens above it are see-through. id → (picture, tint colour, dim 0-255) */
+private class Poster(val res: Int, val tint: Long, val dim: Int)
+private val SHOP_POSTERS = mapOf("theme_mist" to Poster(R.drawable.poster_mist, 0xFF5CE0D0, 0x99))
+private var posterKey: String? = null
+private var posterBmp: Bitmap? = null
+
+/** The window background for the equipped theme: the tinted poster, or the plain theme colour. */
+fun windowBackgroundFor(ctx: Context): Drawable {
+    val p = SHOP_POSTERS[ShopTheme] ?: return ColorDrawable(ColorBg.toArgb())
+    val dm = ctx.resources.displayMetrics
+    val key = "$ShopTheme ${dm.widthPixels}x${dm.heightPixels}"
+    if (posterKey != key || posterBmp == null) {
+        runCatching {
+            val src = BitmapFactory.decodeResource(ctx.resources, p.res)
+            // centre-crop to the screen shape so nothing is stretched
+            val want = dm.widthPixels.toFloat() / dm.heightPixels
+            val have = src.width.toFloat() / src.height
+            val w = if (have > want) (src.height * want).toInt() else src.width
+            val h = if (have > want) src.height else (src.width / want).toInt()
+            posterBmp = Bitmap.createBitmap(src, (src.width - w) / 2, (src.height - h) / 2, w, h)
+            posterKey = key
+        }
+    }
+    val bmp = posterBmp ?: return ColorDrawable(ColorBg.toArgb())
+    val pic = BitmapDrawable(ctx.resources, bmp)
+    // one-colour look: gray picture multiplied by the tint, then dimmed so text stays readable
+    val cm = ColorMatrix().apply { setSaturation(0f) }
+    val t = Color(p.tint)
+    cm.postConcat(ColorMatrix(floatArrayOf(t.red, 0f, 0f, 0f, 0f, 0f, t.green, 0f, 0f, 0f, 0f, 0f, t.blue, 0f, 0f, 0f, 0f, 0f, 1f, 0f)))
+    pic.colorFilter = ColorMatrixColorFilter(cm)
+    return LayerDrawable(arrayOf(ColorDrawable(0xFF000000.toInt()), pic, ColorDrawable((p.dim shl 24) or 0x000000)))
+}
+
 @Composable
 fun QuestTheme(content: @Composable () -> Unit) {
     val sysDark = isSystemInDarkTheme()
@@ -233,7 +280,7 @@ fun QuestTheme(content: @Composable () -> Unit) {
                 val c = WindowCompat.getInsetsController(window, view)
                 c.isAppearanceLightStatusBars = light
                 c.isAppearanceLightNavigationBars = light
-                window.setBackgroundDrawable(ColorDrawable(ColorBg.toArgb()))
+                window.setBackgroundDrawable(windowBackgroundFor(view.context))
             }
         }
     }

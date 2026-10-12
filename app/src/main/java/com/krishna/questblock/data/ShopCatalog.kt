@@ -37,6 +37,7 @@ object ShopCatalog {
         ShopItem("theme_paper",  "Paper & Ink",       "📜", "Warm sepia, easy on the eyes",    4, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_rose",   "Rose Quartz",       "🌸", "Soft pink and plum",              5, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_indigo", "Midnight Indigo",   "🌌", "Deep indigo night sky",           6, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_mist",   "Mist Hashira (demo)", "🌫️", "Teal mist poster behind every screen", 0, "cosmetic_theme", isConsumable = false),
         // ─── Badges ───────────────────────────────────────────────────────
         ShopItem("badge_star",   "Star Badge",        "⭐", "Show off your star badge",      150, "cosmetic_badge", isConsumable = false),
         ShopItem("badge_crown",  "Crown Badge",       "👑", "You are royalty",               250, "cosmetic_badge", isConsumable = false),
