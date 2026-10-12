@@ -73,14 +73,16 @@ fun Card(
 
 /** Six-sided badge shape (level badge, achievement badges). */
 val HexShape = GenericShape { size, _ ->
-    val w = size.width
-    val h = size.height
-    moveTo(w * 0.5f, 0f)
-    lineTo(w, h * 0.25f)
-    lineTo(w, h * 0.75f)
-    lineTo(w * 0.5f, h)
-    lineTo(0f, h * 0.75f)
-    lineTo(0f, h * 0.25f)
+    // a regular hexagon (equal sides), point up, centred in the box
+    val cx = size.width / 2f
+    val cy = size.height / 2f
+    val r = minOf(size.height / 2f, size.width / 1.7320508f)
+    for (k in 0 until 6) {
+        val a = Math.toRadians((-90 + 60 * k).toDouble())
+        val x = cx + r * Math.cos(a).toFloat()
+        val y = cy + r * Math.sin(a).toFloat()
+        if (k == 0) moveTo(x, y) else lineTo(x, y)
+    }
     close()
 }
 

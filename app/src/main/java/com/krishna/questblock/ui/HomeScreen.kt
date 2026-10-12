@@ -165,10 +165,10 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // ── Protection warning (Accessibility / Usage access / battery) ─────
+        item { HomeHeader(player.name) }
         if (problems.isNotEmpty()) item { HealthBanner(problems.first(), problems.size) }
 
         // ── Hero card ──────────────────────────────────────────────────────
-        item { HomeHeader(player.name) }
         item { HeroCard(player = player, doneToday = shownDone, total = shownTotal, hideCoins = vm.prefs.optHideCoins, onCoinsClick = onOpenShop, onAddQuest = { vm.addSuggestion(it) }) }
 
         // ── Daily login bonus ──────────────────────────────────────────────

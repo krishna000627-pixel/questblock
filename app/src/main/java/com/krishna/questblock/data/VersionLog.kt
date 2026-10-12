@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("192.0.0", "Hexagon shape and Home header position",
+        listOf(
+            "Fix: the hexagon badges were stretched sideways (HexShape filled a square box with uneven sides). It is now a regular hexagon, point up, centred in its box. Applies to the level badge on Home and Profile, the welcome pages and the fallback badge",
+            "Home: the QuestBlock header (sword icon, name, greeting) is the first thing on the screen again; the 'Blocking is off' warning sits right under it instead of pushing it down",
+        )),
     VersionEntry("191.0.0", "Drawn art: badges, ranks, shop items, icon",
         listOf(
             "Vector art drawn for the app (sharp at any size, tiny files): all 25 badges (Badges page; locked ones are grey and faded), the 12 achievements on Home, the 6 ranks (Player hub), the 15 shop items (power-ups, frames, badges) in the Shop and My Items, and two empty-screen pictures (no quests, empty inventory). Files are res/drawable/art_*.xml; ui/Art.kt maps ids to them, and anything without art keeps its emoji",
