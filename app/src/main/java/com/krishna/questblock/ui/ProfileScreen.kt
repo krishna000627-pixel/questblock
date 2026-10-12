@@ -79,8 +79,7 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                                 .border(2.dp, frameColor, HexShape),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("${player.level()}", fontSize = 28.sp,
-                                fontWeight = FontWeight.Black, color = ColorText)
+                            AvatarFill()
                         }
                         // Badge overlay
                         val shownBadge = com.krishna.questblock.data.shownBadgeOf(player)

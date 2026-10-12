@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -84,6 +85,17 @@ val HexShape = GenericShape { size, _ ->
         if (k == 0) moveTo(x, y) else lineTo(x, y)
     }
     close()
+}
+
+/** The default profile picture (res/drawable-nodpi/avatar_default.jpg), filling whatever box it is put in (the box does the hexagon clipping). */
+@Composable
+fun AvatarFill() {
+    androidx.compose.foundation.Image(
+        painter = androidx.compose.ui.res.painterResource(com.krishna.questblock.R.drawable.avatar_default),
+        contentDescription = null,
+        modifier = Modifier.fillMaxSize(),
+        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+    )
 }
 
 /** Rounded square with a colour gradient and an emoji: the icon of a quest, item or setting row. */

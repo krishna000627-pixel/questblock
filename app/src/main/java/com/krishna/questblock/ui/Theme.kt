@@ -47,6 +47,7 @@ private val SHOP_THEME_LIGHT = mapOf(
     "theme_sunset" to true, "theme_paper" to true, "theme_rose" to true,
     "theme_ocean" to false, "theme_forest" to false, "theme_neon" to false, "theme_scifi" to false,
     "theme_amoled" to false, "theme_terminal" to false, "theme_indigo" to false, "theme_mist" to false,
+    "theme_itachi" to false, "theme_angel" to false, "theme_naruto" to false,
 )
 fun themeForcedLight(id: String = ShopTheme): Boolean? = if (PosterOn) false else SHOP_THEME_LIGHT[id]
 
@@ -154,6 +155,21 @@ private val SHOP_PALETTES = mapOf(
         longArrayOf(0x8006100F, 0xE60B1A1A, 0xEB12292A, 0xE60F2222, 0xFF1E3A3A),
         longArrayOf(0xFFE6F7F5, 0xFF7FA3A0, 0xFF7FFFD4, 0xFFA8F0E6, 0xFF8FB8FF),
         longArrayOf(0xFFE6F7F5, 0xFF7FA3A0, 0xFF7FFFD4, 0xFFA8F0E6, 0xFF8FB8FF)),
+    "theme_itachi" to ShopPalette(0xFFE0314B,
+        longArrayOf(0x80090606, 0xE60F0A0A, 0xEB1A1112, 0xE6130C0D, 0xFF2E1A1C),
+        longArrayOf(0x80090606, 0xE60F0A0A, 0xEB1A1112, 0xE6130C0D, 0xFF2E1A1C),
+        longArrayOf(0xFFF2EAEA, 0xFFA89A9A, 0xFFFF8A8A, 0xFFE8D8C8, 0xFFFF5C74),
+        longArrayOf(0xFFF2EAEA, 0xFFA89A9A, 0xFFFF8A8A, 0xFFE8D8C8, 0xFFFF5C74)),
+    "theme_angel" to ShopPalette(0xFFFF2D55,
+        longArrayOf(0x80080808, 0xE60E0C0C, 0xEB1A1516, 0xE6120E0F, 0xFF2B1D20),
+        longArrayOf(0x80080808, 0xE60E0C0C, 0xEB1A1516, 0xE6120E0F, 0xFF2B1D20),
+        longArrayOf(0xFFF4EEEE, 0xFFA39A9A, 0xFFFF7A8A, 0xFFE6D6D0, 0xFFFF4D70),
+        longArrayOf(0xFFF4EEEE, 0xFFA39A9A, 0xFFFF7A8A, 0xFFE6D6D0, 0xFFFF4D70)),
+    "theme_naruto" to ShopPalette(0xFFFF3B30,
+        longArrayOf(0x80000000, 0xE6080404, 0xEB150A0A, 0xE60D0606, 0xFF2A1212),
+        longArrayOf(0x80000000, 0xE6080404, 0xEB150A0A, 0xE60D0606, 0xFF2A1212),
+        longArrayOf(0xFFF5ECEC, 0xFFA08C8C, 0xFFFF7A5C, 0xFFFFD08A, 0xFFFF5C5C),
+        longArrayOf(0xFFF5ECEC, 0xFFA08C8C, 0xFFFF7A5C, 0xFFFFD08A, 0xFFFF5C5C)),
 )
 private fun tone(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (LightMode) it.lTone[i] else it.dTone[i]) }
 private fun themed(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (LightMode) it.light[i] else it.dark[i]) }
@@ -212,7 +228,13 @@ val ACCENTS: List<Pair<String, Long>> = listOf(
 // ── Poster themes ────────────────────────────────────────────────────────────
 /** A theme with a picture: it is drawn as the window background, tinted and dimmed, and the screens above it are see-through. id → (picture, tint colour, dim 0-255) */
 private class Poster(val res: Int, val tint: Long, val dim: Int)
-private val SHOP_POSTERS = mapOf("theme_mist" to Poster(R.drawable.poster_mist, 0xFF5CE0D0, 0x99))
+private val SHOP_POSTERS = mapOf(
+    "theme_mist" to Poster(R.drawable.poster_mist, 0xFF5CE0D0, 0x99),
+    // tint 0 = keep the picture's own colours (the red stays red); the two pale pictures are dimmed more so text stays readable
+    "theme_itachi" to Poster(R.drawable.poster_itachi, 0L, 0xB8),
+    "theme_angel" to Poster(R.drawable.poster_angel, 0L, 0xA8),
+    "theme_naruto" to Poster(R.drawable.poster_naruto, 0L, 0x59),
+)
 private var posterKey: String? = null
 private var posterBmp: Bitmap? = null
 
@@ -269,11 +291,13 @@ fun windowBackgroundFor(ctx: Context): Drawable {
     }
     val bmp = posterBmp ?: return ColorDrawable(ColorBg.toArgb())
     val pic = BitmapDrawable(ctx.resources, bmp)
-    // one-colour look: gray picture multiplied by the tint, then dimmed so text stays readable
-    val cm = ColorMatrix().apply { setSaturation(0f) }
-    val t = Color(p.tint)
-    cm.postConcat(ColorMatrix(floatArrayOf(t.red, 0f, 0f, 0f, 0f, 0f, t.green, 0f, 0f, 0f, 0f, 0f, t.blue, 0f, 0f, 0f, 0f, 0f, 1f, 0f)))
-    pic.colorFilter = ColorMatrixColorFilter(cm)
+    // one-colour look: gray picture multiplied by the tint, then dimmed so text stays readable (tint 0 = leave the colours as they are)
+    if (p.tint != 0L) {
+        val cm = ColorMatrix().apply { setSaturation(0f) }
+        val t = Color(p.tint)
+        cm.postConcat(ColorMatrix(floatArrayOf(t.red, 0f, 0f, 0f, 0f, 0f, t.green, 0f, 0f, 0f, 0f, 0f, t.blue, 0f, 0f, 0f, 0f, 0f, 1f, 0f)))
+        pic.colorFilter = ColorMatrixColorFilter(cm)
+    }
     return LayerDrawable(arrayOf(ColorDrawable(0xFF000000.toInt()), pic, ColorDrawable((p.dim shl 24) or 0x000000)))
 }
 

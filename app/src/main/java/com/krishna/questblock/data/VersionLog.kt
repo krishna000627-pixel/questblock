@@ -3,6 +3,16 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("194.0.0", "New default profile picture, three poster walls",
+        listOf(
+            "The default profile picture is now the blindfolded anime boy with the blue glow (res/drawable-nodpi/avatar_default.jpg). It fills the hexagon on Home and on Profile, in your frame colour; the badge emoji still sits on its corner and the level is still written next to it (Lv. on Home, Level on Profile). The welcome pages and the Badges page are unchanged",
+            "Three new free poster themes in Shop → Themes (equip them in My Items, same as Mist Hashira): Crow Shadow (ink and crows, crimson accent), Dark Angel (black wings under a red halo) and Red Eyes Hokage (black and red). They keep their own colours instead of one tint; the two pale pictures are dimmed more so text stays readable. Like every poster theme the look is dark, cards are slightly see-through, and the grayscale switch works. The gallery poster from v190 still overrides them while it is on",
+            "How it works: res/drawable-nodpi/poster_itachi, poster_angel, poster_naruto; one line each in SHOP_POSTERS (a tint of 0 means keep the picture's colours), SHOP_PALETTES and SHOP_THEME_LIGHT in Theme.kt, and ShopCatalog.kt",
+        )),
+    VersionEntry("193.0.0", "Delivery only",
+        listOf(
+            "No app changes. Version bump for the Quest board item 'Idea: give zip' (hand over the zip)",
+        )),
     VersionEntry("192.0.0", "Hexagon shape and Home header position",
         listOf(
             "Fix: the hexagon badges were stretched sideways (HexShape filled a square box with uneven sides). It is now a regular hexagon, point up, centred in its box. Applies to the level badge on Home and Profile, the welcome pages and the fallback badge",
