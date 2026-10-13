@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -81,7 +82,11 @@ fun AvatarFill() {
     androidx.compose.foundation.Image(
         painter = androidx.compose.ui.res.painterResource(com.krishna.questblock.R.drawable.avatar_default),
         contentDescription = null,
-        modifier = Modifier.fillMaxSize(),
+        // the picture is itself a circle with a pale rim and the face sits a little up and right: zoom in so the art fills our circle, and centre the face
+        modifier = Modifier.fillMaxSize().graphicsLayer {
+            scaleX = 1.2f; scaleY = 1.2f
+            translationX = size.width * -0.03f; translationY = size.height * 0.06f
+        },
         contentScale = androidx.compose.ui.layout.ContentScale.Crop,
     )
 }

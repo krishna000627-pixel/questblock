@@ -3,6 +3,29 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("200.0.0", "Avatar picture fix back, position as v195",
+        listOf(
+            "Avatar: the picture fix from v197 is back (drawn 20% larger and nudged so the face is centred and the pale rim is hidden; AvatarFill in ui/Glass.kt). The circle's position is as in v195: the hero card row is centred, not at the top",
+        )),
+    VersionEntry("199.0.0", "Avatar back exactly as in v195",
+        listOf(
+            "Avatar: position and picture are as in v195 again. The hero card row is centred and the picture is drawn plainly, with no zoom or nudge (AvatarFill in ui/Glass.kt). This undoes the avatar changes of v196, v197 and v198. Kept: the banner removal, and the light Crow Shadow and Dark Angel themes",
+        )),
+    VersionEntry("198.0.0", "Avatar back at the top of the hero card",
+        listOf(
+            "Home hero card: the avatar circle is aligned to the top of the row again, as in v196 (v197 had centred it). Everything else from v197 stays: face centred in the circle, banner gone",
+        )),
+    VersionEntry("197.0.0", "Avatar centred in the circle, banner code removed",
+        listOf(
+            "Avatar: the default picture (avatar_default.jpg) is drawn 20% larger and nudged so the face is centred and the picture's own pale rim no longer shows inside the circle (AvatarFill in ui/Glass.kt). Applies on Home and Profile. The hero card row is centred again (v196's top alignment is undone)",
+            "Home: the 'Blocking is off' banner and its 5-second check are removed completely (v196 only hid the banner). Only the watchdog notification in KeepAliveService tells you now",
+        )),
+    VersionEntry("196.0.0", "No Home banner, pale posters are light themes, avatar position",
+        listOf(
+            "Home: the red 'Blocking is off' banner is removed. The notification from the watchdog (KeepAliveService) is unchanged and still tells you to fix it",
+            "The two pale posters, Crow Shadow and Dark Angel, are now light themes like Ink Katana (white veil, ink text, same accents). Flag light = true in SHOP_POSTERS, white palettes in SHOP_PALETTES, true in SHOP_THEME_LIGHT (Theme.kt)",
+            "Home hero card: the avatar circle is aligned to the top of the card row, next to the level line, instead of floating in the middle",
+        )),
     VersionEntry("195.0.0", "Circle badges, Ink Katana light theme, sounds",
         listOf(
             "The hexagon is now a circle: the level badge on Home and Profile, the welcome pages, the fallback badge, and all drawn art (25 badges, 12 achievements, ranks, shop items). One shape in ui/Glass.kt (HexShape is now CircleShape; the name stayed so nothing else changed) plus the outline path in res/drawable/art_*.xml. The launcher icon is unchanged",

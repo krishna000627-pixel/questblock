@@ -153,20 +153,12 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
 
     val recentAch    = achievements.filter { it.unlockedAt != null }.sortedByDescending { it.unlockedAt }.take(3)
 
-    val healthCtx = LocalContext.current
-    var problems by remember { mutableStateOf(listOf<com.krishna.questblock.util.Health.Problem>()) }
-    LaunchedEffect(Unit) {
-        while (true) { problems = com.krishna.questblock.util.Health.problems(healthCtx, vm.prefs); delay(5000L) }
-    }
-
     LazyColumn(
         Modifier.fillMaxSize().background(ColorBg),
         contentPadding = PaddingValues(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // ── Protection warning (Accessibility / Usage access / battery) ─────
         item { HomeHeader(player.name) }
-        if (problems.isNotEmpty()) item { HealthBanner(problems.first(), problems.size) }
 
         // ── Hero card ──────────────────────────────────────────────────────
         item { HeroCard(player = player, doneToday = shownDone, total = shownTotal, hideCoins = vm.prefs.optHideCoins, onCoinsClick = onOpenShop, onAddQuest = { vm.addSuggestion(it) }) }
@@ -368,7 +360,7 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Bool
         modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                // Level badge (hexagon)
+                // Level badge (circle)
                 Box(contentAlignment = Alignment.Center) {
                     Box(Modifier.size(68.dp).clip(HexShape)
                         .background(Brush.verticalGradient(listOf(frameColor.copy(0.55f), frameColor.copy(0.12f))))

@@ -47,7 +47,7 @@ private val SHOP_THEME_LIGHT = mapOf(
     "theme_sunset" to true, "theme_paper" to true, "theme_rose" to true,
     "theme_ocean" to false, "theme_forest" to false, "theme_neon" to false, "theme_scifi" to false,
     "theme_amoled" to false, "theme_terminal" to false, "theme_indigo" to false, "theme_mist" to false,
-    "theme_itachi" to false, "theme_angel" to false, "theme_naruto" to false,
+    "theme_itachi" to true, "theme_angel" to true, "theme_naruto" to false,
     "theme_katana" to true,
 )
 fun themeForcedLight(id: String = ShopTheme): Boolean? = if (PosterOn) false else SHOP_THEME_LIGHT[id]
@@ -157,15 +157,15 @@ private val SHOP_PALETTES = mapOf(
         longArrayOf(0xFFE6F7F5, 0xFF7FA3A0, 0xFF7FFFD4, 0xFFA8F0E6, 0xFF8FB8FF),
         longArrayOf(0xFFE6F7F5, 0xFF7FA3A0, 0xFF7FFFD4, 0xFFA8F0E6, 0xFF8FB8FF)),
     "theme_itachi" to ShopPalette(0xFFE0314B,
-        longArrayOf(0x80090606, 0xE60F0A0A, 0xEB1A1112, 0xE6130C0D, 0xFF2E1A1C),
-        longArrayOf(0x80090606, 0xE60F0A0A, 0xEB1A1112, 0xE6130C0D, 0xFF2E1A1C),
-        longArrayOf(0xFFF2EAEA, 0xFFA89A9A, 0xFFFF8A8A, 0xFFE8D8C8, 0xFFFF5C74),
-        longArrayOf(0xFFF2EAEA, 0xFFA89A9A, 0xFFFF8A8A, 0xFFE8D8C8, 0xFFFF5C74)),
+        longArrayOf(0x70FFFFFF, 0xE8FFFFFF, 0xEEF4ECEF, 0xE6FFFFFF, 0xFFE3D6DB),
+        longArrayOf(0x70FFFFFF, 0xE8FFFFFF, 0xEEF4ECEF, 0xE6FFFFFF, 0xFFE3D6DB),
+        longArrayOf(0xFF16101A, 0xFF6E6470, 0xFFC47A00, 0xFFB8800A, 0xFFB0204A),
+        longArrayOf(0xFF16101A, 0xFF6E6470, 0xFFC47A00, 0xFFB8800A, 0xFFB0204A)),
     "theme_angel" to ShopPalette(0xFFFF2D55,
-        longArrayOf(0x80080808, 0xE60E0C0C, 0xEB1A1516, 0xE6120E0F, 0xFF2B1D20),
-        longArrayOf(0x80080808, 0xE60E0C0C, 0xEB1A1516, 0xE6120E0F, 0xFF2B1D20),
-        longArrayOf(0xFFF4EEEE, 0xFFA39A9A, 0xFFFF7A8A, 0xFFE6D6D0, 0xFFFF4D70),
-        longArrayOf(0xFFF4EEEE, 0xFFA39A9A, 0xFFFF7A8A, 0xFFE6D6D0, 0xFFFF4D70)),
+        longArrayOf(0x70FFFFFF, 0xE8FFFFFF, 0xEEF4ECEF, 0xE6FFFFFF, 0xFFE3D6DB),
+        longArrayOf(0x70FFFFFF, 0xE8FFFFFF, 0xEEF4ECEF, 0xE6FFFFFF, 0xFFE3D6DB),
+        longArrayOf(0xFF16101A, 0xFF6E6470, 0xFFC47A00, 0xFFB8800A, 0xFFB0204A),
+        longArrayOf(0xFF16101A, 0xFF6E6470, 0xFFC47A00, 0xFFB8800A, 0xFFB0204A)),
     "theme_naruto" to ShopPalette(0xFFFF3B30,
         longArrayOf(0x80000000, 0xE6080404, 0xEB150A0A, 0xE60D0606, 0xFF2A1212),
         longArrayOf(0x80000000, 0xE6080404, 0xEB150A0A, 0xE60D0606, 0xFF2A1212),
@@ -238,8 +238,8 @@ private class Poster(val res: Int, val tint: Long, val dim: Int, val light: Bool
 private val SHOP_POSTERS = mapOf(
     "theme_mist" to Poster(R.drawable.poster_mist, 0xFF5CE0D0, 0x99),
     // tint 0 = keep the picture's own colours (the red stays red); the two pale pictures are dimmed more so text stays readable
-    "theme_itachi" to Poster(R.drawable.poster_itachi, 0L, 0xB8),
-    "theme_angel" to Poster(R.drawable.poster_angel, 0L, 0xA8),
+    "theme_itachi" to Poster(R.drawable.poster_itachi, 0L, 0x99, true),
+    "theme_angel" to Poster(R.drawable.poster_angel, 0L, 0x99, true),
     "theme_naruto" to Poster(R.drawable.poster_naruto, 0L, 0x59),
     // light poster: white underneath and a white veil on top (the other posters use black), so the page stays light with dark text
     "theme_katana" to Poster(R.drawable.poster_katana, 0L, 0x8C, true),
