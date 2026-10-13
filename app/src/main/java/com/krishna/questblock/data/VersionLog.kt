@@ -3,6 +3,13 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("195.0.0", "Circle badges, Ink Katana light theme, sounds",
+        listOf(
+            "The hexagon is now a circle: the level badge on Home and Profile, the welcome pages, the fallback badge, and all drawn art (25 badges, 12 achievements, ranks, shop items). One shape in ui/Glass.kt (HexShape is now CircleShape; the name stayed so nothing else changed) plus the outline path in res/drawable/art_*.xml. The launcher icon is unchanged",
+            "New light poster theme in Shop → Themes: Ink Katana (the black sword, moon and cherry-blossom picture). Equip it in My Items like the other posters. It is a light theme (white veil over the picture, ink text, crimson accent) and picks light by itself, like Paper & Ink. Poster in res/drawable-nodpi/poster_katana.jpg; Poster has a new light flag in Theme.kt (white base and veil instead of black); one line each in SHOP_POSTERS, SHOP_PALETTES, SHOP_THEME_LIGHT and ShopCatalog.kt",
+            "Sounds (res/raw, played by util/Sounds.kt): coin when a quest or routine step pays, level-up instead when it raises your level, a chime when a Focus session is completed, an alarm when an unlock runs out ('locked again'). Settings → Sound turns the effects off",
+            "Focus background sound: pick Off, Rain, Brown, Pink or White noise on the Focus page (also while a session runs). It loops during the session and stops when it ends, you give up, or you pick Off. Not resumed if the app is killed",
+        )),
     VersionEntry("194.0.0", "New default profile picture, three poster walls",
         listOf(
             "The default profile picture is now the blindfolded anime boy with the blue glow (res/drawable-nodpi/avatar_default.jpg). It fills the hexagon on Home and on Profile, in your frame colour; the badge emoji still sits on its corner and the level is still written next to it (Lv. on Home, Level on Profile). The welcome pages and the Badges page are unchanged",

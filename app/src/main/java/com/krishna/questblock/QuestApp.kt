@@ -13,6 +13,7 @@ class QuestApp : Application() {
     override fun onCreate() {
         super.onCreate()
         com.krishna.questblock.util.DebugLog.init(this)
+        com.krishna.questblock.util.Sounds.init(this)
         Reminders.ensureChannel(this)
         com.krishna.questblock.util.ScreenLog.start(this)
         com.krishna.questblock.util.MusicLog.start(this, prefs)

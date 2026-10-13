@@ -86,6 +86,13 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
         onDispose { view.keepScreenOn = false }
     }
 
+    // background sound: plays while a session runs, stops when it ends or when "Off" is picked
+    var ambChoice by remember { mutableStateOf(com.krishna.questblock.util.Sounds.ambient) }
+    LaunchedEffect(running, player.focusModeUntil, ambChoice) {
+        if (running) com.krishna.questblock.util.Sounds.startAmbient(player.focusModeUntil)
+        else com.krishna.questblock.util.Sounds.stopAmbient()
+    }
+
     val timerQuests = tasks.filter { it.isTimerQuest && it.isAvailableNow(now) }
     val activeQuest = timerQuests.firstOrNull { it.id == player.focusQuestId }
         ?: tasks.firstOrNull { it.id == player.focusQuestId && player.focusQuestId > 0 }
@@ -105,12 +112,14 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
                 penalty = vm.penalty(),
                 onStop = { vm.end() },
             )
+            AmbientPicker(ambChoice) { ambChoice = it; com.krishna.questblock.util.Sounds.ambient = it }
         } else {
             val breakLeft = vm.breakUntil() - now
             if (breakLeft > 0L) {
                 BreakCard(leftMs = breakLeft, long = vm.breakIsLong(), onSkip = { vm.skipBreak() })
             }
             Setup(timerQuests = timerQuests, bonus = vm.bonus(), onStart = { dur, quest -> vm.start(dur, quest) })
+            AmbientPicker(ambChoice) { ambChoice = it; com.krishna.questblock.util.Sounds.ambient = it }
             TodayStrip(logs = logs, now = now)
             FocusStats(logs = logs, now = now)
             RecentSessions(logs = logs)
@@ -201,6 +210,19 @@ private fun Setup(timerQuests: List<TaskEntity>, bonus: Int, onStart: (Long, Tas
         Icon(Icons.Default.PlayArrow, contentDescription = null)
         Spacer(Modifier.width(6.dp))
         Text("Start ${shownMin} min focus", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+    }
+}
+
+/** Background sound for the session: Off, Rain, Brown, Pink or White noise. */
+@Composable
+private fun AmbientPicker(choice: String, onPick: (String) -> Unit) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("\uD83D\uDD0A Background sound", style = MaterialTheme.typography.labelLarge, color = ColorMuted, fontWeight = FontWeight.SemiBold)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(com.krishna.questblock.util.Sounds.AMBIENTS) { (key, label) ->
+                PickChip(label, choice == key, ColorPrimary) { onPick(key) }
+            }
+        }
     }
 }
 

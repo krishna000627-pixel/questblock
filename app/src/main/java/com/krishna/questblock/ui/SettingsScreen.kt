@@ -443,6 +443,12 @@ internal fun OptionalFeaturesSection(prefs: Prefs, ctx: Context) {
             "Like the phone's own grayscale: the whole app, emojis and icons included, in sharp gray. Only inside QuestBlock; other apps stay in colour. Off by default.", gray) { gray = it; prefs.optGray = it; GrayMode = it }
 
         HorizontalDivider(color = ColorDivider)
+        // ── Sound ──
+        Text("\uD83D\uDD0A Sound", color = ColorText, fontWeight = FontWeight.SemiBold)
+        var sfx by remember { mutableStateOf(com.krishna.questblock.util.Sounds.sfxOn) }
+        ToggleRow("Sound effects", "Coin and level-up on quests, a chime when Focus ends, an alarm when an unlock runs out. The Focus background sound is picked on the Focus page.", sfx) { sfx = it; com.krishna.questblock.util.Sounds.sfxOn = it }
+
+        HorizontalDivider(color = ColorDivider)
         // ── Focus ──
         Text("⚡ Focus", color = ColorText, fontWeight = FontWeight.SemiBold)
         val nm = ctx.getSystemService(android.app.NotificationManager::class.java)

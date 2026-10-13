@@ -41,6 +41,7 @@ object ShopCatalog {
         ShopItem("theme_itachi", "Crow Shadow",       "🪶", "Ink-and-crows poster, crimson accent", 0, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_angel",  "Dark Angel",        "🌑", "Black wings under a red halo poster", 0, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_naruto", "Red Eyes Hokage",   "🦊", "Black and red Hokage poster",     0, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_katana", "Ink Katana (light)", "🗡️", "Light theme: ink sword and cherry blossom poster", 0, "cosmetic_theme", isConsumable = false),
         // ─── Badges ───────────────────────────────────────────────────────
         ShopItem("badge_star",   "Star Badge",        "⭐", "Show off your star badge",      150, "cosmetic_badge", isConsumable = false),
         ShopItem("badge_crown",  "Crown Badge",       "👑", "You are royalty",               250, "cosmetic_badge", isConsumable = false),

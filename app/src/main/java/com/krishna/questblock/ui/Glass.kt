@@ -72,22 +72,10 @@ fun Card(
     border = border, content = content,
 )
 
-/** Six-sided badge shape (level badge, achievement badges). */
-val HexShape = GenericShape { size, _ ->
-    // a regular hexagon (equal sides), point up, centred in the box
-    val cx = size.width / 2f
-    val cy = size.height / 2f
-    val r = minOf(size.height / 2f, size.width / 1.7320508f)
-    for (k in 0 until 6) {
-        val a = Math.toRadians((-90 + 60 * k).toDouble())
-        val x = cx + r * Math.cos(a).toFloat()
-        val y = cy + r * Math.sin(a).toFloat()
-        if (k == 0) moveTo(x, y) else lineTo(x, y)
-    }
-    close()
-}
+/** Badge shape (level badge, avatar, welcome pages). Was a hexagon until v195; the name stays so every place that used it now shows a circle. */
+val HexShape: Shape = CircleShape
 
-/** The default profile picture (res/drawable-nodpi/avatar_default.jpg), filling whatever box it is put in (the box does the hexagon clipping). */
+/** The default profile picture (res/drawable-nodpi/avatar_default.jpg), filling whatever box it is put in (the box does the circle clipping). */
 @Composable
 fun AvatarFill() {
     androidx.compose.foundation.Image(

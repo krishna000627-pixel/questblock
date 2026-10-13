@@ -288,6 +288,7 @@ class KeepAliveService : Service() {
         val key = "$title|$text|${progress / 2}" + if (pinWhen) "|$whenMs" else ""
         if (key != lastTitle && (screenOn || active.isEmpty())) {
             lastTitle = key; lastText = ""
+            if (title.startsWith("\u231B")) com.krishna.questblock.util.Sounds.alarm()   // "locked again": the unlock ran out
             nm.notify(ID_ONGOING, ongoing(title, text, whenMs, progress, visible, route))
         }
 

@@ -251,6 +251,7 @@ class GameRepository @Inject constructor(
         val xp = (share * (if (p.hasXpBoost()) 2.0 else 1.0)).roundToInt()
         playerDao.upsert(p.copy(coins = p.coins + earned, xp = p.xp + xp))
         logCoin(earned, "Routine step", sub.title)
+        com.krishna.questblock.util.Sounds.questDone(earned > 0, (p.xp + xp) / 100 > p.xp / 100)
     }
 
     // ── v73: +5 min of fun time, and undo for a finished quest ──
@@ -311,6 +312,8 @@ class GameRepository @Inject constructor(
 
     suspend fun completeTask(task: TaskEntity) {
         val wasOpen = taskDao.get(task.id)?.done == false
+        var soundCoins = false
+        var soundLevelUp = false
         db.withTransaction {
             val fresh = taskDao.get(task.id) ?: return@withTransaction
             if (fresh.done) return@withTransaction
@@ -366,6 +369,8 @@ class GameRepository @Inject constructor(
                 focusQuestId   = if (wasFocusQuest) -1L else p.focusQuestId,
                 focusTotalMs   = if (wasFocusQuest) 0L else p.focusTotalMs,
             ))
+            soundCoins = earned + milestoneXp / 5 > 0
+            soundLevelUp = (p.xp + xpEarned + milestoneXp) / 100 > p.xp / 100
             if (earned > 0) logCoin(earned, "Quest", fresh.title)
             if (milestoneXp > 0) logCoin(milestoneXp / 5, "Streak bonus", "$newStreak-day streak")
             checkAchievements(p.copy(xp = p.xp + xpEarned, streak = newStreak))
@@ -388,7 +393,10 @@ class GameRepository @Inject constructor(
                 }
             }
         }
-        if (wasOpen && taskDao.get(task.id)?.done == true) com.krishna.questblock.ui.chapterQuestEnded(ctx, task.title, true)
+        if (wasOpen && taskDao.get(task.id)?.done == true) {
+            com.krishna.questblock.util.Sounds.questDone(soundCoins, soundLevelUp)
+            com.krishna.questblock.ui.chapterQuestEnded(ctx, task.title, true)
+        }
     }
 
     private suspend fun spawnNext(src: TaskEntity, dueAt: Long?, availableFrom: Long, now: Long, streak: Int, today: Long) {
@@ -503,7 +511,9 @@ class GameRepository @Inject constructor(
             }
             taskDao.get(task.id)?.let { taskDao.update(it.copy(timerQuestActive = false)) }
         }
+        com.krishna.questblock.util.Sounds.stopAmbient()
         if (completed) {
+            com.krishna.questblock.util.Sounds.chime()
             // Break cycle: 5 min after a session, 15 min after every 4th one today
             val day = dayNumber(System.currentTimeMillis())
             val n = prefs.focusDoneToday(day) + 1

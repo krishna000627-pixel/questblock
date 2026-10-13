@@ -48,6 +48,7 @@ private val SHOP_THEME_LIGHT = mapOf(
     "theme_ocean" to false, "theme_forest" to false, "theme_neon" to false, "theme_scifi" to false,
     "theme_amoled" to false, "theme_terminal" to false, "theme_indigo" to false, "theme_mist" to false,
     "theme_itachi" to false, "theme_angel" to false, "theme_naruto" to false,
+    "theme_katana" to true,
 )
 fun themeForcedLight(id: String = ShopTheme): Boolean? = if (PosterOn) false else SHOP_THEME_LIGHT[id]
 
@@ -170,6 +171,12 @@ private val SHOP_PALETTES = mapOf(
         longArrayOf(0x80000000, 0xE6080404, 0xEB150A0A, 0xE60D0606, 0xFF2A1212),
         longArrayOf(0xFFF5ECEC, 0xFFA08C8C, 0xFFFF7A5C, 0xFFFFD08A, 0xFFFF5C5C),
         longArrayOf(0xFFF5ECEC, 0xFFA08C8C, 0xFFFF7A5C, 0xFFFFD08A, 0xFFFF5C5C)),
+    // light poster (ink sword, cherry blossom): white glass over the picture, ink text, crimson accent
+    "theme_katana" to ShopPalette(0xFFD81B60,
+        longArrayOf(0x70FFFFFF, 0xE8FFFFFF, 0xEEF4ECEF, 0xE6FFFFFF, 0xFFE3D6DB),
+        longArrayOf(0x70FFFFFF, 0xE8FFFFFF, 0xEEF4ECEF, 0xE6FFFFFF, 0xFFE3D6DB),
+        longArrayOf(0xFF16101A, 0xFF6E6470, 0xFFC47A00, 0xFFB8800A, 0xFFB0204A),
+        longArrayOf(0xFF16101A, 0xFF6E6470, 0xFFC47A00, 0xFFB8800A, 0xFFB0204A)),
 )
 private fun tone(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (LightMode) it.lTone[i] else it.dTone[i]) }
 private fun themed(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (LightMode) it.light[i] else it.dark[i]) }
@@ -227,13 +234,15 @@ val ACCENTS: List<Pair<String, Long>> = listOf(
 
 // ── Poster themes ────────────────────────────────────────────────────────────
 /** A theme with a picture: it is drawn as the window background, tinted and dimmed, and the screens above it are see-through. id → (picture, tint colour, dim 0-255) */
-private class Poster(val res: Int, val tint: Long, val dim: Int)
+private class Poster(val res: Int, val tint: Long, val dim: Int, val light: Boolean = false)
 private val SHOP_POSTERS = mapOf(
     "theme_mist" to Poster(R.drawable.poster_mist, 0xFF5CE0D0, 0x99),
     // tint 0 = keep the picture's own colours (the red stays red); the two pale pictures are dimmed more so text stays readable
     "theme_itachi" to Poster(R.drawable.poster_itachi, 0L, 0xB8),
     "theme_angel" to Poster(R.drawable.poster_angel, 0L, 0xA8),
     "theme_naruto" to Poster(R.drawable.poster_naruto, 0L, 0x59),
+    // light poster: white underneath and a white veil on top (the other posters use black), so the page stays light with dark text
+    "theme_katana" to Poster(R.drawable.poster_katana, 0L, 0x8C, true),
 )
 private var posterKey: String? = null
 private var posterBmp: Bitmap? = null
@@ -298,7 +307,9 @@ fun windowBackgroundFor(ctx: Context): Drawable {
         cm.postConcat(ColorMatrix(floatArrayOf(t.red, 0f, 0f, 0f, 0f, 0f, t.green, 0f, 0f, 0f, 0f, 0f, t.blue, 0f, 0f, 0f, 0f, 0f, 1f, 0f)))
         pic.colorFilter = ColorMatrixColorFilter(cm)
     }
-    return LayerDrawable(arrayOf(ColorDrawable(0xFF000000.toInt()), pic, ColorDrawable((p.dim shl 24) or 0x000000)))
+    val base = if (p.light) 0xFFFFFFFF.toInt() else 0xFF000000.toInt()
+    val veil = (p.dim shl 24) or (if (p.light) 0xFFFFFF else 0x000000)
+    return LayerDrawable(arrayOf(ColorDrawable(base), pic, ColorDrawable(veil)))
 }
 
 @Composable
