@@ -98,12 +98,10 @@ private fun Modifier.bubbleLift(shape: Shape): Modifier {
 }
 
 /** A faint white shine over the top of a bubble, like light on jelly (dark looks only; on light it would vanish). */
-private fun Modifier.bubbleGloss(shape: Shape): Modifier = this.drawWithContent {
+private fun Modifier.bubbleGloss(shape: Shape): Modifier = this.clip(shape).drawWithContent {
     drawContent()
     if (!LightMode) {
-        val outline = shape.createOutline(size, layoutDirection, this)
-        drawOutline(
-            outline,
+        drawRect(
             Brush.verticalGradient(
                 0f to Color.White.copy(alpha = 0.07f), 0.55f to Color.Transparent,
                 startY = 0f, endY = size.height,

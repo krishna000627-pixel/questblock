@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("202.0.0", "Build fix for Jelly Pop",
+        listOf(
+            "Fix: ui/Glass.kt did not compile (drawOutline unresolved). The card shine is now drawn with a clip plus a plain rectangle gradient. Same look, no other change",
+        )),
     VersionEntry("201.0.0", "Jelly Pop: the whole app remastered, bubbly and modern",
         listOf(
             "New look named Jelly Pop, now the default for every page. UI and layout only: no feature, rule, coin or data was changed, and nothing from v200 or earlier was undone",
