@@ -184,28 +184,30 @@ private fun themed(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (L
 private fun pick(dark: Long, light: Long) = Color(if (LightMode) light else dark)
 
 // ── Palette (same names as before; each one switches between dark and light) ──
-val ColorBg: Color          get() = glass(themed(0) ?: pick(0xFF050E0C, 0xFFEEF2F7), 0.45f)
-val ColorSurface: Color     get() = glass(themed(1) ?: pick(0xFF0A1A15, 0xFFFFFFFF), 0.90f)
-val ColorSurfaceHigh: Color get() = glass(themed(2) ?: pick(0xFF12261F, 0xFFE3E9F1), 0.92f)
-val ColorCard: Color        get() = glass(themed(3) ?: pick(0xFF0B1D17, 0xFFFFFFFF), 0.90f)
+// v201 "Jelly Pop": the default look. Deep forest-green dark, pale lime-cream light, lime accent. Shop themes still bring their own colours.
+const val THEME_NAME = "Jelly Pop"
+val ColorBg: Color          get() = glass(themed(0) ?: pick(0xFF0A130C, 0xFFF3F8E8), 0.45f)
+val ColorSurface: Color     get() = glass(themed(1) ?: pick(0xFF152117, 0xFFFFFFFF), 0.90f)
+val ColorSurfaceHigh: Color get() = glass(themed(2) ?: pick(0xFF1F301F, 0xFFE4EFCF), 0.92f)
+val ColorCard: Color        get() = glass(themed(3) ?: pick(0xFF121D14, 0xFFFFFFFF), 0.90f)
 
 /** Accent colour. A state, so changing it in Settings recolours the app live. Darkened a little on light so it stays readable. */
-private var accentRaw by mutableStateOf(Color(0xFF00E5A0))
+private var accentRaw by mutableStateOf(Color(0xFFC6F135))
 var ColorPrimary: Color
     get() {
         val base = SHOP_PALETTES[ShopTheme]?.let { Color(it.accent) } ?: accentRaw
-        return if (LightMode) Color(base.red * 0.75f, base.green * 0.75f, base.blue * 0.75f, base.alpha) else base
+        return if (LightMode) Color(base.red * 0.68f, base.green * 0.68f, base.blue * 0.68f, base.alpha) else base
     }
     set(value) { accentRaw = value }
 
-val ColorOnPrimary: Color   get() = pick(0xFF001A10, 0xFFFFFFFF)
-val ColorAccent: Color      get() = tone(4) ?: pick(0xFF7C6EF5, 0xFF6552E8)   // purple accent
-val ColorCoin: Color        get() = tone(3) ?: pick(0xFFFFC857, 0xFFB8800A)
+val ColorOnPrimary: Color   get() = pick(0xFF10200A, 0xFFFFFFFF)
+val ColorAccent: Color      get() = tone(4) ?: pick(0xFF5CF0B8, 0xFF1FA67A)   // mint, the second jelly colour
+val ColorCoin: Color        get() = tone(3) ?: pick(0xFFFFD166, 0xFFB8800A)
 val ColorDanger: Color      get() = pick(0xFFFF5C5C, 0xFFD93636)
 val ColorWarning: Color     get() = tone(2) ?: pick(0xFFFFAA00, 0xFFC47A00)
-val ColorText: Color        get() = tone(0) ?: pick(0xFFE6F5EE, 0xFF121A24)
-val ColorMuted: Color       get() = tone(1) ?: pick(0xFF6E9487, 0xFF6B7A8D)
-val ColorDivider: Color     get() = themed(4) ?: pick(0xFF15362B, 0xFFDDE4EE)
+val ColorText: Color        get() = tone(0) ?: pick(0xFFF2F8E6, 0xFF14200F)
+val ColorMuted: Color       get() = tone(1) ?: pick(0xFF8FA383, 0xFF66775A)
+val ColorDivider: Color     get() = themed(4) ?: pick(0xFF263A27, 0xFFDCE8C6)
 
 // Category colours
 val CatColors: Map<String, Color>
@@ -216,14 +218,15 @@ val CatColors: Map<String, Color>
         "Personal" to Color(0xFF8E3FD6),
         "Custom"   to Color(0xFFB8860B),
     ) else mapOf(
-        "Study"    to Color(0xFF5C9EFF),
-        "Work"     to Color(0xFFFF8C5C),
-        "Health"   to Color(0xFF5CFF8C),
-        "Personal" to Color(0xFFB45CFF),
-        "Custom"   to Color(0xFFFFD05C),
+        "Study"    to Color(0xFF6CB6FF),
+        "Work"     to Color(0xFFFF9E6C),
+        "Health"   to Color(0xFF7CF0A0),
+        "Personal" to Color(0xFFC39CFF),
+        "Custom"   to Color(0xFFFFD66C),
     )
 
 val ACCENTS: List<Pair<String, Long>> = listOf(
+    "Lime"   to 0xFFC6F135,
     "Mint"   to 0xFF00E5A0,
     "Sky"    to 0xFF4DA3FF,
     "Violet" to 0xFF9B7CFF,

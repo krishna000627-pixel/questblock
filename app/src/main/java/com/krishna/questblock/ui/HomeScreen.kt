@@ -20,6 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -153,55 +157,71 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
 
     val recentAch    = achievements.filter { it.unlockedAt != null }.sortedByDescending { it.unlockedAt }.take(3)
 
+    val todayFrac by animateFloatAsState(
+        targetValue = if (shownTotal > 0) shownDone.toFloat() / shownTotal else 0f,
+        animationSpec = tween(800, easing = EaseOutCubic), label = "today",
+    )
+
     LazyColumn(
         Modifier.fillMaxSize().background(ColorBg),
-        contentPadding = PaddingValues(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { HomeHeader(player.name) }
+        // ── Jelly Pop header: avatar bubble, greeting, coin bubble, big headline ──
+        item { HomeHeader(player, hideCoins = vm.prefs.optHideCoins, onCoinsClick = onOpenShop) }
 
-        // ── Hero card ──────────────────────────────────────────────────────
-        item { HeroCard(player = player, doneToday = shownDone, total = shownTotal, hideCoins = vm.prefs.optHideCoins, onCoinsClick = onOpenShop, onAddQuest = { vm.addSuggestion(it) }) }
+        // ── Momentum card: XP ring, level, today's progress, stat bubbles ──
+        item {
+            MomentumCard(
+                player = player, doneToday = shownDone, total = shownTotal, todayFrac = todayFrac,
+                hideCoins = vm.prefs.optHideCoins, onCoinsClick = onOpenShop, onAddQuest = { vm.addSuggestion(it) },
+            )
+        }
 
-        // ── Daily login bonus ──────────────────────────────────────────────
+        // ── Quick bubbles (every page of the app is one tap away) ──
+        item {
+            QuickBubbles(listOf(
+                QuickBubble("\uD83D\uDED2", "Shop", ColorCoin, onOpenShop),
+                QuickBubble("\uD83D\uDCCA", "Stats", Color(0xFF6CB6FF), onOpenStats),
+                QuickBubble("\uD83E\uDDED", "Hub", Color(0xFFC39CFF), onOpenHub),
+                QuickBubble("\uD83D\uDCDA", "Chapters", ColorPrimary, onOpenChapters),
+                QuickBubble("\uD83D\uDCC5", "Attendance", Color(0xFFFF9E6C), onOpenAttendance),
+                QuickBubble("⚡", "Focus", ColorAccent, onGoFocus),
+            ))
+        }
+
+        // ── Daily login bonus / theme rent ──
         if (vm.loginBonus > 0) {
             item {
-                Surface(shape = RoundedCornerShape(12.dp), color = ColorCoin.copy(0.12f),
-                    modifier = Modifier.fillMaxWidth().clickable { vm.dismissBonus() }) {
-                    Text("🎁 Daily login: +${vm.loginBonus}🪙", modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.labelLarge, color = ColorCoin, fontWeight = FontWeight.Bold)
+                Box(Modifier.fillMaxWidth().clip(PillShape).background(ColorCoin.copy(0.16f)).clickable { vm.dismissBonus() }.padding(horizontal = 18.dp, vertical = 12.dp)) {
+                    Text("🎁 Daily login: +${vm.loginBonus}🪙", style = MaterialTheme.typography.labelLarge, color = ColorCoin, fontWeight = FontWeight.Black)
                 }
             }
         }
-
         vm.rentNote?.let { note ->
             item {
-                Surface(shape = RoundedCornerShape(12.dp), color = ColorSurfaceHigh,
-                    modifier = Modifier.fillMaxWidth().clickable { vm.dismissRent() }) {
-                    Text(note, modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.labelLarge, color = ColorMuted, fontWeight = FontWeight.Bold)
+                Box(Modifier.fillMaxWidth().clip(PillShape).background(ColorSurfaceHigh).clickable { vm.dismissRent() }.padding(horizontal = 18.dp, vertical = 12.dp)) {
+                    Text(note, style = MaterialTheme.typography.labelLarge, color = ColorMuted, fontWeight = FontWeight.Bold)
                 }
             }
         }
 
-        // ── Today's quests (right under the hero) ──────────────────────────
+        // ── Today's quests ──
         item {
-            Row(Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Today's quests", style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold, color = ColorText)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (overdueCount > 0) Text("⚠ $overdueCount overdue", style = MaterialTheme.typography.labelMedium, color = ColorDanger)
-                    if (shownTotal > 0) Text("$shownDone/$shownTotal done", style = MaterialTheme.typography.labelMedium, color = ColorPrimary)
-                }
-            }
+            BubbleSection("Today's quests", trailing = if (shownTotal > 0) "$shownDone/$shownTotal done" else null)
+        }
+        if (overdueCount > 0) item {
+            BubbleChip("⚠ $overdueCount overdue", ColorDanger)
         }
         if (routineDay) {
             routineToday.forEach { task ->
                 val steps = (stepsByTask[task.id] ?: emptyList()).sortedBy { it.id }
                 item(key = "rh_${task.id}") {
-                    Text("📋 ${task.title} · ${steps.count { it.done }}/${steps.size}", style = MaterialTheme.typography.labelLarge,
-                        color = ColorMuted, fontWeight = FontWeight.SemiBold)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("📋 ${task.title} · ${steps.count { it.done }}/${steps.size}", style = MaterialTheme.typography.labelLarge,
+                            color = ColorText, fontWeight = FontWeight.Black)
+                        GlowBar(if (steps.isEmpty()) 0f else steps.count { it.done }.toFloat() / steps.size, height = 12.dp)
+                    }
                 }
                 steps.forEachIndexed { i, sub ->
                     item(key = "rs_${sub.id}") {
@@ -213,19 +233,17 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
             item { SuggestedQuests(onAdd = { vm.addSuggestion(it, tomorrow = true) }, title = "\uD83D\uDCA1 Suggested (added for tomorrow)") }
         } else if (todayList.isEmpty()) {
             item {
-                Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
-                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
-                    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(if (doneToday > 0) "\uD83C\uDF89" else "\uD83D\uDCDD", fontSize = 22.sp)
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        IconTile(if (doneToday > 0) "\uD83C\uDF89" else "\uD83D\uDCDD", ColorPrimary, 56.dp)
                         Text(if (doneToday > 0) "All done for today" else "Nothing planned for today",
-                            style = MaterialTheme.typography.bodyMedium, color = ColorText,
-                            fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        TextButton(onClick = onAddQuest) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            style = MaterialTheme.typography.titleSmall, color = ColorText,
+                            fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+                        Button(onClick = onAddQuest, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Add", fontWeight = FontWeight.Bold)
+                            Text("Add", fontWeight = FontWeight.Black)
                         }
                     }
                 }
@@ -236,7 +254,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                 HomeQuestRow(task = task, now = now, onComplete = { vm.complete(task) })
             }
             if (todayList.size > 6) item {
-                Text("+${todayList.size - 6} more in Quests", style = MaterialTheme.typography.labelMedium, color = ColorMuted)
+                BubbleChip("+${todayList.size - 6} more in Quests", ColorMuted)
             }
         }
 
@@ -245,36 +263,21 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
             item { SuggestedQuests(onAdd = { vm.addSuggestion(it) }, title = "\uD83D\uDCA1 Suggested for today") }
         }
 
-        // ── Next: dated quests, then undated ───────────────────────────────
+        // ── Next: dated quests, then undated ──
         if (!routineDay && comingUp.isNotEmpty()) {
-            item { SubHeader("⏰ Coming up") }
+            item { BubbleSection("⏰ Coming up") }
             items(comingUp.take(3), key = { "up_${it.id}" }) { task ->
                 HomeQuestRow(task = task, now = now, onComplete = { vm.complete(task) })
             }
         }
         if (!routineDay && noDate.isNotEmpty()) {
-            item { SubHeader("📋 No date") }
+            item { BubbleSection("📋 No date") }
             items(noDate.take(3), key = { "nd_${it.id}" }) { task ->
                 HomeQuestRow(task = task, now = now, onComplete = { vm.complete(task) })
             }
         }
 
-        // ── Slim shortcuts: Shop + Stats ───────────────────────────────────
-        item {
-            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SlimPill("\uD83D\uDED2 Shop", false, onOpenShop, Modifier.weight(1f))
-                    SlimPill("\uD83D\uDCCA Stats", false, onOpenStats, Modifier.weight(1f))
-                    SlimPill("\uD83E\uDDED Hub", false, onOpenHub, Modifier.weight(1f))
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SlimPill("\uD83D\uDCDA Chapters", true, onOpenChapters, Modifier.weight(1f))
-                    SlimPill("\uD83D\uDCC5 Attendance", true, onOpenAttendance, Modifier.weight(1f))
-                }
-            }
-        }
-
-        // ── Active power-ups ───────────────────────────────────────────────
+        // ── Active power-ups ──
         val activePowerUps = buildList {
             if (now < player.xpBoostUntil)       add("⚡ XP Boost" to ((player.xpBoostUntil - now) / 60_000))
             if (now < player.coinMultiplierUntil) add("🧲 Coins ×1.5" to ((player.coinMultiplierUntil - now) / 60_000))
@@ -283,28 +286,22 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
         if (activePowerUps.isNotEmpty()) {
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(activePowerUps) { (label, mins) ->
-                        Surface(shape = RoundedCornerShape(20.dp), color = ColorPrimary.copy(0.15f)) {
-                            Text("$label ${mins}m", modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                style = MaterialTheme.typography.labelSmall, color = ColorPrimary, fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    items(activePowerUps) { (label, mins) -> BubbleChip("$label ${mins}m", ColorPrimary) }
                 }
             }
         }
 
-        // ── Recent achievements ────────────────────────────────────────────
+        // ── Recent achievements ──
         if (recentAch.isNotEmpty()) {
-            item { SubHeader("🏆 Recent Achievements") }
+            item { BubbleSection("🏆 Recent achievements") }
             item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(recentAch) { ach ->
-                        Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
-                            shape = RoundedCornerShape(14.dp)) {
-                            Column(Modifier.padding(12.dp).width(96.dp),
+                        Card {
+                            Column(Modifier.padding(14.dp).width(100.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                ArtIcon(Art.ach(ach.id), ach.emoji, 48.dp)
+                                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                ArtIcon(Art.ach(ach.id), ach.emoji, 52.dp)
                                 Text(ach.name, style = MaterialTheme.typography.labelSmall,
                                     color = ColorText, fontWeight = FontWeight.Bold)
                             }
@@ -322,81 +319,102 @@ fun TaskEntity.isForToday(endOfToday: Long): Boolean =
         (questType == "onetime" && !isRecurring && dueAt == null && createdAt >= startOfToday(endOfToday)) ||
         (isRecurring && (dueAt == null || questType == "daily" || questType == "weekly" || questType == "challenge"))
 
-// ── Hero card ──────────────────────────────────────────────────────────────
+// ── Header ─────────────────────────────────────────────────────────────────
+private fun frameColorOf(player: Player): Color = when (player.equippedFrame) {
+    "frame_fire"   -> Color(0xFFFF6B35)
+    "frame_ice"    -> Color(0xFF64B5F6)
+    "frame_gold"   -> ColorCoin
+    "frame_galaxy" -> Color(0xFF9C27B0)
+    else           -> ColorPrimary
+}
+
 @Composable
-private fun HomeHeader(name: String) {
+private fun HomeHeader(player: Player, hideCoins: Boolean, onCoinsClick: () -> Unit) {
     val hour = remember { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
-    val greet = when { hour < 12 -> "Good Morning,"; hour < 17 -> "Good Afternoon,"; else -> "Good Evening," }
-    Column(Modifier.fillMaxWidth().padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            IconTile("\u2694\uFE0F", ColorPrimary, 34.dp)
-            Text("QuestBlock", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = ColorText)
+    val greet = when { hour < 12 -> "Good morning"; hour < 17 -> "Good afternoon"; else -> "Good evening" }
+    val fc = frameColorOf(player)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(52.dp).clip(CircleShape).border(2.5.dp, fc, CircleShape), contentAlignment = Alignment.Center) { AvatarFill() }
+            Column(Modifier.weight(1f)) {
+                Text(greet, style = MaterialTheme.typography.labelLarge, color = ColorMuted)
+                Text(player.name.ifBlank { "Hero" }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black,
+                    color = ColorText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Row(
+                Modifier.clip(PillShape).background(ColorCoin.copy(alpha = 0.18f)).clickable { onCoinsClick() }
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text("🪙", fontSize = 16.sp)
+                Text(if (hideCoins) "???" else "${player.coins}", color = ColorCoin, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleSmall)
+            }
         }
-        Spacer(Modifier.height(6.dp))
-        Text(greet, style = MaterialTheme.typography.bodyMedium, color = ColorMuted)
-        Text(name.ifBlank { "Hero" }, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = ColorText,
-            maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text("Keep going, legends build habits.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        Text(
+            buildAnnotatedString {
+                append("Let's build\n")
+                withStyle(SpanStyle(color = ColorPrimary)) { append("momentum") }
+                append(" today")
+            },
+            style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black, color = ColorText, lineHeight = 44.sp,
+        )
     }
 }
 
-// ?? Hero card ??????????????????????????????????????????????????????????????
+// ── Momentum card ──────────────────────────────────────────────────────────
 @Composable
-private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Boolean = false, onCoinsClick: () -> Unit, onAddQuest: ((StarterQuest) -> Unit)? = null) {
+private fun MomentumCard(player: Player, doneToday: Int, total: Int, todayFrac: Float, hideCoins: Boolean, onCoinsClick: () -> Unit, onAddQuest: ((StarterQuest) -> Unit)? = null) {
     val level = player.level()
     val xp    = player.xpIntoLevel()
-    val frameColor = when (player.equippedFrame) {
-        "frame_fire"   -> androidx.compose.ui.graphics.Color(0xFFFF6B35)
-        "frame_ice"    -> androidx.compose.ui.graphics.Color(0xFF64B5F6)
-        "frame_gold"   -> ColorCoin
-        "frame_galaxy" -> androidx.compose.ui.graphics.Color(0xFF9C27B0)
-        else           -> ColorPrimary
-    }
+    val fc    = frameColorOf(player)
     val xpAnim by animateFloatAsState(targetValue = xp / 100f,
         animationSpec = tween(800, easing = EaseOutCubic), label = "xp")
+    val pct = if (total > 0) (doneToday * 100 / total) else 0
 
-    Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                // Level badge (circle)
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Box(Modifier.size(68.dp).clip(HexShape)
-                        .background(Brush.verticalGradient(listOf(frameColor.copy(0.55f), frameColor.copy(0.12f))))
-                        .border(2.dp, frameColor, HexShape),
-                        contentAlignment = Alignment.Center) {
-                        AvatarFill()
+                    BubbleRing(xpAnim, 96.dp, 9.dp, fc) {
+                        Box(Modifier.size(70.dp).clip(CircleShape), contentAlignment = Alignment.Center) { AvatarFill() }
                     }
                     val badgeEmoji = when (com.krishna.questblock.data.shownBadgeOf(player)) {
                         "badge_beginner" -> "\uD83C\uDF31"; "badge_star" -> "\u2B50"; "badge_crown" -> "\uD83D\uDC51"
                         "badge_sword" -> "\u2694\uFE0F"; "badge_dragon" -> "\uD83D\uDC09"; else -> ""
                     }
                     if (badgeEmoji.isNotBlank()) {
-                        Box(Modifier.align(Alignment.BottomEnd).size(24.dp)
-                            .background(ColorCard, CircleShape), contentAlignment = Alignment.Center) {
-                            Text(badgeEmoji, fontSize = 13.sp)
+                        Box(Modifier.align(Alignment.BottomEnd).size(28.dp).background(ColorSurfaceHigh, CircleShape), contentAlignment = Alignment.Center) {
+                            Text(badgeEmoji, fontSize = 15.sp)
                         }
                     }
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-                        Text("Lv. $level", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = ColorText)
-                        Text("$xp / 100 XP", style = MaterialTheme.typography.labelMedium, color = ColorMuted)
-                    }
-                    GlowBar(xpAnim, height = 10.dp)
+                    Text("Lv. $level", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = ColorText)
+                    BubbleChip("$xp / 100 XP", ColorPrimary)
                     Text("${player.xp} XP total", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
                     if (player.goal.isNotBlank()) {
-                        Text("\uD83C\uDFAF ${player.goal}", style = MaterialTheme.typography.labelSmall, color = ColorPrimary,
+                        Text("\uD83C\uDFAF ${player.goal}", style = MaterialTheme.typography.labelMedium, color = ColorPrimary,
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // today's progress: big percentage and a fat jelly bar
+            Column(Modifier.fillMaxWidth().clip(BubbleShapeSmall).background(ColorSurfaceHigh).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column {
+                        Text("Today's progress", style = MaterialTheme.typography.labelLarge, color = ColorMuted)
+                        Text("$doneToday of $total quests", style = MaterialTheme.typography.bodyMedium, color = ColorText, fontWeight = FontWeight.SemiBold)
+                    }
+                    Text("$pct%", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black, color = ColorPrimary)
+                }
+                GlowBar(todayFrac, height = 16.dp)
+            }
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatTile("\uD83E\uDE99", if (hideCoins) "???" else "${player.coins}", "Coins", Modifier.weight(1f).clickable { onCoinsClick() })
                 StatTile("\uD83D\uDD25", "${player.streak}d", "Streak", Modifier.weight(1f))
-                StatTile("\u2705", "$doneToday/$total", "Quests", Modifier.weight(1f))
+                StatTile("✨", "${player.xp}", "Total XP", Modifier.weight(1f))
             }
 
             CultivationStrip(player.xp, onAddQuest = onAddQuest)
@@ -404,76 +422,21 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Bool
     }
 }
 
-@Composable
-private fun FocusShortcut(isActive: Boolean, remainingMs: Long, onClick: () -> Unit, modifier: Modifier) {
-    val mm = remainingMs / 60_000
-    val ss = (remainingMs % 60_000) / 1000
-    ShortcutTile(
-        emoji = if (isActive) "🎯" else "⚡",
-        title = if (isActive) "Focus active" else "Focus mode",
-        sub = if (isActive) "%02d:%02d left".format(mm, ss) else "Start a session",
-        highlighted = isActive, onClick = onClick, modifier = modifier,
-    )
-}
+// ── Quick bubbles ──────────────────────────────────────────────────────────
+private class QuickBubble(val emoji: String, val label: String, val color: Color, val onClick: () -> Unit)
 
 @Composable
-private fun ShortcutTile(emoji: String, title: String, sub: String, highlighted: Boolean, onClick: () -> Unit, modifier: Modifier) {
-    Card(colors = CardDefaults.cardColors(containerColor = if (highlighted) ColorPrimary.copy(0.15f) else ColorCard),
-        shape = RoundedCornerShape(14.dp),
-        modifier = modifier.clickable { onClick() }) {
-        Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(emoji, fontSize = 20.sp)
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold,
-                    color = if (highlighted) ColorPrimary else ColorText, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(sub, style = MaterialTheme.typography.bodySmall, color = ColorMuted,
+private fun QuickBubbles(list: List<QuickBubble>) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        items(list) { b ->
+            Column(Modifier.width(72.dp).clip(BubbleShapeSmall).clickable { b.onClick() }.padding(vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                IconTile(b.emoji, b.color, 62.dp)
+                Text(b.label, style = MaterialTheme.typography.labelMedium, color = ColorText, fontWeight = FontWeight.Bold,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
-}
-
-@Composable
-private fun HealthBanner(p: com.krishna.questblock.util.Health.Problem, count: Int) {
-    val ctx = LocalContext.current
-    Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(ColorDanger.copy(alpha = 0.14f)).padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Text("\u26A0\uFE0F", fontSize = 22.sp)
-        Column(Modifier.weight(1f)) {
-            Text(p.title, fontWeight = FontWeight.Bold, color = ColorDanger)
-            Text(p.text + if (count > 1) " (+${count - 1} more)" else "", style = MaterialTheme.typography.bodySmall, color = ColorText)
-        }
-        TextButton(onClick = {
-            runCatching { ctx.startActivity(android.content.Intent(p.action).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
-        }) { Text("Fix", fontWeight = FontWeight.Bold, color = ColorDanger) }
-    }
-}
-
-@Composable
-private fun SlimPill(text: String, highlighted: Boolean, onClick: () -> Unit, modifier: Modifier) {
-    Box(
-        modifier
-            .height(40.dp)
-            .clip(RoundedCornerShape(50))
-            .background(if (highlighted) ColorPrimary.copy(0.15f) else ColorSurfaceHigh)
-            .clickable { onClick() }
-            .padding(horizontal = 12.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
-            color = if (highlighted) ColorPrimary else ColorText)
-    }
-}
-
-@Composable
-private fun SubHeader(text: String) {
-    Text(text, modifier = Modifier.padding(top = 4.dp),
-        style = MaterialTheme.typography.labelLarge, color = ColorMuted, fontWeight = FontWeight.SemiBold)
 }
 
 /** Priority is automatic: the routine's first third of steps is High, the middle Medium, the last third Low. */
@@ -501,27 +464,29 @@ private fun HomeStepRow(task: TaskEntity, sub: SubTask, i: Int, n: Int, prefs: P
             delay(1000L)
         }
     }
-    Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth()) {
-        Column {
-            Row(Modifier.fillMaxWidth().padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = sub.done, onCheckedChange = { if (!sub.done) onTick() })
-                Text(sub.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
-                    color = if (sub.done) ColorMuted else ColorText,
-                    textDecoration = if (sub.done) androidx.compose.ui.text.style.TextDecoration.LineThrough else null)
-                Text(when (pr) { 1 -> "High"; 2 -> "Med"; else -> "Low" }, style = MaterialTheme.typography.labelSmall, color = prColor)
-                Spacer(Modifier.width(8.dp))
-                Text("+$coins🪙", style = MaterialTheme.typography.labelSmall, color = ColorCoin, fontWeight = FontWeight.Bold)
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CheckBubble(onClick = { if (!sub.done) onTick() }, done = sub.done, size = 38.dp)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(sub.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold,
+                        color = if (sub.done) ColorMuted else ColorText,
+                        textDecoration = if (sub.done) androidx.compose.ui.text.style.TextDecoration.LineThrough else null)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        BubbleChip(when (pr) { 1 -> "High"; 2 -> "Med"; else -> "Low" }, prColor)
+                        BubbleChip("+$coins🪙", ColorCoin)
+                    }
+                }
             }
-            if (!sub.done) Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (!sub.done) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 if (mins != null) {
                     if (endAt > 0L) {
                         val left = ((endAt - nowMs).coerceAtLeast(0L)) / 1000L
-                        Text("⏱ %d:%02d".format(left / 60, left % 60), style = MaterialTheme.typography.labelMedium, color = ColorPrimary, fontWeight = FontWeight.Bold)
+                        BubbleChip("⏱ %d:%02d".format(left / 60, left % 60), ColorPrimary)
                         TextButton(onClick = { endAt = 0L; prefs.setStepTimerEnd(sub.id, 0L) }) { Text("Cancel", color = ColorMuted) }
                     } else TextButton(onClick = {
                         endAt = System.currentTimeMillis() + mins * 60_000L; prefs.setStepTimerEnd(sub.id, endAt)
-                    }) { Text("▶ Start $mins min") }
+                    }) { Text("▶ Start $mins min", fontWeight = FontWeight.Bold) }
                 }
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onSkip) { Text("Skip −$STEP_SKIP_COST🪙", color = ColorMuted, style = MaterialTheme.typography.labelMedium) }
@@ -537,33 +502,24 @@ private fun HomeQuestRow(task: TaskEntity, now: Long, onComplete: () -> Unit) {
     val sdf = remember { SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()) }
     val tf  = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
 
-    Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
-        shape = RoundedCornerShape(14.dp),
-        modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            IconTile(questTypeInfo(task.questType).emoji, catColor, 42.dp)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(task.title, style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold, color = ColorText,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            IconTile(questTypeInfo(task.questType).emoji, catColor, 48.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(task.title, style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold, color = ColorText,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(task.category, style = MaterialTheme.typography.labelSmall, color = catColor, fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    BubbleChip(task.category, catColor)
                     if (task.dueAt != null) {
-                        Text((if (task.isRecurring) tf else sdf).format(Date(task.dueAt)),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isOverdue) ColorDanger else ColorMuted,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        BubbleChip((if (task.isRecurring) tf else sdf).format(Date(task.dueAt)), if (isOverdue) ColorDanger else ColorMuted)
                     }
-                    Text("\uD83E\uDE99 ${baseReward(task.difficulty)}", style = MaterialTheme.typography.labelSmall,
-                        color = ColorCoin, fontWeight = FontWeight.Bold)
+                    BubbleChip("\uD83E\uDE99 ${baseReward(task.difficulty)}", ColorCoin)
                 }
             }
-            IconButton(onClick = onComplete, modifier = Modifier.size(34.dp)) {
-                Icon(Icons.Default.CheckCircle, contentDescription = "Complete",
-                    tint = ColorPrimary, modifier = Modifier.size(26.dp))
-            }
+            CheckBubble(onClick = onComplete, size = 42.dp)
         }
     }
 }

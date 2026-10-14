@@ -231,16 +231,7 @@ fun QuestCreatorScreen(
         containerColor = ColorBg,
         contentWindowInsets = WindowInsets(0),
         topBar = {
-            TopAppBar(
-                windowInsets = WindowInsets(0),
-                title = { Text((if (isEdit) "Edit " else "New ") + typeInfo.name + " Quest", fontWeight = FontWeight.Bold, color = ColorText, style = MaterialTheme.typography.titleLarge) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = ColorText)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = ColorBg),
-            )
+            BubbleTopBar(title = (if (isEdit) "Edit " else "New ") + typeInfo.name + " Quest", onBack = onBack)
         },
         bottomBar = {
             Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

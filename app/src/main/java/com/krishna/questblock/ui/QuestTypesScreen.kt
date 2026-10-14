@@ -24,15 +24,7 @@ fun QuestTypesScreen(onBack: () -> Unit, onPick: (String) -> Unit) {
         containerColor = ColorBg,
         contentWindowInsets = WindowInsets(0),
         topBar = {
-            TopAppBar(
-                windowInsets = WindowInsets(0),
-                title = { Text("What kind of quest?", fontWeight = FontWeight.Bold, color = ColorText,
-                    style = MaterialTheme.typography.titleLarge) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = ColorBg),
-            )
+            BubbleTopBar(title = "What kind of quest?", onBack = onBack)
         },
     ) { pad ->
         LazyColumn(
