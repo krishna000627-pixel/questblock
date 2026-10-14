@@ -129,10 +129,10 @@ fun StatsSection(vm: StatsViewModel = hiltViewModel()) {
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(cat, style = MaterialTheme.typography.bodySmall,
                                     color = color, modifier = Modifier.width(70.dp))
-                                Box(Modifier.weight(1f).height(14.dp).clip(RoundedCornerShape(50))
+                                Box(Modifier.weight(1f).height(8.dp).clip(RoundedCornerShape(4.dp))
                                     .background(ColorSurfaceHigh)) {
                                     Box(Modifier.fillMaxWidth(frac).fillMaxHeight()
-                                        .background(color, RoundedCornerShape(50)))
+                                        .background(color, RoundedCornerShape(4.dp)))
                                 }
                                 Text("${list.size}", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
                             }
@@ -231,11 +231,11 @@ private fun XpBarChart(data: List<Pair<String, Int>>) {
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Box(Modifier.weight(1f).fillMaxWidth()
-                    .clip(RoundedCornerShape(50))
+                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
                     .background(ColorSurfaceHigh), contentAlignment = Alignment.BottomCenter) {
                     val frac = xp.toFloat() / maxXp
                     Box(Modifier.fillMaxWidth().fillMaxHeight(frac.coerceIn(0.05f, 1f))
-                        .background(ColorPrimary, RoundedCornerShape(50)))
+                        .background(ColorPrimary, RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)))
                 }
                 Text(day, style = MaterialTheme.typography.labelSmall, color = ColorMuted)
             }
@@ -302,7 +302,7 @@ private fun StatsExtras(vm: StatsViewModel) {
                             verticalArrangement = Arrangement.Bottom) {
                             Text("$n", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
                             Box(Modifier.fillMaxWidth().height((56 * n / maxDay).coerceAtLeast(2).dp)
-                                .clip(RoundedCornerShape(50)).background(ColorPrimary.copy(if (n == 0) 0.2f else 0.9f)))
+                                .clip(RoundedCornerShape(4.dp)).background(ColorPrimary.copy(if (n == 0) 0.2f else 0.9f)))
                         }
                     }
                 }
@@ -334,7 +334,7 @@ private fun StatsExtras(vm: StatsViewModel) {
                         for (col in 0 until 7) {
                             val day = today - 27 + row * 7 + col
                             val active = day in activeDays
-                            Box(Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(50))
+                            Box(Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(6.dp))
                                 .background(if (active) ColorPrimary else ColorSurfaceHigh))
                         }
                     }

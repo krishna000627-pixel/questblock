@@ -66,7 +66,15 @@ fun CoinLogScreen(onBack: () -> Unit, vm: CoinLogViewModel = hiltViewModel()) {
         containerColor = ColorBg,
         contentWindowInsets = WindowInsets(0),
         topBar = {
-            BubbleTopBar(title = "Coin log", onBack = onBack)
+            TopAppBar(
+                windowInsets = WindowInsets(0),
+                title = { Text("Coin log", fontWeight = FontWeight.Bold, color = ColorText,
+                    style = MaterialTheme.typography.titleLarge) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = ColorBg),
+            )
         },
     ) { pad ->
         LazyColumn(

@@ -425,7 +425,7 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
         set(value) = sp.edit().putBoolean("quotes", value).apply()
 
     var accentArgb: Long
-        get() = sp.getLong("accent", 0xFFC6F135)
+        get() = sp.getLong("accent", 0xFF00E5A0)
         set(value) = sp.edit().putLong("accent", value).apply()
 
     /** Coins per 5-minute block of unlock time (apps can override it). */

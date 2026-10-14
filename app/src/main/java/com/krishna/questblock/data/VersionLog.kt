@@ -3,18 +3,9 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
-    VersionEntry("202.0.0", "Build fix for Jelly Pop",
+    VersionEntry("203.0.0", "Back to the normal look",
         listOf(
-            "Fix: ui/Glass.kt did not compile (drawOutline unresolved). The card shine is now drawn with a clip plus a plain rectangle gradient. Same look, no other change",
-        )),
-    VersionEntry("201.0.0", "Jelly Pop: the whole app remastered, bubbly and modern",
-        listOf(
-            "New look named Jelly Pop, now the default for every page. UI and layout only: no feature, rule, coin or data was changed, and nothing from v200 or earlier was undone",
-            "Design system (ui/Glass.kt): every Card is a big 28dp bubble with a soft glow and a faint shine; every Button and OutlinedButton is a pill; text fields and dialogs are rounded bubbles; icon tiles are round bubbles with a glint; tabs, progress bars (now fat jelly bars with a shine line) and the Stats bars and dots are pills and circles. New shared pieces: BubbleTopBar, BubbleChip, BubbleSection, BubbleRing, CheckBubble, bubbleBackdrop",
-            "Colours (ui/Theme.kt): default palette is deep forest green (dark) or pale lime cream (light) with a lime accent (new first choice 'Lime' in Settings; an accent you picked before stays). Second accent mint, bubblier category colours. Shop themes and posters keep their own colours",
-            "Bottom bar: a floating jelly bar instead of the old bar. The open tab grows into a lime pill with its name, Focus is a raised round lime bubble in the middle. Soft light blobs sit behind every page",
-            "Home rebuilt: avatar bubble, greeting and coin bubble on top, big headline 'Let's build momentum today', a Momentum card (XP ring around your picture, level, today's progress with a big %, Coins / Streak / Total XP bubbles, the cultivation strip), a row of round quick bubbles (Shop, Stats, Hub, Chapters, Attendance, Focus), then quest cards with a round check button, category, due and coin chips. Routine steps got round check buttons and a progress bar. All logic is the same",
-            "Sub-pages Coin log, Unlock timers, Add quest type and the quest form use the new round-back top bar",
+            "The Jelly Pop restyle (v201 and v202) is taken out. The app looks and works exactly as in v200 again: old theme, old Home, old bottom bar. Nothing else changed",
         )),
     VersionEntry("200.0.0", "Avatar picture fix back, position as v195",
         listOf(

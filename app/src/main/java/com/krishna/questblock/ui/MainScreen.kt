@@ -1,26 +1,7 @@
 package com.krishna.questblock.ui
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -110,11 +91,30 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
 
     Scaffold(
         containerColor = ColorBg,
-        snackbarHost = { SnackbarHost(snack, Modifier.padding(bottom = 96.dp)) },
+        snackbarHost = { SnackbarHost(snack) },
+        bottomBar = {
+            NavigationBar(
+                containerColor = ColorSurface,
+                modifier = Modifier.glowLine(),
+            ) {
+                NAV_ITEMS.forEach { item ->
+                    NavigationBarItem(
+                        selected = activeTab == item.route,
+                        onClick  = { navController.goTab(item.route) },
+                        icon  = { Icon(item.icon, contentDescription = item.label) },
+                        label = { Text(item.label) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor   = ColorPrimary, selectedTextColor   = ColorPrimary,
+                            indicatorColor      = ColorPrimary.copy(0.15f),
+                            unselectedIconColor = ColorMuted,  unselectedTextColor = ColorMuted,
+                        ),
+                    )
+                }
+            }
+        }
     ) { innerPadding ->
-      Box(Modifier.fillMaxSize().padding(innerPadding)) {
         NavHost(navController = navController, startDestination = "home",
-            modifier = Modifier.fillMaxSize().padding(bottom = 92.dp).bubbleBackdrop()) {
+            modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             composable("home") {
                 HomeScreen(
                     onAddQuest = { navController.openPage("quest_types") },
@@ -222,59 +222,6 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
             composable("hub_rules")    { RulesScreen(onBack = { navController.popBackStack() }, onOpenSites = { navController.openPage("hub_sites") }) }
             composable("hub_experiments") { ExperimentsScreen(onBack = { navController.popBackStack() }) }
             composable("hub_sites")    { SitesScreen(onBack = { navController.popBackStack() }) }
-        }
-        BubbleNav(
-            activeTab = activeTab, onTab = { navController.goTab(it) },
-            modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp, vertical = 10.dp),
-        )
-      }
-    }
-}
-
-/** Floating jelly bar: the picked tab grows into a lime pill with its name, Focus is the big round bubble in the middle. */
-@Composable
-private fun BubbleNav(activeTab: String, onTab: (String) -> Unit, modifier: Modifier = Modifier) {
-    val barShape = androidx.compose.foundation.shape.RoundedCornerShape(36.dp)
-    Box(modifier.fillMaxWidth()) {
-        Row(
-            Modifier.fillMaxWidth().height(68.dp)
-                .shadow(14.dp, barShape, clip = false, ambientColor = ColorPrimary.copy(0.35f), spotColor = ColorPrimary.copy(0.45f))
-                .background(ColorSurface, barShape)
-                .padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            NAV_ITEMS.forEach { item ->
-                val sel = activeTab == item.route
-                if (item.route == "focus") {
-                    // centre bubble: raised lime ball
-                    Box(
-                        Modifier.offset(y = (-14).dp).size(64.dp)
-                            .shadow(12.dp, CircleShape, clip = false, ambientColor = ColorPrimary.copy(0.6f), spotColor = ColorPrimary.copy(0.7f))
-                            .clip(CircleShape)
-                            .background(Brush.verticalGradient(listOf(ColorPrimary, ColorPrimary.copy(alpha = 0.78f))))
-                            .clickable { onTab(item.route) },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(item.icon, contentDescription = item.label, tint = ColorOnPrimary, modifier = Modifier.size(32.dp))
-                        if (sel) Box(Modifier.align(Alignment.TopStart).padding(top = 9.dp, start = 14.dp).size(8.dp).clip(CircleShape).background(Color.White.copy(0.55f)))
-                    }
-                } else {
-                    Row(
-                        Modifier.animateContentSize().clip(CircleShape)
-                            .background(if (sel) ColorPrimary else Color.Transparent)
-                            .clickable { onTab(item.route) }
-                            .padding(horizontal = if (sel) 16.dp else 12.dp, vertical = 11.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(item.icon, contentDescription = item.label, tint = if (sel) ColorOnPrimary else ColorMuted, modifier = Modifier.size(24.dp))
-                        if (sel) {
-                            Spacer(Modifier.width(6.dp))
-                            Text(item.label, color = ColorOnPrimary, fontWeight = FontWeight.Black, maxLines = 1, style = MaterialTheme.typography.labelLarge)
-                        }
-                    }
-                }
-            }
         }
     }
 }

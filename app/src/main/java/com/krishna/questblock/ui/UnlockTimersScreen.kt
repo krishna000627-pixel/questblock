@@ -72,7 +72,15 @@ fun UnlockTimersScreen(onBack: () -> Unit, vm: UnlockTimersViewModel = hiltViewM
         containerColor = ColorBg,
         contentWindowInsets = WindowInsets(0),
         topBar = {
-            BubbleTopBar(title = "Unlock timers", onBack = onBack)
+            TopAppBar(
+                windowInsets = WindowInsets(0),
+                title = { Text("Unlock timers", fontWeight = FontWeight.Bold, color = ColorText,
+                    style = MaterialTheme.typography.titleLarge) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = ColorBg),
+            )
         },
     ) { pad ->
         LazyColumn(
