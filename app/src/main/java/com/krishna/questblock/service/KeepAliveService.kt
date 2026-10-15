@@ -122,6 +122,30 @@ class KeepAliveService : Service() {
             scope.launch { repo.blockedApps.collect { apps = it; render() } }
             // v73: remember when Focus ends, so Do Not Disturb, music and notification rules know a Focus is running
             scope.launch { repo.player.collect { prefs.focusUntilCache = it.focusModeUntil } }
+            // v205: turning accessibility off during a strict Focus session breaks it (give-up penalty, no reward)
+            scope.launch {
+                var off = 0
+                while (true) {
+                    delay(5_000L)
+                    val strict = prefs.focusStrict && prefs.focusUntilCache > System.currentTimeMillis()
+                    off = if (strict && !Perms.accessibilityEnabled(applicationContext)) off + 1 else 0
+                    if (off >= 2) {
+                        off = 0
+                        val pen = runCatching { repo.abandonFocus(force = true) }.getOrDefault(0)
+                        val fix = PendingIntent.getActivity(this@KeepAliveService, 2,
+                            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+                        getSystemService(NotificationManager::class.java)?.notify(9205, NotificationCompat.Builder(this@KeepAliveService, KeepAlive.CH_ALERTS)
+                            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                            .setContentTitle("Strict focus broken")
+                            .setContentText("Accessibility was turned off" + (if (pen > 0) ", \u2212$pen coins" else "") + ". Tap to turn it back on.")
+                            .setContentIntent(fix)
+                            .setAutoCancel(true)
+                            .setPriority(NotificationCompat.PRIORITY_HIGH)
+                            .build())
+                    }
+                }
+            }
             // Study coins come from Android's usage record; sweep every 20 s (also catches up after the service was killed)
             scope.launch {
                 while (true) {

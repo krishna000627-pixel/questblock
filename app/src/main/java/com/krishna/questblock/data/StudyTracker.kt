@@ -41,8 +41,11 @@ object StudyTracker {
         var activeLabel: String? = null
         var activeCarry = 0L
 
+        // v205: apps picked for a running Focus session are free and earn no study coins
+        val inFocus = prefs.focusUntilCache > now
+        val picked = if (inFocus) prefs.focusAllowed.split(",").toSet() else emptySet()
         for (app in studyApps) {
-            val ms = res.perPkg[app.packageName] ?: 0L
+            val ms = if (app.packageName in picked) 0L else res.perPkg[app.packageName] ?: 0L
             var carry = prefs.studyCarryMs(app.packageName) + ms
             if (ms >= 1000L) {
                 var sid = prefs.studySessionId(app.packageName)

@@ -81,6 +81,17 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
         ShopTheme = themeId
         themeCtx.getSharedPreferences("questblock", android.content.Context.MODE_PRIVATE).edit().putString("shop_theme", themeId).apply()
     }
+    // v205: while a strict Focus session runs QuestBlock only shows the Focus timer
+    var strict by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        val sp = themeCtx.getSharedPreferences("questblock", android.content.Context.MODE_PRIVATE)
+        while (true) {
+            strict = sp.getBoolean("focus_strict", false) && sp.getLong("focus_until_cache", 0L) > System.currentTimeMillis()
+            kotlinx.coroutines.delay(1000L)
+        }
+    }
+    LaunchedEffect(strict, route) { if (strict && route != null && route != "focus") navController.goTab("focus") }
+    androidx.activity.compose.BackHandler(enabled = strict) { }
     val snack = remember { SnackbarHostState() }
     LaunchedEffect(Unit) {
         UndoBus.events.collect { u ->
@@ -93,7 +104,7 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
         containerColor = ColorBg,
         snackbarHost = { SnackbarHost(snack) },
         bottomBar = {
-            NavigationBar(
+            if (!strict) NavigationBar(
                 containerColor = ColorSurface,
                 modifier = Modifier.glowLine(),
             ) {

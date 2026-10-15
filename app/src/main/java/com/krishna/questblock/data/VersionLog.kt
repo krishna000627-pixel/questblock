@@ -3,6 +3,13 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("205.0.0", "Strict focus, only Focus lock blocks, system apps left alone",
+        listOf(
+            "Strict mode for Focus: a Strict switch in Focus setup (starts from the Strict mode setting) is saved per session as Prefs.focusStrict. While it runs: no give-up (hidden, and GameRepository.abandonFocus refuses), QuestBlock shows only the Focus tab (MainScreen hides the bottom bar and sends every route to focus, Back is swallowed), and the Settings guard for QuestBlock pages always runs, ignoring the pause timer. The session end time lives in the database, so a reboot or force-stop does not end it",
+            "Turning accessibility off during a strict session breaks it: KeepAliveService checks every 5 s, and after two misses ends the session with the give-up penalty (even in the first minute), no reward, and a notification that opens Accessibility settings",
+            "While any Focus session runs the Focus lock is the only blocker: site, Shorts/Reels and YouTube study checks pause, picked apps skip daily, fun and study limits, and StudyTracker.sweep gives no study coins for picked apps. An app that is playing media also opens free (MusicLog.playingPkg)",
+            "Focus lock only locks apps you can open from the app drawer: apps without a launcher entry (system services, overlays, share sheet, voice input) are left alone, plus the home screen, dialer, keyboard and Settings guard apps",
+        )),
     VersionEntry("204.0.0", "Focus locks everything but your session apps, asked twice, sound manual",
         listOf(
             "Focus setup now asks 'Apps I need this session' (e.g. a writing session: WhatsApp, Telegram, a music app). While the session runs every other app is locked by a new Focus lock page (ui/FocusLockPage.kt, shown through BlockActivity as focuslock:<pkg>); phone/dialer, the home screen, keyboard, Settings guard and QuestBlock always open. Picked apps are free for the session (no coins, no daily or fun limit); study coins still count. Quest-linked apps of a Focus Quest count as picked. The list is remembered to pre-fill the next session (Prefs.focusAllowed). Gate is focusGate() in BlockerAccessibilityService",

@@ -121,6 +121,10 @@ class GameRepository @Inject constructor(
     fun shortPending(kind: String): Boolean? = prefs.pendingFlag("opt:short_$kind")
     fun studyMinPerCoin(): Int = prefs.studyMinPerCoin
     fun focusBonus(): Int = prefs.focusBonus
+    fun focusStrict(): Boolean = prefs.focusStrict
+    fun setFocusStrict(v: Boolean) { prefs.focusStrict = v }
+    /** The Strict mode setting: the starting value of the per-session Strict switch. */
+    fun strictDefault(): Boolean = prefs.strictMode
     fun focusAllowed(): Set<String> = prefs.focusAllowed.split(",").filter { it.isNotBlank() }.toSet()
     fun setFocusAllowed(pkgs: Set<String>) { prefs.focusAllowed = pkgs.joinToString(",") }
     fun holdSeconds(): Int = prefs.holdSeconds
@@ -480,6 +484,7 @@ class GameRepository @Inject constructor(
     }
 
     suspend fun finishFocus(completed: Boolean) {
+        prefs.focusStrict = false
         var questId = -1L
         var end = 0L
         var total = 0L
@@ -533,13 +538,15 @@ class GameRepository @Inject constructor(
     fun focusPenalty(): Int = prefs.focusExitPenalty
 
     /** Giving up a running session. Free in the first minute, then costs [Prefs.focusExitPenalty] coins (never below 0). Returns coins lost. */
-    suspend fun abandonFocus(): Int {
+    suspend fun abandonFocus(force: Boolean = false): Int {
         val p0 = playerDao.get() ?: return 0
         val now = System.currentTimeMillis()
         val running = p0.focusModeUntil > now
+        // v205: a strict session cannot be given up. Only the accessibility watchdog forces it (force = true), and that always costs the penalty.
+        if (running && prefs.focusStrict && !force) return 0
         val elapsed = now - (p0.focusModeUntil - p0.focusTotalMs)
         finishFocus(completed = false)
-        if (!running || elapsed < 60_000L || prefs.focusExitPenalty <= 0) return 0
+        if (!running || (elapsed < 60_000L && !force) || prefs.focusExitPenalty <= 0) return 0
         return db.withTransaction {
             val p = playerDao.get() ?: return@withTransaction 0
             val pen = minOf(p.coins, prefs.focusExitPenalty)

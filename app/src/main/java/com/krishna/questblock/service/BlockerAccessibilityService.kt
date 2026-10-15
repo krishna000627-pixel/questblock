@@ -127,9 +127,12 @@ class BlockerAccessibilityService : AccessibilityService() {
             if (shortsJob != null) stopShortTimer() else CounterBubble.hide(this)
         }
         if (pkg == packageName) return
-        if (pkg in BROWSERS) checkWebsite(pkg)
-        if (pkg in YOUTUBE_PKGS || pkg == INSTAGRAM_PKG) checkShorts(pkg, event)
-        if (pkg in YOUTUBE_PKGS) checkYtGate(pkg, event)
+        // v205: while Focus runs the Focus lock is the only blocker: no site, Shorts or YouTube study checks
+        if (!focusRunning()) {
+            if (pkg in BROWSERS) checkWebsite(pkg)
+            if (pkg in YOUTUBE_PKGS || pkg == INSTAGRAM_PKG) checkShorts(pkg, event)
+            if (pkg in YOUTUBE_PKGS) checkYtGate(pkg, event)
+        }
         val isWindowChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
 
         if (pkg in GUARDED_PKGS) {
@@ -1132,10 +1135,15 @@ class BlockerAccessibilityService : AccessibilityService() {
      * v204: while a Focus session runs, only the apps picked for it (plus phone, home screen and QuestBlock) open.
      * Returns 0 = no Focus rules for this app, 1 = picked for the session (free), 2 = locked here (lock page shown).
      */
+    private fun focusRunning(): Boolean = prefs.focusUntilCache > System.currentTimeMillis()
+    private fun focusStrictActive(): Boolean = focusRunning() && prefs.focusStrict
+
     private suspend fun focusGate(pkg: String): Int {
-        if (prefs.focusUntilCache <= System.currentTimeMillis()) return 0
+        if (!focusRunning()) return 0
         if (focusEssential(pkg)) return 0
         if (pkg in prefs.focusAllowed.split(",") || repo.focusUnlockedPkg(pkg)) return 1
+        // v205: any app that is playing media stays free
+        if (com.krishna.questblock.util.MusicLog.playingPkg(this) == pkg) return 1
         stopUsageTimer()
         stopStudyTimer()
         StudySignal.leave()
@@ -1152,6 +1160,8 @@ class BlockerAccessibilityService : AccessibilityService() {
                 ?.activityInfo?.packageName
         }.getOrNull()
         if (pkg == home) return true
+        // v205: only apps you can open from the app drawer get locked; system services, overlays and headless apps are left alone
+        if (runCatching { packageManager.getLaunchIntentForPackage(pkg) }.getOrNull() == null) return true
         val dialer = runCatching { getSystemService(android.telecom.TelecomManager::class.java)?.defaultDialerPackage }.getOrNull()
         return pkg == dialer || pkg in PHONE_PKGS
     }
@@ -1162,12 +1172,13 @@ class BlockerAccessibilityService : AccessibilityService() {
         if (gate != 1 && checkFunLimit(pkg)) return
         val app = repo.getBlockedApp(pkg)?.let { applyCarryOver(it) }
 
-        if (gate == 1 && app != null && !app.isStudyApp) {
-            // picked for this Focus session: free, no coins, no daily or fun limit
+        if (gate == 1) {
+            // picked for this Focus session: free, no coins, no daily, fun or study limit
             stopUsageTimer()
             stopStudyTimer()
             StudySignal.leave()
-            logFree(pkg, app.label, "Free \u00b7 Focus session")
+            FunSignal.leave()
+            if (app != null) logFree(pkg, app.label, "Free \u00b7 Focus session")
             return
         }
 
@@ -1327,8 +1338,9 @@ class BlockerAccessibilityService : AccessibilityService() {
             ?.substringBefore('/')
 
     private fun guardSettings() {
-        if (!prefs.strictMode) return
-        if (System.currentTimeMillis() < prefs.strictPausedUntil) return
+        val strictFocus = focusStrictActive()   // v205: a strict Focus session always guards, even if the pause timer is running
+        if (!prefs.strictMode && !strictFocus) return
+        if (!strictFocus && System.currentTimeMillis() < prefs.strictPausedUntil) return
         val now = SystemClock.uptimeMillis()
         if (now - lastGuard < 300) return
         lastGuard = now
@@ -1337,7 +1349,7 @@ class BlockerAccessibilityService : AccessibilityService() {
         collectText(root, text, 0)
         if (text.contains("questblock", ignoreCase = true)) {
             performGlobalAction(GLOBAL_ACTION_HOME)
-            Toast.makeText(this, "Strict mode is on", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, if (strictFocus) "Strict focus is on" else "Strict mode is on", Toast.LENGTH_SHORT).show()
         }
     }
 

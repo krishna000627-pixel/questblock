@@ -613,6 +613,8 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
 
     /** Focus end time as last seen by the app (lets the notification listener know a Focus is running). */
     var focusUntilCache: Long get() = sp.getLong("focus_until_cache", 0L); set(v) = sp.edit().putLong("focus_until_cache", v).apply()
+    /** v205: the running Focus session is strict: no give-up, QuestBlock only shows the timer, its Settings pages stay blocked. Cleared when the session ends. */
+    var focusStrict: Boolean get() = sp.getBoolean("focus_strict", false); set(v) = sp.edit().putBoolean("focus_strict", v).apply()
     /** v204: apps picked for the Focus session (package names, comma-separated). Everything else is locked while Focus runs. Also pre-fills the next session. */
     var focusAllowed: String get() = sp.getString("focus_allowed", "") ?: ""; set(v) = sp.edit().putString("focus_allowed", v).apply()
     /** The Focus end time we already applied Do Not Disturb / music pause for (0 = nothing applied). */

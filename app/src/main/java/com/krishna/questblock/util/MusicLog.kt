@@ -75,6 +75,9 @@ object MusicLog {
         }
     }
 
+    /** v205: the app that is playing media right now (null if none or notification access is off). */
+    fun playingPkg(c: Context): String? = fromSession(c)
+
     /** The app Android says is playing, via notification access. Null if access is off or nothing is playing yet. */
     private fun fromSession(c: Context): String? = runCatching {
         val msm = c.getSystemService(Context.MEDIA_SESSION_SERVICE) as android.media.session.MediaSessionManager

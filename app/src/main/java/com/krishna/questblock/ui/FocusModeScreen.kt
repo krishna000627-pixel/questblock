@@ -66,8 +66,11 @@ class FocusViewModel @Inject constructor(
     fun skipBreak() = repo.skipBreak()
     fun allowed(): Set<String> = repo.focusAllowed()
     /** v204: the apps picked for the session are saved first, so the blocker already knows them when the session starts. */
-    fun start(durationMs: Long, quest: TaskEntity?, allowed: Set<String>) = viewModelScope.launch {
+    fun strictDefault(): Boolean = repo.strictDefault()
+    fun strict(): Boolean = repo.focusStrict()
+    fun start(durationMs: Long, quest: TaskEntity?, allowed: Set<String>, strict: Boolean) = viewModelScope.launch {
         repo.setFocusAllowed(allowed)
+        repo.setFocusStrict(strict)
         repo.startFocus(durationMs, quest)
     }
 
@@ -140,6 +143,7 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
                 appCount = activeQuest?.linkedApps?.split(",")?.count { it.isNotBlank() } ?: 0,
                 penalty = vm.penalty(),
                 pickedCount = vm.allowed().size,
+                strict = vm.strict(),
                 onStop = { vm.end() },
             )
             AmbientPicker(ambChoice) { ambChoice = it; com.krishna.questblock.util.Sounds.ambient = it }
@@ -150,8 +154,8 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
             }
             Setup(
                 timerQuests = timerQuests, bonus = vm.bonus(), penalty = vm.penalty(),
-                installed = installed, initialAllowed = remember { vm.allowed() },
-                onStart = { dur, quest, picked -> ambChoice = "off"; vm.start(dur, quest, picked) },
+                installed = installed, initialAllowed = remember { vm.allowed() }, initialStrict = remember { vm.strictDefault() },
+                onStart = { dur, quest, picked, strict -> ambChoice = "off"; vm.start(dur, quest, picked, strict) },
             )
             TodayStrip(logs = logs, now = now)
             FocusStats(logs = logs, now = now)
@@ -164,9 +168,10 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
 @Composable
 private fun Setup(
     timerQuests: List<TaskEntity>, bonus: Int, penalty: Int,
-    installed: List<InstalledApp>, initialAllowed: Set<String>,
-    onStart: (Long, TaskEntity?, Set<String>) -> Unit,
+    installed: List<InstalledApp>, initialAllowed: Set<String>, initialStrict: Boolean,
+    onStart: (Long, TaskEntity?, Set<String>, Boolean) -> Unit,
 ) {
+    var strict by remember { mutableStateOf(initialStrict) }
     var minutes by remember { mutableIntStateOf(25) }
     var allowed by remember { mutableStateOf(initialAllowed) }
     var picking by remember { mutableStateOf(false) }
@@ -250,6 +255,16 @@ private fun Setup(
         }
     }
 
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text("Strict mode", style = MaterialTheme.typography.labelLarge, color = ColorText, fontWeight = FontWeight.SemiBold)
+            Text("Can't give up. QuestBlock only shows this timer and its Settings pages stay blocked until it ends.",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        }
+        Switch(checked = strict, onCheckedChange = { strict = it },
+            colors = SwitchDefaults.colors(checkedTrackColor = ColorPrimary))
+    }
+
     val reward = bonus + (selected?.let { baseReward(it.difficulty) } ?: 0)
     Text(
         "Everything but your picked apps is locked \u00b7 finish for +$reward\uD83E\uDE99" + if (selected != null) " and the quest completes" else "",
@@ -268,7 +283,7 @@ private fun Setup(
             modifier = Modifier.grayWindow(),
             containerColor = ColorSurface,
             title = { Text("Start $shownMin min focus?", color = ColorText, fontWeight = FontWeight.Bold) },
-            text = { Text("Locked for $shownMin min: every app except $names. Do Not Disturb turns on.", color = ColorMuted) },
+            text = { Text("Locked for $shownMin min: every app except $names. Do Not Disturb turns on." + if (strict) " Strict mode: you can't give up." else "", color = ColorMuted) },
             confirmButton = { TextButton(onClick = { confirm = 2 }) { Text("Yes, continue", color = ColorPrimary, fontWeight = FontWeight.Bold) } },
             dismissButton = { TextButton(onClick = { confirm = 0 }) { Text("Cancel", color = ColorMuted) } },
         )
@@ -281,11 +296,11 @@ private fun Setup(
             title = { Text("Commit for $shownMin minutes?", color = ColorText, fontWeight = FontWeight.Bold) },
             text = {
                 Text("Last check. The apps can't be changed once it starts." +
-                    if (penalty > 0) " Giving up after the first minute costs $penalty coins and gives no reward." else " Giving up gives no reward.",
+                    if (strict) " Strict mode is on: no giving up, and turning accessibility off breaks the session (penalty, no reward)." else if (penalty > 0) " Giving up after the first minute costs $penalty coins and gives no reward." else " Giving up gives no reward.",
                     color = ColorMuted)
             },
             confirmButton = {
-                TextButton(onClick = { confirm = 0; onStart(durationMs, selected, allowed) }) {
+                TextButton(onClick = { confirm = 0; onStart(durationMs, selected, allowed, strict) }) {
                     Text("Commit and start", color = ColorPrimary, fontWeight = FontWeight.Bold)
                 }
             },
@@ -433,7 +448,7 @@ private fun PickChip(text: String, selected: Boolean, color: androidx.compose.ui
 }
 
 @Composable
-private fun ActiveFocus(remainingMs: Long, totalMs: Long, questTitle: String?, appCount: Int, penalty: Int, pickedCount: Int, onStop: () -> Unit) {
+private fun ActiveFocus(remainingMs: Long, totalMs: Long, questTitle: String?, appCount: Int, penalty: Int, pickedCount: Int, strict: Boolean, onStop: () -> Unit) {
     val totalSec = (remainingMs / 1000).coerceAtLeast(0)
     val frac = if (totalMs > 0) (remainingMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
 
@@ -462,7 +477,10 @@ private fun ActiveFocus(remainingMs: Long, totalMs: Long, questTitle: String?, a
     )
 
     Spacer(Modifier.height(8.dp))
-    OutlinedButton(
+    if (strict) {
+        Text("\uD83D\uDD12 Strict mode: no giving up until the timer ends", style = MaterialTheme.typography.bodyMedium,
+            color = ColorWarning, fontWeight = FontWeight.SemiBold)
+    } else OutlinedButton(
         onClick = onStop,
         colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorDanger),
         shape = RoundedCornerShape(50),
