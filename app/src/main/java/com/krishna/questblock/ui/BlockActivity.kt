@@ -265,6 +265,10 @@ fun BlockScreen(
         StudyFirstPage(chapter = pkg.removePrefix("ytstudy:"), onHome = onHome, onQuests = onQuests)
         return
     }
+    if (pkg.startsWith("focuslock:")) {
+        FocusLockPage(pkg = pkg.removePrefix("focuslock:"), onHome = onHome, onQuests = onQuests)
+        return
+    }
     if (funLimit) {
         FunLimitPage(pkg = pkg, onHome = onHome, onQuests = onQuests)
         return

@@ -1128,9 +1128,48 @@ class BlockerAccessibilityService : AccessibilityService() {
         } else com.krishna.questblock.data.CodingSignal.leave()
     }
 
+    /**
+     * v204: while a Focus session runs, only the apps picked for it (plus phone, home screen and QuestBlock) open.
+     * Returns 0 = no Focus rules for this app, 1 = picked for the session (free), 2 = locked here (lock page shown).
+     */
+    private suspend fun focusGate(pkg: String): Int {
+        if (prefs.focusUntilCache <= System.currentTimeMillis()) return 0
+        if (focusEssential(pkg)) return 0
+        if (pkg in prefs.focusAllowed.split(",") || repo.focusUnlockedPkg(pkg)) return 1
+        stopUsageTimer()
+        stopStudyTimer()
+        StudySignal.leave()
+        FunSignal.leave()
+        DebugLog.d("service: Focus lock on $pkg (not picked for the session)")
+        showSiteBlock("focuslock:$pkg")
+        return 2
+    }
+
+    private fun focusEssential(pkg: String): Boolean {
+        if (pkg == packageName || pkg in IGNORED_PKGS || pkg in GUARDED_PKGS || pkg == imePackage()) return true
+        val home = runCatching {
+            packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+                ?.activityInfo?.packageName
+        }.getOrNull()
+        if (pkg == home) return true
+        val dialer = runCatching { getSystemService(android.telecom.TelecomManager::class.java)?.defaultDialerPackage }.getOrNull()
+        return pkg == dialer || pkg in PHONE_PKGS
+    }
+
     private suspend fun evaluateAppInner(pkg: String) {
-        if (checkFunLimit(pkg)) return
+        val gate = focusGate(pkg)
+        if (gate == 2) return
+        if (gate != 1 && checkFunLimit(pkg)) return
         val app = repo.getBlockedApp(pkg)?.let { applyCarryOver(it) }
+
+        if (gate == 1 && app != null && !app.isStudyApp) {
+            // picked for this Focus session: free, no coins, no daily or fun limit
+            stopUsageTimer()
+            stopStudyTimer()
+            StudySignal.leave()
+            logFree(pkg, app.label, "Free \u00b7 Focus session")
+            return
+        }
 
         if (app != null && !app.isStudyApp) {
             stopStudyTimer()
@@ -1375,6 +1414,10 @@ class BlockerAccessibilityService : AccessibilityService() {
             "com.android.packageinstaller",
             "com.google.android.packageinstaller",
             "com.google.android.permissioncontroller",
+        )
+        private val PHONE_PKGS = setOf(
+            "com.android.dialer", "com.google.android.dialer", "com.android.incallui",
+            "com.android.phone", "com.android.server.telecom", "com.android.contacts",
         )
         private val IGNORED_PKGS = setOf(
             "com.android.systemui",

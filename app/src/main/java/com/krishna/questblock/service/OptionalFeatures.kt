@@ -221,7 +221,7 @@ object OptionalTick {
         val nm = ctx.getSystemService(NotificationManager::class.java)
         if (active && prefs.focusAppliedUntil != until) {
             prefs.focusAppliedUntil = until
-            if (prefs.optFocusDnd && nm.isNotificationPolicyAccessGranted && prefs.dndPrevFilter == -1) {
+            if (nm.isNotificationPolicyAccessGranted && prefs.dndPrevFilter == -1) {
                 prefs.dndPrevFilter = nm.currentInterruptionFilter
                 nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
                 DebugLog.d("optional: Do Not Disturb on for Focus")

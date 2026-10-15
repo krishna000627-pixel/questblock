@@ -236,7 +236,9 @@ object MusicLog {
         if (!p.optMusicOnFocus) return
         scope.launch {
             if (!isPlaying()) return@launch
-            if (isYouTube(fromSession(c))) { DebugLog.d("music: Focus started, YouTube left playing"); return@launch }
+            val src = fromSession(c)
+            if (isYouTube(src)) { DebugLog.d("music: Focus started, YouTube left playing"); return@launch }
+            if (src != null && src in p.focusAllowed.split(",")) { DebugLog.d("music: Focus started, $src picked for the session, left playing"); return@launch }
             DebugLog.d("music: pausing for Focus")
             pauseNow(c)
         }

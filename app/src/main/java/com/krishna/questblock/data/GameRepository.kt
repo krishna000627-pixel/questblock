@@ -121,6 +121,8 @@ class GameRepository @Inject constructor(
     fun shortPending(kind: String): Boolean? = prefs.pendingFlag("opt:short_$kind")
     fun studyMinPerCoin(): Int = prefs.studyMinPerCoin
     fun focusBonus(): Int = prefs.focusBonus
+    fun focusAllowed(): Set<String> = prefs.focusAllowed.split(",").filter { it.isNotBlank() }.toSet()
+    fun setFocusAllowed(pkgs: Set<String>) { prefs.focusAllowed = pkgs.joinToString(",") }
     fun holdSeconds(): Int = prefs.holdSeconds
     fun showQuotes(): Boolean = prefs.showQuotes
 

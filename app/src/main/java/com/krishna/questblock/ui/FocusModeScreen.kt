@@ -6,6 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -26,12 +27,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Context
+import android.content.Intent
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.krishna.questblock.data.*
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -41,7 +48,10 @@ import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
-class FocusViewModel @Inject constructor(private val repo: GameRepository) : ViewModel() {
+class FocusViewModel @Inject constructor(
+    @ApplicationContext private val ctx: Context,
+    private val repo: GameRepository,
+) : ViewModel() {
     val player = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
     val tasks  = repo.tasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val logs   = repo.focusLogs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -54,7 +64,25 @@ class FocusViewModel @Inject constructor(private val repo: GameRepository) : Vie
     fun keepAwake(): Boolean = repo.keepScreenAwakeInFocus()
     fun breakIsLong(): Boolean = repo.breakIsLong()
     fun skipBreak() = repo.skipBreak()
-    fun start(durationMs: Long, quest: TaskEntity?) = viewModelScope.launch { repo.startFocus(durationMs, quest) }
+    fun allowed(): Set<String> = repo.focusAllowed()
+    /** v204: the apps picked for the session are saved first, so the blocker already knows them when the session starts. */
+    fun start(durationMs: Long, quest: TaskEntity?, allowed: Set<String>) = viewModelScope.launch {
+        repo.setFocusAllowed(allowed)
+        repo.startFocus(durationMs, quest)
+    }
+
+    private val _installed = MutableStateFlow<List<InstalledApp>>(emptyList())
+    val installed = _installed.asStateFlow()
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            val pm = ctx.packageManager
+            val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            _installed.value = pm.queryIntentActivities(intent, 0)
+                .map { InstalledApp(it.activityInfo.packageName, it.loadLabel(pm).toString()) }
+                .filter { it.pkg != ctx.packageName }.distinctBy { it.pkg }
+                .sortedBy { it.label.lowercase() }
+        }
+    }
     fun end()    = viewModelScope.launch { repo.abandonFocus() }
     fun penalty(): Int = repo.focusPenalty()
     fun settle() = viewModelScope.launch { repo.settleFocus() }
@@ -67,6 +95,7 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
     val player by vm.player.collectAsStateWithLifecycle()
     val tasks  by vm.tasks.collectAsStateWithLifecycle()
     val logs   by vm.logs.collectAsStateWithLifecycle()
+    val installed by vm.installed.collectAsStateWithLifecycle()
 
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(1000L) } }
@@ -86,11 +115,11 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
         onDispose { view.keepScreenOn = false }
     }
 
-    // background sound: plays while a session runs, stops when it ends or when "Off" is picked
+    // background sound: off at the start of every session; plays only after you pick one during the session
     var ambChoice by remember { mutableStateOf(com.krishna.questblock.util.Sounds.ambient) }
     LaunchedEffect(running, player.focusModeUntil, ambChoice) {
         if (running) com.krishna.questblock.util.Sounds.startAmbient(player.focusModeUntil)
-        else com.krishna.questblock.util.Sounds.stopAmbient()
+        else { com.krishna.questblock.util.Sounds.stopAmbient(); ambChoice = "off" }
     }
 
     val timerQuests = tasks.filter { it.isTimerQuest && it.isAvailableNow(now) }
@@ -110,6 +139,7 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
                 questTitle = activeQuest?.title,
                 appCount = activeQuest?.linkedApps?.split(",")?.count { it.isNotBlank() } ?: 0,
                 penalty = vm.penalty(),
+                pickedCount = vm.allowed().size,
                 onStop = { vm.end() },
             )
             AmbientPicker(ambChoice) { ambChoice = it; com.krishna.questblock.util.Sounds.ambient = it }
@@ -118,8 +148,11 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
             if (breakLeft > 0L) {
                 BreakCard(leftMs = breakLeft, long = vm.breakIsLong(), onSkip = { vm.skipBreak() })
             }
-            Setup(timerQuests = timerQuests, bonus = vm.bonus(), onStart = { dur, quest -> vm.start(dur, quest) })
-            AmbientPicker(ambChoice) { ambChoice = it; com.krishna.questblock.util.Sounds.ambient = it }
+            Setup(
+                timerQuests = timerQuests, bonus = vm.bonus(), penalty = vm.penalty(),
+                installed = installed, initialAllowed = remember { vm.allowed() },
+                onStart = { dur, quest, picked -> ambChoice = "off"; vm.start(dur, quest, picked) },
+            )
             TodayStrip(logs = logs, now = now)
             FocusStats(logs = logs, now = now)
             RecentSessions(logs = logs)
@@ -129,8 +162,17 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
 
 // ── Setup: big dial -> start ──────────────────────────────────────────────────
 @Composable
-private fun Setup(timerQuests: List<TaskEntity>, bonus: Int, onStart: (Long, TaskEntity?) -> Unit) {
+private fun Setup(
+    timerQuests: List<TaskEntity>, bonus: Int, penalty: Int,
+    installed: List<InstalledApp>, initialAllowed: Set<String>,
+    onStart: (Long, TaskEntity?, Set<String>) -> Unit,
+) {
     var minutes by remember { mutableIntStateOf(25) }
+    var allowed by remember { mutableStateOf(initialAllowed) }
+    var picking by remember { mutableStateOf(false) }
+    // 0 = nothing asked, 1 = first "start?", 2 = second "commit?"
+    var confirm by remember { mutableIntStateOf(0) }
+    fun labelOf(pkg: String) = installed.find { it.pkg == pkg }?.label ?: pkg
     var quest by remember { mutableStateOf<TaskEntity?>(null) }
     // quest may be deleted/completed while this screen is open
     val selected = quest?.let { q -> timerQuests.firstOrNull { it.id == q.id } }
@@ -195,14 +237,64 @@ private fun Setup(timerQuests: List<TaskEntity>, bonus: Int, onStart: (Long, Tas
         }
     }
 
+    // v204: the apps this session needs; everything else is locked while it runs
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Apps I need this session", style = MaterialTheme.typography.labelLarge, color = ColorMuted, fontWeight = FontWeight.SemiBold)
+        Text("Everything else is locked and Do Not Disturb is on. Phone, home screen and QuestBlock always work.",
+            style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(allowed.toList(), key = { it }) { pkg ->
+                PickChip("${labelOf(pkg)}  \u2715", true, ColorAccent) { allowed = allowed - pkg }
+            }
+            item { PickChip(if (allowed.isEmpty()) "+ Pick apps" else "+ Add / change", false, ColorPrimary) { picking = true } }
+        }
+    }
+
     val reward = bonus + (selected?.let { baseReward(it.difficulty) } ?: 0)
     Text(
-        "Blocked apps stay locked \u00b7 finish for +$reward\uD83E\uDE99" + if (selected != null) " and the quest completes" else "",
+        "Everything but your picked apps is locked \u00b7 finish for +$reward\uD83E\uDE99" + if (selected != null) " and the quest completes" else "",
         style = MaterialTheme.typography.bodySmall, color = ColorMuted,
     )
 
+    if (picking) {
+        FocusAppPicker(installed = installed, selected = allowed,
+            onDismiss = { picking = false }, onConfirm = { allowed = it; picking = false })
+    }
+    // v204: asked twice, so a session is never started by mistake
+    if (confirm == 1) {
+        val names = if (allowed.isEmpty()) "no apps picked" else allowed.map { labelOf(it) }.sorted().joinToString(", ")
+        AlertDialog(
+            onDismissRequest = { confirm = 0 },
+            modifier = Modifier.grayWindow(),
+            containerColor = ColorSurface,
+            title = { Text("Start $shownMin min focus?", color = ColorText, fontWeight = FontWeight.Bold) },
+            text = { Text("Locked for $shownMin min: every app except $names. Do Not Disturb turns on.", color = ColorMuted) },
+            confirmButton = { TextButton(onClick = { confirm = 2 }) { Text("Yes, continue", color = ColorPrimary, fontWeight = FontWeight.Bold) } },
+            dismissButton = { TextButton(onClick = { confirm = 0 }) { Text("Cancel", color = ColorMuted) } },
+        )
+    }
+    if (confirm == 2) {
+        AlertDialog(
+            onDismissRequest = { confirm = 0 },
+            modifier = Modifier.grayWindow(),
+            containerColor = ColorSurface,
+            title = { Text("Commit for $shownMin minutes?", color = ColorText, fontWeight = FontWeight.Bold) },
+            text = {
+                Text("Last check. The apps can't be changed once it starts." +
+                    if (penalty > 0) " Giving up after the first minute costs $penalty coins and gives no reward." else " Giving up gives no reward.",
+                    color = ColorMuted)
+            },
+            confirmButton = {
+                TextButton(onClick = { confirm = 0; onStart(durationMs, selected, allowed) }) {
+                    Text("Commit and start", color = ColorPrimary, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirm = 0 }) { Text("Go back", color = ColorMuted) } },
+        )
+    }
+
     Button(
-        onClick = { onStart(durationMs, selected) },
+        onClick = { confirm = 1 },
         modifier = Modifier.fillMaxWidth().height(54.dp),
         colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
         shape = RoundedCornerShape(50),
@@ -211,6 +303,37 @@ private fun Setup(timerQuests: List<TaskEntity>, bonus: Int, onStart: (Long, Tas
         Spacer(Modifier.width(6.dp))
         Text("Start ${shownMin} min focus", fontWeight = FontWeight.Bold, fontSize = 16.sp)
     }
+}
+
+/** v204: pick the apps this Focus session needs (writing: WhatsApp, Telegram, a music app). */
+@Composable
+private fun FocusAppPicker(installed: List<InstalledApp>, selected: Set<String>, onDismiss: () -> Unit, onConfirm: (Set<String>) -> Unit) {
+    var sel by remember { mutableStateOf(selected) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.grayWindow(),
+        containerColor = ColorSurface,
+        title = { Text("Apps for this session", color = ColorText, fontWeight = FontWeight.Bold) },
+        text = {
+            LazyColumn(Modifier.height(350.dp)) {
+                items(installed, key = { it.pkg }) { app ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { sel = if (app.pkg in sel) sel - app.pkg else sel + app.pkg }.padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Checkbox(checked = app.pkg in sel, onCheckedChange = { checked ->
+                            sel = if (checked) sel + app.pkg else sel - app.pkg
+                        }, colors = CheckboxDefaults.colors(checkedColor = ColorPrimary))
+                        Text(app.label, color = ColorText, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    HorizontalDivider(color = ColorDivider, thickness = 0.5.dp)
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(sel) }) { Text("Done", color = ColorPrimary, fontWeight = FontWeight.Bold) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = ColorMuted) } },
+    )
 }
 
 /** Background sound for the session: Off, Rain, Brown, Pink or White noise. */
@@ -310,7 +433,7 @@ private fun PickChip(text: String, selected: Boolean, color: androidx.compose.ui
 }
 
 @Composable
-private fun ActiveFocus(remainingMs: Long, totalMs: Long, questTitle: String?, appCount: Int, penalty: Int, onStop: () -> Unit) {
+private fun ActiveFocus(remainingMs: Long, totalMs: Long, questTitle: String?, appCount: Int, penalty: Int, pickedCount: Int, onStop: () -> Unit) {
     val totalSec = (remainingMs / 1000).coerceAtLeast(0)
     val frac = if (totalMs > 0) (remainingMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
 
@@ -333,7 +456,8 @@ private fun ActiveFocus(remainingMs: Long, totalMs: Long, questTitle: String?, a
     }
 
     Text(
-        "Blocked apps stay locked" + if (appCount > 0) " \u00b7 $appCount linked app${if (appCount > 1) "s" else ""} unlocked" else "",
+        "Everything else is locked \u00b7 $pickedCount app${if (pickedCount != 1) "s" else ""} picked" +
+            if (appCount > 0) " \u00b7 $appCount linked app${if (appCount > 1) "s" else ""} unlocked" else "",
         style = MaterialTheme.typography.bodyMedium, color = ColorMuted,
     )
 

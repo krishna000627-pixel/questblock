@@ -3,6 +3,13 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("204.0.0", "Focus locks everything but your session apps, asked twice, sound manual",
+        listOf(
+            "Focus setup now asks 'Apps I need this session' (e.g. a writing session: WhatsApp, Telegram, a music app). While the session runs every other app is locked by a new Focus lock page (ui/FocusLockPage.kt, shown through BlockActivity as focuslock:<pkg>); phone/dialer, the home screen, keyboard, Settings guard and QuestBlock always open. Picked apps are free for the session (no coins, no daily or fun limit); study coins still count. Quest-linked apps of a Focus Quest count as picked. The list is remembered to pre-fill the next session (Prefs.focusAllowed). Gate is focusGate() in BlockerAccessibilityService",
+            "Do Not Disturb (Priority only) now turns on for every Focus session when Do Not Disturb access is allowed; the old Settings toggle is replaced by a note. A music app picked for the session is not paused, and notifications from picked apps are not hidden",
+            "Starting a session asks twice: 'Start?' then a last 'Commit?' check that names the give-up cost. The apps can't change once it starts",
+            "Background sound (rain, brown, pink, white) is never saved and never starts by itself. It is off at the start of every session and plays only after you pick it on the running Focus screen; the picker is gone from the setup screen. Sounds.ambient is now memory only and resets when the session ends",
+        )),
     VersionEntry("203.0.0", "Back to the normal look",
         listOf(
             "The Jelly Pop restyle (v201 and v202) is taken out. The app looks and works exactly as in v200 again: old theme, old Home, old bottom bar. Nothing else changed",

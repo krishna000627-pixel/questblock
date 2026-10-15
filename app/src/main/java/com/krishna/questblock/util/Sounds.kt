@@ -41,10 +41,8 @@ object Sounds {
         get() = sp()?.getBoolean("snd_sfx", true) ?: false
         set(v) { sp()?.edit()?.putBoolean("snd_sfx", v)?.apply() }
 
-    /** The Focus background sound: off, rain, brown, pink or white. */
-    var ambient: String
-        get() = sp()?.getString("snd_amb", "off") ?: "off"
-        set(v) { sp()?.edit()?.putString("snd_amb", v)?.apply() }
+    /** The Focus background sound: off, rain, brown, pink or white. v204: never saved. Every session starts with it off; it plays only after you turn it on during the session. */
+    @Volatile var ambient: String = "off"
 
     private fun play(res: Int) {
         if (!sfxOn) return
@@ -86,7 +84,7 @@ object Sounds {
     }
 
     /** Stop the background sound (safe from any thread). */
-    fun stopAmbient() { main.post { stopNow() } }
+    fun stopAmbient() { ambient = "off"; main.post { stopNow() } }
 
     private fun stopNow() { main.removeCallbacks(stopRunnable); stopPlayer() }
 

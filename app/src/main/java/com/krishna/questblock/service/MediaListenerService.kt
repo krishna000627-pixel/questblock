@@ -17,6 +17,7 @@ class MediaListenerService : NotificationListenerService() {
         runCatching {
             if (!prefs.optFocusNotif || prefs.focusUntilCache <= System.currentTimeMillis()) return
             if (sbn.packageName == packageName || !sbn.isClearable) return
+            if (sbn.packageName in prefs.focusAllowed.split(",")) return
             if (AppCategorizer.categoryOf(prefs, packageManager, sbn.packageName) == "fun") cancelNotification(sbn.key)
         }
     }

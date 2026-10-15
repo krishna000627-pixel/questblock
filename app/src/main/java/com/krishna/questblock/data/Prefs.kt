@@ -613,6 +613,8 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
 
     /** Focus end time as last seen by the app (lets the notification listener know a Focus is running). */
     var focusUntilCache: Long get() = sp.getLong("focus_until_cache", 0L); set(v) = sp.edit().putLong("focus_until_cache", v).apply()
+    /** v204: apps picked for the Focus session (package names, comma-separated). Everything else is locked while Focus runs. Also pre-fills the next session. */
+    var focusAllowed: String get() = sp.getString("focus_allowed", "") ?: ""; set(v) = sp.edit().putString("focus_allowed", v).apply()
     /** The Focus end time we already applied Do Not Disturb / music pause for (0 = nothing applied). */
     var focusAppliedUntil: Long get() = sp.getLong("focus_applied", 0L); set(v) = sp.edit().putLong("focus_applied", v).apply()
     /** Do Not Disturb filter to put back after Focus (-1 = we did not change it). */

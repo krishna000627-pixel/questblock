@@ -452,9 +452,8 @@ internal fun OptionalFeaturesSection(prefs: Prefs, ctx: Context) {
         // ── Focus ──
         Text("⚡ Focus", color = ColorText, fontWeight = FontWeight.SemiBold)
         val nm = ctx.getSystemService(android.app.NotificationManager::class.java)
-        var dnd by remember { mutableStateOf(prefs.optFocusDnd) }
-        ToggleRow("Do Not Disturb during Focus", "Priority only. Put back when Focus ends.", dnd) { dnd = it; prefs.optFocusDnd = it }
-        if (dnd && !nm.isNotificationPolicyAccessGranted) {
+        Text("Do Not Disturb is on during every Focus session (Priority only) and put back when it ends.", color = ColorMuted, style = MaterialTheme.typography.bodySmall)
+        if (!nm.isNotificationPolicyAccessGranted) {
             TextButton(onClick = { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }) { Text("⚠️ Allow Do Not Disturb access") }
         }
         var awake by remember { mutableStateOf(prefs.optFocusAwake) }
