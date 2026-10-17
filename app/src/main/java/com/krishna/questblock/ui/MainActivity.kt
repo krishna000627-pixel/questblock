@@ -50,13 +50,17 @@ class MainActivity : ComponentActivity() {
         ColorPrimary = ComposeColor(prefs.accentArgb)
         ShopTheme = getSharedPreferences("questblock", MODE_PRIVATE).getString("shop_theme", "default") ?: "default"
         loadThemeMode(this)
+        TermuxMode.load(this)   // v207: Termux theme (one terminal instead of the normal pages)
         enableEdgeToEdge(
             statusBarStyle     = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         setContent {
             QuestTheme {
-                if (onboardingDone) {
+                if (TermuxOn) {
+                    // v207: every page is a command in one terminal; notifications open it with the command typed in
+                    TermuxShell(initialRoute = openRoute, onRouteHandled = { openRoute = null; intent?.removeExtra(EXTRA_OPEN_ROUTE) })
+                } else if (onboardingDone) {
                     MainScreen(openRoute = openRoute, onRouteHandled = { openRoute = null; intent?.removeExtra(EXTRA_OPEN_ROUTE) })
                 } else {
                     OnboardingScreen(onDone = {

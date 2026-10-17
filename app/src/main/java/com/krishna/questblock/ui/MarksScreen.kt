@@ -203,3 +203,28 @@ fun MarksScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
     }
 }
+
+// ── v207: Termux theme bridge for the Marks page ──
+fun termuxMarkTests(): List<Pair<String, String>> = TESTS.map { it.id to it.name }
+fun termuxMarkSubjects(): List<Pair<String, String>> = MARK_SUBJECTS
+
+/** (got, max, failed) or null when nothing is saved. */
+fun termuxMarkGet(ctx: Context, test: String, subj: String): Triple<Float, Float, Boolean>? {
+    val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
+    val m = readMark(sp, test, subj) ?: return null
+    return Triple(m.got, m.max, m.failed())
+}
+
+fun termuxMarkText(v: Float): String = fmt(v)
+
+/** Saves marks like the Marks page. got = null removes the entry. Returns an error text or null. */
+fun termuxMarkSet(ctx: Context, test: String, subj: String, got: Float?): String? {
+    if (TESTS.none { it.id == test }) return "no such test: $test (mt1 qtr mt2 half mt3)"
+    if (MARK_SUBJECTS.none { it.first == subj }) return "no such subject: $subj (P C M H E)"
+    val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
+    if (got == null) { sp.edit().remove("marks_${test}_$subj").apply(); return null }
+    val m = maxFor(test, subj)
+    if (got < 0f || got > m) return "marks must be between 0 and ${fmt(m)}"
+    sp.edit().putString("marks_${test}_$subj", "${fmt(got)}|${fmt(m)}").apply()
+    return null
+}

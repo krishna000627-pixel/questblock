@@ -139,16 +139,29 @@ class BlockActivity : ComponentActivity() {
         com.krishna.questblock.util.DebugLog.d("BlockActivity.onCreate pkg=$target funLimit=$funLimit")
         onBackPressedDispatcher.addCallback(this) { goHome() }
         loadThemeMode(this)
+        TermuxMode.load(this)
         setContent {
             QuestTheme {
-                BlockScreen(
-                    pkg = target,
-                    nonce = nonce,
-                    funLimit = funLimit,
-                    onHome = ::goHome,
-                    onQuests = ::openQuests,
-                    onUnlocked = ::openTarget,
-                )
+                if (TermuxOn) {
+                    // v207: the lock page is a terminal page
+                    TermuxBlockScreen(
+                        pkg = target,
+                        nonce = nonce,
+                        funLimit = funLimit,
+                        onHome = ::goHome,
+                        onMain = ::openMainTerminal,
+                        onOpen = ::openTarget,
+                    )
+                } else {
+                    BlockScreen(
+                        pkg = target,
+                        nonce = nonce,
+                        funLimit = funLimit,
+                        onHome = ::goHome,
+                        onQuests = ::openQuests,
+                        onUnlocked = ::openTarget,
+                    )
+                }
             }
         }
     }
@@ -213,6 +226,16 @@ class BlockActivity : ComponentActivity() {
 
     private fun openQuests() {
         startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        finishAndRemoveTask()
+    }
+
+    /** v207: Termux theme: open QuestBlock's terminal with a useful command already typed in. */
+    private fun openMainTerminal() {
+        val route = if (target.startsWith("ytstudy:")) "chapters" else "quests"
+        startActivity(
+            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(EXTRA_OPEN_ROUTE, route)
+        )
         finishAndRemoveTask()
     }
 

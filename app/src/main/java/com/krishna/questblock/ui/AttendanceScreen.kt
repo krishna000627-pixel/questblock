@@ -273,3 +273,49 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
         Spacer(Modifier.height(16.dp))
     }
 }
+
+// ── v207: Termux theme bridge for the Attendance page (today's slots, same coins and rules) ──
+fun termuxAttendanceSummary(ctx: Context): List<String> {
+    val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
+    val todayKey = dayKey(Calendar.getInstance())
+    val startDay = sp.getString("att_start", "20261008") ?: "20261008"
+    val monthPrefix = todayKey.substring(0, 6)
+    var sP = 0; var sA = 0; var cP = 0; var cA = 0; var msP = 0; var msA = 0; var mcP = 0; var mcA = 0
+    sp.all.forEach { (k, v) ->
+        if (!k.startsWith("att_") || k.length < 14) return@forEach
+        val day = k.substring(4, 12); val what = k.substring(13)
+        if (day < startDay) return@forEach
+        val inMonth = day.startsWith(monthPrefix)
+        if (what == "s") { if (v == "P") { sP++; if (inMonth) msP++ } else if (v == "A") { sA++; if (inMonth) msA++ } }
+        else if (what == "c1" || what == "c2") { if (v == "P") { cP++; if (inMonth) mcP++ } else if (v == "A") { cA++; if (inMonth) mcA++ } }
+    }
+    fun pct(p: Int, a: Int) = if (p + a == 0) "-" else "${p * 100 / (p + a)}%"
+    fun today(what: String): String = sp.getString("att_${todayKey}_$what", "") ?: ""
+    return listOf(
+        "school    this month ${pct(msP, msA)} ($msP present, $msA absent)  overall ${pct(sP, sA)}",
+        "coaching  this month ${pct(mcP, mcA)} ($mcP present, $mcA absent)  overall ${pct(cP, cA)}",
+        "today:  school=${today("s").ifEmpty { "-" }}  coaching1=${today("c1").ifEmpty { "-" }}  coaching2=${today("c2").ifEmpty { "-" }}",
+    )
+}
+
+/** slot = s | c1 | c2, v = P | A | L | "" (clear). Only today can change. Returns the line to print. */
+fun termuxAttendanceSet(ctx: Context, slot: String, v: String, coins: (Int, String) -> Unit): String {
+    if (slot != "s" && slot != "c1" && slot != "c2") return "slot must be s (school), c1 or c2 (coaching)"
+    if (v != "P" && v != "A" && v != "L" && v != "") return "mark must be p, a, l or clear"
+    val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
+    val day = dayKey(Calendar.getInstance())
+    val e = sp.edit()
+    if (v.isEmpty()) e.remove("att_${day}_$slot") else e.putString("att_${day}_$slot", v)
+    val given = sp.getInt("attcoin_${day}_$slot", 0)
+    val done = "attdone_${day}_$slot"
+    val reward = if (v == "P" && (given > 0 || !sp.getBoolean(done, false))) rewardFor(slot) else 0
+    var note = ""
+    if (reward != given) {
+        e.putBoolean(done, true)
+        coins(reward - given, (if (reward > given) "Present: " else "Changed: ") + labelFor(slot) + " " + day.substring(6, 8) + "/" + day.substring(4, 6))
+        if (reward == 0) e.remove("attcoin_${day}_$slot") else e.putInt("attcoin_${day}_$slot", reward)
+        note = if (reward > given) " (+${reward - given} coins)" else " (${reward - given} coins)"
+    }
+    e.apply()
+    return "${labelFor(slot)} today = ${if (v.isEmpty()) "cleared" else v}$note"
+}

@@ -533,3 +533,76 @@ fun ChapterSubjectScreen(subjectId: String, startSchool: Boolean, onBack: () -> 
         Spacer(Modifier.height(16.dp))
     }
 }
+
+// ── v207: Termux theme bridge. Same keys and same rules as the Chapters pages above. ──
+class TermuxChapter(
+    val subj: String, val subjName: String, val n: Int, val title: String,
+    val taught: Boolean, val studied: Boolean, val revised: Boolean, val copy: Boolean,
+)
+
+fun termuxChapters(ctx: Context): List<TermuxChapter> {
+    val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
+    rolloverWeek(sp)
+    val out = ArrayList<TermuxChapter>()
+    SUBJECTS.forEach { s ->
+        val taught = taughtSet(sp, s)
+        val done = readSet(sp, "done", s)
+        val rev = revisedWeek(sp, s)
+        val copies = copyDone(sp, s)
+        (1..s.total).forEach { n ->
+            out.add(TermuxChapter(s.id, s.name, n, labelOf(s, n), n in taught, n in done, n in rev, n in copies))
+        }
+    }
+    return out
+}
+
+/** kind = study | revise | taught | copy. Returns the line to print. [reward] pays the one-time chapter coins. */
+fun termuxChapterToggle(ctx: Context, subjectId: String, n: Int, kind: String, reward: (Int, String) -> Unit): String {
+    val s = SUBJECTS.firstOrNull { it.id.equals(subjectId, ignoreCase = true) } ?: return "no such subject: $subjectId (P C M H E)"
+    if (n < 1 || n > s.total) return "no chapter $n in ${s.name} (1-${s.total})"
+    val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
+    rolloverWeek(sp)
+    val doneSet = readSet(sp, "done", s)
+    val taught = taughtSet(sp, s)
+    val copies = copyDone(sp, s)
+    when (kind) {
+        "study" -> {
+            if (n !in doneSet && n !in taught) return "School has not taught this yet (run: chapters taught ${s.id} $n)"
+            return if (n in doneSet) {
+                saveSet(sp, "done", s, doneSet - n)
+                saveSet(sp, "wrev", s, readSet(sp, "wrev", s) - n)
+                "study tick removed: ${labelOf(s, n)}"
+            } else {
+                saveSet(sp, "done", s, doneSet + n)
+                val paid = "chapcoin_${s.id}_$n"
+                if (!sp.getBoolean(paid, false)) {
+                    sp.edit().putBoolean(paid, true).apply()
+                    reward(CHAPTER_COINS, "Chapter studied: " + labelOf(s, n))
+                    "studied: ${labelOf(s, n)} (+$CHAPTER_COINS coins)"
+                } else "studied: ${labelOf(s, n)}"
+            }
+        }
+        "revise" -> {
+            if (n !in doneSet) return "Mark it studied first"
+            val cur = readSet(sp, "wrev", s)
+            saveSet(sp, "wrev", s, if (n in cur) cur - n else cur + n)
+            return if (n in cur) "revise tick removed: ${labelOf(s, n)}" else "revised this week: ${labelOf(s, n)}"
+        }
+        "taught" -> {
+            return if (n in taught) {
+                saveSet(sp, "taught", s, readSet(sp, "taught", s) - n)
+                saveSet(sp, "copy", s, copies - n)
+                "taught tick removed: ${labelOf(s, n)}"
+            } else {
+                saveSet(sp, "taught", s, readSet(sp, "taught", s) + n)
+                "taught in school: ${labelOf(s, n)}"
+            }
+        }
+        "copy" -> {
+            if (n !in taught) return "Mark it taught in school first"
+            saveSet(sp, "copy", s, if (n in copies) copies - n else copies + n)
+            return if (n in copies) "copy tick removed: ${labelOf(s, n)}" else "copy complete: ${labelOf(s, n)}"
+        }
+    }
+    return "unknown kind: $kind"
+}

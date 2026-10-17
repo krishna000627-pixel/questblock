@@ -60,9 +60,14 @@ private fun NavHostController.openPage(route: String) = navigate(route) { launch
 @Composable
 fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
     val navController = rememberNavController()
+    // v206: read the strict Focus state at once (not after a delay), so a strict session opens straight on the Focus tab with no Home flash
+    val strictSp = androidx.compose.ui.platform.LocalContext.current.getSharedPreferences("questblock", android.content.Context.MODE_PRIVATE)
+    fun strictNow() = strictSp.getBoolean("focus_strict", false) && strictSp.getLong("focus_until_cache", 0L) > System.currentTimeMillis()
+    val startDest = remember { if (strictNow()) "focus" else "home" }
     // A notification asked for a page: tabs open on their main page, other pages open on top of Home
     LaunchedEffect(openRoute) {
         val r = openRoute ?: return@LaunchedEffect
+        if (strictNow()) { onRouteHandled(); return@LaunchedEffect }   // v206: strict Focus ignores notification pages
         if (r in TAB_ROUTES) navController.goTab(r) else { navController.goTab("home"); navController.openPage(r) }
         onRouteHandled()
     }
@@ -82,11 +87,10 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
         themeCtx.getSharedPreferences("questblock", android.content.Context.MODE_PRIVATE).edit().putString("shop_theme", themeId).apply()
     }
     // v205: while a strict Focus session runs QuestBlock only shows the Focus timer
-    var strict by remember { mutableStateOf(false) }
+    var strict by remember { mutableStateOf(strictNow()) }
     LaunchedEffect(Unit) {
-        val sp = themeCtx.getSharedPreferences("questblock", android.content.Context.MODE_PRIVATE)
         while (true) {
-            strict = sp.getBoolean("focus_strict", false) && sp.getLong("focus_until_cache", 0L) > System.currentTimeMillis()
+            strict = strictNow()
             kotlinx.coroutines.delay(1000L)
         }
     }
@@ -124,7 +128,7 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
             }
         }
     ) { innerPadding ->
-        NavHost(navController = navController, startDestination = "home",
+        NavHost(navController = navController, startDestination = startDest,
             modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             composable("home") {
                 HomeScreen(

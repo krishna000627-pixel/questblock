@@ -159,6 +159,12 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
             }
             Text("Some elements pick the new colour up after you reopen the app.",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            Spacer(Modifier.height(8.dp))
+            Text("Termux theme", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
+            OutlinedButton(onClick = { TermuxMode.set(ctx, true) }, shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth()) { Text("Switch to the Termux look (the whole app becomes a terminal)") }
+            Text("Back to this look any time with: theme set default (refused while a strict Focus session runs).",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
 
         // ── Economy ──────────────────────────────────────────────────────
