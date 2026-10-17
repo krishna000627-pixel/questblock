@@ -606,3 +606,22 @@ fun termuxChapterToggle(ctx: Context, subjectId: String, n: Int, kind: String, r
     }
     return "unknown kind: $kind"
 }
+
+// ── v211: Homework bridge. Finishing homework ticks the chapter it is linked to (never unticks one). ──
+/** kind = study | copy. Marks the chapter taught first when it is not (homework means school gave it). Returns a line to show. */
+fun termuxChapterEnsure(ctx: Context, subjectId: String, n: Int, kind: String, reward: (Int, String) -> Unit): String {
+    val row = termuxChapters(ctx).firstOrNull { it.subj.equals(subjectId, ignoreCase = true) && it.n == n }
+        ?: return "no chapter $n in $subjectId"
+    val have = if (kind == "copy") row.copy else row.studied
+    if (have) return "chapter ${row.subj} $n was already ${if (kind == "copy") "copy complete" else "studied"}"
+    if (!row.taught) termuxChapterToggle(ctx, subjectId, n, "taught") { _, _ -> }
+    return termuxChapterToggle(ctx, subjectId, n, kind, reward)
+}
+
+/** How many chapters a subject has (0 for an unknown subject). */
+fun termuxChapterCount(ctx: Context, subjectId: String): Int =
+    termuxChapters(ctx).count { it.subj.equals(subjectId, ignoreCase = true) }
+
+/** "Electromagnetic Induction" for P 6, or null. */
+fun termuxChapterTitle(ctx: Context, subjectId: String, n: Int): String? =
+    termuxChapters(ctx).firstOrNull { it.subj.equals(subjectId, ignoreCase = true) && it.n == n }?.title

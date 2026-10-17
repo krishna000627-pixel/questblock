@@ -50,7 +50,7 @@ class TermuxBlockCtx(
 
 private val TOP_COMMANDS = listOf(
     "help", "man", "clear", "history", "status", "whoami", "alias", "unalias", "theme", "home", "setup",
-    "quests", "quest", "undo",
+    "quests", "quest", "undo", "hw",
     "focus", "play", "stop",
     "vault", "unlock", "sites", "limits", "categories",
     "coins", "shop", "inv",
@@ -89,14 +89,17 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "poster" to listOf("pick", "on", "off", "tint", "dim"),
     "suggest" to listOf("add", "physics", "chemistry", "maths", "boards"),
     "ideas add" to listOf("bug", "feature", "ui", "termux", "idea"),
-    "cd" to listOf("~", "quests", "focus", "vault", "shop", "stats", "settings", "ideas"),
+    "cd" to listOf("~", "quests", "hw", "focus", "vault", "shop", "stats", "settings", "ideas"),
+    "hw" to listOf("add", "ls", "board", "done", "undo", "rm", "edit", "focus", "week", "copy", "bed"),
+    "hw add" to listOf("physics", "chemistry", "maths", "hindi", "english"),
+    "hw ls" to listOf("physics", "chemistry", "maths", "hindi", "english", "--due", "--overdue", "--done"),
     "mood" to listOf("1", "2", "3", "4", "5", "clear"),
     "fun" to listOf("buy"),
 )
 
 private val GROUPS: Map<String, List<String>> = linkedMapOf(
     "core" to listOf("help", "man", "clear", "history", "status", "whoami", "alias", "theme", "home", "setup", "fg", "last", "cd", "pwd"),
-    "quests" to listOf("quests", "quest", "undo", "suggest"),
+    "quests" to listOf("quests", "quest", "undo", "suggest", "hw"),
     "focus" to listOf("focus", "play", "stop"),
     "blocking" to listOf("vault", "unlock", "sites", "limits", "categories", "timers"),
     "economy" to listOf("coins", "shop", "inv", "fun"),
@@ -170,6 +173,12 @@ private val MAN: Map<String, String> = mapOf(
     "leaderboard" to "leaderboard         top 10 of 80 simulated players and where you are",
     "mood" to "mood | mood 1-5 [days ago] | mood clear [days ago]   one tap a day",
     "fun" to "fun | fun buy         buy +5 fun minutes for 25 coins",
+    "hw" to "hw add <subject> \"text\" [--due fri|\"fri 18:00\"] [--ch 3] [--copy] [-t 30m]   subject: p c m h e. no --due = tomorrow 08:00; --ch links a chapter\n" +
+        "hw | hw board              the five subjects, due in 24 hours, clean-day streak\n" +
+        "hw ls [subject] [--due|--overdue|--done]   hw done|undo|rm <id>   hw edit <id> [--text] [--subj] [--due] [--ch n|0] [--copy|--study] [-t]\n" +
+        "hw focus <id> [-t 30m] [--strict]   timed session on one item (the estimate is learned from your Focus sessions)\n" +
+        "hw week | hw copy | hw bed [HH:MM]   report, copy the open list, bedtime used for the 'won't fit' warning\n" +
+        "on time +3 coins, carried over -1 coin per item per day, 7 clean days +10. strict Focus: only ls, board, week, copy work",
 )
 
 /** v210: the prompt folder follows the commands you run, like cd. Neutral commands (status, help, history...) keep the folder you are in. */
@@ -184,11 +193,12 @@ private val DIR_OF: Map<String, String> = mapOf(
     "reliability" to "settings", "selftest" to "settings", "debuglog" to "settings", "versions" to "settings", "about" to "settings",
     "poster" to "settings", "theme" to "settings",
     "ideas" to "ideas",
+    "hw" to "hw",
 )
-private val DIRS = listOf("quests", "focus", "vault", "shop", "stats", "settings", "ideas")
+private val DIRS = listOf("quests", "hw", "focus", "vault", "shop", "stats", "settings", "ideas")
 
 /** Commands that still work while a strict Focus session runs. */
-private val STRICT_OK = setOf("help", "man", "clear", "history", "status", "whoami", "focus", "play", "stop", "home", "theme", "versions", "about", "alias", "unalias", "ideas", "fg", "last", "cd", "pwd")
+private val STRICT_OK = setOf("help", "man", "clear", "history", "status", "whoami", "focus", "play", "stop", "home", "theme", "versions", "about", "alias", "unalias", "ideas", "hw", "fg", "last", "cd", "pwd")
 
 /** Commands on a lock page. */
 private val BLOCK_OK = setOf("help", "man", "clear", "history", "status", "quests", "coins", "unlock", "open", "home", "main", "focus")
@@ -226,6 +236,14 @@ class TermuxViewModel @Inject constructor(
         { s, q -> pickApp(s, q, includeBlocked = false) },
         { s, q, y -> confirm(s, q, y) },
     )
+
+    private val hwCmd = TermuxHomework(
+        ctx, repo, prefs,
+        { s, q, y -> confirm(s, q, y) },
+        { pkg -> labelOfPkg(pkg) },
+    )
+    private var hwSoonAt = 0L
+    private var hwSoon: List<HwItem> = emptyList()
 
     /** Set when this terminal is a lock page. */
     var block: TermuxBlockCtx? = null
@@ -425,6 +443,11 @@ class TermuxViewModel @Inject constructor(
             "--prio" -> return words(fuzzy(cur, listOf("high", "med", "low")).ifEmpty { if (cur.isEmpty()) listOf("high", "med", "low") else emptyList() })
             "--repeat", "--days" -> return words(fuzzy(cur, listOf("daily", "weekly", "mon,wed", "mon,tue,wed,thu,fri")).ifEmpty { if (cur.isEmpty()) listOf("daily", "weekly", "mon,wed") else emptyList() })
             "-t", "--time" -> return words(listOf("15m", "25m", "45m", "60m").filter { it.startsWith(cur) })
+            "--due" -> if (cmd == "hw") return words(listOf("today", "tomorrow", "+2d", "fri", "mon", "sat").filter { it.startsWith(cur) })
+            "--ch" -> if (cmd == "hw") {
+                val n = termuxChapterCount(ctx, Hw.subjectOf(done.getOrNull(2)) ?: "")
+                return words((1..n).map { it.toString() }.filter { it.startsWith(cur) })
+            }
         }
 
         // commands that take an app or a quest
@@ -454,6 +477,24 @@ class TermuxViewModel @Inject constructor(
             return words(fuzzy(cur, listOf("--apps", "--strict", "--quest").filter { it !in used }).ifEmpty {
                 if (cur.isEmpty() || cur.startsWith("-")) listOf("--apps", "--strict", "--quest").filter { it !in used && it.startsWith(cur) } else emptyList()
             })
+        }
+        // hw: items by id, flags after the text
+        if (cmd == "hw" && sub in setOf("done", "undo", "rm", "edit", "focus") && done.size == 2) {
+            val undo = sub == "undo"
+            return Hw.all(ctx).filter { it.done == undo }.filter { cur.isEmpty() || "${it.id}".startsWith(cur.removePrefix("#")) || it.text.lowercase().contains(cur.lowercase()) }
+                .take(8).map { TermuxChip("#${it.id} ${it.subj} ${it.text.take(16)}", "$prefix${it.id} ") }
+        }
+        if (cmd == "hw" && sub == "add" && done.size >= 4 && (cur.startsWith("-") || cur.isEmpty())) {
+            val used = done.filter { it.startsWith("-") }.toSet()
+            return words(listOf("--due", "--ch", "--copy", "-t").filter { it !in used && it.startsWith(cur) })
+        }
+        if (cmd == "hw" && sub == "edit" && done.size >= 3 && (cur.startsWith("-") || cur.isEmpty())) {
+            val used = done.filter { it.startsWith("-") }.toSet()
+            return words(listOf("--text", "--subj", "--due", "--ch", "--copy", "--study", "-t").filter { it !in used && it.startsWith(cur) })
+        }
+        if (cmd == "hw" && sub == "focus" && done.size >= 3 && (cur.startsWith("-") || cur.isEmpty())) {
+            val used = done.filter { it.startsWith("-") }.toSet()
+            return words(listOf("-t", "--strict").filter { it !in used && it.startsWith(cur) })
         }
         // quest add: flags
         if (cmd == "quest" && sub == "add" && done.size >= 3 && (cur.startsWith("-") || cur.isEmpty())) {
@@ -572,6 +613,10 @@ class TermuxViewModel @Inject constructor(
             s.err("strict focus is on: only ideas and ideas copy work until it ends")
             return
         }
+        if (b == null && TermuxMode.strictNow(ctx) && cmd == "hw" && a.pos.getOrNull(1)?.lowercase() !in setOf(null, "ls", "list", "board", "week", "copy")) {
+            s.err("strict focus is on: only hw, hw ls, hw board, hw week and hw copy work until it ends")
+            return
+        }
         when (cmd) {
             "help", "?" -> cmdHelp(s, a)
             "man" -> cmdMan(s, a)
@@ -621,6 +666,7 @@ class TermuxViewModel @Inject constructor(
             "versions" -> cmdVersions(s, a)
             "about" -> cmdAbout(s, a)
             "ideas" -> cmdIdeas(s, a)
+            "hw" -> hwCmd.run(s, a)
             "suggest" -> extras.suggest(s, a)
             "timers" -> extras.timers(s)
             "fun" -> extras.funBuy(s, a)
@@ -776,7 +822,9 @@ class TermuxViewModel @Inject constructor(
             val total = p.focusTotalMs.coerceAtLeast(1L)
             val bar = termuxBar(1f - left.toFloat() / total.toFloat(), 14)
             // v208: the strip under the prompt (tap it to jump to the focus session and back)
-            focusStrip = "{y}\u26A1{/} focus {c}${fmtLeft(left)}{/} $bar${if (prefs.focusStrict) " {y}\uD83D\uDD12 strict{/}" else ""}  {d}tap: focus session{/}"
+            if (now - hwSoonAt > 15_000L) { hwSoonAt = now; hwSoon = Hw.dueSoon(ctx, now) }
+            val hwPart = if (hwSoon.isNotEmpty()) " {y}\uD83D\uDCDD ${hwSoon.size} hw due{/}" else ""
+            focusStrip = "{y}\u26A1{/} focus {c}${fmtLeft(left)}{/} $bar${if (prefs.focusStrict) " {y}\uD83D\uDD12 strict{/}" else ""}$hwPart  {d}tap: focus session{/}"
             if (fs == null && !focusClosed) {
                 fs = create("focus")
                 fs.prompt = "~/focus $"
@@ -785,7 +833,7 @@ class TermuxViewModel @Inject constructor(
             fs?.live = listOf(
                 "{b}FOCUS{/} {c}${fmtLeft(left)}{/} left  ${termuxBar(1f - left.toFloat() / total.toFloat(), 20)}",
                 "{d}strict=${prefs.focusStrict}  apps=${prefs.focusAllowed.split(",").count { it.isNotBlank() }}  sound=${Sounds.ambient}{/}",
-            )
+            ) + (if (hwSoon.isNotEmpty()) listOf("{y}homework due:{/} " + hwSoon.take(3).joinToString(" \u00b7 ") { "${it.subj} ${it.text.take(16)}".tm() }) else emptyList())
         } else {
             focusStrip = ""
             focusClosed = false
@@ -2081,6 +2129,7 @@ class TermuxViewModel @Inject constructor(
             boolKey("focus_notif", "Focus notification", { prefs.optFocusNotif }, { prefs.optFocusNotif = it }),
             boolKey("evening", "evening check-in", { prefs.optEvening }, { prefs.optEvening = it }),
             intKey("evening_hour", "evening check-in hour", 15..23, { prefs.optEveningHour }, { prefs.optEveningHour = it }),
+            boolKey("hw_sweep", "homework sweep at the evening hour", { prefs.optHwSweep }, { prefs.optHwSweep = it }),
             boolKey("confirm", "ask before skipping a step", { prefs.optConfirm }, { prefs.optConfirm = it }),
             boolKey("undo", "offer undo after a quest", { prefs.optUndo }, { prefs.optUndo = it }),
             boolKey("hide_coins", "hide coins in notifications", { prefs.optHideCoins }, { prefs.optHideCoins = it }),
@@ -2421,6 +2470,11 @@ class TermuxViewModel @Inject constructor(
             val label = labelOfPkg(pkg.removePrefix("focuslock:"))
             s.err("Permission denied: {c}${label.tm()}{/}  {d}(focus){/}")
             s.step("Focus is on: this app was not picked for this session")
+            val soon = Hw.dueSoon(ctx)
+            if (soon.isNotEmpty()) {
+                s.warn("homework due soon (${soon.size}):")
+                soon.take(3).forEach { s.out("   {y}${it.subj}{/} ${it.text.take(30).tm()}  {d}${Hw.dueLabel(it.due)}{/}") }
+            }
             s.dim("finish the session to use it, or run main to see the timer. home = go home")
             return
         }

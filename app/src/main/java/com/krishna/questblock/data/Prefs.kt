@@ -585,6 +585,8 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     var optFocusNotif: Boolean get() = flag("opt_focus_notif"); set(v) = setFlag("opt_focus_notif", v)
     var optEvening: Boolean get() = flag("opt_evening"); set(v) = setFlag("opt_evening", v)
     var optEveningHour: Int get() = sp.getInt("opt_evening_hour", 20); set(v) = sp.edit().putInt("opt_evening_hour", v.coerceIn(15, 23)).apply()
+    /** v211: evening "anything not written down yet?" Homework nudge, at the evening hour. On by default. */
+    var optHwSweep: Boolean get() = flag("opt_hw_sweep", true); set(v) = setFlag("opt_hw_sweep", v)
     var optConfirm: Boolean get() = flag("opt_confirm"); set(v) = setFlag("opt_confirm", v)
     var optUndo: Boolean get() = flag("opt_undo"); set(v) = setFlag("opt_undo", v)
     var optHideCoins: Boolean get() = flag("opt_hide_coins"); set(v) = setFlag("opt_hide_coins", v)

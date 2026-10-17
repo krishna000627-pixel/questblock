@@ -23,6 +23,7 @@ import com.krishna.questblock.data.FUN_EXTEND_COST
 import com.krishna.questblock.data.FUN_EXTEND_MIN
 import com.krishna.questblock.data.FunLimit
 import com.krishna.questblock.data.GameRepository
+import com.krishna.questblock.data.Hw
 import com.krishna.questblock.data.Prefs
 import com.krishna.questblock.data.isAvailableNow
 import com.krishna.questblock.data.nextRunDayStart
@@ -46,6 +47,8 @@ object OptionalAlerts {
     const val ID_MUSIC = 4302
     const val ID_EVENING = 4303
     const val ID_SUMMARY = 4304
+    const val ID_HW_SWEEP = 4305
+    const val ID_HW = 4306
 
     fun post(ctx: Context, id: Int, title: String, text: String, extend: Boolean = false, route: String = "home") {
         if (!Perms.notificationsOk(ctx)) return
@@ -269,6 +272,16 @@ object OptionalTick {
             val open = repo.tasks.first().count { !it.done && it.isAvailableNow(now) && it.isForToday(dayEnd) }
             if (open > 0) OptionalAlerts.post(ctx, OptionalAlerts.ID_EVENING, "🎯 $open quest${if (open > 1) "s" else ""} still open today",
                 "There is still time to finish ${if (open > 1) "them" else "it"} before midnight.", route = "home")
+        }
+
+        // v211 Homework: settle the days that ended (carry-over cost, clean-day streak), then the evening sweep
+        val hwNotes = Hw.dailyTick(ctx, repo, now)
+        if (hwNotes.isNotEmpty()) OptionalAlerts.post(ctx, OptionalAlerts.ID_HW, "\uD83D\uDCDA Homework", hwNotes.joinToString(" "), route = "homework")
+        if (prefs.optHwSweep && !prefs.doneToday("hwsweep") && minuteOfDay >= prefs.optEveningHour * 60) {
+            prefs.markToday("hwsweep")
+            val openHw = Hw.all(ctx).count { !it.done }
+            OptionalAlerts.post(ctx, OptionalAlerts.ID_HW_SWEEP, "\uD83D\uDCDA Anything not written down yet?",
+                "Add today's homework before you forget it." + if (openHw > 0) " $openHw item${if (openHw == 1) "" else "s"} still open." else "", route = "homework_add")
         }
 
         // Daily summary at the chosen time

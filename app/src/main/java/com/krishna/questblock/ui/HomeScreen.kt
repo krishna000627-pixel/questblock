@@ -100,7 +100,7 @@ class HomeViewModel @Inject constructor(
 }
 
 @Composable
-fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenHub: () -> Unit, onOpenChapters: () -> Unit = {}, onOpenAttendance: () -> Unit = {}, vm: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenHub: () -> Unit, onOpenChapters: () -> Unit = {}, onOpenAttendance: () -> Unit = {}, onOpenHomework: () -> Unit = {}, vm: HomeViewModel = hiltViewModel()) {
     val player       by vm.player.collectAsStateWithLifecycle()
     val tasks        by vm.tasks.collectAsStateWithLifecycle()
     val achievements by vm.achievements.collectAsStateWithLifecycle()
@@ -150,6 +150,16 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
     val stepDone = routineToday.sumOf { t -> stepsByTask[t.id]?.count { it.done } ?: 0 }
     val shownDone = if (routineDay) stepDone else doneToday
     val shownTotal = if (routineDay) stepTotal else totalToday
+
+    // v211: homework due in the next 24 hours (counted again every few seconds)
+    val hwCtx = androidx.compose.ui.platform.LocalContext.current
+    val hwDue by androidx.compose.runtime.produceState(0, hwCtx) {
+        while (true) { value = com.krishna.questblock.data.Hw.dueSoon(hwCtx).size; kotlinx.coroutines.delay(5000L) }
+    }
+
+    val hwFit by androidx.compose.runtime.produceState<String?>(null, hwCtx) {
+        while (true) { value = com.krishna.questblock.data.Hw.fitWarning(hwCtx); kotlinx.coroutines.delay(30_000L) }
+    }
 
     val recentAch    = achievements.filter { it.unlockedAt != null }.sortedByDescending { it.unlockedAt }.take(3)
 
@@ -270,6 +280,18 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SlimPill("\uD83D\uDCDA Chapters", true, onOpenChapters, Modifier.weight(1f))
                     SlimPill("\uD83D\uDCC5 Attendance", true, onOpenAttendance, Modifier.weight(1f))
+                    SlimPill("\uD83D\uDCDD Homework" + if (hwDue > 0) " ($hwDue)" else "", hwDue > 0, onOpenHomework, Modifier.weight(1f))
+                }
+            }
+        }
+
+        // v211: tonight's homework will not fit before bedtime
+        hwFit?.let { w ->
+            item {
+                Surface(shape = RoundedCornerShape(12.dp), color = ColorWarning.copy(0.15f),
+                    modifier = Modifier.fillMaxWidth().clickable { onOpenHomework() }) {
+                    Text("\u26A0 $w", modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.labelLarge,
+                        color = ColorWarning, fontWeight = FontWeight.Bold)
                 }
             }
         }

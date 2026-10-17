@@ -147,6 +147,7 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
                 onStop = { vm.end() },
             )
             AmbientPicker(ambChoice) { ambChoice = it; com.krishna.questblock.util.Sounds.ambient = it }
+            HwDueSoonCard()
         } else {
             val breakLeft = vm.breakUntil() - now
             if (breakLeft > 0L) {

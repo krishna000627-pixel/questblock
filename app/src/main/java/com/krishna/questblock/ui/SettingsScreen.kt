@@ -477,7 +477,9 @@ internal fun OptionalFeaturesSection(prefs: Prefs, ctx: Context) {
         Text("🎯 Quests and coins", color = ColorText, fontWeight = FontWeight.SemiBold)
         var eve by remember { mutableStateOf(prefs.optEvening) }
         ToggleRow("Evening nudge", "If quests are still open", eve) { eve = it; prefs.optEvening = it }
-        if (eve) {
+        var hws by remember { mutableStateOf(prefs.optHwSweep) }
+        ToggleRow("Homework sweep", "Evening: anything not written down yet? Same hour as the nudge", hws) { hws = it; prefs.optHwSweep = it }
+        if (eve || hws) {
             var h by remember { mutableIntStateOf(prefs.optEveningHour) }
             StepperRow("Nudge at", h, 15..23, 1, "h") { h = it; prefs.optEveningHour = it }
         }

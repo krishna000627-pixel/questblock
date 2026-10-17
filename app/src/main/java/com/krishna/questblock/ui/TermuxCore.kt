@@ -146,7 +146,7 @@ class TermuxArgs(val pos: List<String>, val flags: Map<String, String>) {
     fun rest(from: Int): String = pos.drop(from).joinToString(" ")
 }
 
-private val BOOL_FLAGS = setOf("--strict", "--today", "--done", "--overdue", "--focus", "--week", "--all", "--yes", "-y", "--study", "--open", "--once", "--plain", "--log", "--tomorrow")
+private val BOOL_FLAGS = setOf("--strict", "--today", "--done", "--overdue", "--focus", "--week", "--all", "--yes", "-y", "--study", "--open", "--once", "--plain", "--log", "--tomorrow", "--copy")
 
 fun termuxTokenize(line: String): List<String> {
     val out = ArrayList<String>()
@@ -230,5 +230,7 @@ fun termuxCommandForRoute(route: String): String = when (route) {
     "hub_experiments" -> "poster"
     "reliability" -> "reliability"
     "categories" -> "categories ls"
+    "homework" -> "hw"
+    "homework_add" -> "hw add "
     else -> "status"
 }

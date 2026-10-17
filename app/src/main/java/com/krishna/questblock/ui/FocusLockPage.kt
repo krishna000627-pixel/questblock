@@ -45,6 +45,16 @@ fun FocusLockPage(pkg: String, onHome: () -> Unit, onQuests: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Text("This app was not picked for this session. Finish the session to use it, or open QuestBlock to see the timer.",
             style = MaterialTheme.typography.bodyMedium, color = ColorMuted, textAlign = TextAlign.Center)
+        // v211: homework due in the next 24 hours
+        val soon = remember { com.krishna.questblock.data.Hw.dueSoon(ctx) }
+        if (soon.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            Text("\uD83D\uDCDD Homework due soon", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = ColorWarning, textAlign = TextAlign.Center)
+            soon.take(3).forEach {
+                Text("${com.krishna.questblock.data.Hw.subjectName(it.subj)}: ${it.text} \u00b7 ${com.krishna.questblock.data.Hw.dueLabel(it.due)}",
+                    style = MaterialTheme.typography.bodySmall, color = ColorMuted, textAlign = TextAlign.Center)
+            }
+        }
         Spacer(Modifier.height(28.dp))
         Button(
             onClick = onQuests,
