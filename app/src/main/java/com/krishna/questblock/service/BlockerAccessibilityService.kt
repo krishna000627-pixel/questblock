@@ -126,6 +126,13 @@ class BlockerAccessibilityService : AccessibilityService() {
             pkg !in IGNORED_PKGS && pkg != imePackage() && !ownOverlay) {
             if (shortsJob != null) stopShortTimer() else CounterBubble.hide(this)
         }
+        // v208: a strict Focus session pushes the notification shade and Quick Settings shut (needs the phone to report them: see the change log)
+        if (pkg == "com.android.systemui" && event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && focusStrictActive()) {
+            val cn = event.className?.toString().orEmpty()
+            if (cn.contains("NotificationShade", true) || cn.contains("QuickSettings", true) || cn.contains("QSPanel", true)) {
+                performGlobalAction(GLOBAL_ACTION_BACK)
+            }
+        }
         if (pkg == packageName) return
         // v205: while Focus runs the Focus lock is the only blocker: no site, Shorts or YouTube study checks
         if (!focusRunning()) {
@@ -136,6 +143,13 @@ class BlockerAccessibilityService : AccessibilityService() {
         val isWindowChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
 
         if (pkg in GUARDED_PKGS) {
+            if (isWindowChange && focusRunning()) {
+                // v208: during Focus the whole Settings app, the installer, uninstall dialogs and permission pages are closed outright
+                stopStudyTimer()
+                performGlobalAction(GLOBAL_ACTION_HOME)
+                Toast.makeText(this, "Settings are locked during Focus", Toast.LENGTH_SHORT).show()
+                return
+            }
             if (isWindowChange) {
                 stopStudyTimer()
                 recordLeaveIfNeeded(pkg)

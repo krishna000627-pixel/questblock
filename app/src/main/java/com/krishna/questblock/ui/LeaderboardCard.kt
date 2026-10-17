@@ -153,3 +153,9 @@ private fun LbLine(i: Int, r: LbRow, maxXp: Int, moved: Int) {
         }
     }
 }
+
+/** v208: the same board as plain rows for the terminal: (name, xp, isYou), best first. */
+fun termuxLeaderboardRows(you: String, yourXp: Int): List<Triple<String, Int, Boolean>> {
+    val half = if (java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) >= 12) 1 else 0
+    return board(you, yourXp, localDay(), half).map { Triple(it.name, it.xp, it.isYou) }
+}

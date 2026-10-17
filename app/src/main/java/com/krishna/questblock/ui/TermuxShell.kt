@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -55,6 +56,7 @@ private val TOP_COMMANDS = listOf(
     "coins", "shop", "inv",
     "stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub",
     "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas",
+    "suggest", "timers", "fun", "fg", "last", "poster", "mood", "achievements", "leaderboard",
 )
 
 private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
@@ -62,17 +64,17 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "man" to TOP_COMMANDS,
     "theme" to listOf("set"),
     "quests" to listOf("--today", "--done", "--overdue", "--focus"),
-    "quest" to listOf("add", "show", "edit", "done", "rm", "focus", "link", "step", "skip"),
+    "quest" to listOf("add", "show", "edit", "done", "rm", "focus", "link", "step", "skip", "steps"),
     "focus" to listOf("start", "status", "stop", "apps", "last", "log"),
     "play" to listOf("rain", "brown", "pink", "white"),
     "vault" to listOf("ls", "add", "rm", "study", "unstudy", "info", "opt", "clips"),
     "sites" to listOf("ls", "add", "rm"),
-    "categories" to listOf("ls", "set", "safe"),
+    "categories" to listOf("ls", "set", "safe", "lock", "pending"),
     "coins" to listOf("log"),
     "shop" to listOf("ls", "buy", "rewards", "reward"),
     "inv" to listOf("ls", "use", "equip", "unequip"),
     "usage" to listOf("--week"),
-    "attendance" to listOf("mark", "s", "c1", "c2"),
+    "attendance" to listOf("mark", "month", "day", "s", "c1", "c2"),
     "marks" to listOf("set", "rm"),
     "chapters" to listOf("ls", "study", "revise", "taught", "copy"),
     "goals" to listOf("claim"),
@@ -80,19 +82,24 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "strict" to listOf("on", "off"),
     "perms" to listOf("grant"),
     "debuglog" to listOf("clear"),
-    "ideas" to listOf("add", "done", "rm", "clear"),
+    "ideas" to listOf("add", "done", "rm", "clear", "copy"),
     "about" to listOf("open"),
     "theme set" to listOf("default", "termux"),
+    "poster" to listOf("pick", "on", "off", "tint", "dim"),
+    "suggest" to listOf("add", "physics", "chemistry", "maths", "boards"),
+    "ideas add" to listOf("bug", "feature", "ui", "termux", "idea"),
+    "mood" to listOf("1", "2", "3", "4", "5", "clear"),
+    "fun" to listOf("buy"),
 )
 
 private val GROUPS: Map<String, List<String>> = linkedMapOf(
-    "core" to listOf("help", "man", "clear", "history", "status", "whoami", "alias", "theme", "home", "setup"),
-    "quests" to listOf("quests", "quest", "undo"),
+    "core" to listOf("help", "man", "clear", "history", "status", "whoami", "alias", "theme", "home", "setup", "fg", "last"),
+    "quests" to listOf("quests", "quest", "undo", "suggest"),
     "focus" to listOf("focus", "play", "stop"),
-    "blocking" to listOf("vault", "unlock", "sites", "limits", "categories"),
-    "economy" to listOf("coins", "shop", "inv"),
-    "progress" to listOf("stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub"),
-    "settings" to listOf("set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas"),
+    "blocking" to listOf("vault", "unlock", "sites", "limits", "categories", "timers"),
+    "economy" to listOf("coins", "shop", "inv", "fun"),
+    "progress" to listOf("stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub", "mood", "achievements", "leaderboard"),
+    "settings" to listOf("set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas", "poster"),
 )
 
 private val MAN: Map<String, String> = mapOf(
@@ -109,7 +116,8 @@ private val MAN: Map<String, String> = mapOf(
     "setup" to "setup               first-run steps: set name/goal/dob, perms, then setup done",
     "quests" to "quests [--today|--done|--overdue|--focus]",
     "quest" to "quest add \"title\" -d easy|med|hard -c Study|Work|Health|Personal|Custom -t 25m --due \"fri 18:00\" --repeat daily|weekly|mon,wed --challenge 7 --steps \"a;b;c\"\n" +
-        "quest show|done|rm <id>     quest edit <id> [-d] [-c] [-t] [--due] [--title]\n" +
+        "quest show|done|rm <id>     quest edit <id> [-d] [-c] [-t] [--due] [--title] [--prio high|med|low] [--days mon,wed|all]\n" +
+        "quest steps <id> [add \"text\" | rm <n>]   list or edit a routine's steps (add --prio high|med|low and --days mon,wed to quest add)\n" +
         "quest focus <id>            start the quest's timer\n" +
         "quest link <id> <app>       app unlocks while the quest runs\n" +
         "quest step <id> <n>         tick a routine step      quest skip <id> <n>   skip it (5 coins)",
@@ -124,14 +132,14 @@ private val MAN: Map<String, String> = mapOf(
     "unlock" to "unlock <app> [minutes]   pay coins for unlock time (you type the app name to confirm)",
     "sites" to "sites ls | add <domain> | rm <domain>   (removing waits until midnight)",
     "limits" to "limits              fun limit, quiet hours, study hours, exam mode (change them with: set)",
-    "categories" to "categories ls [text] | set <app> study|coding|neutral|fun|auto | safe <app> on|off",
+    "categories" to "categories ls [text] | set <app> study|coding|neutral|fun|auto | safe <app> on|off\ncategories lock <app> study|coding|neutral|fun|auto [now|midnight|HH:MM]   weekly lock: one change per app per week\ncategories pending   locks and changes that are waiting",
     "coins" to "coins [log [n]]     balance, today's total, coin history",
     "shop" to "shop ls [powerups|frames|themes|badges] | buy <item> | rewards | reward add \"name\" <price> | reward rm <n>",
     "inv" to "inv [ls] | equip <n> | unequip <n> | use <n>",
     "stats" to "stats               14 days of study/coding/neutral/fun time, quests and focus",
     "usage" to "usage [--week]      time per app and per category",
     "weekly" to "weekly              the weekly report",
-    "attendance" to "attendance | attendance mark s|c1|c2 p|a|l|clear   (today only)",
+    "attendance" to "attendance | attendance mark s|c1|c2 p|a|l|clear (today only) | attendance month [back] | attendance day <days ago|yyyymmdd>",
     "marks" to "marks | marks set <mt1|qtr|mt2|half|mt3> <P|C|M|H|E> <marks> | marks rm <test> <subject>",
     "chapters" to "chapters | chapters ls <P|C|M|H|E> | chapters study|revise|taught|copy <subject> <n>",
     "badges" to "badges              all badges, unlocked or locked",
@@ -148,11 +156,20 @@ private val MAN: Map<String, String> = mapOf(
     "debuglog" to "debuglog [clear]",
     "versions" to "versions [number]   change log, or one version in full",
     "about" to "about [open <n>]",
-    "ideas" to "ideas | add <text> | done <n> | rm <n> | clear",
+    "ideas" to "ideas | add [bug|feature|ui|termux|idea] <text> | done <n> | rm <n> | clear | copy <n> | copy all [--log] [--plain]   (copy all = the update prompt, ticks them off; --plain leaves out the Termux rule)",
+    "fg" to "fg                  jump back to the session you were in before (like cd -)",
+    "last" to "last                same as fg. !! runs your last command again, !word runs the last one that starts with word",
+    "timers" to "timers              apps, sites and clips that are unlocked, and saved time",
+    "poster" to "poster [pick|on|off|tint on|off|dim 20-90]   the picture behind the normal look",
+    "suggest" to "suggest [subject] | suggest add <n> [--tomorrow]   ready-made study quests",
+    "achievements" to "achievements        the 12 achievements, unlocked or not",
+    "leaderboard" to "leaderboard         top 10 of 80 simulated players and where you are",
+    "mood" to "mood | mood 1-5 [days ago] | mood clear [days ago]   one tap a day",
+    "fun" to "fun | fun buy         buy +5 fun minutes for 25 coins",
 )
 
 /** Commands that still work while a strict Focus session runs. */
-private val STRICT_OK = setOf("help", "man", "clear", "history", "status", "whoami", "focus", "play", "stop", "home", "theme", "versions", "about", "alias", "unalias")
+private val STRICT_OK = setOf("help", "man", "clear", "history", "status", "whoami", "focus", "play", "stop", "home", "theme", "versions", "about", "alias", "unalias", "ideas", "fg", "last")
 
 /** Commands on a lock page. */
 private val BLOCK_OK = setOf("help", "man", "clear", "history", "status", "quests", "coins", "unlock", "open", "home", "main", "focus")
@@ -178,6 +195,18 @@ class TermuxViewModel @Inject constructor(
     private val player = repo.player.stateIn(viewModelScope, SharingStarted.Eagerly, Player())
     private var lastUndo: GameRepository.CompletionUndo? = null
     private var installedCache: List<InstalledApp>? = null
+    private val tasksNow = repo.tasks.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList<TaskEntity>())
+    private var prevIndex = 0
+    private var focusClosed = false
+    override var activeIndex by mutableIntStateOf(0)
+    override var focusStrip by mutableStateOf("")
+    /** The shell watches this: when it turns true it opens the gallery picker for the poster. */
+    var posterPick by mutableStateOf(false)
+    private val extras = TermuxExtras(
+        ctx, repo, prefs,
+        { s, q -> pickApp(s, q, includeBlocked = false) },
+        { s, q, y -> confirm(s, q, y) },
+    )
 
     /** Set when this terminal is a lock page. */
     var block: TermuxBlockCtx? = null
@@ -190,6 +219,8 @@ class TermuxViewModel @Inject constructor(
         sp.getString("termux_hist", "")?.split("\n")?.filter { it.isNotBlank() }?.takeLast(100)?.let { hist.addAll(it) }
         val main = create("main")
         banner(main)
+        viewModelScope.launch { runCatching { installed() } }
+        viewModelScope.launch { if (prefs.onboardingDone) runCatching { extras.homeNotices(main) } }
         viewModelScope.launch {
             while (true) {
                 runCatching { tickFocus() }
@@ -208,14 +239,49 @@ class TermuxViewModel @Inject constructor(
     override fun newSession(): TermuxSession {
         val s = create("sh")
         s.dim("new session")
+        prevIndex = activeIndex
+        activeIndex = sessionList.size - 1
         return s
     }
 
+    /** v208: any session can be closed. The last one is emptied instead of removed. */
     override fun closeSession(s: TermuxSession) {
-        if (sessionList.size > 1 && s !== sessionList.first()) {
-            s.job?.cancel()
-            sessionList.remove(s)
+        val i = sessionList.indexOf(s)
+        if (i < 0) return
+        s.job?.cancel()
+        s.pending = null
+        if (s.name == "focus") focusClosed = true
+        if (sessionList.size > 1) {
+            sessionList.removeAt(i)
+            activeIndex = (if (activeIndex > i) activeIndex - 1 else activeIndex).coerceIn(0, sessionList.size - 1)
+            if (prevIndex >= sessionList.size) prevIndex = 0
+        } else {
+            s.lines.clear()
+            s.live = emptyList()
+            banner(s)
         }
+    }
+
+    override fun select(index: Int) {
+        if (index !in sessionList.indices) return
+        if (index != activeIndex) prevIndex = activeIndex
+        activeIndex = index
+    }
+
+    /** fg / last: back to the session you were in before. */
+    override fun switchLast() {
+        if (sessionList.size < 2) return
+        val t = prevIndex.coerceIn(0, sessionList.size - 1)
+        prevIndex = activeIndex
+        activeIndex = t
+    }
+
+    /** The Focus strip: jumps to the focus session, and back. */
+    override fun toggleFocusSession() {
+        val idx = sessionList.indexOfFirst { it.name == "focus" }
+        if (idx < 0) return
+        if (activeIndex != idx) { prevIndex = activeIndex; activeIndex = idx }
+        else activeIndex = (if (prevIndex == idx) 0 else prevIndex).coerceIn(0, sessionList.size - 1)
     }
 
     private fun versionName(): String =
@@ -238,6 +304,8 @@ class TermuxViewModel @Inject constructor(
         s.pending = null
         s.live = emptyList()
         while (sessionList.size > 1) sessionList.removeAt(sessionList.size - 1)
+        activeIndex = 0
+        prevIndex = 0
         viewModelScope.launch { guarded(s) { showBlockPage(s, b, kind) } }
     }
 
@@ -265,19 +333,134 @@ class TermuxViewModel @Inject constructor(
     }
 
     // ── suggestions ──────────────────────────────────────────────────────
-    override fun suggestions(input: String): List<String> {
-        val t = input.trimStart()
-        val allowed: Collection<String> = if (block != null) BLOCK_OK else TOP_COMMANDS
-        if (t.isEmpty()) {
-            return if (block != null) listOf("unlock 15", "quests", "coins", "home", "help")
-            else listOf("status", "quests", "focus status", "coins", "stats", "help")
+    private fun freqOf(word: String): Int = hist.count { it.substringBefore(' ') == word }
+
+    private fun isSubsequence(w: String, c: String): Boolean {
+        var i = 0
+        for (ch in c) if (i < w.length && ch == w[i]) i++
+        return i == w.length
+    }
+
+    private fun editDistance(a: String, b: String): Int {
+        val dp = IntArray(b.length + 1) { it }
+        for (i in 1..a.length) {
+            var prev = dp[0]
+            dp[0] = i
+            for (j in 1..b.length) {
+                val tmp = dp[j]
+                dp[j] = minOf(dp[j] + 1, dp[j - 1] + 1, prev + if (a[i - 1] == b[j - 1]) 0 else 1)
+                prev = tmp
+            }
         }
-        val parts = t.split(" ")
-        if (parts.size == 1) return allowed.filter { it.startsWith(parts[0]) && it != parts[0] }.take(8)
-        val key2 = if (parts.size >= 3) parts[0] + " " + parts[1] else parts[0]
-        val sub = SUB_COMMANDS[key2] ?: return emptyList()
-        val cur = parts.last()
-        return sub.filter { it.startsWith(cur) && it != cur }.take(8)
+        return dp[b.length]
+    }
+
+    /** Words that start with [word] first (your most used first), then close misses such as qests for quests. */
+    private fun fuzzy(word: String, pool: Collection<String>): List<String> {
+        val w = word.lowercase()
+        val pref = pool.filter { it.lowercase().startsWith(w) && it.lowercase() != w }
+        if (pref.isNotEmpty()) return pref.sortedByDescending { freqOf(it) }
+        return pool.filter { c ->
+            val lc = c.lowercase()
+            lc != w && w.length >= 2 && (isSubsequence(w, lc) || editDistance(w, lc) <= 2)
+        }.sortedWith(compareBy({ editDistance(w, it.lowercase()) }, { -freqOf(it) }))
+    }
+
+    private fun appWords(): List<String> =
+        (installedCache ?: emptyList()).map { it.label.lowercase().substringBefore(' ') }.filter { it.length >= 2 }.distinct()
+
+    override fun suggestions(input: String): List<TermuxChip> {
+        val t = input.trimStart()
+        val strict = block == null && TermuxMode.strictNow(ctx)
+        val allowed: Collection<String> = if (block != null) BLOCK_OK else if (strict) STRICT_OK else TOP_COMMANDS
+        if (t.isEmpty()) {
+            val recent = hist.asReversed().distinct().take(3)
+            val base = if (block != null) listOf("unlock 15", "quests", "coins", "home", "help")
+            else if (strict) listOf("focus status", "play rain", "ideas", "help")
+            else listOf("status", "quests", "focus status", "coins", "help")
+            return (recent + base).distinct().take(8).map { TermuxChip(it, it) }
+        }
+        val endsSpace = t.endsWith(" ")
+        val parts = t.trimEnd().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        val cur = if (endsSpace) "" else parts.last()
+        val done = if (endsSpace) parts else parts.dropLast(1)
+        val prefix = if (done.isEmpty()) "" else done.joinToString(" ") + " "
+        fun words(list: List<String>) = list.take(8).map { TermuxChip(it, "$prefix$it ") }
+
+        if (done.isEmpty()) return fuzzy(cur, allowed).take(8).map { TermuxChip(it, "$it ") }
+
+        val cmd = done[0].lowercase()
+        val sub = done.getOrNull(1)?.lowercase()
+        val prev = done.last().lowercase()
+
+        // values after a flag
+        when (prev) {
+            "--apps" -> {
+                val comma = cur.lastIndexOf(',')
+                val keep = if (comma >= 0) cur.substring(0, comma + 1) else ""
+                return fuzzy(cur.substring(comma + 1), appWords()).take(8).map { TermuxChip(it, "$prefix$keep$it ") }
+            }
+            "--quest" -> return questChips(cur, prefix)
+            "-d", "--diff" -> return words(fuzzy(cur, listOf("easy", "med", "hard")).ifEmpty { if (cur.isEmpty()) listOf("easy", "med", "hard") else emptyList() })
+            "-c", "--cat" -> return words(fuzzy(cur, categoryNames).ifEmpty { if (cur.isEmpty()) categoryNames else emptyList() })
+            "--prio" -> return words(fuzzy(cur, listOf("high", "med", "low")).ifEmpty { if (cur.isEmpty()) listOf("high", "med", "low") else emptyList() })
+            "--repeat", "--days" -> return words(fuzzy(cur, listOf("daily", "weekly", "mon,wed", "mon,tue,wed,thu,fri")).ifEmpty { if (cur.isEmpty()) listOf("daily", "weekly", "mon,wed") else emptyList() })
+            "-t", "--time" -> return words(listOf("15m", "25m", "45m", "60m").filter { it.startsWith(cur) })
+        }
+
+        // commands that take an app or a quest
+        val appSubs = mapOf(
+            "vault" to setOf("add", "rm", "info", "study", "unstudy", "opt"),
+            "categories" to setOf("set", "safe", "lock"),
+        )
+        if (cmd == "unlock" && done.size == 1) return fuzzy(cur, appWords()).take(8).map { TermuxChip(it, "$prefix$it ") }
+        if (sub != null && appSubs[cmd]?.contains(sub) == true && done.size == 2) {
+            return fuzzy(cur, appWords()).take(8).map { TermuxChip(it, "$prefix$it ") }
+        }
+        if (cmd == "quest" && sub in setOf("done", "edit", "show", "rm", "focus", "link", "step", "skip", "steps") && done.size == 2) {
+            return questChips(cur, prefix)
+        }
+        if (cmd == "ideas" && sub == "copy" && done.size == 2) {
+            val n = IdeaStore.all(ctx).size
+            return (listOf("all") + (1..n).map { it.toString() }).filter { it.startsWith(cur) }.take(8).map { TermuxChip(it, "$prefix$it ") }
+        }
+
+        // focus start / last: durations, then flags
+        if (cmd == "focus" && (sub == "start" || sub == "last")) {
+            if (done.size == 2 && !cur.startsWith("-")) {
+                val d = listOf("25m", "45m", "60m", "90m").filter { it.startsWith(cur) }
+                if (d.isNotEmpty()) return words(d)
+            }
+            val used = done.filter { it.startsWith("-") }.toSet()
+            return words(fuzzy(cur, listOf("--apps", "--strict", "--quest").filter { it !in used }).ifEmpty {
+                if (cur.isEmpty() || cur.startsWith("-")) listOf("--apps", "--strict", "--quest").filter { it !in used && it.startsWith(cur) } else emptyList()
+            })
+        }
+        // quest add: flags
+        if (cmd == "quest" && sub == "add" && done.size >= 3 && (cur.startsWith("-") || cur.isEmpty())) {
+            val flags = listOf("-d", "-c", "-t", "--due", "--repeat", "--days", "--prio", "--challenge", "--steps", "--apps")
+            val used = done.filter { it.startsWith("-") }.toSet()
+            return words(flags.filter { it !in used && it.startsWith(cur) })
+        }
+
+        // generic: sub commands of the command (or of "theme set")
+        val key = if (done.size >= 2 && SUB_COMMANDS.containsKey("$cmd $sub")) "$cmd $sub" else cmd
+        val pool = SUB_COMMANDS[key] ?: return emptyList()
+        if (key == cmd && done.size > 1) return emptyList()
+        if (key != cmd && done.size > 2) return emptyList()
+        return words(fuzzy(cur, pool).ifEmpty { if (cur.isEmpty()) pool else emptyList() })
+    }
+
+    private fun questChips(cur: String, prefix: String): List<TermuxChip> =
+        tasksNow.value.filter { !it.done }.filter { cur.isEmpty() || "${it.id}".startsWith(cur.removePrefix("#")) || it.title.lowercase().contains(cur.lowercase()) }
+            .take(8).map { TermuxChip("#${it.id} ${it.title.take(18)}", "$prefix${it.id} ") }
+
+    /** One line of usage under the prompt, once the command word is finished. */
+    override fun hint(input: String): String {
+        val t = input.trimStart()
+        if (!t.contains(' ')) return ""
+        val first = t.substringBefore(' ').lowercase()
+        return MAN[first]?.lines()?.firstOrNull()?.trim().orEmpty()
     }
 
     // ── running ──────────────────────────────────────────────────────────
@@ -288,8 +471,16 @@ class TermuxViewModel @Inject constructor(
             pend(line)
             return
         }
-        val raw = line.trim()
+        var raw = line.trim()
         if (raw.isEmpty()) return
+        // v208: !! runs the last command again, !word the last one that starts with word
+        if (raw.startsWith("!")) {
+            val key = raw.removePrefix("!").removePrefix("!")
+            val found = if (key.isEmpty()) hist.lastOrNull() else hist.lastOrNull { it.startsWith(key) }
+            if (found == null) { session.err("!${key.tm()}: no such command in history"); return }
+            session.dim(found.tm())
+            raw = found
+        }
         addHistory(raw)
         var toks = termuxTokenize(raw)
         val al = aliases()
@@ -351,6 +542,15 @@ class TermuxViewModel @Inject constructor(
             s.err("strict focus is on: only ${STRICT_OK.sorted().joinToString(" ")} work until it ends")
             return
         }
+        // v208: while any Focus session runs, commands that change rules, spend coins or leave the theme are refused
+        if (b == null && player.value.focusModeUntil > System.currentTimeMillis() && focusWriteBlocked(cmd, a)) {
+            s.err("locked during focus: ${cmd.tm()} ${(a.pos.getOrNull(1) ?: "").tm()} changes rules. read-only commands still work, the rest waits for the session to end")
+            return
+        }
+        if (b == null && TermuxMode.strictNow(ctx) && cmd == "ideas" && a.pos.getOrNull(1)?.lowercase() !in setOf(null, "copy")) {
+            s.err("strict focus is on: only ideas and ideas copy work until it ends")
+            return
+        }
         when (cmd) {
             "help", "?" -> cmdHelp(s, a)
             "man" -> cmdMan(s, a)
@@ -400,12 +600,39 @@ class TermuxViewModel @Inject constructor(
             "versions" -> cmdVersions(s, a)
             "about" -> cmdAbout(s, a)
             "ideas" -> cmdIdeas(s, a)
+            "suggest" -> extras.suggest(s, a)
+            "timers" -> extras.timers(s)
+            "fun" -> extras.funBuy(s, a)
+            "fg", "last" -> switchLast()
+            "poster" -> { if (extras.poster(s, a)) posterPick = true }
+            "mood" -> extras.mood(s, a)
+            "achievements" -> extras.achievements(s)
+            "leaderboard" -> extras.leaderboard(s)
             "exit", "logout" -> s.err("logout: not allowed. to leave the terminal: theme set default")
             else -> {
                 s.err("${cmd.tm()}: command not found")
                 val near = TOP_COMMANDS.filter { it.startsWith(cmd.take(2)) }.take(5)
                 if (near.isNotEmpty()) s.dim("did you mean: ${near.joinToString(" ")}")
             }
+        }
+    }
+
+    /** Commands that change rules, spend coins, or leave the theme. Read-only forms of them still work during Focus. */
+    private fun focusWriteBlocked(cmd: String, a: TermuxArgs): Boolean {
+        val sub = a.pos.getOrNull(1)?.lowercase()
+        return when (cmd) {
+            "vault" -> sub in setOf("add", "rm", "study", "unstudy", "opt", "clips")
+            "sites" -> sub in setOf("add", "rm")
+            "categories" -> sub in setOf("set", "safe", "lock")
+            "unlock", "restore" -> true
+            "strict" -> sub != null
+            "fun" -> sub == "buy"
+            "perms" -> sub == "grant"
+            "shop" -> sub in setOf("buy", "reward")
+            "inv" -> sub in setOf("use", "equip", "unequip")
+            "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() == "default"
+            "set" -> sub != null && sub != "ls"
+            else -> false
         }
     }
 
@@ -522,18 +749,23 @@ class TermuxViewModel @Inject constructor(
         val running = p.focusModeUntil > now
         var fs = sessionList.firstOrNull { it.name == "focus" }
         if (running && block == null) {
-            if (fs == null) {
+            val left = p.focusModeUntil - now
+            val total = p.focusTotalMs.coerceAtLeast(1L)
+            val bar = termuxBar(1f - left.toFloat() / total.toFloat(), 14)
+            // v208: the strip under the prompt (tap it to jump to the focus session and back)
+            focusStrip = "{y}\u26A1{/} focus {c}${fmtLeft(left)}{/} $bar${if (prefs.focusStrict) " {y}\uD83D\uDD12 strict{/}" else ""}  {d}tap: focus session{/}"
+            if (fs == null && !focusClosed) {
                 fs = create("focus")
                 fs.prompt = "~/focus $"
                 fs.step("a focus session is running")
             }
-            val left = p.focusModeUntil - now
-            val total = p.focusTotalMs.coerceAtLeast(1L)
-            fs.live = listOf(
+            fs?.live = listOf(
                 "{b}FOCUS{/} {c}${fmtLeft(left)}{/} left  ${termuxBar(1f - left.toFloat() / total.toFloat(), 20)}",
                 "{d}strict=${prefs.focusStrict}  apps=${prefs.focusAllowed.split(",").count { it.isNotBlank() }}  sound=${Sounds.ambient}{/}",
             )
         } else {
+            focusStrip = ""
+            focusClosed = false
             if (p.focusModeUntil > 0L && !running) repo.settleFocus()
             if (fs != null && fs.live.isNotEmpty()) {
                 fs.live = emptyList()
@@ -752,7 +984,8 @@ class TermuxViewModel @Inject constructor(
             "link" -> questLink(s, a)
             "step" -> questStep(s, a, skip = false)
             "skip" -> questStep(s, a, skip = true)
-            else -> s.err("usage: quest add|show|edit|done|rm|focus|link|step|skip  (man quest)")
+            "steps" -> questSteps(s, a)
+            else -> s.err("usage: quest add|show|edit|done|rm|focus|link|step|skip|steps  (man quest)")
         }
     }
 
@@ -777,13 +1010,15 @@ class TermuxViewModel @Inject constructor(
         val dueText = a.value("--due")
         val due = if (dueText != null) parseDue(dueText) else null
         if (dueText != null && due == null) { s.err("due: today, tomorrow or a weekday, with an optional time, e.g. \"fri 18:00\""); return }
-        val rep = a.value("--repeat")?.lowercase()
+        val rep = (a.value("--repeat") ?: a.value("--days"))?.lowercase()
         val repMask = if (rep != null && rep != "daily" && rep != "weekly") parseDays(rep) else null
         if (rep != null && rep != "daily" && rep != "weekly" && repMask == null) { s.err("repeat: daily, weekly or days like mon,wed"); return }
         val steps = a.value("--steps")?.split(";")?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
         val minutes = a.value("-t", "--time")?.let { parseMinutes(it) }
         if (a.value("-t", "--time") != null && minutes == null) { s.err("time: like 25m, 1h or 1h30m"); return }
         val challenge = a.value("--challenge")?.toIntOrNull()?.coerceIn(1, 365)
+        val prio = prioOf(a.value("--prio"), 2)
+        if (prio < 0) { s.err("priority: high, med or low"); return }
         val linked = linkedPackages(s, a.value("--apps")) ?: return
         val type = when {
             steps.isNotEmpty() -> "routine"
@@ -804,7 +1039,7 @@ class TermuxViewModel @Inject constructor(
             }
         }
         val draft = QuestDraft(
-            title = title, difficulty = d, category = cat, notes = a.value("--notes").orEmpty(), dueAt = dueAt,
+            title = title, difficulty = d, category = cat, priority = prio, notes = a.value("--notes").orEmpty(), dueAt = dueAt,
             isRecurring = rec, recurType = rt,
             linkedApps = if (type == "focus") linked else "",
             isTimerQuest = type == "focus", timerDurationMs = if (type == "focus") (minutes ?: 25) * 60_000L else 0L,
@@ -868,9 +1103,63 @@ class TermuxViewModel @Inject constructor(
             if (it != "none" && x == null) { s.err("due: today, tomorrow or a weekday, optional time (or none)"); return }
             d = d.copy(dueAt = x); changed = true
         }
-        if (!changed) { s.err("nothing to change. flags: --title --notes -d -c -t --due"); return }
+        a.value("--prio")?.let {
+            val pr = prioOf(it, 2)
+            if (pr < 0) { s.err("priority: high, med or low"); return }
+            d = d.copy(priority = pr); changed = true
+        }
+        a.value("--days")?.let {
+            val m = if (it.lowercase() in setOf("all", "every", "none")) 0 else parseDays(it)
+            if (m == null) { s.err("days: like mon,wed or all"); return }
+            d = d.copy(daysMask = m); changed = true
+        }
+        if (!changed) { s.err("nothing to change. flags: --title --notes -d -c -t --due --prio --days"); return }
         repo.updateTask(t.id, d)
         s.ok("quest #${t.id} updated")
+    }
+
+    /** high = 1, med = 2, low = 3. [fallback] when none is given, -1 when it is not understood. */
+    private fun prioOf(text: String?, fallback: Int): Int = when (text?.lowercase()) {
+        null -> fallback
+        "high", "1" -> 1
+        "med", "medium", "2" -> 2
+        "low", "3" -> 3
+        else -> -1
+    }
+
+    /** quest steps <id> [add "text" | rm <n>]: list or edit the steps of a routine. */
+    private suspend fun questSteps(s: TermuxSession, a: TermuxArgs) {
+        val t = taskArg(s, a) ?: return
+        if (t.questType != "routine") { s.err("#${t.id} is not a routine. make one with: quest add \"title\" --steps \"a;b;c\""); return }
+        val steps = repo.getSubTasks(t.id).map { it.title }.toMutableList()
+        when (a.pos.getOrNull(3)?.lowercase()) {
+            null, "ls" -> {
+                if (steps.isEmpty()) s.dim("no steps")
+                steps.forEachIndexed { i, st -> s.out("{c}${i + 1}{/} ${st.tm()}") }
+                s.dim("quest steps ${t.id} add \"text\" | rm <n>")
+                return
+            }
+            "add" -> {
+                val text = a.rest(4).trim()
+                if (text.isEmpty()) { s.err("usage: quest steps <id> add \"text\""); return }
+                steps.add(text)
+            }
+            "rm" -> {
+                val n = a.pos.getOrNull(4)?.toIntOrNull()
+                if (n == null || n < 1 || n > steps.size) { s.err("usage: quest steps <id> rm <n>"); return }
+                if (steps.size == 1) { s.err("a routine needs at least one step. remove the quest instead: quest rm ${t.id}"); return }
+                steps.removeAt(n - 1)
+            }
+            else -> { s.err("usage: quest steps <id> [add \"text\" | rm <n>]"); return }
+        }
+        val d = QuestDraft(
+            title = t.title, difficulty = t.difficulty, category = t.category, priority = t.priority, notes = t.notes,
+            dueAt = t.dueAt, isRecurring = t.isRecurring, recurType = t.recurType, linkedApps = t.linkedApps,
+            isTimerQuest = t.isTimerQuest, timerDurationMs = t.timerDurationMs, daysMask = t.daysMask,
+            questType = t.questType, challengeDays = t.challengeDays, steps = steps,
+        )
+        repo.updateTask(t.id, d)
+        s.ok("steps of #${t.id}: ${steps.size}")
     }
 
     private suspend fun finishQuest(s: TermuxSession, t: TaskEntity) {
@@ -1309,7 +1598,9 @@ class TermuxViewModel @Inject constructor(
                 val applied = prefs.changeFunSafe(app.pkg, on)
                 if (applied) s.ok("${app.label.tm()} safe shield ${onOff(on)}") else s.warn("the shield turns on tomorrow (fun rules are on)")
             }
-            else -> s.err("usage: categories ls|set|safe")
+            "lock" -> extras.categoriesLock(s, a)
+            "pending" -> extras.categoriesPending(s)
+            else -> s.err("usage: categories ls|set|safe|lock|pending")
         }
     }
 
@@ -1524,6 +1815,10 @@ class TermuxViewModel @Inject constructor(
     }
 
     private suspend fun cmdAttendance(s: TermuxSession, a: TermuxArgs) {
+        when (a.pos.getOrNull(1)?.lowercase()) {
+            "month" -> { extras.attendanceMonth(s, a); return }
+            "day" -> { extras.attendanceDay(s, a); return }
+        }
         if (a.pos.getOrNull(1)?.lowercase() == "mark") {
             val slot = a.pos.getOrNull(2)?.lowercase()
             val mark = markFor(a.pos.getOrNull(3))
@@ -1805,6 +2100,60 @@ class TermuxViewModel @Inject constructor(
         if (pend.isNotEmpty()) s.warn(pend)
     }
 
+    // ── the gear page ────────────────────────────────────────────────────
+    override fun settingRows(): List<TermuxSettingRow> {
+        val p = player.value
+        val rows = ArrayList<TermuxSettingRow>()
+        rows.add(TermuxSettingRow("name", "hero name", p.name, "text"))
+        rows.add(TermuxSettingRow("goal", "your goal", p.goal, "text"))
+        rows.add(TermuxSettingRow("dob", "date of birth", p.dob, "text"))
+        setKeys.forEach {
+            val v = it.get()
+            val kind = if (v == "on" || v == "off") "bool" else if (Regex("^\\d{2}:\\d{2}$").matches(v)) "time" else if (v.toIntOrNull() != null) "int" else "text"
+            rows.add(TermuxSettingRow(it.key, it.desc, v, kind))
+        }
+        rows.add(TermuxSettingRow("strict", "strict mode (off waits until midnight)", if (prefs.strictMode) "on" else "off", "bool"))
+        return rows
+    }
+
+    /** Returns an error text, or null when saved. Rule changes are refused while a Focus session runs. */
+    override fun settingSet(key: String, value: String): String? {
+        if (player.value.focusModeUntil > System.currentTimeMillis()) return "locked during focus"
+        val v = value.trim()
+        if (key == "name" || key == "goal" || key == "dob") {
+            viewModelScope.launch {
+                val p = repo.player.first()
+                repo.saveProfile(
+                    if (key == "name") v else p.name,
+                    if (key == "goal") v else p.goal,
+                    if (key == "dob") v else p.dob,
+                )
+            }
+            return null
+        }
+        if (key == "strict") {
+            val b = parseBool(v) ?: return "strict: on or off"
+            prefs.strictMode = b
+            return null
+        }
+        val k = setKeys.firstOrNull { it.key == key } ?: return "no setting $key"
+        return k.set(v)
+    }
+
+    fun onPosterPicked(uri: Uri?) {
+        if (uri == null) return
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) { savePoster(ctx, uri) }
+            val s = sessionList.getOrNull(activeIndex) ?: sessionList.first()
+            if (ok) {
+                prefs.posterOn = true; PosterOn = true; PosterStamp++
+                s.ok("poster picture set and turned on")
+            } else {
+                s.err("could not read that picture")
+            }
+        }
+    }
+
     private suspend fun cmdStrict(s: TermuxSession, a: TermuxArgs) {
         val on = a.pos.getOrNull(1)?.let { parseBool(it) }
         if (on == null) { s.out("strict mode: ${onOff(prefs.strictMode)}   (strict on|off)"); return }
@@ -1975,8 +2324,12 @@ class TermuxViewModel @Inject constructor(
     private fun cmdIdeas(s: TermuxSession, a: TermuxArgs) {
         when (a.pos.getOrNull(1)?.lowercase()) {
             "add" -> {
-                val t = a.rest(2).trim()
-                if (t.isEmpty()) { s.err("usage: ideas add <text>"); return }
+                var t = a.rest(2).trim()
+                if (t.isEmpty()) { s.err("usage: ideas add [bug|feature|ui|termux|idea] <text>"); return }
+                // v209: a first word like termux or bug adds the tag the Ideas page would
+                val words = t.split(" ", limit = 2)
+                val tag = IDEA_TAGS.firstOrNull { it.label.substringAfter(' ').equals(words[0], ignoreCase = true) }
+                if (tag != null && words.size > 1 && words[1].isNotBlank()) t = tag.prefix + words[1].trim()
                 IdeaStore.add(ctx, t)
                 s.ok("noted")
             }
@@ -1993,13 +2346,14 @@ class TermuxViewModel @Inject constructor(
                 s.ok("removed #$n")
             }
             "clear" -> { IdeaStore.clearDone(ctx); s.ok("done ideas cleared") }
+            "copy" -> extras.ideasCopy(s, a)
             null -> {
                 val l = IdeaStore.all(ctx)
                 s.head("ideas")
                 if (l.isEmpty()) s.dim("none. ideas add <text>")
                 l.forEachIndexed { i, it -> s.out("{c}${i + 1}{/} ${if (it.done) "{g}[x]{/}" else "[ ]"} ${it.text.tm()}") }
             }
-            else -> s.err("usage: ideas | add | done | rm | clear")
+            else -> s.err("usage: ideas | add | done | rm | clear | copy")
         }
     }
 
@@ -2085,6 +2439,12 @@ fun TermuxShell(
     ) { uri -> vm.onRestorePicked(uri) }
     LaunchedEffect2(vm.restorePick) {
         if (vm.restorePick) { vm.restorePick = false; picker.launch(arrayOf("*/*")) }
+    }
+    val posterPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent(),
+    ) { uri -> vm.onPosterPicked(uri) }
+    LaunchedEffect2(vm.posterPick) {
+        if (vm.posterPick) { vm.posterPick = false; posterPicker.launch("image/*") }
     }
     var strict by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(TermuxMode.strictNow(ctx)) }
     LaunchedEffect2(Unit) {

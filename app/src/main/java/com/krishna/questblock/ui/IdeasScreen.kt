@@ -3,6 +3,7 @@ package com.krishna.questblock.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -28,16 +29,22 @@ import androidx.compose.ui.unit.dp
 import com.krishna.questblock.data.IdeaStore
 
 /** One kind of note: the text the line starts with, the short name shown on the pill, and its colour. */
-private class IdeaTag(val prefix: String, val label: String, val color: Color)
+internal class IdeaTag(val prefix: String, val label: String, val color: Color)
 
-private val IDEA_TAGS = listOf(
+internal val IDEA_TAGS = listOf(
     IdeaTag("🐞 Bug: ", "🐞 Bug", Color(0xFFFF5C5C)),
     IdeaTag("✨ Feature: ", "✨ Feature", Color(0xFFFFC857)),
     IdeaTag("🎨 UI: ", "🎨 UI", Color(0xFFB45CFF)),
+    IdeaTag("⌨️ Termux: ", "⌨️ Termux", Color(0xFF3DDC84)),
     IdeaTag("💡 Idea: ", "💡 Idea", Color(0xFF5C9EFF)),
 )
 
-private fun tagOf(text: String): IdeaTag? =
+/** v209: added to the update prompt so every change also gets a Termux theme version. */
+internal const val TERMUX_RULE =
+    "- The Termux theme (ui/Termux*.kt) must keep working: for every change above, add or extend its terminal command with help text, " +
+        "suggestion chips and Focus/strict rules, and give any new page or lock screen a terminal version. Nothing in the terminal may open a normal page."
+
+internal fun tagOf(text: String): IdeaTag? =
     IDEA_TAGS.firstOrNull { text.startsWith(it.prefix.trim()) } ?:
         IDEA_TAGS.firstOrNull { text.startsWith(it.label.substringBefore(' ')) }
 
@@ -66,6 +73,7 @@ fun IdeasScreen(onBack: () -> Unit) {
     }
     var editing by remember { mutableIntStateOf(-1) }
     var withLog by remember { mutableStateOf(false) }
+    var withTermux by remember { mutableStateOf(true) }
     val version = remember {
         runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
     }
@@ -108,7 +116,7 @@ fun IdeasScreen(onBack: () -> Unit) {
         // ── Write ───────────────────────────────────────────────────────
         item {
             RpgPanel(if (editing >= 0) "✏️ Edit scroll" else "✍️ New scroll", accent = ColorCoin) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     IDEA_TAGS.forEach { tag ->
                         AssistChip(
                             onClick = { applyTag(tag.prefix) },
@@ -161,7 +169,7 @@ fun IdeasScreen(onBack: () -> Unit) {
                             "- Bump versionCode and versionName in app/build.gradle.kts.\n" +
                             "- Add a new entry at the top of VERSION_LOG in data/VersionLog.kt. Read VersionLog.kt first for more info: it holds the full history of past updates and what each one changed, so do not redo or undo them.\n" +
                             "- Change only what the list above needs.\n" +
-                            "- Keep the reply short."
+                            "- Keep the reply short." + (if (withTermux) "\n" + TERMUX_RULE else "")
                         val cmd = if (cur != null) {
                             val n = cur + 1
                             "\n\nEnd your reply with this Termux command:\n" +
@@ -179,6 +187,10 @@ fun IdeasScreen(onBack: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = withLog, onCheckedChange = { withLog = it })
                     Text("Add the last 15 debug log lines", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = withTermux, onCheckedChange = { withTermux = it })
+                    Text("Also cover the Termux theme (a command and terminal page for each change)", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
                 }
             }
         }

@@ -109,15 +109,34 @@ class TermuxSession(val id: Int, var name: String) {
     fun head(m: String) = out("{b}${m.uppercase()}{/}")
 }
 
+/** v208: one tap chip. [label] is what it shows, [full] is the whole prompt line it puts in. */
+class TermuxChip(val label: String, val full: String)
+
+/** v208: one row of the settings page (the gear). [kind] is bool, int, time or text. */
+class TermuxSettingRow(val key: String, val desc: String, val value: String, val kind: String)
+
 /** What the terminal needs from whoever runs the commands. */
 interface TermuxHost {
     val sessions: List<TermuxSession>
     val history: List<String>
+    /** v208: the session on screen. Kept here so commands like fg can switch it. */
+    val activeIndex: Int
+    /** v208: the Focus strip under the prompt while a session runs (empty when idle). */
+    val focusStrip: String
     fun run(session: TermuxSession, line: String)
     fun cancel(session: TermuxSession)
-    fun suggestions(input: String): List<String>
+    fun suggestions(input: String): List<TermuxChip>
+    /** v208: a one line usage hint for the command being typed. */
+    fun hint(input: String): String
     fun newSession(): TermuxSession
+    /** v208: any session can be closed. Closing the last one empties it. */
     fun closeSession(s: TermuxSession)
+    fun select(index: Int)
+    fun switchLast()
+    fun toggleFocusSession()
+    fun settingRows(): List<TermuxSettingRow>
+    /** Returns an error text, or null when it was saved. */
+    fun settingSet(key: String, value: String): String?
 }
 
 /** Words and flags of a command line. Boolean flags take no value, every other flag takes the next word. */
@@ -127,7 +146,7 @@ class TermuxArgs(val pos: List<String>, val flags: Map<String, String>) {
     fun rest(from: Int): String = pos.drop(from).joinToString(" ")
 }
 
-private val BOOL_FLAGS = setOf("--strict", "--today", "--done", "--overdue", "--focus", "--week", "--all", "--yes", "-y", "--study", "--open", "--once")
+private val BOOL_FLAGS = setOf("--strict", "--today", "--done", "--overdue", "--focus", "--week", "--all", "--yes", "-y", "--study", "--open", "--once", "--plain", "--log", "--tomorrow")
 
 fun termuxTokenize(line: String): List<String> {
     val out = ArrayList<String>()
@@ -207,6 +226,8 @@ fun termuxCommandForRoute(route: String): String = when (route) {
     "hub_badges" -> "badges"
     "hub_rules" -> "limits"
     "hub_sites" -> "sites ls"
+    "unlock_timers" -> "timers"
+    "hub_experiments" -> "poster"
     "reliability" -> "reliability"
     "categories" -> "categories ls"
     else -> "status"

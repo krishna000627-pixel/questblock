@@ -122,6 +122,24 @@ class KeepAliveService : Service() {
             scope.launch { repo.blockedApps.collect { apps = it; render() } }
             // v73: remember when Focus ends, so Do Not Disturb, music and notification rules know a Focus is running
             scope.launch { repo.player.collect { prefs.focusUntilCache = it.focusModeUntil } }
+            // v208: moving the phone clock must not shorten or lengthen a Focus session. The wall clock is compared with the uptime clock;
+            // a jump moves the session end by the same amount. (A jump made while the app is not running cannot be seen.)
+            scope.launch {
+                var lastWall = System.currentTimeMillis()
+                var lastUp = android.os.SystemClock.elapsedRealtime()
+                while (true) {
+                    delay(5_000L)
+                    val wall = System.currentTimeMillis()
+                    val up = android.os.SystemClock.elapsedRealtime()
+                    val drift = (wall - lastWall) - (up - lastUp)
+                    val before = lastWall
+                    lastWall = wall
+                    lastUp = up
+                    if (kotlin.math.abs(drift) > 20_000L && prefs.focusUntilCache > before) {
+                        runCatching { repo.shiftFocusEnd(drift) }
+                    }
+                }
+            }
             // v205: turning accessibility off during a strict Focus session breaks it (give-up penalty, no reward)
             scope.launch {
                 var off = 0

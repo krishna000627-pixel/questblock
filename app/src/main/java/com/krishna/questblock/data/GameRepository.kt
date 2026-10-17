@@ -121,6 +121,14 @@ class GameRepository @Inject constructor(
     fun shortPending(kind: String): Boolean? = prefs.pendingFlag("opt:short_$kind")
     fun studyMinPerCoin(): Int = prefs.studyMinPerCoin
     fun focusBonus(): Int = prefs.focusBonus
+    /** v208: the phone clock was moved by [deltaMs]; move the Focus end the same way so the time left stays the same. */
+    suspend fun shiftFocusEnd(deltaMs: Long) {
+        val p = playerDao.get() ?: return
+        if (p.focusModeUntil <= 0L) return
+        val end = p.focusModeUntil + deltaMs
+        playerDao.upsert(p.copy(focusModeUntil = end))
+        prefs.focusUntilCache = end
+    }
     fun focusStrict(): Boolean = prefs.focusStrict
     fun setFocusStrict(v: Boolean) { prefs.focusStrict = v }
     /** The Strict mode setting: the starting value of the per-session Strict switch. */

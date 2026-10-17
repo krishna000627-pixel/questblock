@@ -130,6 +130,7 @@ object FunBubble {
             setTextColor(0xFFFFFFFF.toInt()); textSize = 12f; typeface = Typeface.DEFAULT_BOLD
             setPadding(26, 10, 26, 10)
             background = GradientDrawable().apply { setColor(0xCC000000.toInt()); cornerRadius = 60f }
+            termuxOverlayStyle(app, this)
         }.also { tv ->
             val lp = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
@@ -170,6 +171,7 @@ object CounterBubble {
             setTextColor(0xFFFFFFFF.toInt()); textSize = 13f; typeface = Typeface.DEFAULT_BOLD
             setPadding(26, 10, 26, 10)
             background = GradientDrawable().apply { setColor(0xCC000000.toInt()); cornerRadius = 60f }
+            termuxOverlayStyle(host, this)
             this.text = text
         }
         val lp = WindowManager.LayoutParams(
@@ -281,4 +283,12 @@ object OptionalTick {
                 "✅ $done quest${if (done == 1) "" else "s"} done · 🪙 ${player.coins} · 🔥 ${player.streak}d$fun0", route = "stats")
         }
     }
+}
+
+/** v208: in the Termux theme the overlay bubbles (time left, Shorts/Reels counter) are green monospace on black with a thin green edge. */
+internal fun termuxOverlayStyle(ctx: Context, tv: TextView) {
+    if (!ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getBoolean("termux_theme", false)) return
+    tv.setTextColor(0xFF3DDC84.toInt())
+    tv.typeface = Typeface.MONOSPACE
+    tv.background = GradientDrawable().apply { setColor(0xF0000000.toInt()); cornerRadius = 8f; setStroke(2, 0xFF3DDC84.toInt()) }
 }

@@ -37,7 +37,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /** Copies the picked picture into the app (max about 2000 px, turned upright, JPEG). Nothing is uploaded. */
-private fun savePoster(ctx: Context, uri: Uri): Boolean = runCatching {
+internal fun savePoster(ctx: Context, uri: Uri): Boolean = runCatching {
     val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     ctx.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) }
     var sample = 1
