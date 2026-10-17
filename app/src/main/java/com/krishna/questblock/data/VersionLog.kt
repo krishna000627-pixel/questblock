@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("210.0.0", "Terminal prompt folder follows your commands",
+        listOf(
+            "The prompt folder now follows what you do, like cd in Termux: quest commands show ~/quests $, focus and sound ~/focus $, vault/unlock/sites/limits/categories/timers ~/vault $, coins/shop/inv/fun ~/shop $, stats and the other progress pages ~/stats $, set/perms/theme and the other settings pages ~/settings $, ideas ~/ideas $. status, help, history and the other general commands keep the folder you are in. The focus session and lock pages keep their own folder. New: cd [folder] (cd ~ goes back to ~/QuestBlock) and pwd. Per session, not saved (DIR_OF in ui/TermuxShell.kt)",
+            "New: theme set paper switches to the Paper & Ink look in one command (it must be bought first: shop buy paper). Like theme set default it is refused during any Focus session and in strict mode",
+        )),
     VersionEntry("209.0.0", "Prompt maker covers the Termux theme",
         listOf(
             "Ideas page: a new Termux tag (green) next to Bug, Feature, UI and Idea, and a checkbox 'Also cover the Termux theme' (on by default) that adds a rule to the update prompt: every change also gets a terminal command with help text, suggestion chips, Focus/strict rules and a terminal version of any new page or lock screen (TERMUX_RULE in ui/IdeasScreen.kt). The tag row scrolls",

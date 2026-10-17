@@ -57,6 +57,7 @@ private val TOP_COMMANDS = listOf(
     "stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub",
     "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas",
     "suggest", "timers", "fun", "fg", "last", "poster", "mood", "achievements", "leaderboard",
+    "cd", "pwd",
 )
 
 private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
@@ -84,16 +85,17 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "debuglog" to listOf("clear"),
     "ideas" to listOf("add", "done", "rm", "clear", "copy"),
     "about" to listOf("open"),
-    "theme set" to listOf("default", "termux"),
+    "theme set" to listOf("default", "paper", "termux"),
     "poster" to listOf("pick", "on", "off", "tint", "dim"),
     "suggest" to listOf("add", "physics", "chemistry", "maths", "boards"),
     "ideas add" to listOf("bug", "feature", "ui", "termux", "idea"),
+    "cd" to listOf("~", "quests", "focus", "vault", "shop", "stats", "settings", "ideas"),
     "mood" to listOf("1", "2", "3", "4", "5", "clear"),
     "fun" to listOf("buy"),
 )
 
 private val GROUPS: Map<String, List<String>> = linkedMapOf(
-    "core" to listOf("help", "man", "clear", "history", "status", "whoami", "alias", "theme", "home", "setup", "fg", "last"),
+    "core" to listOf("help", "man", "clear", "history", "status", "whoami", "alias", "theme", "home", "setup", "fg", "last", "cd", "pwd"),
     "quests" to listOf("quests", "quest", "undo", "suggest"),
     "focus" to listOf("focus", "play", "stop"),
     "blocking" to listOf("vault", "unlock", "sites", "limits", "categories", "timers"),
@@ -111,7 +113,7 @@ private val MAN: Map<String, String> = mapOf(
     "whoami" to "whoami              hero name, goal, birthday, level",
     "alias" to "alias [name=cmd]    list or make a shortcut, e.g. alias qt=quests --today",
     "unalias" to "unalias <name>     remove a shortcut",
-    "theme" to "theme [set default|termux]   switch the look (default is refused during a strict session)",
+    "theme" to "theme [set default|paper|termux]   default = the normal look, paper = the Paper & Ink look (you must own it: shop buy paper). refused during Focus",
     "home" to "home                go to the phone home screen",
     "setup" to "setup               first-run steps: set name/goal/dob, perms, then setup done",
     "quests" to "quests [--today|--done|--overdue|--focus]",
@@ -157,6 +159,8 @@ private val MAN: Map<String, String> = mapOf(
     "versions" to "versions [number]   change log, or one version in full",
     "about" to "about [open <n>]",
     "ideas" to "ideas | add [bug|feature|ui|termux|idea] <text> | done <n> | rm <n> | clear | copy <n> | copy all [--log] [--plain]   (copy all = the update prompt, ticks them off; --plain leaves out the Termux rule)",
+    "cd" to "cd [dir]            change the prompt folder: ~ quests focus vault shop stats settings ideas (it also follows the commands you run)",
+    "pwd" to "pwd                 show the prompt folder",
     "fg" to "fg                  jump back to the session you were in before (like cd -)",
     "last" to "last                same as fg. !! runs your last command again, !word runs the last one that starts with word",
     "timers" to "timers              apps, sites and clips that are unlocked, and saved time",
@@ -168,8 +172,23 @@ private val MAN: Map<String, String> = mapOf(
     "fun" to "fun | fun buy         buy +5 fun minutes for 25 coins",
 )
 
+/** v210: the prompt folder follows the commands you run, like cd. Neutral commands (status, help, history...) keep the folder you are in. */
+private val DIR_OF: Map<String, String> = mapOf(
+    "quests" to "quests", "quest" to "quests", "undo" to "quests", "suggest" to "quests",
+    "focus" to "focus", "play" to "focus", "stop" to "focus",
+    "vault" to "vault", "unlock" to "vault", "sites" to "vault", "limits" to "vault", "categories" to "vault", "timers" to "vault",
+    "coins" to "shop", "shop" to "shop", "inv" to "shop", "fun" to "shop",
+    "stats" to "stats", "usage" to "stats", "weekly" to "stats", "attendance" to "stats", "marks" to "stats", "chapters" to "stats",
+    "badges" to "stats", "goals" to "stats", "hub" to "stats", "mood" to "stats", "achievements" to "stats", "leaderboard" to "stats",
+    "set" to "settings", "strict" to "settings", "dnd" to "settings", "perms" to "settings", "backup" to "settings", "restore" to "settings",
+    "reliability" to "settings", "selftest" to "settings", "debuglog" to "settings", "versions" to "settings", "about" to "settings",
+    "poster" to "settings", "theme" to "settings",
+    "ideas" to "ideas",
+)
+private val DIRS = listOf("quests", "focus", "vault", "shop", "stats", "settings", "ideas")
+
 /** Commands that still work while a strict Focus session runs. */
-private val STRICT_OK = setOf("help", "man", "clear", "history", "status", "whoami", "focus", "play", "stop", "home", "theme", "versions", "about", "alias", "unalias", "ideas", "fg", "last")
+private val STRICT_OK = setOf("help", "man", "clear", "history", "status", "whoami", "focus", "play", "stop", "home", "theme", "versions", "about", "alias", "unalias", "ideas", "fg", "last", "cd", "pwd")
 
 /** Commands on a lock page. */
 private val BLOCK_OK = setOf("help", "man", "clear", "history", "status", "quests", "coins", "unlock", "open", "home", "main", "focus")
@@ -542,6 +561,8 @@ class TermuxViewModel @Inject constructor(
             s.err("strict focus is on: only ${STRICT_OK.sorted().joinToString(" ")} work until it ends")
             return
         }
+        // v210: the prompt folder follows the command (the focus session and lock pages keep their own)
+        if (b == null && s.name != "focus") DIR_OF[cmd]?.let { s.prompt = "~/$it $" }
         // v208: while any Focus session runs, commands that change rules, spend coins or leave the theme are refused
         if (b == null && player.value.focusModeUntil > System.currentTimeMillis() && focusWriteBlocked(cmd, a)) {
             s.err("locked during focus: ${cmd.tm()} ${(a.pos.getOrNull(1) ?: "").tm()} changes rules. read-only commands still work, the rest waits for the session to end")
@@ -604,6 +625,8 @@ class TermuxViewModel @Inject constructor(
             "timers" -> extras.timers(s)
             "fun" -> extras.funBuy(s, a)
             "fg", "last" -> switchLast()
+            "cd" -> cmdCd(s, a)
+            "pwd" -> s.out(s.prompt.removeSuffix(" $"))
             "poster" -> { if (extras.poster(s, a)) posterPick = true }
             "mood" -> extras.mood(s, a)
             "achievements" -> extras.achievements(s)
@@ -630,7 +653,7 @@ class TermuxViewModel @Inject constructor(
             "perms" -> sub == "grant"
             "shop" -> sub in setOf("buy", "reward")
             "inv" -> sub in setOf("use", "equip", "unequip")
-            "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() == "default"
+            "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "paper")
             "set" -> sub != null && sub != "ls"
             else -> false
         }
@@ -870,6 +893,14 @@ class TermuxViewModel @Inject constructor(
         s.ok("removed ${n.tm()}")
     }
 
+    /** cd [dir]: sets the prompt folder by hand. */
+    private fun cmdCd(s: TermuxSession, a: TermuxArgs) {
+        if (s.name == "focus") { s.err("cd: this is the focus session"); return }
+        val t = (a.pos.getOrNull(1) ?: "~").removePrefix("~/").trim('/').lowercase()
+        if (t == "~" || t.isEmpty() || t == "questblock") { s.prompt = "~/QuestBlock $"; return }
+        if (t in DIRS) s.prompt = "~/$t $" else s.err("cd: no such folder: ${t.tm()}  (try: ${DIRS.joinToString(" ")})")
+    }
+
     private suspend fun cmdTheme(s: TermuxSession, a: TermuxArgs) {
         val sub = a.pos.getOrNull(1)?.lowercase()
         if (sub == null) {
@@ -886,7 +917,16 @@ class TermuxViewModel @Inject constructor(
                 delay(400L)
                 TermuxMode.set(ctx, false)
             }
-            else -> s.err("usage: theme set default|termux")
+            "paper" -> {
+                if (TermuxMode.strictNow(ctx)) { s.err("refused: a strict Focus session is running"); return }
+                val item = repo.inventory.first().firstOrNull { it.itemId == "theme_paper" }
+                if (item == null) { s.err("you don't own Paper & Ink yet: shop buy paper"); return }
+                if (!item.isEquipped && !repo.equipItem(item)) { s.err("not enough coins for today's rent"); return }
+                s.ok("Paper & Ink equipped. switching\u2026")
+                delay(400L)
+                TermuxMode.set(ctx, false)
+            }
+            else -> s.err("usage: theme set default|paper|termux")
         }
     }
 
