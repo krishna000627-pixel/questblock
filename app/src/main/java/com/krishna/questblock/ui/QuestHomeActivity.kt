@@ -73,6 +73,7 @@ class QuestHomeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         loadThemeMode(this)
         TermuxMode.load(this)
+        SvgIconsMode.load(this)   // v224: emoji drawn as SVG icons
         QuestHomeMode.load(this)
         enableEdgeToEdge()
         if (intent?.getBooleanExtra(EXTRA_QH_SETTINGS, false) == true) QuestHomeBus.openSettings = QuestHomeBus.openSettings + 1

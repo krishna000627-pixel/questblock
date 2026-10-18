@@ -101,7 +101,15 @@ fun FocusModeScreen(vm: FocusViewModel = hiltViewModel()) {
     val installed by vm.installed.collectAsStateWithLifecycle()
 
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(1000L) } }
+    // v215: wake right after the shown (rounded-up) second changes, instead of every 1000 ms from a random moment, so the clock is never up to a second late
+    LaunchedEffect(player.focusModeUntil) {
+        while (true) {
+            val t = System.currentTimeMillis()
+            now = t
+            val left = player.focusModeUntil - t
+            delay(if (left > 0L) (left % 1000L) + 5L else 1000L)
+        }
+    }
 
     val remaining = (player.focusModeUntil - now).coerceAtLeast(0L)
     val running   = player.focusModeUntil > now
@@ -465,7 +473,7 @@ private fun ActiveFocus(remainingMs: Long, totalMs: Long, questTitle: String?, a
             drawArc(ColorPrimary, -90f, 360f * frac, false, style = stroke)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("%02d:%02d".format(totalSec / 60, totalSec % 60), fontSize = 60.sp,
+            Text(com.krishna.questblock.data.fmtLeft(remainingMs), fontSize = 60.sp,
                 fontWeight = FontWeight.Black, color = ColorText)
             Text("remaining", style = MaterialTheme.typography.labelMedium, color = ColorMuted)
         }

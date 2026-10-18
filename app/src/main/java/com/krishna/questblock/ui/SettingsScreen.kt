@@ -160,21 +160,8 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
             Text("Some elements pick the new colour up after you reopen the app.",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             Spacer(Modifier.height(8.dp))
-            Text("Termux theme", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
-            OutlinedButton(onClick = { TermuxMode.set(ctx, true) }, shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.fillMaxWidth()) { Text("Switch to the Termux look (the whole app becomes a terminal)") }
-            Text("Back to this look any time with: theme set default (refused while a strict Focus session runs).",
-                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-            Spacer(Modifier.height(8.dp))
-            Text("Quest Home (launcher)", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
-            OutlinedButton(
-                onClick = {
-                    QuestHomeMode.set(ctx, true)
-                    runCatching { ctx.startActivity(Intent(ctx, QuestHomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                },
-                shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth(),
-            ) { Text(if (QuestHomeOn) "Open Quest Home" else "Switch to Quest Home (this app becomes your launcher)") }
             if (QuestHomeOn) {
+                Text("Quest Home (launcher)", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
                 OutlinedButton(
                     onClick = { runCatching { ctx.startActivity(Intent(ctx, QuestHomeActivity::class.java).putExtra(EXTRA_QH_SETTINGS, true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } },
                     shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth(),
@@ -182,11 +169,22 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                 OutlinedButton(onClick = { qhPickHomeApp(ctx) }, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Text("Make Quest Home my Home app")
                 }
-                OutlinedButton(onClick = { QuestHomeMode.set(ctx, false) }, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+                if (AppThemes.enabled(ctx, "phone")) OutlinedButton(onClick = { QuestHomeMode.set(ctx, false) }, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Text("Turn off Quest Home")
                 }
+                Text("Long-press an empty spot on the launcher for its settings.",
+                    style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             }
-            Text("10 themes, app drawer, folders, dock, widgets. Long-press an empty spot on the launcher for its settings.",
+            Text("Termux and Quest Home are switched in Shop > My Items > App themes (or flags to turn them off).",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            Spacer(Modifier.height(8.dp))
+            Text("Icons", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
+            var svgOn by remember { mutableStateOf(SvgIconsOn) }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text("Draw emoji as SVG icons", modifier = Modifier.weight(1f), color = ColorText)
+                androidx.compose.material3.Switch(checked = svgOn, onCheckedChange = { svgOn = it; SvgIconsMode.set(ctx, it) })
+            }
+            Text("Terminal: icons on | off | list. The Termux theme stays plain text.",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             Spacer(Modifier.height(8.dp))
             Text("Name and icon on the home screen", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
@@ -515,7 +513,7 @@ internal fun OptionalFeaturesSection(prefs: Prefs, ctx: Context) {
         var eve by remember { mutableStateOf(prefs.optEvening) }
         ToggleRow("Evening nudge", "If quests are still open", eve) { eve = it; prefs.optEvening = it }
         var hws by remember { mutableStateOf(prefs.optHwSweep) }
-        ToggleRow("Homework sweep", "Evening: anything not written down yet? Same hour as the nudge", hws) { hws = it; prefs.optHwSweep = it }
+        if (com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) ToggleRow("Homework sweep", "Evening: anything not written down yet? Same hour as the nudge", hws) { hws = it; prefs.optHwSweep = it }
         if (eve || hws) {
             var h by remember { mutableIntStateOf(prefs.optEveningHour) }
             StepperRow("Nudge at", h, 15..23, 1, "h") { h = it; prefs.optEveningHour = it }

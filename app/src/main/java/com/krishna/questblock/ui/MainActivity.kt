@@ -51,7 +51,9 @@ class MainActivity : ComponentActivity() {
         ShopTheme = getSharedPreferences("questblock", MODE_PRIVATE).getString("shop_theme", "default") ?: "default"
         loadThemeMode(this)
         TermuxMode.load(this)   // v207: Termux theme (one terminal instead of the normal pages)
+        SvgIconsMode.load(this)   // v224: emoji drawn as SVG icons
         QuestHomeMode.load(this)   // v212: Quest Home (the launcher theme)
+        AppThemes.enforce(this)    // v219: a theme turned off in flags is not kept
         AppName.applyAll(this)     // v212: the launcher name and the Quest Home activity follow the theme
         enableEdgeToEdge(
             statusBarStyle     = SystemBarStyle.dark(Color.TRANSPARENT),

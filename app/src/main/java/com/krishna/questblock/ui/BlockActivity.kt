@@ -41,7 +41,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -140,6 +139,7 @@ class BlockActivity : ComponentActivity() {
         onBackPressedDispatcher.addCallback(this) { goHome() }
         loadThemeMode(this)
         TermuxMode.load(this)
+        SvgIconsMode.load(this)   // v224: emoji drawn as SVG icons
         setContent {
             QuestTheme {
                 if (TermuxOn) {

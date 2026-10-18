@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
@@ -89,6 +88,15 @@ fun AvatarFill() {
         },
         contentScale = androidx.compose.ui.layout.ContentScale.Crop,
     )
+}
+
+/** v223: the level number inside the hexagon (replaces the avatar picture). */
+@Composable
+fun LevelInHex(level: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("LV", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ColorMuted)
+        Text("$level", fontSize = 26.sp, fontWeight = FontWeight.Black, color = ColorText)
+    }
 }
 
 /** Rounded square with a colour gradient and an emoji: the icon of a quest, item or setting row. */
@@ -160,7 +168,7 @@ fun GlowBar(fraction: Float, modifier: Modifier = Modifier, height: Dp = 8.dp) {
 @Composable
 fun TitleWithIcon(emoji: String, title: String, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        IconTile(emoji, ColorPrimary, 32.dp)
+        TitleIcon(title)
         Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = ColorText)
     }
 }

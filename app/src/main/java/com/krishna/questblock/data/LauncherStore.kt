@@ -23,7 +23,7 @@ class QhCustomTheme(
  * "a:<package>" for an app and "f:<id>" for a folder. The functions on [QhState] return a changed copy.
  */
 data class QhState(
-    val theme: String = "dungeon",
+    val theme: String = "niagara",
     val pages: List<List<String>> = listOf(emptyList()),
     val dock: List<String> = emptyList(),
     val folders: List<QhFolder> = emptyList(),
@@ -49,7 +49,7 @@ data class QhState(
     val lockedHide: Boolean = false,          // locked apps are hidden until unlocked
     val block: String = "both",               // accessibility | launcher | both
     val gDouble: String = "lock",
-    val gLong: String = "settings",
+    val gLong: String = "menu",
     val gUp: String = "drawer",
     val gDown: String = "search",
     val appLabels: Map<String, String> = emptyMap(),
@@ -289,7 +289,7 @@ object QhStore {
             folders.add(QhFolder(f.getString("id"), f.getString("name"), strList(f.optJSONArray("apps"))))
         }
         QhState(
-            theme = o.optString("theme", "dungeon"), pages = pages, dock = strList(o.optJSONArray("dock")), folders = folders,
+            theme = o.optString("theme", "niagara"), pages = pages, dock = strList(o.optJSONArray("dock")), folders = folders,
             hidden = strList(o.optJSONArray("hidden")).toSet(), shape = o.optString("shape", ""),
             widgets = if (o.has("widgets")) strList(o.optJSONArray("widgets")).toSet() else QhState().widgets,
             seeded = o.optBoolean("seeded"),
@@ -301,7 +301,7 @@ object QhStore {
             azStrip = o.optBoolean("azStrip", true), searchHidden = o.optBoolean("searchHidden", false),
             hiddenBadge = o.optBoolean("hiddenBadge", false), focusHome = o.optBoolean("focusHome", false),
             lockedHide = o.optBoolean("lockedHide", false), block = o.optString("block", "both"),
-            gDouble = o.optString("gDouble", "lock"), gLong = o.optString("gLong", "settings"),
+            gDouble = o.optString("gDouble", "lock"), gLong = o.optString("gLong", "menu").let { g -> if (g == "settings" && !o.optBoolean("menuMig", false)) "menu" else g },
             gUp = o.optString("gUp", "drawer"), gDown = o.optString("gDown", "search"),
             appLabels = o.optJSONObject("appLabels")?.let { j -> j.keys().asSequence().associateWith { k -> j.optString(k) } } ?: emptyMap(),
             maxPages = o.optInt("maxPages", 6).coerceIn(1, 8), rows = o.optInt("rows", 0).coerceIn(0, 8),
@@ -343,7 +343,7 @@ object QhStore {
         o.put("labels", s.labels); o.put("labelLines", s.labelLines); o.put("tile", s.tile)
         o.put("azStrip", s.azStrip); o.put("searchHidden", s.searchHidden); o.put("hiddenBadge", s.hiddenBadge)
         o.put("focusHome", s.focusHome); o.put("lockedHide", s.lockedHide); o.put("block", s.block)
-        o.put("gDouble", s.gDouble); o.put("gLong", s.gLong); o.put("gUp", s.gUp); o.put("gDown", s.gDown)
+        o.put("gDouble", s.gDouble); o.put("gLong", s.gLong); o.put("menuMig", true); o.put("gUp", s.gUp); o.put("gDown", s.gDown)
         o.put("appLabels", JSONObject().also { j -> s.appLabels.forEach { (k, v) -> j.put(k, v) } })
         o.put("maxPages", s.maxPages); o.put("rows", s.rows); o.put("transition", s.transition); o.put("parallax", s.parallax); o.put("animate", s.animate)
         o.put("iconSrc", s.iconSrc); o.put("iconPack", s.iconPack)
@@ -434,7 +434,7 @@ object QhWallFile {
 /** v213: every launcher setting by key, so the terminal (qhome set) and the settings page share one table. */
 object QhSet {
     val WALLS = listOf("svg", "phone", "phonesvg", "color", "picture")
-    val ACTIONS = listOf("lock", "drawer", "search", "settings", "questblock", "focus", "notifications", "none")
+    val ACTIONS = listOf("lock", "drawer", "search", "menu", "settings", "questblock", "focus", "notifications", "none")
     val BLOCKS = listOf("accessibility", "launcher", "both")
     val KEYS = listOf("wall", "dim", "blur", "wallcolor", "cols", "dock", "iconsize", "labels", "lines", "tile", "az",
         "searchhidden", "hiddenbadge", "focushome", "lockedhide", "block", "g.double", "g.long", "g.up", "g.down",

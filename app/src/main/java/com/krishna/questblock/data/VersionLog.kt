@@ -3,6 +3,71 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("224.0.0", "Emoji as SVG icons, simpler theme settings, remastered logo",
+        listOf(
+            "Settings no longer has the Termux and Quest Home switch buttons, because both are already App themes in Shop > My Items (equip there). The Quest Home buttons (settings, Home app, turn off) only show while Quest Home is on. Themes turned off on the flags page stay hidden from My Items. Terminal: theme ls lists the app themes that are on and the one in use (works during strict Focus)",
+            "Every emoji on the normal pages is now drawn as an SVG icon (130 emoji, 108 icons, ui/SvgIcons.kt). ui/SvgText.kt holds a Text that shadows material3's Text in the ui package, so all existing screens pick it up. The coin is gold, dots and hearts keep their colour, an emoji with no icon stays as text. Not covered: notifications, the home screen widget, the Termux theme and Quest Home's own glyph tiles. Settings > Icons has a switch (on by default)",
+            "Terminal: icons shows the state, icons on|off turns it on or off (refused during strict Focus), icons list shows every emoji and its icon. Help, man, chips and the strict-Focus rules cover it",
+            "New app logo: a green block seen from the corner (light top face with a quest star, mid left face, dark right face) instead of the hexagon with a star. Adds a one-colour version for themed icons on Android 13+. The terminal icon is unchanged. Terminal: logo draws it in ASCII (works during strict Focus)",
+        )),
+    VersionEntry("223.0.0", "Level number in the hexagon instead of the avatar",
+        listOf(
+            "The hexagon on the Home hero card and the Profile page now shows your level (LV and the number) where the avatar picture was. The frame colour and badge stay as before (LevelInHex in ui/Glass.kt). The terminal already shows the level in status and whoami, so it is unchanged",
+        )),
+    VersionEntry("222.0.0", "Icons for the rest of the page titles, five plain light themes",
+        listOf(
+            "Outline title icons (ui/TitleIcons.kt) on 13 more pages: About me, App categories, Debug log, Flags, Homework, Quest board, Shop, Marks, Reliability, Self test, App usage, Version info, Weekly review. The emoji in the Homework, Quest board and Marks titles is gone",
+            "Five new plain light themes in Shop > Themes, in the Paper & Ink style (4 coins a day while equipped, equip them in My Items): Linen Grey, Sage Paper, Sky Paper, Lilac Paper, Chalk & Charcoal. Each picks the light look by itself like Paper & Ink (SHOP_THEME_LIGHT and SHOP_PALETTES in ui/Theme.kt, one line each in data/ShopCatalog.kt)",
+            "Terminal: theme set paper|linen|sage|sky|lilac|chalk equips an owned one and switches to the normal look (shop buy <name> to get it); help, man theme, chips and the strict-Focus refusal cover the new names",
+        )),
+    VersionEntry("221.0.0", "Outline icons in front of the page titles",
+        listOf(
+            "Page titles have a thin outline icon in the theme colour again (instead of the old emoji tile): QuestBlock (sword), Quests (checklist), Focus (bolt), Vault (lock), Settings (sliders), Badges (award), Rules (page), Chapters (books), Attendance (calendar tick), Stats (bars), Experiments (flask)",
+            "The icons are drawn from SVG path data in ui/TitleIcons.kt, so they stay sharp at any size and follow the accent colour. A title with no entry in that list gets no icon. The terminal has no icons, so it is unchanged",
+        )),
+    VersionEntry("220.0.0", "Homework tracker is a switch on the flags page",
+        listOf(
+            "Flags page (7 taps on the newest entry in Version info) has a Homework tracker switch, off by default. It turns the widget, search, Home pill, notifications, lock page lines and terminal hw on or off. Some screens pick it up after you reopen them. Refused during a Focus session",
+            "Flags.HOMEWORK_ENABLED (data/Flags.kt) is now a flag read from the saved switch when the app starts, not a fixed value",
+            "Terminal: flags lists Homework, flags on|off homework (or hw) toggles it. Help, man flags and chips updated; on and off stay refused during strict Focus",
+        )),
+    VersionEntry("219.0.0", "App themes in the inventory, flags page, no avatar picture, no header emoji",
+        listOf(
+            "Avatar picture removed from the Home hero card and the Profile page. The hexagon frame and the badge stay, so frames and badges still show",
+            "Quest Phone (the normal pages), Termux and Quest Home are free items in My Items under App themes. Equip switches to that theme; they have no Unequip, equip another one instead. Quest Home's long-press Home menu > Theme lists the other app themes too, so you can switch from there",
+            "The emoji tile in front of page titles is gone (the title of every tab page and the QuestBlock title on Home). Titles are plain text now",
+            "Flags page: 7 quick taps on the newest entry in Version info open it. One switch each for Quest Phone, Termux and Quest Home. A theme that is off can't be equipped (inventory, settings, terminal, Quest Home); if the one in use is turned off the app moves to one that is on, and the last one left on can't be turned off. Refused during a Focus session",
+            "Terminal (ui/TermuxShell.kt, ui/AppThemes.kt): flags [ls] | on|off <phone|termux|home>; inv lists the three app themes last and inv equip <n> switches to one; theme set accepts phone and checks the flags. Help, man flags, chips and the strict-Focus rules are updated (flags ls works during strict Focus, on and off do not)",
+        )),
+    VersionEntry("218.0.0", "Quest Home settings in nine pages",
+        listOf(
+            "Launcher settings open on a list of pages: Theme and wall, Icons, Layout, Drawer, Gestures, Widgets, Hidden apps and locks, Backup, More. Back or the title goes up one level, Done closes",
+            "Find a setting: type a word (night, columns, swipe, hide, backup ...) and the list shows the pages that hold it",
+            "Each page opens at the top",
+        )),
+    VersionEntry("217.0.0", "Quest Home: three launcher themes that change the layout (Niagara, Smart, Lawn)",
+        listOf(
+            "The ten old themes are gone. New built-in themes: Niagara, Smart, Lawn. Your own themes and Material You stay and use the classic grid",
+            "Niagara: pure black, no tiles and no dock. Home is a big bottom-aligned text list (dock apps first), the drawer is a text list with the A to Z scrubber",
+            "Smart: blue glass look. The drawer has tabs (All, Social, Media, Games, Tools, Other, sorted by app kind) and four shortcuts above the dock open the drawer on that tab",
+            "Lawn: soft grey. Day and date on top of the first page, floating dock, search pill at the bottom",
+            "A theme that was removed falls back to Niagara. qhome theme now lists niagara, smart, lawn",
+        )),
+    VersionEntry("216.0.0", "Quest Home: long press on empty home space opens a Home menu",
+        listOf(
+            "Long press on empty space now opens the Home menu: Wallpaper, Widgets, Theme, Icons and grid, Launcher settings, Open QuestBlock. It is the new default (a long press that was still set to Launcher settings moves to Home menu once; pick any action again under Gestures)",
+            "Wallpaper: Set phone wallpaper (Android's own picker), pick a picture for the launcher, wall mode (theme, phone, phone + theme, colour, my picture), dim and blur in steps of 10",
+            "Theme: every built-in, own and Material You theme in one list with a tick on the active one",
+            "Icons and grid: icon source (system, glyph, pack, none), size, columns 4 to 6, labels on or off. Changes show behind the sheet straight away",
+            "New gesture action Home menu in Settings > Gestures and for qhome g.long",
+        )),
+    VersionEntry("215.0.0", "Quest Home icons at system size, long-press with three buttons, homework disconnected, exact Focus clock",
+        listOf(
+            "Icons: system, icon pack and own-picture icons are drawn full size (about 52dp x the icon size %) with no second tile behind them, in the grid and the list. Emoji, letters and glyphs keep the tile",
+            "Long-press on an app: shortcuts, then three buttons (Edit, App info, Uninstall), then a More toggle for home, dock, folder and hide",
+            "Homework tracker disconnected with one switch (data/Flags.kt, HOMEWORK_ENABLED = false): widget, search, quick add, Home pill and warning, notifications, lock page lines, terminal command and pages are off. Data and code stay",
+            "Focus clock: the page and the terminal strip now wake right after the shown second changes (they used to tick every 1000 ms from a random moment, up to a second late). The big clock rounds up like the notification, so both always show the same time, and sessions over an hour show h:mm:ss",
+        )),
     VersionEntry("214.0.0", "Quest Home: everything left from the v212 list (drag and drop, icon packs, hidden space, unlock sheet, themes, ideas sheet and more)",
         listOf(
             "Drag and drop on the home pages: long-press a tile and drag. Drop on another app (middle of the tile) to make a folder, on a folder to add to it, on the edge of a tile to place it before that tile, on the dock to put it there, on empty space to move it to the page you are on, and hold at the screen edge to flip pages (drop past the last page to start a new one). A long-press without moving still opens the menu. Dock apps can be dragged out onto the pages. Dragging from the drawer is not supported.",
