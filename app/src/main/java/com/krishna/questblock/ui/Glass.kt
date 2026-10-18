@@ -91,6 +91,15 @@ fun AvatarFill() {
     )
 }
 
+/** v223: the level number inside the hexagon (replaces the avatar picture). */
+@Composable
+fun LevelInHex(level: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("LV", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ColorMuted)
+        Text("$level", fontSize = 26.sp, fontWeight = FontWeight.Black, color = ColorText)
+    }
+}
+
 /** Rounded square with a colour gradient and an emoji: the icon of a quest, item or setting row. */
 @Composable
 fun IconTile(emoji: String, color: Color, size: Dp = 40.dp, modifier: Modifier = Modifier) {

@@ -388,6 +388,7 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Bool
                         .background(Brush.verticalGradient(listOf(frameColor.copy(0.55f), frameColor.copy(0.12f))))
                         .border(2.dp, frameColor, HexShape),
                         contentAlignment = Alignment.Center) {
+                        LevelInHex(level)
                     }
                     val badgeEmoji = when (com.krishna.questblock.data.shownBadgeOf(player)) {
                         "badge_beginner" -> "\uD83C\uDF31"; "badge_star" -> "\u2B50"; "badge_crown" -> "\uD83D\uDC51"

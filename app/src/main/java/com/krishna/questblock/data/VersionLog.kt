@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("223.0.0", "Level number in the hexagon instead of the avatar",
+        listOf(
+            "The hexagon on the Home hero card and the Profile page now shows your level (LV and the number) where the avatar picture was. The frame colour and badge stay as before (LevelInHex in ui/Glass.kt). The terminal already shows the level in status and whoami, so it is unchanged",
+        )),
     VersionEntry("222.0.0", "Icons for the rest of the page titles, five plain light themes",
         listOf(
             "Outline title icons (ui/TitleIcons.kt) on 13 more pages: About me, App categories, Debug log, Flags, Homework, Quest board, Shop, Marks, Reliability, Self test, App usage, Version info, Weekly review. The emoji in the Homework, Quest board and Marks titles is gone",
