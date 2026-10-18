@@ -120,6 +120,40 @@ class KeepAliveService : Service() {
                 startForeground(ID_ONGOING, n)
             }
             scope.launch { repo.blockedApps.collect { apps = it; render() } }
+            // v214: Quest Home light watcher. Without accessibility, looks every second at which app came to the front and puts the
+            // lock page on top of a plainly locked app. Weaker than accessibility (short delay, a few apps resist). Needs Usage access
+            // and Draw over apps; a switch in the launcher settings turns it on.
+            scope.launch {
+                var cfgAt = 0L
+                var on = false
+                var lastFg = ""
+                var shownAt = 0L
+                while (true) {
+                    delay(1000L)
+                    runCatching {
+                        val now = System.currentTimeMillis()
+                        if (now - cfgAt > 5000L) { on = com.krishna.questblock.data.QhStore.load(this@KeepAliveService).watcher; cfgAt = now }
+                        if (!on || Perms.accessibilityEnabled(this@KeepAliveService) || !Perms.overlayGranted(this@KeepAliveService)) return@runCatching
+                        val um = getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
+                        val ev = um.queryEvents(now - 6000L, now)
+                        val e = android.app.usage.UsageEvents.Event()
+                        var fg: String? = null
+                        while (ev.hasNextEvent()) { ev.getNextEvent(e); if (e.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED) fg = e.packageName }
+                        val pkg = fg ?: return@runCatching
+                        if (pkg == lastFg && now - shownAt < 4000L) return@runCatching
+                        lastFg = pkg
+                        val r = apps.firstOrNull { it.packageName == pkg } ?: return@runCatching
+                        if (pkg != packageName && !r.isStudyApp && r.unlockedUntil <= now && r.dailyLimitMin == 0 && r.schedStart < 0) {
+                            shownAt = now
+                            startActivity(
+                                Intent(this@KeepAliveService, com.krishna.questblock.ui.BlockActivity::class.java)
+                                    .putExtra(com.krishna.questblock.ui.BlockActivity.EXTRA_PKG, pkg)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NO_ANIMATION),
+                            )
+                        }
+                    }
+                }
+            }
             // v73: remember when Focus ends, so Do Not Disturb, music and notification rules know a Focus is running
             scope.launch { repo.player.collect { prefs.focusUntilCache = it.focusModeUntil } }
             // v208: moving the phone clock must not shorten or lengthen a Focus session. The wall clock is compared with the uptime clock;

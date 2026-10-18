@@ -474,6 +474,12 @@ class GameRepository @Inject constructor(
     }
 
     // ── Focus ─────────────────────────────────────────────────────────────
+    /** v214: pays [n] coins for something outside a quest (the Quest Home hidden space). False when there are not enough. */
+    suspend fun spendCoins(n: Int): Boolean = db.withTransaction {
+        val p = playerDao.get() ?: return@withTransaction false
+        if (p.coins < n) false else { playerDao.upsert(p.copy(coins = p.coins - n)); true }
+    }
+
     suspend fun startFocus(durationMs: Long, task: TaskEntity? = null): Boolean = db.withTransaction {
         val now = System.currentTimeMillis()
         prefs.breakUntil = 0L

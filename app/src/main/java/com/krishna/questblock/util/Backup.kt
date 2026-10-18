@@ -74,6 +74,14 @@ object Backup {
                 z.write(prefsToText(ctx, name).toByteArray(Charsets.UTF_8))
                 z.closeEntry()
             }
+            // v214: Quest Home pictures (own wall, own app icons) live in files/
+            runCatching {
+                val wall = File(ctx.filesDir, "qh_wall.jpg")
+                if (wall.exists() && wall.length() > 0) { z.putNextEntry(ZipEntry("files/qh_wall.jpg")); wall.inputStream().use { it.copyTo(z) }; z.closeEntry() }
+                File(ctx.filesDir, "qh_icons").listFiles()?.filter { it.isFile && it.length() > 0 }?.forEach { f ->
+                    z.putNextEntry(ZipEntry("files/qh_icons/" + f.name)); f.inputStream().use { it.copyTo(z) }; z.closeEntry()
+                }
+            }
         }
         return bos.toByteArray()
     }
@@ -125,6 +133,7 @@ object Backup {
         var dbBytes: ByteArray? = null
         var prefsText: String? = null
         val extras = HashMap<String, String>()
+        val pics = HashMap<String, ByteArray>()
         if (bytes.size > 4 && bytes[0] == 'P'.code.toByte() && bytes[1] == 'K'.code.toByte()) {
             ZipInputStream(bytes.inputStream()).use { z ->
                 var e = z.nextEntry
@@ -132,7 +141,10 @@ object Backup {
                     when (e.name) {
                         ENTRY_DB -> dbBytes = z.readBytes()
                         ENTRY_PREFS -> prefsText = String(z.readBytes(), Charsets.UTF_8)
-                        else -> if (e.name.startsWith(ENTRY_EXTRA) && e.name.endsWith(".txt")) {
+                        else -> if (e.name.startsWith("files/")) {
+                            val rel = e.name.removePrefix("files/")
+                            if (rel == "qh_wall.jpg" || (rel.startsWith("qh_icons/") && !rel.removePrefix("qh_icons/").contains('/') && !rel.contains(".."))) pics[rel] = z.readBytes()
+                        } else if (e.name.startsWith(ENTRY_EXTRA) && e.name.endsWith(".txt")) {
                             val n = e.name.removePrefix(ENTRY_EXTRA).removeSuffix(".txt")
                             if (n in EXTRA_PREFS) extras[n] = String(z.readBytes(), Charsets.UTF_8)
                         }
@@ -183,6 +195,13 @@ object Backup {
             ed.commit()
         }
         extras.forEach { (n, t) -> restorePrefs(ctx, n, t) }
+        // v214: bring back the Quest Home pictures
+        runCatching {
+            if (pics.isNotEmpty()) {
+                File(ctx.filesDir, "qh_icons").also { it.mkdirs() }.listFiles()?.forEach { it.delete() }
+                pics.forEach { (rel, b) -> File(ctx.filesDir, rel).also { it.parentFile?.mkdirs() }.writeBytes(b) }
+            }
+        }
         true
     }.getOrDefault(false)
 

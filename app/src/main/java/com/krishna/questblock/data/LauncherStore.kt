@@ -11,6 +11,12 @@ class QhApp(val pkg: String, val label: String)
 
 class QhFolder(val id: String, val name: String, val apps: List<String>)
 
+/** v214: an own theme. wall = SVG path data (100 x 220 canvas) drawn as one layer, empty for none. */
+class QhCustomTheme(
+    val id: String, val name: String, val top: Long, val bottom: Long, val accent: Long, val dark: Boolean,
+    val shape: String, val wall: String,
+)
+
 /**
  * v212: Quest Home (the launcher theme). Everything the launcher remembers: theme, home pages, dock, folders, hidden
  * apps, icon shape and which widgets show. Stored on the phone in its own preferences file. Items on a page are
@@ -47,7 +53,75 @@ data class QhState(
     val gUp: String = "drawer",
     val gDown: String = "search",
     val appLabels: Map<String, String> = emptyMap(),
+    // v214
+    val maxPages: Int = 6, val rows: Int = 0, val transition: String = "slide", val parallax: Boolean = true, val animate: Boolean = true,
+    val iconSrc: String = "system",           // system | glyph | pack | none
+    val iconPack: String = "",
+    val appIcons: Map<String, String> = emptyMap(),     // emoji:X | letters:XY | image | pack
+    val appShapes: Map<String, String> = emptyMap(),
+    val appColors: Map<String, Long> = emptyMap(),
+    val revealWord: String = "", val revealCost: Int = 0, val revealGesture: Boolean = false,
+    val hideRules: Set<String> = emptySet(),            // fun-study | fun-quiet | fun-exam
+    val pendingUnhide: Map<String, Long> = emptyMap(),
+    val watcher: Boolean = false,
+    val sheetUnlock: Boolean = true,
+    val drawerList: Boolean = false, val sort: String = "az", val recentRow: Boolean = false, val mostRow: Boolean = false,
+    val g2Up: String = "none", val g2Down: String = "none",
+    val widgetOrder: List<String> = listOf("clock", "status", "focus", "quests", "homework", "quickadd"),
+    val clockScale: Int = 100, val questsCount: Int = 3, val hwCount: Int = 3, val focusPreset: Int = 25,
+    val nightTheme: String = "", val nightFrom: Int = 21, val nightTo: Int = 6,
+    val customThemes: List<QhCustomTheme> = emptyList(),
+    val dots: String = "dots", val folderStyle: String = "grid", val dockStyle: String = "bar",
+    val usageBadge: Boolean = false, val studyFirst: Boolean = false, val notifDots: Boolean = false,
+    val searchExtra: Boolean = true, val searchContacts: Boolean = false,
+    val hostWidgets: List<Int> = emptyList(),
 ) {
+    /** How many items one page holds (the first page also carries the widgets). */
+    fun capacity(page: Int): Int = when {
+        rows <= 0 -> if (page == 0) 12 else 20
+        page == 0 -> cols * maxOf(rows - 2, 1)
+        else -> cols * rows
+    }
+
+    /** Puts [item] before [target], on the target's page (when that page has room). */
+    fun moveBefore(item: String, target: String): QhState {
+        if (item == target) return this
+        val at = pages.indexOfFirst { target in it }
+        if (at < 0) return this
+        val from = pages.indexOfFirst { item in it }
+        if (from != at && pages[at].size >= capacity(at)) return this
+        val pgs = withoutOnPages(item).map { it.toMutableList() }.toMutableList()
+        val i = pgs[at].indexOf(target).coerceAtLeast(0)
+        pgs[at].add(i, item)
+        return copy(pages = trimEmptyPages(pgs))
+    }
+
+    /** Puts [item] (from a page, the dock or a folder) at the end of page [page], when there is room. */
+    fun moveToPageEnd(item: String, page: Int): QhState {
+        val to = page.coerceIn(0, maxPages - 1)
+        val pgs = withoutOnPages(item).map { it.toMutableList() }.toMutableList()
+        while (pgs.size <= to) pgs.add(mutableListOf())
+        if (pgs[to].size >= capacity(to)) return this
+        pgs[to].add(item)
+        return copy(pages = trimEmptyPages(pgs))
+    }
+
+    /** Dropping app [a] on app [b] makes a folder with both (they leave pages and dock). */
+    fun mergeApps(a: String, b: String): QhState {
+        if (a == b) return this
+        val base = copy(dock = dock.filter { it != a && it != b })
+        return base.newFolder("Folder", listOf(b, a))
+    }
+
+    /** Dock from a page (or the dock stays as it is when it is full). */
+    fun toDock(pkg: String): QhState = if (pkg in dock) this else if (dock.size >= dockMax) this else removeHome(pkg).addDock(pkg)
+
+    /** Hidden apps whose waiting time is over come back. */
+    fun applyPendingUnhide(now: Long): QhState {
+        val due = pendingUnhide.filterValues { it <= now }.keys
+        return if (due.isEmpty()) this else copy(hidden = hidden - due, pendingUnhide = pendingUnhide - due)
+    }
+
     fun labelOf(pkg: String, fallback: String): String = appLabels[pkg]?.takeIf { it.isNotBlank() } ?: fallback
     fun onHome(pkg: String): Boolean = pages.any { "a:$pkg" in it }
     fun folderOf(pkg: String): QhFolder? = folders.firstOrNull { pkg in it.apps }
@@ -67,9 +141,9 @@ data class QhState(
     private fun placeItem(item: String): QhState {
         val pgs = pages.map { it.toMutableList() }.toMutableList()
         for (i in pgs.indices) {
-            if (pgs[i].size < QhStore.capacity(i)) { pgs[i].add(item); return copy(pages = pgs) }
+            if (pgs[i].size < capacity(i)) { pgs[i].add(item); return copy(pages = pgs) }
         }
-        if (pgs.size < QhStore.MAX_PAGES) { pgs.add(mutableListOf(item)); return copy(pages = pgs) }
+        if (pgs.size < maxPages) { pgs.add(mutableListOf(item)); return copy(pages = pgs) }
         return this
     }
 
@@ -100,10 +174,10 @@ data class QhState(
         val at = pages.indexOfFirst { item in it }
         if (at < 0) return this
         val to = at + delta
-        if (to < 0 || to >= QhStore.MAX_PAGES) return this
+        if (to < 0 || to >= maxPages) return this
         val pgs = withoutOnPages(item).map { it.toMutableList() }.toMutableList()
         while (pgs.size <= to) pgs.add(mutableListOf())
-        if (pgs[to].size >= QhStore.capacity(to)) return this
+        if (pgs[to].size >= capacity(to)) return this
         pgs[to].add(item)
         return copy(pages = trimEmptyPages(pgs))
     }
@@ -184,6 +258,22 @@ object QhStore {
 
     private fun sp(c: Context) = c.applicationContext.getSharedPreferences("qb_launcher", Context.MODE_PRIVATE)
 
+    /** Custom themes of the last loaded state (the theme code reads this to resolve ids like c1). */
+    @Volatile var customCache: List<QhCustomTheme> = emptyList()
+
+    private fun strMap(j: JSONObject?): Map<String, String> = if (j == null) emptyMap() else j.keys().asSequence().associateWith { k -> j.optString(k) }
+
+    private fun parseThemes(a: JSONArray?): List<QhCustomTheme> {
+        if (a == null) return emptyList()
+        return List(a.length()) { i ->
+            val t = a.getJSONObject(i)
+            QhCustomTheme(
+                t.getString("id"), t.optString("name", "Mine"), t.optString("top").toLongOrNull() ?: 0xFF101018, t.optString("bottom").toLongOrNull() ?: 0xFF000000,
+                t.optString("accent").toLongOrNull() ?: 0xFF7C5CFF, t.optBoolean("dark", true), t.optString("shape", "squircle"), t.optString("wall", ""),
+            )
+        }.take(10)
+    }
+
     private fun strList(a: JSONArray?): List<String> = if (a == null) emptyList() else List(a.length()) { a.getString(it) }
 
     fun load(c: Context): QhState = runCatching {
@@ -214,7 +304,28 @@ object QhStore {
             gDouble = o.optString("gDouble", "lock"), gLong = o.optString("gLong", "settings"),
             gUp = o.optString("gUp", "drawer"), gDown = o.optString("gDown", "search"),
             appLabels = o.optJSONObject("appLabels")?.let { j -> j.keys().asSequence().associateWith { k -> j.optString(k) } } ?: emptyMap(),
-        )
+            maxPages = o.optInt("maxPages", 6).coerceIn(1, 8), rows = o.optInt("rows", 0).coerceIn(0, 8),
+            transition = o.optString("transition", "slide"), parallax = o.optBoolean("parallax", true), animate = o.optBoolean("animate", true),
+            iconSrc = o.optString("iconSrc", "system"), iconPack = o.optString("iconPack", ""),
+            appIcons = strMap(o.optJSONObject("appIcons")), appShapes = strMap(o.optJSONObject("appShapes")),
+            appColors = strMap(o.optJSONObject("appColors")).mapValues { it.value.toLongOrNull() ?: 0L },
+            revealWord = o.optString("revealWord", ""), revealCost = o.optInt("revealCost", 0).coerceIn(0, 500), revealGesture = o.optBoolean("revealGesture", false),
+            hideRules = strList(o.optJSONArray("hideRules")).toSet(),
+            pendingUnhide = strMap(o.optJSONObject("pendingUnhide")).mapValues { it.value.toLongOrNull() ?: 0L },
+            watcher = o.optBoolean("watcher", false), sheetUnlock = o.optBoolean("sheetUnlock", true),
+            drawerList = o.optBoolean("drawerList", false), sort = o.optString("sort", "az"),
+            recentRow = o.optBoolean("recentRow", false), mostRow = o.optBoolean("mostRow", false),
+            g2Up = o.optString("g2Up", "none"), g2Down = o.optString("g2Down", "none"),
+            widgetOrder = if (o.has("widgetOrder")) strList(o.optJSONArray("widgetOrder")) else QhState().widgetOrder,
+            clockScale = o.optInt("clockScale", 100).coerceIn(60, 140), questsCount = o.optInt("questsCount", 3).coerceIn(1, 6),
+            hwCount = o.optInt("hwCount", 3).coerceIn(1, 6), focusPreset = o.optInt("focusPreset", 25).coerceIn(5, 180),
+            nightTheme = o.optString("nightTheme", ""), nightFrom = o.optInt("nightFrom", 21).coerceIn(0, 23), nightTo = o.optInt("nightTo", 6).coerceIn(0, 23),
+            customThemes = parseThemes(o.optJSONArray("customThemes")),
+            dots = o.optString("dots", "dots"), folderStyle = o.optString("folderStyle", "grid"), dockStyle = o.optString("dockStyle", "bar"),
+            usageBadge = o.optBoolean("usageBadge", false), studyFirst = o.optBoolean("studyFirst", false), notifDots = o.optBoolean("notifDots", false),
+            searchExtra = o.optBoolean("searchExtra", true), searchContacts = o.optBoolean("searchContacts", false),
+            hostWidgets = o.optJSONArray("hostWidgets")?.let { a -> List(a.length()) { a.getInt(it) } } ?: emptyList(),
+        ).also { customCache = it.customThemes }
     }.getOrDefault(QhState())
 
     fun save(c: Context, s: QhState) {
@@ -234,6 +345,29 @@ object QhStore {
         o.put("focusHome", s.focusHome); o.put("lockedHide", s.lockedHide); o.put("block", s.block)
         o.put("gDouble", s.gDouble); o.put("gLong", s.gLong); o.put("gUp", s.gUp); o.put("gDown", s.gDown)
         o.put("appLabels", JSONObject().also { j -> s.appLabels.forEach { (k, v) -> j.put(k, v) } })
+        o.put("maxPages", s.maxPages); o.put("rows", s.rows); o.put("transition", s.transition); o.put("parallax", s.parallax); o.put("animate", s.animate)
+        o.put("iconSrc", s.iconSrc); o.put("iconPack", s.iconPack)
+        o.put("appIcons", JSONObject().also { j -> s.appIcons.forEach { (k, v) -> j.put(k, v) } })
+        o.put("appShapes", JSONObject().also { j -> s.appShapes.forEach { (k, v) -> j.put(k, v) } })
+        o.put("appColors", JSONObject().also { j -> s.appColors.forEach { (k, v) -> j.put(k, v.toString()) } })
+        o.put("revealWord", s.revealWord); o.put("revealCost", s.revealCost); o.put("revealGesture", s.revealGesture)
+        o.put("hideRules", JSONArray(s.hideRules.toList()))
+        o.put("pendingUnhide", JSONObject().also { j -> s.pendingUnhide.forEach { (k, v) -> j.put(k, v.toString()) } })
+        o.put("watcher", s.watcher); o.put("sheetUnlock", s.sheetUnlock)
+        o.put("drawerList", s.drawerList); o.put("sort", s.sort); o.put("recentRow", s.recentRow); o.put("mostRow", s.mostRow)
+        o.put("g2Up", s.g2Up); o.put("g2Down", s.g2Down)
+        o.put("widgetOrder", JSONArray(s.widgetOrder))
+        o.put("clockScale", s.clockScale); o.put("questsCount", s.questsCount); o.put("hwCount", s.hwCount); o.put("focusPreset", s.focusPreset)
+        o.put("nightTheme", s.nightTheme); o.put("nightFrom", s.nightFrom); o.put("nightTo", s.nightTo)
+        o.put("customThemes", JSONArray(s.customThemes.map { t ->
+            JSONObject().put("id", t.id).put("name", t.name).put("top", t.top.toString()).put("bottom", t.bottom.toString())
+                .put("accent", t.accent.toString()).put("dark", t.dark).put("shape", t.shape).put("wall", t.wall)
+        }))
+        o.put("dots", s.dots); o.put("folderStyle", s.folderStyle); o.put("dockStyle", s.dockStyle)
+        o.put("usageBadge", s.usageBadge); o.put("studyFirst", s.studyFirst); o.put("notifDots", s.notifDots)
+        o.put("searchExtra", s.searchExtra); o.put("searchContacts", s.searchContacts)
+        o.put("hostWidgets", JSONArray(s.hostWidgets))
+        customCache = s.customThemes
         sp(c).edit().putString("state", o.toString()).apply()
     }
 
@@ -268,6 +402,22 @@ object QhStore {
 }
 
 /** v213: the picture chosen as a wall is copied here once, so it keeps working when the original goes away. */
+object QhUse {
+    private fun sp(c: Context) = c.applicationContext.getSharedPreferences("qb_launcher", Context.MODE_PRIVATE)
+    private fun read(c: Context): JSONObject = runCatching { JSONObject(sp(c).getString("use", "{}") ?: "{}") }.getOrDefault(JSONObject())
+
+    fun bump(c: Context, pkg: String) {
+        val o = read(c)
+        val e = o.optJSONObject(pkg) ?: JSONObject()
+        e.put("n", e.optInt("n") + 1).put("t", System.currentTimeMillis())
+        o.put(pkg, e)
+        sp(c).edit().putString("use", o.toString()).apply()
+    }
+
+    fun counts(c: Context): Map<String, Int> = read(c).let { o -> o.keys().asSequence().associateWith { o.getJSONObject(it).optInt("n") } }
+    fun lastUsed(c: Context): Map<String, Long> = read(c).let { o -> o.keys().asSequence().associateWith { o.getJSONObject(it).optLong("t") } }
+}
+
 object QhWallFile {
     fun file(c: Context): java.io.File = java.io.File(c.filesDir, "qh_wall.jpg")
     fun exists(c: Context): Boolean = file(c).let { it.exists() && it.length() > 0 }
@@ -284,10 +434,20 @@ object QhWallFile {
 /** v213: every launcher setting by key, so the terminal (qhome set) and the settings page share one table. */
 object QhSet {
     val WALLS = listOf("svg", "phone", "phonesvg", "color", "picture")
-    val ACTIONS = listOf("lock", "drawer", "search", "settings", "questblock", "focus", "none")
+    val ACTIONS = listOf("lock", "drawer", "search", "settings", "questblock", "focus", "notifications", "none")
     val BLOCKS = listOf("accessibility", "launcher", "both")
     val KEYS = listOf("wall", "dim", "blur", "wallcolor", "cols", "dock", "iconsize", "labels", "lines", "tile", "az",
-        "searchhidden", "hiddenbadge", "focushome", "lockedhide", "block", "g.double", "g.long", "g.up", "g.down")
+        "searchhidden", "hiddenbadge", "focushome", "lockedhide", "block", "g.double", "g.long", "g.up", "g.down",
+        "g2.up", "g2.down", "pages", "rows", "transition", "parallax", "animate", "iconsrc", "list", "sort", "recentrow", "mostrow",
+        "revealword", "revealcost", "revealgesture", "watcher", "sheet", "clockscale", "questscount", "hwcount", "focuspreset",
+        "nighttheme", "nightfrom", "nightto", "dots", "folderstyle", "dockstyle", "usagebadge", "studyfirst", "notifdots", "searchextra", "searchcontacts")
+    val SORTS = listOf("az", "za", "recent", "most")
+    val TRANSITIONS = listOf("slide", "fade", "zoom", "cube")
+    val ICON_SRC = listOf("system", "glyph", "pack", "none")
+    val DOTS = listOf("dots", "bar", "number")
+    val FOLDERS = listOf("grid", "stack")
+    val DOCKS = listOf("bar", "floating", "none")
+    val HIDE_RULES = listOf("fun-study", "fun-quiet", "fun-exam")
 
     fun get(s: QhState, k: String): String? = when (k) {
         "wall" -> s.wall; "dim" -> s.dim.toString(); "blur" -> s.blur.toString()
@@ -297,6 +457,16 @@ object QhSet {
         "searchhidden" -> onOff(s.searchHidden); "hiddenbadge" -> onOff(s.hiddenBadge)
         "focushome" -> onOff(s.focusHome); "lockedhide" -> onOff(s.lockedHide); "block" -> s.block
         "g.double" -> s.gDouble; "g.long" -> s.gLong; "g.up" -> s.gUp; "g.down" -> s.gDown
+        "g2.up" -> s.g2Up; "g2.down" -> s.g2Down; "pages" -> s.maxPages.toString(); "rows" -> s.rows.toString()
+        "transition" -> s.transition; "parallax" -> onOff(s.parallax); "animate" -> onOff(s.animate); "iconsrc" -> s.iconSrc
+        "list" -> onOff(s.drawerList); "sort" -> s.sort; "recentrow" -> onOff(s.recentRow); "mostrow" -> onOff(s.mostRow)
+        "revealword" -> s.revealWord.ifEmpty { "off" }; "revealcost" -> s.revealCost.toString(); "revealgesture" -> onOff(s.revealGesture)
+        "watcher" -> onOff(s.watcher); "sheet" -> onOff(s.sheetUnlock)
+        "clockscale" -> s.clockScale.toString(); "questscount" -> s.questsCount.toString(); "hwcount" -> s.hwCount.toString(); "focuspreset" -> s.focusPreset.toString()
+        "nighttheme" -> s.nightTheme.ifEmpty { "off" }; "nightfrom" -> s.nightFrom.toString(); "nightto" -> s.nightTo.toString()
+        "dots" -> s.dots; "folderstyle" -> s.folderStyle; "dockstyle" -> s.dockStyle
+        "usagebadge" -> onOff(s.usageBadge); "studyfirst" -> onOff(s.studyFirst); "notifdots" -> onOff(s.notifDots)
+        "searchextra" -> onOff(s.searchExtra); "searchcontacts" -> onOff(s.searchContacts)
         else -> null
     }
 
@@ -308,7 +478,15 @@ object QhSet {
         "az" -> "on|off drawer A to Z strip"; "searchhidden" -> "on|off hidden apps show in drawer search"
         "hiddenbadge" -> "on|off hidden count on the apps button"; "focushome" -> "on|off hide unpicked apps during Focus"
         "lockedhide" -> "on|off hide locked apps until unlocked"; "block" -> "accessibility | launcher | both"
-        else -> QhSet.ACTIONS.joinToString(" | ")
+        "g.double", "g.long", "g.up", "g.down", "g2.up", "g2.down" -> QhSet.ACTIONS.joinToString(" | ")
+        "pages" -> "1-8 home pages at most"; "rows" -> "0 (auto) or 3-8 rows"; "transition" -> TRANSITIONS.joinToString(" | ")
+        "parallax", "animate", "list", "recentrow", "mostrow", "revealgesture", "watcher", "sheet", "usagebadge", "studyfirst", "notifdots", "searchextra", "searchcontacts" -> "on|off"
+        "iconsrc" -> ICON_SRC.joinToString(" | ") + "  (pick the pack app: qhome pack)"; "sort" -> SORTS.joinToString(" | ")
+        "revealword" -> "a word typed in drawer search that opens the hidden space, or off"; "revealcost" -> "0-500 coins to open the hidden space (0 = free)"
+        "clockscale" -> "60-140 percent"; "questscount", "hwcount" -> "1-6 lines"; "focuspreset" -> "5-180 minutes for the one-tap Focus"
+        "nighttheme" -> "a theme id (qhome themes) or off"; "nightfrom", "nightto" -> "hour 0-23"
+        "dots" -> DOTS.joinToString(" | "); "folderstyle" -> FOLDERS.joinToString(" | "); "dockstyle" -> DOCKS.joinToString(" | ")
+        else -> "?"
     }
 
     /** Returns the changed state, or null with an error text in [err]. */
@@ -334,6 +512,38 @@ object QhSet {
             "focushome" -> bool()?.let { s.copy(focusHome = it) } ?: bad()
             "lockedhide" -> bool()?.let { s.copy(lockedHide = it) } ?: bad()
             "block" -> if (low in BLOCKS) s.copy(block = low) else bad()
+            "g2.up" -> if (low in ACTIONS) s.copy(g2Up = low) else bad()
+            "g2.down" -> if (low in ACTIONS) s.copy(g2Down = low) else bad()
+            "pages" -> int(1, 8)?.let { s.copy(maxPages = it) } ?: bad()
+            "rows" -> int(0, 8)?.takeIf { it == 0 || it >= 3 }?.let { s.copy(rows = it) } ?: bad()
+            "transition" -> if (low in TRANSITIONS) s.copy(transition = low) else bad()
+            "parallax" -> bool()?.let { s.copy(parallax = it) } ?: bad()
+            "animate" -> bool()?.let { s.copy(animate = it) } ?: bad()
+            "iconsrc" -> if (low in ICON_SRC) s.copy(iconSrc = low) else bad()
+            "list" -> bool()?.let { s.copy(drawerList = it) } ?: bad()
+            "sort" -> if (low in SORTS) s.copy(sort = low) else bad()
+            "recentrow" -> bool()?.let { s.copy(recentRow = it) } ?: bad()
+            "mostrow" -> bool()?.let { s.copy(mostRow = it) } ?: bad()
+            "revealword" -> if (low == "off" || low.isEmpty()) s.copy(revealWord = "") else if (low.length in 3..20) s.copy(revealWord = low) else bad()
+            "revealcost" -> int(0, 500)?.let { s.copy(revealCost = it) } ?: bad()
+            "revealgesture" -> bool()?.let { s.copy(revealGesture = it) } ?: bad()
+            "watcher" -> bool()?.let { s.copy(watcher = it) } ?: bad()
+            "sheet" -> bool()?.let { s.copy(sheetUnlock = it) } ?: bad()
+            "clockscale" -> int(60, 140)?.let { s.copy(clockScale = it) } ?: bad()
+            "questscount" -> int(1, 6)?.let { s.copy(questsCount = it) } ?: bad()
+            "hwcount" -> int(1, 6)?.let { s.copy(hwCount = it) } ?: bad()
+            "focuspreset" -> int(5, 180)?.let { s.copy(focusPreset = it) } ?: bad()
+            "nighttheme" -> if (low == "off") s.copy(nightTheme = "") else s.copy(nightTheme = low)
+            "nightfrom" -> int(0, 23)?.let { s.copy(nightFrom = it) } ?: bad()
+            "nightto" -> int(0, 23)?.let { s.copy(nightTo = it) } ?: bad()
+            "dots" -> if (low in DOTS) s.copy(dots = low) else bad()
+            "folderstyle" -> if (low in FOLDERS) s.copy(folderStyle = low) else bad()
+            "dockstyle" -> if (low in DOCKS) s.copy(dockStyle = low) else bad()
+            "usagebadge" -> bool()?.let { s.copy(usageBadge = it) } ?: bad()
+            "studyfirst" -> bool()?.let { s.copy(studyFirst = it) } ?: bad()
+            "notifdots" -> bool()?.let { s.copy(notifDots = it) } ?: bad()
+            "searchextra" -> bool()?.let { s.copy(searchExtra = it) } ?: bad()
+            "searchcontacts" -> bool()?.let { s.copy(searchContacts = it) } ?: bad()
             "g.double" -> if (low in ACTIONS) s.copy(gDouble = low) else bad()
             "g.long" -> if (low in ACTIONS) s.copy(gLong = low) else bad()
             "g.up" -> if (low in ACTIONS) s.copy(gUp = low) else bad()

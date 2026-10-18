@@ -312,15 +312,17 @@ class TermuxExtras(
     fun ideasCopy(s: TermuxSession, a: TermuxArgs) {
         val all = IdeaStore.all(ctx)
         val target = a.pos.getOrNull(2)?.lowercase()
-        if (target == null) { s.err("usage: ideas copy <n> | ideas copy all [--log]"); return }
-        if (target != "all") {
+        if (target == null) { s.err("usage: ideas copy <n> | all | <tags like bug,ui> [--log]"); return }
+        val wanted = target.split(',').filter { it.isNotBlank() }
+        val byTag = target != "all" && target.toIntOrNull() == null && wanted.isNotEmpty() && wanted.all { it in IdeaStore.TAGS }
+        if (target != "all" && !byTag) {
             val n = target.toIntOrNull()
-            if (n == null || n < 1 || n > all.size) { s.err("usage: ideas copy <n> | ideas copy all [--log]"); return }
+            if (n == null || n < 1 || n > all.size) { s.err("usage: ideas copy <n> | all | <tags like bug,ui> [--log]"); return }
             clip(all[n - 1].text)
             s.ok("copied #$n")
             return
         }
-        val open = all.filter { !it.done }
+        val open = all.filter { it.status != "done" && (!byTag || it.tag in wanted) }
         if (open.isEmpty()) { s.warn("no open ideas to copy"); return }
         val version = runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
         val cur = version.substringBefore('.').toIntOrNull()
@@ -329,8 +331,8 @@ class TermuxExtras(
         else "QuestBlock (latest zip attached). Make these changes and bump the version. Short reply, give the Termux command."
         val logPart = if (a.has("--log")) "\n\nDebug log (last 15 lines):\n" +
             DebugLog.read().lines().filter { it.isNotBlank() }.takeLast(15).joinToString("\n") else ""
-        val ordered = IDEA_TAGS.flatMap { t -> open.filter { tagOf(it.text) === t } } + open.filter { tagOf(it.text) == null }
-        val changes = ordered.mapIndexed { i, it -> "${i + 1}. ${it.text}" }.joinToString("\n")
+        val ordered = open.sortedWith(compareByDescending<com.krishna.questblock.data.Idea> { it.prio }.thenBy { ideaRank(it) })
+        val changes = ordered.mapIndexed { i, it -> "${i + 1}. " + (if (it.tag.isNotEmpty()) "[${it.tag}] " else "") + (if (it.prio > 0) "(priority ${it.prio}) " else "") + it.text }.joinToString("\n")
         val rules = "Rules:\n" +
             "- Bump versionCode and versionName in app/build.gradle.kts.\n" +
             "- Add a new entry at the top of VERSION_LOG in data/VersionLog.kt. Read VersionLog.kt first for more info: it holds the full history of past updates and what each one changed, so do not redo or undo them.\n" +
@@ -343,7 +345,7 @@ class TermuxExtras(
         } else ""
         clip(head + "\n\n" + changes + "\n\n" + rules + cmd + logPart)
         // everything copied is now sent: tick it off, like the Ideas page does
-        all.indices.filter { !all[it].done }.forEach { IdeaStore.toggle(ctx, it) }
+        all.indices.filter { all[it].status != "done" && (!byTag || all[it].tag in wanted) }.forEach { IdeaStore.setMeta(ctx, it, status = "done") }
         s.ok("copied the update prompt with ${open.size} idea${if (open.size > 1) "s" else ""} (ticked off)")
     }
 

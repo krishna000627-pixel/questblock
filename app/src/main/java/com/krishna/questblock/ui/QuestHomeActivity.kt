@@ -66,6 +66,9 @@ class QuestHomeActivity : ComponentActivity() {
         override fun onReceive(context: Context?, intent: Intent?) { QuestHomeBus.tick = QuestHomeBus.tick + 1 }
     }
 
+    /** v214: hosts real Android widgets on the first page. */
+    val widgetHost: android.appwidget.AppWidgetHost by lazy { android.appwidget.AppWidgetHost(this, 1024) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         loadThemeMode(this)
@@ -94,9 +97,11 @@ class QuestHomeActivity : ComponentActivity() {
         }
         runCatching { ContextCompat.registerReceiver(this, receiver, f, ContextCompat.RECEIVER_EXPORTED) }
         QuestHomeBus.tick = QuestHomeBus.tick + 1
+        runCatching { widgetHost.startListening() }
     }
 
     override fun onStop() {
+        runCatching { widgetHost.stopListening() }
         runCatching { unregisterReceiver(receiver) }
         super.onStop()
     }
@@ -130,6 +135,18 @@ class QuestHomeViewModel @Inject constructor(
         private set
     var now by mutableLongStateOf(System.currentTimeMillis())
         private set
+    var usageToday by mutableStateOf<Map<String, Long>>(emptyMap())
+        private set
+    var notifPkgs by mutableStateOf<Set<String>>(emptySet())
+        private set
+    var funPkgs by mutableStateOf<Set<String>>(emptySet())
+        private set
+    var studyDone by mutableStateOf(true)
+        private set
+    var activeRules by mutableStateOf<Set<String>>(emptySet())
+        private set
+    var surcharge by mutableStateOf(0)
+        private set
 
     init {
         viewModelScope.launch {
@@ -144,6 +161,17 @@ class QuestHomeViewModel @Inject constructor(
         now = System.currentTimeMillis()
         hw = Hw.dueSoon(ctx, now)
         focusApps = prefs.focusAllowed.split(",").filter { it.isNotBlank() }.toSet()
+        // v214: hidden apps whose waiting time is over come back; rules; study-first; usage and notification dots
+        if (st.pendingUnhide.isNotEmpty() && st.pendingUnhide.values.any { it <= now }) st = QhStore.update(ctx) { it.applyPendingUnhide(now) }
+        activeRules = ruleSet()
+        val dayStart = java.util.Calendar.getInstance().apply { set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0); set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0) }.timeInMillis
+        studyDone = tasks.value.any { it.done && (it.completedAt ?: 0L) >= dayStart }
+        surcharge = runCatching { repo.routineSurchargePct() }.getOrDefault(0)
+        notifPkgs = if (st.notifDots) com.krishna.questblock.service.MediaListenerService.activePkgs else emptySet()
+        if (st.usageBadge) usageToday = withContext(Dispatchers.IO) { runCatching {
+            val um = ctx.getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
+            um.queryAndAggregateUsageStats(dayStart, now).mapValues { it.value.totalTimeInForeground }
+        }.getOrDefault(emptyMap()) }
         val fl = FunLimit.state(ctx, prefs)
         funLine = when {
             prefs.funFreeToday -> "Fun: free day"
@@ -157,11 +185,79 @@ class QuestHomeViewModel @Inject constructor(
 
     fun update(f: (QhState) -> QhState) { st = QhStore.update(ctx, f) }
 
+    private fun ruleSet(): Set<String> {
+        val cal = java.util.Calendar.getInstance()
+        val m = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
+        fun inWin(a: Int, b: Int) = if (a == b) false else if (a < b) m in a until b else (m >= a || m < b)
+        val out = HashSet<String>()
+        if (prefs.quietEnabled && inWin(prefs.quietStartMin, prefs.quietEndMin)) out += "fun-quiet"
+        if (!prefs.funFreeToday) {
+            if (prefs.studyBlockEnabled && inWin(prefs.studyStartMin, prefs.studyEndMin)) out += "fun-study"
+            if (prefs.examMode && inWin(8 * 60, 20 * 60)) out += "fun-exam"
+        }
+        return out
+    }
+
+    /** True while one of the picked hide rules is on and this app is a Fun app. */
+    fun ruleHides(pkg: String): Boolean = pkg in funPkgs && st.hideRules.any { it in activeRules }
+
+    /** True while any fun rule is on: unhiding then waits until midnight (hiding is always instant). */
+    fun loosenWaits(): Boolean = prefs.funRulesActive || st.hideRules.isNotEmpty()
+
+    fun unhide(pkg: String) {
+        if (loosenWaits() && pkg in funPkgs) {
+            val at = com.krishna.questblock.data.nextRunDayStart(0, System.currentTimeMillis())
+            update { it.copy(pendingUnhide = it.pendingUnhide + (pkg to at)) }
+            Toast.makeText(ctx, "Unhiding waits until midnight while a fun rule is on", Toast.LENGTH_LONG).show()
+        } else update { it.unhide(pkg) }
+    }
+
+    fun quickAdd(kind: String, text: String) {
+        val t = text.trim()
+        if (t.isEmpty()) return
+        when (kind) {
+            "quest" -> viewModelScope.launch { runCatching { repo.addTask(t, 2) } }
+            "homework" -> runCatching { Hw.add(ctx, "", t, System.currentTimeMillis() + 24 * 3_600_000L) }
+            else -> com.krishna.questblock.data.IdeaStore.add(ctx, t)
+        }
+        Toast.makeText(ctx, "Added: " + t.take(30), Toast.LENGTH_SHORT).show()
+    }
+
+    fun startFocusPreset(minutes: Int) {
+        viewModelScope.launch { if (!runCatching { repo.startFocus(minutes * 60_000L) }.getOrDefault(false)) Toast.makeText(ctx, "Could not start Focus", Toast.LENGTH_SHORT).show() }
+    }
+
+    fun appContext(): Context = ctx
+
+    fun spend(n: Int, done: (Boolean) -> Unit) {
+        viewModelScope.launch { done(runCatching { repo.spendCoins(n) }.getOrDefault(false)) }
+    }
+
+    fun price(pkg: String, blocks: Int): Int =
+        com.krishna.questblock.data.withSurcharge(com.krishna.questblock.data.unlockCost(blocks, repo.ratePer5(), blocked.value.firstOrNull { it.packageName == pkg }), surcharge)
+
+    fun unlockApp(pkg: String, blocks: Int, done: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val r = runCatching { repo.unlock(pkg, blocks) }.getOrNull()
+            if (r != null && r.ok) done(true, "") else done(false, if (r == null) "Could not unlock" else "Not enough coins")
+        }
+    }
+
+    /** Apps sorted into the Fun group (for hide rules and study first). */
+    private fun loadFunPkgs(l: List<QhApp>) {
+        viewModelScope.launch {
+            funPkgs = withContext(Dispatchers.IO) {
+                l.filter { runCatching { com.krishna.questblock.data.AppCategorizer.categoryOf(prefs, ctx.packageManager, it.pkg) == "fun" }.getOrDefault(false) }.map { it.pkg }.toSet()
+            }
+        }
+    }
+
     /** Reads the installed apps, seeds the first run, forgets uninstalled apps. */
     fun reloadApps() {
         viewModelScope.launch {
             val l = withContext(Dispatchers.IO) { QhApps.load(ctx) }
             apps = l
+            loadFunPkgs(l)
             val installed = l.map { it.pkg }.toSet()
             withContext(Dispatchers.IO) { QhStore.seedIfNeeded(ctx, installed) }
             st = if (l.size > 3) QhStore.update(ctx) { it.cleanup(installed) } else QhStore.load(ctx)
@@ -177,13 +273,22 @@ class QuestHomeViewModel @Inject constructor(
 
 /** Icons are read once, then kept (about 160 of them). */
 object QhIconCache {
-    private val cache = LruCache<String, ImageBitmap>(160)
+    private val cache = LruCache<String, ImageBitmap>(200)
     fun get(pkg: String): ImageBitmap? = cache.get(pkg)
-    fun load(ctx: Context, pkg: String): ImageBitmap? {
-        cache.get(pkg)?.let { return it }
+    fun clear() { cache.evictAll() }
+
+    /** [mode]: system | pack (installed icon pack [pack], else system) | image (own picture for this app). */
+    fun load(ctx: Context, pkg: String, mode: String = "system", pack: String = ""): ImageBitmap? {
+        val key = "$mode|$pack|$pkg"
+        cache.get(key)?.let { return it }
         return runCatching {
-            val bmp = ctx.packageManager.getApplicationIcon(pkg).toBitmap(128, 128).asImageBitmap()
-            cache.put(pkg, bmp)
+            val d = when (mode) {
+                "image" -> android.graphics.BitmapFactory.decodeFile(com.krishna.questblock.data.QhIcons.imageFile(ctx, pkg).absolutePath)?.let { android.graphics.drawable.BitmapDrawable(ctx.resources, it) }
+                "pack" -> com.krishna.questblock.data.QhIcons.drawable(ctx, pack, pkg)
+                else -> null
+            } ?: ctx.packageManager.getApplicationIcon(pkg)
+            val bmp = d.toBitmap(128, 128).asImageBitmap()
+            cache.put(key, bmp)
             bmp
         }.getOrNull()
     }
@@ -243,4 +348,12 @@ internal fun qhImportWall(ctx: Context, uri: Uri): Boolean {
     val ok = com.krishna.questblock.data.QhWallFile.import(ctx, uri)
     if (!ok) Toast.makeText(ctx, "Could not read that picture", Toast.LENGTH_SHORT).show()
     return ok
+}
+
+/** v214: pulls down the notification shade (needs no accessibility; uses the status bar service). */
+internal fun qhNotifications(ctx: Context) {
+    runCatching {
+        val sb = ctx.getSystemService("statusbar")
+        Class.forName("android.app.StatusBarManager").getMethod("expandNotificationsPanel").invoke(sb)
+    }.onFailure { Toast.makeText(ctx, "Can't open notifications here", Toast.LENGTH_SHORT).show() }
 }

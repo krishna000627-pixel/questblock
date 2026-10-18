@@ -83,12 +83,23 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "strict" to listOf("on", "off"),
     "perms" to listOf("grant"),
     "debuglog" to listOf("clear"),
-    "ideas" to listOf("add", "done", "rm", "clear", "copy"),
+    "ideas" to listOf("add", "done", "rm", "clear", "copy", "tag", "status", "pin", "prio", "find"),
+    "ideas add" to listOf("ui", "launcher", "bug", "theme", "other", "feature", "termux", "idea"),
+    "ideas tag" to listOf("ui", "launcher", "bug", "theme", "other", "none"),
+    "ideas status" to listOf("idea", "next", "doing", "done"),
+    "ideas copy" to listOf("all", "ui", "launcher", "bug", "theme", "other"),
     "about" to listOf("open"),
     "theme set" to listOf("default", "paper", "termux", "questhome"),
-    "qhome" to listOf("status", "themes", "theme", "icons", "icon", "widget", "pages", "add", "rm", "dock", "folder", "hide", "unhide", "hidden", "apps", "set", "wall", "grid", "block", "focushome", "export", "import", "default", "reset"),
-    "qhome set" to listOf("ls", "wall", "dim", "blur", "wallcolor", "cols", "dock", "iconsize", "labels", "lines", "tile", "az", "searchhidden", "hiddenbadge", "focushome", "lockedhide", "block", "g.double", "g.long", "g.up", "g.down"),
-    "qhome wall" to listOf("svg", "phone", "phonesvg", "color", "picture", "dim", "blur"),
+    "qhome" to listOf("status", "themes", "theme", "icons", "icon", "pack", "awidget", "widget", "pages", "add", "rm", "dock", "folder", "hide", "unhide", "hidden", "apps", "set", "wall", "grid", "block", "focushome", "export", "import", "default", "reset"),
+    "qhome set" to listOf("ls", "wall", "dim", "blur", "wallcolor", "cols", "dock", "iconsize", "labels", "lines", "tile", "az", "searchhidden", "hiddenbadge", "focushome", "lockedhide", "block", "g.double", "g.long", "g.up", "g.down",
+        "g2.up", "g2.down", "pages", "rows", "transition", "parallax", "animate", "iconsrc", "list", "sort", "recentrow", "mostrow",
+        "revealword", "revealcost", "revealgesture", "watcher", "sheet", "clockscale", "questscount", "hwcount", "focuspreset",
+        "nighttheme", "nightfrom", "nightto", "dots", "folderstyle", "dockstyle", "usagebadge", "studyfirst", "notifdots", "searchextra", "searchcontacts"),
+    "qhome theme" to listOf("new", "path", "del", "material"),
+    "qhome hide" to listOf("rules"),
+    "qhome pack" to listOf("1", "2"),
+    "qhome awidget" to listOf("ls", "rm"),
+    "qhome wall" to listOf("svg", "phone", "phonesvg", "color", "picture", "pick", "dim", "blur"),
     "qhome grid" to listOf("4", "5", "6"),
     "qhome block" to listOf("accessibility", "launcher", "both"),
     "qhome focushome" to listOf("on", "off"),
@@ -99,7 +110,6 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "qhome theme" to listOf("dungeon", "forest", "cyber", "terminal", "paper", "ocean", "sakura", "desert", "space", "steel"),
     "poster" to listOf("pick", "on", "off", "tint", "dim"),
     "suggest" to listOf("add", "physics", "chemistry", "maths", "boards"),
-    "ideas add" to listOf("bug", "feature", "ui", "termux", "idea"),
     "cd" to listOf("~", "quests", "hw", "focus", "vault", "shop", "stats", "settings", "ideas"),
     "hw" to listOf("add", "ls", "board", "done", "undo", "rm", "edit", "focus", "week", "copy", "bed"),
     "hw add" to listOf("physics", "chemistry", "maths", "hindi", "english"),
@@ -192,6 +202,13 @@ private val MAN: Map<String, String> = mapOf(
         "qhome set ls | set <key> <value>   every launcher setting (grid, dock 4-6, icon size, labels, drawer, gestures, hiding)   qhome export | import <text>\n" +
         "qhome block [accessibility|launcher|both]   what blocks an app: accessibility is strong; launcher only guards taps inside Quest Home (notifications, recents, other launchers and links stay open)\n" +
         "qhome focushome on|off   during Focus hide every app that was not picked (instead of dimming it)\n" +
+        "qhome icon <app> label <text>|image|emoji <e>|letters <ab>|pack|system|shape <s>|color <#hex>|reset   per-app look (image opens Android's picture picker)\n" +
+        "qhome pack [n|name]   icon packs (ADW / Nova style); qhome set iconsrc system|glyph|pack|none\n" +
+        "qhome grid <4-6>[x<rows>]   qhome wall pick   opens Android's picker for the own wall picture\n" +
+        "qhome theme new <name> <#top> <#bottom> <#accent> [dark|light] [shape] | path <name> <svg path>|none | del <name> | material   own themes (up to 10), Material You on Android 12+\n" +
+        "qhome hide rules <fun-study|fun-quiet|fun-exam> on|off   hide Fun apps by rule; unhiding a Fun app waits until midnight while a fun rule is on\n" +
+        "qhome hidden   the hidden space (the launcher opens it by a search word, a long-press or coins; set with qhome set revealword|revealcost|revealgesture)\n" +
+        "qhome awidget ls|rm <n>   real Android widgets on the first page (adding is Android's own bind screen in the launcher settings)\n" +
         "qhome default (Android's own Home app page)   qhome reset. the launcher needs Android's Home app set to QuestBlock; not while a strict Focus session runs",
     "hw" to "hw add <subject> \"text\" [--due fri|\"fri 18:00\"] [--ch 3] [--copy] [-t 30m]   subject: p c m h e. no --due = tomorrow 08:00; --ch links a chapter\n" +
         "hw | hw board              the five subjects, due in 24 hours, clean-day streak\n" +
@@ -266,7 +283,23 @@ class TermuxViewModel @Inject constructor(
         ctx,
         { s, q -> pickApp(s, q) },
         { s, q, y -> confirm(s, q, y) },
+        { kind -> qhPick = kind },
     )
+    /** v214: "wall" or "icon:<pkg>"; the shell opens Android's picture picker when this is set. */
+    var qhPick by mutableStateOf<String?>(null)
+    fun onQhPicked(kind: String, uri: Uri?) {
+        if (uri == null) return
+        viewModelScope.launch {
+            val s = sessionList.getOrNull(activeIndex) ?: sessionList.first()
+            val ok = withContext(Dispatchers.IO) {
+                if (kind == "wall") com.krishna.questblock.data.QhWallFile.import(ctx, uri)
+                else com.krishna.questblock.data.QhIcons.importImage(ctx, kind.removePrefix("icon:"), uri)
+            }
+            if (!ok) { s.err("could not read that picture"); return@launch }
+            if (kind == "wall") { com.krishna.questblock.data.QhStore.update(ctx) { it.copy(wall = "picture") }; s.ok("own wall picture set and used") }
+            else { com.krishna.questblock.data.QhStore.update(ctx) { it.copy(appIcons = it.appIcons + (kind.removePrefix("icon:") to "image")) }; qhIconsChanged(); s.ok("icon picture set") }
+        }
+    }
     private var hwSoonAt = 0L
     private var hwSoon: List<HwItem> = emptyList()
 
@@ -2456,12 +2489,19 @@ class TermuxViewModel @Inject constructor(
         when (a.pos.getOrNull(1)?.lowercase()) {
             "add" -> {
                 var t = a.rest(2).trim()
-                if (t.isEmpty()) { s.err("usage: ideas add [bug|feature|ui|termux|idea] <text>"); return }
-                // v209: a first word like termux or bug adds the tag the Ideas page would
+                if (t.isEmpty()) { s.err("usage: ideas add [ui|launcher|bug|theme|other] <text>"); return }
+                // a first word like bug or ui sets the tag; the old words (feature, termux, idea) still add their emoji prefix
                 val words = t.split(" ", limit = 2)
-                val tag = IDEA_TAGS.firstOrNull { it.label.substringAfter(' ').equals(words[0], ignoreCase = true) }
-                if (tag != null && words.size > 1 && words[1].isNotBlank()) t = tag.prefix + words[1].trim()
-                IdeaStore.add(ctx, t)
+                var newTag = ""
+                if (words.size > 1 && words[1].isNotBlank()) {
+                    val w = words[0].lowercase()
+                    if (w in IdeaStore.TAGS) { newTag = w; t = words[1].trim() }
+                    else {
+                        val tag = IDEA_TAGS.firstOrNull { it.label.substringAfter(' ').equals(words[0], ignoreCase = true) }
+                        if (tag != null) t = tag.prefix + words[1].trim()
+                    }
+                }
+                IdeaStore.add(ctx, t, newTag)
                 s.ok("noted")
             }
             "done" -> {
@@ -2478,13 +2518,44 @@ class TermuxViewModel @Inject constructor(
             }
             "clear" -> { IdeaStore.clearDone(ctx); s.ok("done ideas cleared") }
             "copy" -> extras.ideasCopy(s, a)
+            "tag" -> {
+                val n = a.pos.getOrNull(2)?.toIntOrNull(); val t = a.pos.getOrNull(3)?.lowercase()
+                if (n == null || n < 1 || n > IdeaStore.all(ctx).size || t == null || (t != "none" && t !in IdeaStore.TAGS)) { s.err("usage: ideas tag <n> <${IdeaStore.TAGS.joinToString("|")}|none>"); return }
+                IdeaStore.setMeta(ctx, n - 1, tag = if (t == "none") "" else t); s.ok("#$n tag: $t")
+            }
+            "status" -> {
+                val n = a.pos.getOrNull(2)?.toIntOrNull(); val t = a.pos.getOrNull(3)?.lowercase()
+                if (n == null || n < 1 || n > IdeaStore.all(ctx).size || t == null || t !in IdeaStore.STATUSES) { s.err("usage: ideas status <n> <${IdeaStore.STATUSES.joinToString("|")}>"); return }
+                IdeaStore.setMeta(ctx, n - 1, status = t); s.ok("#$n status: $t")
+            }
+            "pin" -> {
+                val n = a.pos.getOrNull(2)?.toIntOrNull()
+                if (n == null || n < 1 || n > IdeaStore.all(ctx).size) { s.err("usage: ideas pin <n> [on|off]"); return }
+                val on = when (a.pos.getOrNull(3)?.lowercase()) { "off", "0", "no" -> false; "on", "1", "yes" -> true; else -> !IdeaStore.all(ctx)[n - 1].pin }
+                IdeaStore.setMeta(ctx, n - 1, pin = on); s.ok("#$n ${if (on) "pinned" else "unpinned"}")
+            }
+            "prio" -> {
+                val n = a.pos.getOrNull(2)?.toIntOrNull(); val p = a.pos.getOrNull(3)?.toIntOrNull()
+                if (n == null || n < 1 || n > IdeaStore.all(ctx).size || p == null || p !in 0..3) { s.err("usage: ideas prio <n> <0-3>"); return }
+                IdeaStore.setMeta(ctx, n - 1, prio = p); s.ok("#$n priority: $p")
+            }
+            "find", "ls" -> {
+                val f = a.rest(2).trim().lowercase()
+                val l = IdeaStore.all(ctx)
+                s.head("ideas" + if (f.isNotEmpty()) " ($f)" else "")
+                l.withIndex().filter { (_, it) -> f.isEmpty() || it.tag == f || it.status == f || it.text.lowercase().contains(f) }
+                    .sortedWith(compareByDescending<IndexedValue<com.krishna.questblock.data.Idea>> { it.value.pin }.thenByDescending { it.value.prio })
+                    .forEach { (i, it) -> s.out("{c}${i + 1}{/} ${if (it.pin) "\u2605" else " "} ${it.status.padEnd(5)} ${(if (it.tag.isEmpty()) "-" else it.tag).padEnd(8)} P${it.prio} ${it.text.tm()}") }
+            }
             null -> {
                 val l = IdeaStore.all(ctx)
                 s.head("ideas")
                 if (l.isEmpty()) s.dim("none. ideas add <text>")
-                l.forEachIndexed { i, it -> s.out("{c}${i + 1}{/} ${if (it.done) "{g}[x]{/}" else "[ ]"} ${it.text.tm()}") }
+                l.forEachIndexed { i, it ->
+                    s.out("{c}${i + 1}{/} ${if (it.done) "{g}[x]{/}" else "[ ]"} ${if (it.pin) "\u2605 " else ""}{d}${it.status}${if (it.tag.isEmpty()) "" else " " + it.tag}${if (it.prio > 0) " P" + it.prio else ""}{/} ${it.text.tm()}")
+                }
             }
-            else -> s.err("usage: ideas | add | done | rm | clear | copy")
+            else -> s.err("usage: ideas | add | done | rm | clear | copy | tag | status | pin | prio | find")
         }
     }
 
@@ -2581,6 +2652,12 @@ fun TermuxShell(
     ) { uri -> vm.onPosterPicked(uri) }
     LaunchedEffect2(vm.posterPick) {
         if (vm.posterPick) { vm.posterPick = false; posterPicker.launch("image/*") }
+    }
+    val qhPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent(),
+    ) { uri -> vm.qhPick?.let { k -> vm.onQhPicked(k, uri); vm.qhPick = null } }
+    LaunchedEffect2(vm.qhPick) {
+        if (vm.qhPick != null) qhPicker.launch("image/*")
     }
     var strict by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(TermuxMode.strictNow(ctx)) }
     LaunchedEffect2(Unit) {

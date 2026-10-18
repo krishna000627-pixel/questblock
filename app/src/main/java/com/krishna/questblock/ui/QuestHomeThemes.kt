@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Fill
@@ -207,12 +208,47 @@ val QH_THEMES: List<QhTheme> = listOf(
     ),
 )
 
-fun qhTheme(id: String): QhTheme = QH_THEMES.firstOrNull { it.id == id } ?: QH_THEMES.first()
+/** v214: a saved own theme as a normal theme. */
+fun qhFromCustom(c: com.krishna.questblock.data.QhCustomTheme): QhTheme = QhTheme(
+    c.id, c.name, "my theme", c.top, c.bottom,
+    if (c.dark) 0xFFF2F2F7 else 0xFF1B1B22, if (c.dark) 0xFFB5B5C2 else 0xFF5A5A66, c.accent,
+    if (c.dark) 0x33FFFFFF else 0x22000000, if (c.dark) 0x66000000 else 0x66FFFFFF, c.shape,
+    if (c.wall.isBlank()) emptyList() else listOf(QhLayer(c.wall, c.accent, 0.35f, 0f)),
+)
+
+fun qhTheme(id: String): QhTheme =
+    QH_THEMES.firstOrNull { it.id == id }
+        ?: com.krishna.questblock.data.QhStore.customCache.firstOrNull { it.id == id }?.let { qhFromCustom(it) }
+        ?: QH_THEMES.first()
+
+/** v214: colours from the phone (Android 12+) as one extra theme. */
+fun qhMaterialTheme(ctx: android.content.Context): QhTheme? {
+    if (android.os.Build.VERSION.SDK_INT < 31) return null
+    val cs = androidx.compose.material3.dynamicDarkColorScheme(ctx)
+    fun c(x: Color): Long = x.toArgb().toLong() and 0xFFFFFFFFL
+    return QhTheme(
+        "material", "Material You", "colours from your phone", c(cs.surface), c(cs.surfaceVariant), c(cs.onSurface), c(cs.onSurfaceVariant), c(cs.primary),
+        (c(cs.primaryContainer) and 0xFFFFFFL) or 0x99000000L, (c(cs.surfaceContainer) and 0xFFFFFFL) or 0xB3000000L, "squircle", emptyList(),
+    )
+}
+
+/** v214: every theme the person can pick (built in, own, Material You). */
+fun qhAllThemes(ctx: android.content.Context): List<QhTheme> =
+    QH_THEMES + com.krishna.questblock.data.QhStore.customCache.map { qhFromCustom(it) } + listOfNotNull(qhMaterialTheme(ctx))
+
+/** v214: the theme in use right now: the night theme between the night hours, else the chosen one. */
+fun qhThemeForState(ctx: android.content.Context, st: com.krishna.questblock.data.QhState): QhTheme {
+    val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+    val night = st.nightTheme.isNotBlank() && (if (st.nightFrom == st.nightTo) false else if (st.nightFrom < st.nightTo) h in st.nightFrom until st.nightTo else (h >= st.nightFrom || h < st.nightTo))
+    val id = if (night) st.nightTheme else st.theme
+    return if (id == "material") qhMaterialTheme(ctx) ?: qhTheme(st.theme) else qhTheme(id)
+}
 
 fun qhThemeFor(nameOrNumber: String): QhTheme? {
     val t = nameOrNumber.trim().lowercase()
     t.toIntOrNull()?.let { return QH_THEMES.getOrNull(it - 1) }
-    return QH_THEMES.firstOrNull { it.id == t || it.name.lowercase() == t } ?: QH_THEMES.firstOrNull { it.name.lowercase().startsWith(t) || it.id.startsWith(t) }
+    val all = QH_THEMES + com.krishna.questblock.data.QhStore.customCache.map { qhFromCustom(it) }
+    return all.firstOrNull { it.id == t || it.name.lowercase() == t } ?: all.firstOrNull { it.name.lowercase().startsWith(t) || it.id.startsWith(t) }
 }
 
 val QH_SHAPES: List<String> = listOf("circle", "squircle", "square", "leaf", "hexagon", "diamond")
@@ -236,10 +272,14 @@ fun qhColor(v: Long): Color = Color(v)
 
 /** The theme background: a gradient with the SVG layers on top, a few of them slowly moving. */
 @Composable
-fun QhBackground(theme: QhTheme, modifier: Modifier = Modifier.fillMaxSize(), fill: Boolean = true) {
-    val paths = remember(theme.id) { theme.layers.map { PathParser().parsePathString(it.d).toPath() } }
-    val tr = rememberInfiniteTransition(label = "qh")
-    val t by tr.animateFloat(0f, 1f, infiniteRepeatable(tween(14000, easing = LinearEasing), RepeatMode.Restart), label = "qht")
+fun QhBackground(theme: QhTheme, modifier: Modifier = Modifier.fillMaxSize(), fill: Boolean = true, animate: Boolean = true) {
+    val paths = remember(theme.id, theme.layers.size, theme.layers.firstOrNull()?.d) {
+        theme.layers.map { l -> runCatching { PathParser().parsePathString(l.d).toPath() }.getOrDefault(Path()) }
+    }
+    val t: Float = if (animate) {
+        val tr = rememberInfiniteTransition(label = "qh")
+        tr.animateFloat(0f, 1f, infiniteRepeatable(tween(14000, easing = LinearEasing), RepeatMode.Restart), label = "qht").value
+    } else 0f
     Canvas(modifier) {
         if (fill) drawRect(Brush.verticalGradient(listOf(Color(theme.top), Color(theme.bottom))))
         val sx = size.width / 100f

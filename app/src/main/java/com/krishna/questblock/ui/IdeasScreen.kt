@@ -6,7 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -44,6 +45,14 @@ internal const val TERMUX_RULE =
     "- The Termux theme (ui/Termux*.kt) must keep working: for every change above, add or extend its terminal command with help text, " +
         "suggestion chips and Focus/strict rules, and give any new page or lock screen a terminal version. Nothing in the terminal may open a normal page."
 
+/** Where an idea sits in the update prompt: new tag order first, then the old emoji tags, then the rest. */
+internal fun ideaRank(i: com.krishna.questblock.data.Idea): Int {
+    val order = listOf("bug", "launcher", "ui", "theme", "other")
+    if (i.tag.isNotEmpty()) return order.indexOf(i.tag).let { if (it < 0) 9 else it }
+    val t = tagOf(i.text)
+    return 10 + (if (t == null) 9 else IDEA_TAGS.indexOf(t))
+}
+
 internal fun tagOf(text: String): IdeaTag? =
     IDEA_TAGS.firstOrNull { text.startsWith(it.prefix.trim()) } ?:
         IDEA_TAGS.firstOrNull { text.startsWith(it.label.substringBefore(' ')) }
@@ -77,7 +86,7 @@ fun IdeasScreen(onBack: () -> Unit) {
     val version = remember {
         runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
     }
-    val open = ideas.filter { !it.done }
+    val open = ideas.filter { it.status != "done" }
     val doneCount = ideas.size - open.size
 
     fun copy(text: String) {
@@ -86,6 +95,38 @@ fun IdeasScreen(onBack: () -> Unit) {
         Toast.makeText(ctx, "Copied", Toast.LENGTH_SHORT).show()
     }
     fun reload() { ideas = IdeaStore.all(ctx) }
+    var q by remember { mutableStateOf("") }
+    var tagF by remember { mutableStateOf("") }
+    var statusF by remember { mutableStateOf("") }
+    var selected by remember { mutableStateOf(setOf<Int>()) }
+    fun sendPrompt(list: List<com.krishna.questblock.data.Idea>, indices: List<Int>) {
+                val cur = version.substringBefore('.').toIntOrNull()
+                val head = if (cur != null)
+                    "QuestBlock v$cur (latest zip attached). Bump to v${cur + 1} and make these changes. Short reply, give the Termux command."
+                else "QuestBlock (latest zip attached). Make these changes and bump the version. Short reply, give the Termux command."
+                val logPart = if (withLog) "\n\nDebug log (last 15 lines):\n" +
+                    com.krishna.questblock.util.DebugLog.read().lines().filter { it.isNotBlank() }.takeLast(15).joinToString("\n") else ""
+                // changes grouped: bugs, features, UI, ideas, then untagged; numbered straight through
+                val ordered = list.sortedWith(compareByDescending<com.krishna.questblock.data.Idea> { it.prio }.thenBy { ideaRank(it) })
+                val changes = ordered.mapIndexed { i, it -> "${i + 1}. " + (if (it.tag.isNotEmpty()) "[${it.tag}] " else "") + (if (it.prio > 0) "(priority ${it.prio}) " else "") + it.text }.joinToString("\n")
+                val rules = "Rules:\n" +
+                    "- Bump versionCode and versionName in app/build.gradle.kts.\n" +
+                    "- Add a new entry at the top of VERSION_LOG in data/VersionLog.kt. Read VersionLog.kt first for more info: it holds the full history of past updates and what each one changed, so do not redo or undo them.\n" +
+                    "- Change only what the list above needs.\n" +
+                    "- Keep the reply short." + (if (withTermux) "\n" + TERMUX_RULE else "")
+                val cmd = if (cur != null) {
+                    val n = cur + 1
+                    "\n\nEnd your reply with this Termux command:\n" +
+                        "cd ~ && unzip -oq ~/storage/downloads/QuestBlock_v$n.zip -d ~/qb$n && cp -r ~/qb$n/QuestBlock_v$n/. ~/QuestBlock/ && rm -rf ~/qb$n && cd ~/QuestBlock && bash termux/release.sh \"v$n: short summary\""
+                } else ""
+                copy(head + "\n\n" + changes + "\n\n" + rules + cmd + logPart)
+                // everything that was just copied is now sent: tick it all off
+                val sent = indices
+                sent.forEach { IdeaStore.setMeta(ctx, it, status = "done") }
+                editing = -1; reload()
+                Toast.makeText(ctx, "Copied. ${sent.size} scrolls ticked off", Toast.LENGTH_SHORT).show()
+    }
+
 
     LazyColumn(
         Modifier.fillMaxSize().background(ColorBg),
@@ -155,33 +196,7 @@ fun IdeasScreen(onBack: () -> Unit) {
         if (open.isNotEmpty()) item {
             RpgPanel("🚀 Send to the forge", accent = ColorPrimary) {
                 Button(
-                    onClick = {
-                        val cur = version.substringBefore('.').toIntOrNull()
-                        val head = if (cur != null)
-                            "QuestBlock v$cur (latest zip attached). Bump to v${cur + 1} and make these changes. Short reply, give the Termux command."
-                        else "QuestBlock (latest zip attached). Make these changes and bump the version. Short reply, give the Termux command."
-                        val logPart = if (withLog) "\n\nDebug log (last 15 lines):\n" +
-                            com.krishna.questblock.util.DebugLog.read().lines().filter { it.isNotBlank() }.takeLast(15).joinToString("\n") else ""
-                        // changes grouped: bugs, features, UI, ideas, then untagged; numbered straight through
-                        val ordered = IDEA_TAGS.flatMap { t -> open.filter { tagOf(it.text) === t } } + open.filter { tagOf(it.text) == null }
-                        val changes = ordered.mapIndexed { i, it -> "${i + 1}. ${it.text}" }.joinToString("\n")
-                        val rules = "Rules:\n" +
-                            "- Bump versionCode and versionName in app/build.gradle.kts.\n" +
-                            "- Add a new entry at the top of VERSION_LOG in data/VersionLog.kt. Read VersionLog.kt first for more info: it holds the full history of past updates and what each one changed, so do not redo or undo them.\n" +
-                            "- Change only what the list above needs.\n" +
-                            "- Keep the reply short." + (if (withTermux) "\n" + TERMUX_RULE else "")
-                        val cmd = if (cur != null) {
-                            val n = cur + 1
-                            "\n\nEnd your reply with this Termux command:\n" +
-                                "cd ~ && unzip -oq ~/storage/downloads/QuestBlock_v$n.zip -d ~/qb$n && cp -r ~/qb$n/QuestBlock_v$n/. ~/QuestBlock/ && rm -rf ~/qb$n && cd ~/QuestBlock && bash termux/release.sh \"v$n: short summary\""
-                        } else ""
-                        copy(head + "\n\n" + changes + "\n\n" + rules + cmd + logPart)
-                        // everything that was just copied is now sent: tick it all off
-                        val sent = ideas.indices.filter { !ideas[it].done }
-                        sent.forEach { IdeaStore.toggle(ctx, it) }
-                        editing = -1; reload()
-                        Toast.makeText(ctx, "Copied. ${sent.size} scrolls ticked off", Toast.LENGTH_SHORT).show()
-                    },
+                    onClick = { sendPrompt(open, ideas.indices.filter { ideas[it].status != "done" }) },
                     modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(12.dp),
                 ) { Text("📋 Copy as update prompt (${open.size})", fontWeight = FontWeight.Bold) }
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -200,27 +215,66 @@ fun IdeasScreen(onBack: () -> Unit) {
             Text("The board is empty. Write what you want changed, tick it off when it's done.",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted, modifier = Modifier.padding(4.dp))
         }
-        itemsIndexed(ideas) { i, idea ->
+        // ── Search and filters ──────────────────────────────────────────
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedTextField(value = q, onValueChange = { q = it }, singleLine = true, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Search scrolls") })
+                Row(Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FilterChip(selected = tagF == "", onClick = { tagF = "" }, label = { Text("All tags") })
+                    IdeaStore.TAGS.forEach { t -> FilterChip(selected = tagF == t, onClick = { tagF = if (tagF == t) "" else t }, label = { Text(t) }) }
+                }
+                Row(Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FilterChip(selected = statusF == "", onClick = { statusF = "" }, label = { Text("Any status") })
+                    IdeaStore.STATUSES.forEach { t -> FilterChip(selected = statusF == t, onClick = { statusF = if (statusF == t) "" else t }, label = { Text(t) }) }
+                }
+                if (selected.isNotEmpty()) {
+                    Button(
+                        onClick = {
+                            val idx = selected.filter { it in ideas.indices }.sorted()
+                            sendPrompt(idx.map { ideas[it] }, idx)
+                            selected = emptySet()
+                        },
+                        modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(12.dp),
+                    ) { Text("\uD83D\uDCCB Copy ${selected.size} ticked as one update prompt", fontWeight = FontWeight.Bold) }
+                }
+            }
+        }
+        val shown = ideas.withIndex().filter { (_, it) ->
+            (q.isBlank() || it.text.contains(q.trim(), ignoreCase = true)) && (tagF.isEmpty() || it.tag == tagF) && (statusF.isEmpty() || it.status == statusF)
+        }.sortedWith(compareByDescending<IndexedValue<com.krishna.questblock.data.Idea>> { it.value.pin }.thenByDescending { it.value.prio })
+        items(shown.size) { n ->
+            val i = shown[n].index
+            val idea = shown[n].value
             val tag = tagOf(idea.text)
-            val accent = if (idea.done) ColorMuted else (tag?.color ?: ColorPrimary)
+            val tagColor = when (idea.tag) { "bug" -> Color(0xFFFF5C5C); "ui" -> Color(0xFFB45CFF); "launcher" -> Color(0xFF3DDC84); "theme" -> Color(0xFFFFC857); "other" -> Color(0xFF5C9EFF); else -> tag?.color ?: ColorPrimary }
+            val done = idea.status == "done"
+            val accent = if (done) ColorMuted else tagColor
             val body = tag?.let { t -> idea.text.removePrefix(t.prefix).removePrefix(t.prefix.trim()).trim().ifEmpty { idea.text } } ?: idea.text
             Surface(shape = RoundedCornerShape(14.dp), color = ColorSurface, modifier = Modifier.fillMaxWidth()) {
                 Row(Modifier.height(IntrinsicSize.Min)) {
                     Box(Modifier.width(5.dp).fillMaxHeight().background(accent))
                     Column(Modifier.weight(1f).padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 2.dp)) {
-                        Row(verticalAlignment = Alignment.Top) {
-                            Checkbox(checked = idea.done, onCheckedChange = { IdeaStore.toggle(ctx, i); reload() })
-                            Column(Modifier.weight(1f).padding(top = 10.dp, end = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                if (tag != null) Surface(shape = RoundedCornerShape(6.dp), color = accent.copy(alpha = 0.15f)) {
-                                    Text(tag.label, Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
-                                        style = MaterialTheme.typography.labelSmall, color = accent, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = i in selected, onCheckedChange = { c -> selected = if (c) selected + i else selected - i })
+                            Row(Modifier.weight(1f).horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Surface(shape = RoundedCornerShape(6.dp), color = accent.copy(alpha = 0.15f), onClick = {
+                                    val order = listOf("") + IdeaStore.TAGS
+                                    IdeaStore.setMeta(ctx, i, tag = order[(order.indexOf(idea.tag) + 1) % order.size]); reload()
+                                }) { Text(if (idea.tag.isEmpty()) (tag?.label ?: "+ tag") else idea.tag, Modifier.padding(horizontal = 8.dp, vertical = 3.dp), style = MaterialTheme.typography.labelSmall, color = accent, fontWeight = FontWeight.Bold) }
+                                Surface(shape = RoundedCornerShape(6.dp), color = ColorMuted.copy(alpha = 0.18f), onClick = {
+                                    IdeaStore.setMeta(ctx, i, status = IdeaStore.STATUSES[(IdeaStore.STATUSES.indexOf(idea.status) + 1) % IdeaStore.STATUSES.size]); reload()
+                                }) { Text(idea.status, Modifier.padding(horizontal = 8.dp, vertical = 3.dp), style = MaterialTheme.typography.labelSmall, color = ColorText, fontWeight = FontWeight.Bold) }
+                                Surface(shape = RoundedCornerShape(6.dp), color = ColorMuted.copy(alpha = 0.18f), onClick = { IdeaStore.setMeta(ctx, i, prio = (idea.prio + 1) % 4); reload() }) {
+                                    Text(if (idea.prio == 0) "P-" else "P${idea.prio}", Modifier.padding(horizontal = 8.dp, vertical = 3.dp), style = MaterialTheme.typography.labelSmall, color = ColorText, fontWeight = FontWeight.Bold)
                                 }
-                                Text(body,
-                                    color = if (idea.done) ColorMuted else ColorText,
-                                    textDecoration = if (idea.done) TextDecoration.LineThrough else null,
-                                    style = MaterialTheme.typography.bodyMedium)
                             }
+                            Text(if (idea.pin) "\u2605" else "\u2606", color = if (idea.pin) ColorCoin else ColorMuted,
+                                modifier = Modifier.clickable { IdeaStore.setMeta(ctx, i, pin = !idea.pin); reload() }.padding(8.dp))
                         }
+                        Text(body, Modifier.padding(start = 14.dp, end = 10.dp, bottom = 2.dp),
+                            color = if (done) ColorMuted else ColorText,
+                            textDecoration = if (done) TextDecoration.LineThrough else null,
+                            style = MaterialTheme.typography.bodyMedium)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                             IconButton(onClick = { copy(idea.text) }, modifier = Modifier.size(38.dp)) {
                                 Icon(Icons.Default.ContentCopy, "Copy", tint = ColorMuted, modifier = Modifier.size(18.dp)) }
@@ -228,6 +282,7 @@ fun IdeasScreen(onBack: () -> Unit) {
                                 Icon(Icons.Default.Edit, "Edit", tint = ColorMuted, modifier = Modifier.size(18.dp)) }
                             IconButton(onClick = {
                                 IdeaStore.delete(ctx, i)
+                                selected = emptySet()
                                 if (editing == i) { editing = -1; setDraft("") } else if (editing > i) editing--
                                 reload()
                             }, modifier = Modifier.size(38.dp)) {
