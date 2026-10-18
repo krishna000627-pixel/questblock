@@ -112,6 +112,7 @@ fun InventoryScreen(onBack: () -> Unit, vm: InventoryViewModel = hiltViewModel()
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
+                TitleIcon("Shop", 24.dp, endPad = 8.dp)
                 Text("Shop", style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold, color = ColorText, modifier = Modifier.weight(1f))
                 Text("🪙 ${player.coins}", style = MaterialTheme.typography.titleMedium,

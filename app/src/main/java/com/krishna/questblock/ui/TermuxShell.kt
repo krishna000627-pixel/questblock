@@ -64,7 +64,7 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "help" to listOf("core", "quests", "focus", "blocking", "economy", "progress", "settings"),
     "man" to TOP_COMMANDS,
     "theme" to listOf("set"),
-    "theme set" to listOf("default", "phone", "paper", "termux", "questhome"),
+    "theme set" to listOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "termux", "questhome"),
     "flags" to listOf("ls", "on", "off"),
     "flags on" to listOf("phone", "termux", "home", "homework"),
     "flags off" to listOf("phone", "termux", "home", "homework"),
@@ -141,7 +141,7 @@ private val MAN: Map<String, String> = mapOf(
     "whoami" to "whoami              hero name, goal, birthday, level",
     "alias" to "alias [name=cmd]    list or make a shortcut, e.g. alias qt=quests --today",
     "unalias" to "unalias <name>     remove a shortcut",
-    "theme" to "theme [set default|phone|paper|termux|questhome]   default/phone = the normal look (Quest Phone), paper = the Paper & Ink look (you must own it: shop buy paper), questhome = the launcher. A theme turned off in flags is refused. refused during Focus",
+    "theme" to "theme [set default|phone|paper|linen|sage|sky|lilac|chalk|termux|questhome]   default/phone = the normal look (Quest Phone), paper, linen, sage, sky, lilac, chalk = the plain light shop themes (you must own it: shop buy <name>), questhome = the launcher. A theme turned off in flags is refused. refused during Focus",
     "flags" to "flags [ls] | on <phone|termux|home|homework> | off <phone|termux|home|homework>   turn the three app themes and the homework tracker on or off (the one theme left on can't be turned off). refused during Focus (flags ls still works)",
     "home" to "home                go to the phone home screen",
     "setup" to "setup               first-run steps: set name/goal/dob, perms, then setup done",
@@ -769,7 +769,7 @@ class TermuxViewModel @Inject constructor(
             "perms" -> sub == "grant"
             "shop" -> sub in setOf("buy", "reward")
             "inv" -> sub in setOf("use", "equip", "unequip")
-            "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "phone", "paper", "questhome")
+            "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "questhome")
             "flags" -> sub in setOf("on", "off")
             "set" -> sub != null && sub != "ls"
             else -> false
@@ -1024,10 +1024,10 @@ class TermuxViewModel @Inject constructor(
         val sub = a.pos.getOrNull(1)?.lowercase()
         if (sub == null) {
             s.out("theme: {c}termux{/}   shop look: ${repo.player.first().equippedTheme}")
-            s.dim("theme set default|phone|paper|termux|questhome  \u00b7 flags: turn themes on or off")
+            s.dim("theme set default|phone|paper|linen|sage|sky|lilac|chalk|termux|questhome  \u00b7 flags: turn themes on or off")
             return
         }
-        if (sub != "set") { s.err("usage: theme set default|phone|paper|termux|questhome"); return }
+        if (sub != "set") { s.err("usage: theme set default|phone|paper|linen|sage|sky|lilac|chalk|termux|questhome"); return }
         when (a.pos.getOrNull(2)?.lowercase()) {
             "termux" -> s.ok("theme is already termux")
             "default", "phone" -> {
@@ -1037,13 +1037,15 @@ class TermuxViewModel @Inject constructor(
                 delay(400L)
                 AppThemes.apply(ctx, "phone")
             }
-            "paper" -> {
+            "paper", "linen", "sage", "sky", "lilac", "chalk" -> {
+                val word = a.pos.getOrNull(2)!!.lowercase()
+                val title = ShopCatalog.items.firstOrNull { it.id == "theme_$word" }?.name ?: word
                 if (TermuxMode.strictNow(ctx)) { s.err("refused: a strict Focus session is running"); return }
                 if (!AppThemes.enabled(ctx, "phone")) { s.err("Quest Phone is turned off in flags"); return }
-                val item = repo.inventory.first().firstOrNull { it.itemId == "theme_paper" }
-                if (item == null) { s.err("you don't own Paper & Ink yet: shop buy paper"); return }
+                val item = repo.inventory.first().firstOrNull { it.itemId == "theme_$word" }
+                if (item == null) { s.err("you don't own $title yet: shop buy $word"); return }
                 if (!item.isEquipped && !repo.equipItem(item)) { s.err("not enough coins for today's rent"); return }
-                s.ok("Paper & Ink equipped. switching\u2026")
+                s.ok("$title equipped. switching\u2026")
                 delay(400L)
                 TermuxMode.set(ctx, false)
             }
@@ -1055,7 +1057,7 @@ class TermuxViewModel @Inject constructor(
                 delay(400L)
                 AppThemes.apply(ctx, "home")
             }
-            else -> s.err("usage: theme set default|phone|paper|termux|questhome")
+            else -> s.err("usage: theme set default|phone|paper|linen|sage|sky|lilac|chalk|termux|questhome")
         }
     }
 

@@ -52,6 +52,7 @@ fun VersionScreen(onBack: () -> Unit) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
+                TitleIcon("Version info", 24.dp, endPad = 8.dp)
                 Column {
                     Text("Version info", style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold, color = ColorText)

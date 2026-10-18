@@ -351,6 +351,7 @@ private fun HomeHeader(name: String) {
     val greet = when { hour < 12 -> "Good Morning,"; hour < 17 -> "Good Afternoon,"; else -> "Good Evening," }
     Column(Modifier.fillMaxWidth().padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            TitleIcon("QuestBlock", 28.dp)
             Text("QuestBlock", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = ColorText)
         }
         Spacer(Modifier.height(6.dp))

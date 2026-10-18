@@ -45,6 +45,7 @@ fun FlagsScreen(onBack: () -> Unit) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
+                TitleIcon("Flags", 24.dp, endPad = 8.dp)
                 Column {
                     Text("Flags", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
                     Text("Turn an app theme or the homework tracker on or off. A theme that is off can't be equipped.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)

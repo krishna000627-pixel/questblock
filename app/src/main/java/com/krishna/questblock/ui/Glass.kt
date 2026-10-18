@@ -160,6 +160,7 @@ fun GlowBar(fraction: Float, modifier: Modifier = Modifier, height: Dp = 8.dp) {
 @Composable
 fun TitleWithIcon(emoji: String, title: String, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        TitleIcon(title)
         Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = ColorText)
     }
 }

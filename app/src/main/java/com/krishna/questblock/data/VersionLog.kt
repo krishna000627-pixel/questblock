@@ -3,6 +3,17 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("222.0.0", "Icons for the rest of the page titles, five plain light themes",
+        listOf(
+            "Outline title icons (ui/TitleIcons.kt) on 13 more pages: About me, App categories, Debug log, Flags, Homework, Quest board, Shop, Marks, Reliability, Self test, App usage, Version info, Weekly review. The emoji in the Homework, Quest board and Marks titles is gone",
+            "Five new plain light themes in Shop > Themes, in the Paper & Ink style (4 coins a day while equipped, equip them in My Items): Linen Grey, Sage Paper, Sky Paper, Lilac Paper, Chalk & Charcoal. Each picks the light look by itself like Paper & Ink (SHOP_THEME_LIGHT and SHOP_PALETTES in ui/Theme.kt, one line each in data/ShopCatalog.kt)",
+            "Terminal: theme set paper|linen|sage|sky|lilac|chalk equips an owned one and switches to the normal look (shop buy <name> to get it); help, man theme, chips and the strict-Focus refusal cover the new names",
+        )),
+    VersionEntry("221.0.0", "Outline icons in front of the page titles",
+        listOf(
+            "Page titles have a thin outline icon in the theme colour again (instead of the old emoji tile): QuestBlock (sword), Quests (checklist), Focus (bolt), Vault (lock), Settings (sliders), Badges (award), Rules (page), Chapters (books), Attendance (calendar tick), Stats (bars), Experiments (flask)",
+            "The icons are drawn from SVG path data in ui/TitleIcons.kt, so they stay sharp at any size and follow the accent colour. A title with no entry in that list gets no icon. The terminal has no icons, so it is unchanged",
+        )),
     VersionEntry("220.0.0", "Homework tracker is a switch on the flags page",
         listOf(
             "Flags page (7 taps on the newest entry in Version info) has a Homework tracker switch, off by default. It turns the widget, search, Home pill, notifications, lock page lines and terminal hw on or off. Some screens pick it up after you reopen them. Refused during a Focus session",
