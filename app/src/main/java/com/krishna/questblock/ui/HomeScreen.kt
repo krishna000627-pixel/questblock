@@ -280,7 +280,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SlimPill("\uD83D\uDCDA Chapters", true, onOpenChapters, Modifier.weight(1f))
                     SlimPill("\uD83D\uDCC5 Attendance", true, onOpenAttendance, Modifier.weight(1f))
-                    if (com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) SlimPill("\uD83D\uDCDD Homework" + if (hwDue > 0) " ($hwDue)" else "", hwDue > 0, onOpenHomework, Modifier.weight(1f))
+                    SlimPill("\uD83D\uDCDD Homework" + if (hwDue > 0) " ($hwDue)" else "", hwDue > 0, onOpenHomework, Modifier.weight(1f))
                 }
             }
         }
@@ -351,7 +351,7 @@ private fun HomeHeader(name: String) {
     val greet = when { hour < 12 -> "Good Morning,"; hour < 17 -> "Good Afternoon,"; else -> "Good Evening," }
     Column(Modifier.fillMaxWidth().padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            TitleIcon("QuestBlock", 28.dp)
+            IconTile("\u2694\uFE0F", ColorPrimary, 34.dp)
             Text("QuestBlock", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = ColorText)
         }
         Spacer(Modifier.height(6.dp))
@@ -388,7 +388,7 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Bool
                         .background(Brush.verticalGradient(listOf(frameColor.copy(0.55f), frameColor.copy(0.12f))))
                         .border(2.dp, frameColor, HexShape),
                         contentAlignment = Alignment.Center) {
-                        LevelInHex(level)
+                        AvatarFill()
                     }
                     val badgeEmoji = when (com.krishna.questblock.data.shownBadgeOf(player)) {
                         "badge_beginner" -> "\uD83C\uDF31"; "badge_star" -> "\u2B50"; "badge_crown" -> "\uD83D\uDC51"

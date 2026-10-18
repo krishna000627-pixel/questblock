@@ -180,9 +180,8 @@ fun HomeworkScreen(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-                TitleIcon("Homework", 24.dp, endPad = 8.dp)
                 Column(Modifier.weight(1f)) {
-                    Text("Homework", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = ColorText, maxLines = 1)
+                    Text("\uD83D\uDCDD Homework", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = ColorText, maxLines = 1)
                     Text("Write it down, hand it in, keep the streak", style = MaterialTheme.typography.bodySmall, color = ColorMuted, maxLines = 1)
                 }
                 Surface(shape = RoundedCornerShape(10.dp), color = ColorCoin.copy(alpha = 0.15f)) {

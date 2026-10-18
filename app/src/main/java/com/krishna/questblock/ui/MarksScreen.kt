@@ -124,8 +124,7 @@ fun MarksScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-            TitleIcon("Marks", 24.dp, endPad = 8.dp)
-            Text("Marks", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
+            Text("\uD83D\uDCDD Marks", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
         }
 
         // Summary of the latest test

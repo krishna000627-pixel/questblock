@@ -57,17 +57,13 @@ private val TOP_COMMANDS = listOf(
     "stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub",
     "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas",
     "suggest", "timers", "fun", "fg", "last", "poster", "mood", "achievements", "leaderboard",
-    "cd", "pwd", "qhome", "flags",
+    "cd", "pwd", "qhome",
 )
 
 private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "help" to listOf("core", "quests", "focus", "blocking", "economy", "progress", "settings"),
     "man" to TOP_COMMANDS,
     "theme" to listOf("set"),
-    "theme set" to listOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "termux", "questhome"),
-    "flags" to listOf("ls", "on", "off"),
-    "flags on" to listOf("phone", "termux", "home", "homework"),
-    "flags off" to listOf("phone", "termux", "home", "homework"),
     "quests" to listOf("--today", "--done", "--overdue", "--focus"),
     "quest" to listOf("add", "show", "edit", "done", "rm", "focus", "link", "step", "skip", "steps"),
     "focus" to listOf("start", "status", "stop", "apps", "last", "log"),
@@ -111,7 +107,7 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "qhome widget" to listOf("clock", "status", "focus", "quests", "homework"),
     "qhome dock" to listOf("add", "rm"),
     "qhome folder" to listOf("new", "rm", "add", "take", "rename"),
-    "qhome theme" to listOf("niagara", "smart", "lawn"),
+    "qhome theme" to listOf("dungeon", "forest", "cyber", "terminal", "paper", "ocean", "sakura", "desert", "space", "steel"),
     "poster" to listOf("pick", "on", "off", "tint", "dim"),
     "suggest" to listOf("add", "physics", "chemistry", "maths", "boards"),
     "cd" to listOf("~", "quests", "hw", "focus", "vault", "shop", "stats", "settings", "ideas"),
@@ -129,7 +125,7 @@ private val GROUPS: Map<String, List<String>> = linkedMapOf(
     "blocking" to listOf("vault", "unlock", "sites", "limits", "categories", "timers"),
     "economy" to listOf("coins", "shop", "inv", "fun"),
     "progress" to listOf("stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub", "mood", "achievements", "leaderboard"),
-    "settings" to listOf("qhome", "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas", "poster", "flags"),
+    "settings" to listOf("qhome", "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas", "poster"),
 )
 
 private val MAN: Map<String, String> = mapOf(
@@ -141,8 +137,7 @@ private val MAN: Map<String, String> = mapOf(
     "whoami" to "whoami              hero name, goal, birthday, level",
     "alias" to "alias [name=cmd]    list or make a shortcut, e.g. alias qt=quests --today",
     "unalias" to "unalias <name>     remove a shortcut",
-    "theme" to "theme [set default|phone|paper|linen|sage|sky|lilac|chalk|termux|questhome]   default/phone = the normal look (Quest Phone), paper, linen, sage, sky, lilac, chalk = the plain light shop themes (you must own it: shop buy <name>), questhome = the launcher. A theme turned off in flags is refused. refused during Focus",
-    "flags" to "flags [ls] | on <phone|termux|home|homework> | off <phone|termux|home|homework>   turn the three app themes and the homework tracker on or off (the one theme left on can't be turned off). refused during Focus (flags ls still works)",
+    "theme" to "theme [set default|paper|termux]   default = the normal look, paper = the Paper & Ink look (you must own it: shop buy paper). refused during Focus",
     "home" to "home                go to the phone home screen",
     "setup" to "setup               first-run steps: set name/goal/dob, perms, then setup done",
     "quests" to "quests [--today|--done|--overdue|--focus]",
@@ -166,7 +161,7 @@ private val MAN: Map<String, String> = mapOf(
     "categories" to "categories ls [text] | set <app> study|coding|neutral|fun|auto | safe <app> on|off\ncategories lock <app> study|coding|neutral|fun|auto [now|midnight|HH:MM]   weekly lock: one change per app per week\ncategories pending   locks and changes that are waiting",
     "coins" to "coins [log [n]]     balance, today's total, coin history",
     "shop" to "shop ls [powerups|frames|themes|badges] | buy <item> | rewards | reward add \"name\" <price> | reward rm <n>",
-    "inv" to "inv [ls] | equip <n> | unequip <n> | use <n>   the app themes (Quest Phone, Termux, Quest Home) are free and listed last: inv equip <n> switches to one",
+    "inv" to "inv [ls] | equip <n> | unequip <n> | use <n>",
     "stats" to "stats               14 days of study/coding/neutral/fun time, quests and focus",
     "usage" to "usage [--week]      time per app and per category",
     "weekly" to "weekly              the weekly report",
@@ -233,14 +228,14 @@ private val DIR_OF: Map<String, String> = mapOf(
     "badges" to "stats", "goals" to "stats", "hub" to "stats", "mood" to "stats", "achievements" to "stats", "leaderboard" to "stats",
     "qhome" to "settings", "set" to "settings", "strict" to "settings", "dnd" to "settings", "perms" to "settings", "backup" to "settings", "restore" to "settings",
     "reliability" to "settings", "selftest" to "settings", "debuglog" to "settings", "versions" to "settings", "about" to "settings",
-    "poster" to "settings", "theme" to "settings", "flags" to "settings",
+    "poster" to "settings", "theme" to "settings",
     "ideas" to "ideas",
     "hw" to "hw",
 )
 private val DIRS = listOf("quests", "hw", "focus", "vault", "shop", "stats", "settings", "ideas")
 
 /** Commands that still work while a strict Focus session runs. */
-private val STRICT_OK = setOf("help", "man", "clear", "history", "status", "whoami", "focus", "play", "stop", "home", "theme", "flags", "versions", "about", "alias", "unalias", "ideas", "hw", "fg", "last", "cd", "pwd")
+private val STRICT_OK = setOf("help", "man", "clear", "history", "status", "whoami", "focus", "play", "stop", "home", "theme", "versions", "about", "alias", "unalias", "ideas", "hw", "fg", "last", "cd", "pwd")
 
 /** Commands on a lock page. */
 private val BLOCK_OK = setOf("help", "man", "clear", "history", "status", "quests", "coins", "unlock", "open", "home", "main", "focus")
@@ -324,8 +319,7 @@ class TermuxViewModel @Inject constructor(
         viewModelScope.launch {
             while (true) {
                 runCatching { tickFocus() }
-                val left = player.value.focusModeUntil - System.currentTimeMillis()
-                delay(if (left > 0L) (left % 1000L) + 5L else 1000L)
+                delay(1000L)
             }
         }
     }
@@ -695,7 +689,6 @@ class TermuxViewModel @Inject constructor(
             "alias" -> cmdAlias(s, toks)
             "unalias" -> cmdUnalias(s, a)
             "theme" -> cmdTheme(s, a)
-            "flags" -> cmdFlags(s, a)
             "home" -> cmdHome(s)
             "main" -> { block?.onMain?.invoke() }
             "open" -> cmdOpen(s)
@@ -735,7 +728,7 @@ class TermuxViewModel @Inject constructor(
             "versions" -> cmdVersions(s, a)
             "about" -> cmdAbout(s, a)
             "ideas" -> cmdIdeas(s, a)
-            "hw" -> if (com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) hwCmd.run(s, a) else s.warn("homework tracker is disconnected for now")
+            "hw" -> hwCmd.run(s, a)
             "qhome" -> qhCmd.run(s, a)
             "suggest" -> extras.suggest(s, a)
             "timers" -> extras.timers(s)
@@ -769,8 +762,7 @@ class TermuxViewModel @Inject constructor(
             "perms" -> sub == "grant"
             "shop" -> sub in setOf("buy", "reward")
             "inv" -> sub in setOf("use", "equip", "unequip")
-            "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "questhome")
-            "flags" -> sub in setOf("on", "off")
+            "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "paper", "questhome")
             "set" -> sub != null && sub != "ls"
             else -> false
         }
@@ -1024,67 +1016,37 @@ class TermuxViewModel @Inject constructor(
         val sub = a.pos.getOrNull(1)?.lowercase()
         if (sub == null) {
             s.out("theme: {c}termux{/}   shop look: ${repo.player.first().equippedTheme}")
-            s.dim("theme set default|phone|paper|linen|sage|sky|lilac|chalk|termux|questhome  \u00b7 flags: turn themes on or off")
+            s.dim("theme set default|paper|termux|questhome")
             return
         }
-        if (sub != "set") { s.err("usage: theme set default|phone|paper|linen|sage|sky|lilac|chalk|termux|questhome"); return }
+        if (sub != "set") { s.err("usage: theme set default|termux"); return }
         when (a.pos.getOrNull(2)?.lowercase()) {
             "termux" -> s.ok("theme is already termux")
-            "default", "phone" -> {
-                if (!AppThemes.enabled(ctx, "phone")) { s.err("Quest Phone is turned off in flags"); return }
+            "default" -> {
                 if (TermuxMode.strictNow(ctx)) { s.err("refused: a strict Focus session is running"); return }
                 s.ok("theme: default. switching\u2026")
                 delay(400L)
-                AppThemes.apply(ctx, "phone")
+                TermuxMode.set(ctx, false)
             }
-            "paper", "linen", "sage", "sky", "lilac", "chalk" -> {
-                val word = a.pos.getOrNull(2)!!.lowercase()
-                val title = ShopCatalog.items.firstOrNull { it.id == "theme_$word" }?.name ?: word
+            "paper" -> {
                 if (TermuxMode.strictNow(ctx)) { s.err("refused: a strict Focus session is running"); return }
-                if (!AppThemes.enabled(ctx, "phone")) { s.err("Quest Phone is turned off in flags"); return }
-                val item = repo.inventory.first().firstOrNull { it.itemId == "theme_$word" }
-                if (item == null) { s.err("you don't own $title yet: shop buy $word"); return }
+                val item = repo.inventory.first().firstOrNull { it.itemId == "theme_paper" }
+                if (item == null) { s.err("you don't own Paper & Ink yet: shop buy paper"); return }
                 if (!item.isEquipped && !repo.equipItem(item)) { s.err("not enough coins for today's rent"); return }
-                s.ok("$title equipped. switching\u2026")
+                s.ok("Paper & Ink equipped. switching\u2026")
                 delay(400L)
                 TermuxMode.set(ctx, false)
             }
             "questhome" -> {
-                if (!AppThemes.enabled(ctx, "home")) { s.err("Quest Home is turned off in flags"); return }
                 if (TermuxMode.strictNow(ctx)) { s.err("refused: a strict Focus session is running"); return }
                 s.ok("Quest Home is on. switching\u2026")
                 s.dim("make it your Home app: qhome default (Android's own page, you come back here)")
                 delay(400L)
-                AppThemes.apply(ctx, "home")
+                QuestHomeMode.set(ctx, true)
+                runCatching { ctx.startActivity(Intent(ctx, QuestHomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             }
-            else -> s.err("usage: theme set default|phone|paper|linen|sage|sky|lilac|chalk|termux|questhome")
+            else -> s.err("usage: theme set default|paper|termux|questhome")
         }
-    }
-
-    /** v219: the flags page in the terminal: turn the three app themes on or off. */
-    private fun cmdFlags(s: TermuxSession, a: TermuxArgs) {
-        val sub = a.pos.getOrNull(1)?.lowercase()
-        if (sub == null || sub == "ls") {
-            s.head("flags")
-            AppThemes.IDS.forEach { id ->
-                val on = AppThemes.enabled(ctx, id)
-                val use = if (AppThemes.active() == id) " {c}in use{/}" else ""
-                s.out("${AppThemes.label(id).padEnd(12)} " + (if (on) "{g}on{/}" else "{r}off{/}") + use)
-            }
-            s.out("${"Homework".padEnd(12)} " + (if (com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) "{g}on{/}" else "{r}off{/}"))
-            s.dim("flags on|off <phone|termux|home|homework>")
-            return
-        }
-        if (sub != "on" && sub != "off") { s.err("usage: flags [ls] | on <theme> | off <theme>"); return }
-        if (a.pos.getOrNull(2)?.lowercase() in setOf("homework", "hw")) {
-            com.krishna.questblock.data.Flags.setHomework(ctx, sub == "on")
-            s.ok("Homework: $sub")
-            return
-        }
-        val id = AppThemes.parse(a.pos.getOrNull(2))
-        if (id == null) { s.err("usage: flags $sub <phone|termux|home|homework>"); return }
-        val err = AppThemes.setEnabled(ctx, id, sub == "on")
-        if (err != null) s.err(err) else s.ok("${AppThemes.label(id)}: $sub")
     }
 
     private fun cmdHome(s: TermuxSession) {
@@ -1925,28 +1887,11 @@ class TermuxViewModel @Inject constructor(
                 val st = if (it.isEquipped) " {g}equipped{/}" else if (it.category == "custom" && it.usedAt == null) " {y}unused{/}" else ""
                 s.out("{c}${i + 1}{/} ${it.name.tm()} {d}${it.category.removePrefix("cosmetic_")}{/}$st")
             }
-            AppThemes.enabledList(ctx).forEachIndexed { j, id ->
-                val st = if (AppThemes.active() == id) " {g}equipped{/}" else ""
-                s.out("{c}${inv.size + j + 1}{/} ${AppThemes.label(id)} {d}app theme \u00b7 free{/}$st")
-            }
             s.dim("now: ${fmtTime(now)} \u00b7 inv equip|unequip|use <n>")
             return
         }
         val n = a.pos.getOrNull(2)?.toIntOrNull()
         val item = if (n == null) null else inv.getOrNull(n - 1)
-        val appId = if (n != null && item == null) AppThemes.enabledList(ctx).getOrNull(n - inv.size - 1) else null
-        if (appId != null) {
-            when (sub) {
-                "equip" -> {
-                    AppThemes.apply(ctx, appId)?.let { s.err(it); return }
-                    s.ok("equipped ${AppThemes.label(appId)}. switching\u2026")
-                    delay(400L)
-                }
-                "unequip" -> s.err("an app theme can't be unequipped: equip another one")
-                else -> s.err("nothing to use there")
-            }
-            return
-        }
         if (item == null) { s.err("usage: inv $sub <n>  (numbers from: inv)"); return }
         when (sub) {
             "equip" -> {

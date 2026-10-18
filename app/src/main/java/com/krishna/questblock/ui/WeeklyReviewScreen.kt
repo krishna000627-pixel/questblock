@@ -73,7 +73,6 @@ fun WeeklyReviewScreen(onBack: () -> Unit, vm: WeeklyViewModel = hiltViewModel()
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-            TitleIcon("Weekly review", 24.dp, endPad = 8.dp)
             Column {
                 Text("Weekly review", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
                 Text("Last 7 days", style = MaterialTheme.typography.bodySmall, color = ColorMuted)

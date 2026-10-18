@@ -144,7 +144,6 @@ fun CategoriesScreen(onBack: () -> Unit, vm: CategoriesViewModel = hiltViewModel
     Column(Modifier.fillMaxSize().background(ColorBg).padding(horizontal = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-            TitleIcon("App categories", 24.dp, endPad = 8.dp)
             Column {
                 Text("App categories", style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold, color = ColorText)

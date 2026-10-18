@@ -278,7 +278,6 @@ fun SelfTestScreen(onBack: () -> Unit, vm: SelfTestViewModel = hiltViewModel()) 
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-            TitleIcon("Self test", 24.dp, endPad = 8.dp)
             Column {
                 Text("Self test", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
                 Text("Checks permissions, storage, rules and features", style = MaterialTheme.typography.bodySmall, color = ColorMuted)

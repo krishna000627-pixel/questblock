@@ -12,7 +12,6 @@ class QuestApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        com.krishna.questblock.data.Flags.load(this)
         com.krishna.questblock.util.DebugLog.init(this)
         com.krishna.questblock.util.Sounds.init(this)
         Reminders.ensureChannel(this)

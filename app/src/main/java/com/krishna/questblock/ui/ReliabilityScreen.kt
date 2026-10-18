@@ -63,7 +63,6 @@ fun ReliabilityScreen(onBack: () -> Unit, vm: ReliabilityViewModel = hiltViewMod
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-            TitleIcon("Reliability", 24.dp, endPad = 8.dp)
             Text("Reliability", style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold, color = ColorText)
         }

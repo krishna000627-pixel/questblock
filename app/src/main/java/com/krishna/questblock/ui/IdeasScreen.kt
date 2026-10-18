@@ -138,9 +138,8 @@ fun IdeasScreen(onBack: () -> Unit) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
-                    TitleIcon("Quest board", 24.dp, endPad = 8.dp)
                     Column(Modifier.weight(1f)) {
-                        Text("Quest board", style = MaterialTheme.typography.headlineSmall,
+                        Text("📜 Quest board", style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Black, color = ColorText, maxLines = 1)
                         Text("Update scrolls for the next version", style = MaterialTheme.typography.bodySmall,
                             color = ColorMuted, maxLines = 1)

@@ -277,7 +277,7 @@ object OptionalTick {
         // v211 Homework: settle the days that ended (carry-over cost, clean-day streak), then the evening sweep
         val hwNotes = Hw.dailyTick(ctx, repo, now)
         if (hwNotes.isNotEmpty()) OptionalAlerts.post(ctx, OptionalAlerts.ID_HW, "\uD83D\uDCDA Homework", hwNotes.joinToString(" "), route = "homework")
-        if (com.krishna.questblock.data.Flags.HOMEWORK_ENABLED && prefs.optHwSweep && !prefs.doneToday("hwsweep") && minuteOfDay >= prefs.optEveningHour * 60) {
+        if (prefs.optHwSweep && !prefs.doneToday("hwsweep") && minuteOfDay >= prefs.optEveningHour * 60) {
             prefs.markToday("hwsweep")
             val openHw = Hw.all(ctx).count { !it.done }
             OptionalAlerts.post(ctx, OptionalAlerts.ID_HW_SWEEP, "\uD83D\uDCDA Anything not written down yet?",

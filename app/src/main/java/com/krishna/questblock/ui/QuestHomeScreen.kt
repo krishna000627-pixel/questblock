@@ -121,7 +121,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val WIDGET_NAMES get() = listOf("clock" to "Clock", "status" to "Status", "focus" to "Focus", "quests" to "Quests", "homework" to "Homework").filter { it.first != "homework" || com.krishna.questblock.data.Flags.HOMEWORK_ENABLED }
+private val WIDGET_NAMES = listOf("clock" to "Clock", "status" to "Status", "focus" to "Focus", "quests" to "Quests", "homework" to "Homework")
 
 /** v213: accents are stripped (Ä, É count as A, E); digits, symbols and anything else go under "#". */
 private fun letterOf(label: String): Char {
@@ -131,12 +131,6 @@ private fun letterOf(label: String): Char {
 }
 
 private val LocalQh = compositionLocalOf { QhState() }
-
-/** v217: text-only app rows (Niagara drawer). */
-private val LocalQhTextOnly = compositionLocalOf { false }
-
-/** v217: the Smart shortcut row sets the tab the drawer opens on. */
-private var qhPendingCat by mutableStateOf("All")
 
 private val WALL_PHOTO = setOf("phone", "phonesvg", "picture")
 
@@ -173,19 +167,6 @@ private fun QhIcon(pkg: String, size: androidx.compose.ui.unit.Dp, label: String
     }
 }
 
-/** v215: system, pack and own-picture icons already come with their own shape and background, so they are drawn full size with no second tile behind them. Emoji, letters, glyphs keep the tile. */
-private fun qhBleed(look: QhState, pkg: String): Boolean {
-    val ov = look.appIcons[pkg]
-    return when {
-        ov != null && (ov.startsWith("emoji:") || ov.startsWith("letters:")) -> false
-        ov != null -> true
-        else -> look.iconSrc == "system" || look.iconSrc == "pack"
-    }
-}
-
-/** Cell size of an icon: the system launcher size (about 52dp) for full-size icons, the old 56dp tile otherwise. */
-private fun qhBoxDp(look: QhState, bleed: Boolean) = ((if (bleed) 52f else 56f) * look.iconSize / 100f).dp
-
 @Composable
 private fun QhPill(text: String, selected: Boolean, theme: QhTheme, onClick: () -> Unit) {
     Surface(
@@ -219,12 +200,12 @@ private val LocalQhUse = compositionLocalOf { QhUseInfo() }
 private fun QhTile(
     theme: QhTheme, shapeId: String, label: String, locked: Boolean, dim: Boolean, showLabel: Boolean,
     onClick: () -> Unit, onLong: () -> Unit, modifier: Modifier = Modifier,
-    tint: Long? = null, dragKey: String? = null, pkg: String? = null, bleed: Boolean = false, icon: @Composable () -> Unit,
+    tint: Long? = null, dragKey: String? = null, pkg: String? = null, icon: @Composable () -> Unit,
 ) {
     val look = LocalQh.current
     val use = LocalQhUse.current
     val drag = LocalQhDrag.current
-    val boxSize = qhBoxDp(look, bleed)
+    val boxSize = (56f * look.iconSize / 100f).dp
     var origin by remember { mutableStateOf(Offset.Zero) }
     val dragMod = if (dragKey != null && drag != null) {
         Modifier
@@ -244,7 +225,7 @@ private fun QhTile(
         modifier.then(dragMod).padding(vertical = 6.dp, horizontal = 2.dp).alpha(if (dim) 0.35f else if (beingDragged) 0.25f else 1f),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.size(boxSize).background(if (look.tile && !bleed) Color(tint ?: theme.tile) else Color.Transparent, qhShape(shapeId)), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(boxSize).background(if (look.tile) Color(tint ?: theme.tile) else Color.Transparent, qhShape(shapeId)), contentAlignment = Alignment.Center) {
             icon()
             if (locked) {
                 // the badge sits on the corner of any icon shape, a little outside the tile so it is never cut
@@ -276,10 +257,9 @@ private fun QhAppTile(
 ) {
     val look = LocalQh.current
     val name = look.labelOf(app.pkg, app.label)
-    val bleed = qhBleed(look, app.pkg)
     QhTile(theme, look.appShapes[app.pkg] ?: shapeId, name, locked, dim, showLabel, onClick, onLong,
-        tint = look.appColors[app.pkg], dragKey = dragKey, pkg = app.pkg, bleed = bleed) {
-        QhIcon(app.pkg, if (bleed) qhBoxDp(look, true) else (36f * look.iconSize / 100f).dp, name, Color(theme.accent))
+        tint = look.appColors[app.pkg], dragKey = dragKey, pkg = app.pkg) {
+        QhIcon(app.pkg, (36f * look.iconSize / 100f).dp, name, Color(theme.accent))
     }
 }
 
@@ -352,7 +332,7 @@ private fun QhWidgets(theme: QhTheme, vm: QuestHomeViewModel, st: QhState, onSea
     val widgets = st.widgets
     val clock by produceState(System.currentTimeMillis()) { while (true) { value = System.currentTimeMillis(); delay(10_000L) } }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 6.dp)) {
-        st.widgetOrder.filter { it in widgets && (it != "homework" || com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) }.forEach { w ->
+        st.widgetOrder.filter { it in widgets }.forEach { w ->
             when (w) {
                 "clock" -> Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -434,7 +414,7 @@ private fun QhWidgets(theme: QhTheme, vm: QuestHomeViewModel, st: QhState, onSea
                     var kind by remember { mutableStateOf("quest") }
                     QhCard(theme) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(shape = RoundedCornerShape(20.dp), color = Color(theme.accent).copy(alpha = 0.25f), modifier = Modifier.clickable { kind = when (kind) { "quest" -> if (com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) "homework" else "idea"; "homework" -> "idea"; else -> "quest" } }) {
+                            Surface(shape = RoundedCornerShape(20.dp), color = Color(theme.accent).copy(alpha = 0.25f), modifier = Modifier.clickable { kind = when (kind) { "quest" -> "homework"; "homework" -> "idea"; else -> "quest" } }) {
                                 Text(kind.replaceFirstChar { it.uppercase() }, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), fontSize = 12.sp, fontWeight = FontWeight.Black, color = Color(theme.accent))
                             }
                             androidx.compose.foundation.text.BasicTextField(
@@ -508,12 +488,10 @@ private fun QhAppRow(app: QhApp, theme: QhTheme, shapeId: String, locked: Boolea
         Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLong).padding(horizontal = 10.dp, vertical = 6.dp).alpha(if (dim) 0.35f else 1f),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val textOnly = LocalQhTextOnly.current
-        val bleed = qhBleed(look, app.pkg)
-        if (!textOnly) Box(Modifier.size(44.dp).background(if (look.tile && !bleed) Color(look.appColors[app.pkg] ?: theme.tile) else Color.Transparent, qhShape(look.appShapes[app.pkg] ?: shapeId)), contentAlignment = Alignment.Center) {
-            QhIcon(app.pkg, if (bleed) 44.dp else 30.dp, name, Color(theme.accent))
+        Box(Modifier.size(44.dp).background(if (look.tile) Color(look.appColors[app.pkg] ?: theme.tile) else Color.Transparent, qhShape(look.appShapes[app.pkg] ?: shapeId)), contentAlignment = Alignment.Center) {
+            QhIcon(app.pkg, 30.dp, name, Color(theme.accent))
         }
-        Text(name, fontSize = if (textOnly) 22.sp else 15.sp, color = Color(theme.text), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = if (textOnly) 6.dp else 14.dp, top = if (textOnly) 4.dp else 0.dp, bottom = if (textOnly) 4.dp else 0.dp))
+        Text(name, fontSize = 15.sp, color = Color(theme.text), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 14.dp))
         if (locked) QhSvgIcon(QhSvg.LOCK, Color(theme.accent), 16.dp)
     }
 }
@@ -543,15 +521,11 @@ private fun QhDrawer(
     val last = remember(apps) { QhUse.lastUsed(ctx) }
 
     val q = query.trim().lowercase()
-    val dStyle = qhStyleOf(theme)
-    var cat by remember { mutableStateOf(qhPendingCat) }
-    LaunchedEffect(Unit) { qhPendingCat = "All" }
-    val visible = remember(apps, st.hidden, st.searchHidden, st.appLabels, st.sort, query, isShown, spaceOpen, cat, dStyle) {
+    val visible = remember(apps, st.hidden, st.searchHidden, st.appLabels, st.sort, query, isShown, spaceOpen) {
         val base = apps.filter { a ->
             val name = st.labelOf(a.pkg, a.label)
             val showHidden = q.isNotEmpty() && st.searchHidden
-            (a.pkg !in st.hidden || showHidden) && isShown(a.pkg) && (q.isEmpty() || name.lowercase().contains(q)) &&
-                (dStyle != "smart" || cat == "All" || q.isNotEmpty() || qhCategoryOf(ctx, a.pkg, name) == cat)
+            (a.pkg !in st.hidden || showHidden) && isShown(a.pkg) && (q.isEmpty() || name.lowercase().contains(q))
         }
         fun nm(a: QhApp) = st.labelOf(a.pkg, a.label).lowercase()
         when (st.sort) {
@@ -622,10 +596,9 @@ private fun QhDrawer(
         }
     }
     val letters = remember(entries) { entries.filterIsInstance<Char>() }
-    val listMode = st.drawerList || dStyle == "niagara"
-    val span = if (listMode) 1 else st.cols
+    val span = if (st.drawerList) 1 else st.cols
 
-    CompositionLocalProvider(LocalQh provides st.copy(labelLines = 2, labels = true), LocalQhTextOnly provides (dStyle == "niagara")) {
+    CompositionLocalProvider(LocalQh provides st.copy(labelLines = 2, labels = true)) {
     // fully opaque (the theme colour had a see-through alpha), and it swallows taps so nothing behind it reacts
     Box(Modifier.fillMaxSize().background(Color(theme.top).copy(alpha = 1f)).pointerInput(Unit) { detectTapGestures { } }.statusBarsPadding().navigationBarsPadding().imePadding()) {
         Column(Modifier.fillMaxSize()) {
@@ -657,11 +630,6 @@ private fun QhDrawer(
                 }
                 Text("\u2715", color = Color(theme.muted), fontSize = 20.sp, modifier = Modifier.clickable { onClose() }.padding(start = 14.dp, end = 4.dp, top = 6.dp, bottom = 6.dp))
             }
-            if (dStyle == "smart" && query.isBlank()) {
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    QH_CATS.forEach { c -> QhPill(c, cat == c, theme) { cat = c } }
-                }
-            }
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(span), state = grid,
@@ -687,7 +655,7 @@ private fun QhDrawer(
                                 }
                             }
                             is QhApp ->
-                                if (listMode) QhAppRow(e, theme, shapeId, isLocked(e.pkg), isDim(e.pkg), { onLaunch(e.pkg) }, { onLong(e) })
+                                if (st.drawerList) QhAppRow(e, theme, shapeId, isLocked(e.pkg), isDim(e.pkg), { onLaunch(e.pkg) }, { onLong(e) })
                                 else QhAppTile(e, theme, shapeId, isLocked(e.pkg), isDim(e.pkg), true, { onLaunch(e.pkg) }, { onLong(e) })
                         }
                     }
@@ -776,8 +744,7 @@ fun QuestHomeScreen(onLeave: () -> Unit, vm: QuestHomeViewModel = hiltViewModel(
     val own = ctx.packageName
     val st = vm.st
     val theme = qhThemeForState(ctx, st)
-    val homeTheme = if (st.wall in WALL_PHOTO) qhReadable(theme) else theme
-    val hStyle = qhStyleOf(theme)    // light text on a photo wall; dialogs and the drawer keep the real theme
+    val homeTheme = if (st.wall in WALL_PHOTO) qhReadable(theme) else theme    // light text on a photo wall; dialogs and the drawer keep the real theme
     val shapeId = st.shape.ifEmpty { theme.shape }
     val appMap = remember(vm.apps) { vm.apps.associateBy { it.pkg } }
     val player by vm.player.collectAsState()
@@ -792,7 +759,6 @@ fun QuestHomeScreen(onLeave: () -> Unit, vm: QuestHomeViewModel = hiltViewModel(
     var query by remember { mutableStateOf("") }
     var focusSearch by remember { mutableStateOf(false) }
     var settings by remember { mutableStateOf(false) }
-    var homeMenu by remember { mutableStateOf("") }   // v216: "" closed | main | wall | theme | icons
     var wallStamp by remember { mutableStateOf(0) }
     val pickWall = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null && qhImportWall(ctx, uri)) { wallStamp += 1; vm.update { it.copy(wall = "picture") } }
@@ -860,13 +826,12 @@ fun QuestHomeScreen(onLeave: () -> Unit, vm: QuestHomeViewModel = hiltViewModel(
     }
 
     LaunchedEffect(QuestHomeBus.homePress) {
-        drawer = false; query = ""; settings = false; openFolder = null; menuApp = null; menuFolder = null; homeMenu = ""
+        drawer = false; query = ""; settings = false; openFolder = null; menuApp = null; menuFolder = null
         if (pager.currentPage != 0) pager.animateScrollToPage(0)
     }
     LaunchedEffect(QuestHomeBus.openSettings) { if (QuestHomeBus.openSettings > 0) settings = true }
     BackHandler(enabled = true) {
         when {
-            homeMenu.isNotEmpty() -> homeMenu = ""
             menuApp != null -> menuApp = null
             folderPick != null -> folderPick = null
             newFolderFor != null -> newFolderFor = null
@@ -917,7 +882,6 @@ fun QuestHomeScreen(onLeave: () -> Unit, vm: QuestHomeViewModel = hiltViewModel(
             "lock" -> qhLockScreen(ctx)
             "drawer" -> openDrawer(false)
             "search" -> openDrawer(true)
-            "menu" -> homeMenu = "main"
             "settings" -> settings = true
             "questblock" -> qhOpenQuestBlock(ctx)
             "focus" -> qhOpenQuestBlock(ctx, "focus")
@@ -1005,47 +969,10 @@ fun QuestHomeScreen(onLeave: () -> Unit, vm: QuestHomeViewModel = hiltViewModel(
                             )
                         },
                 ) {
-                    if (hStyle == "niagara") {
-                        // v217: Niagara. The dock apps and this page's apps as one big bottom-aligned text list
-                        val dockSet = st.dock.toSet()
-                        val niItems = if (page == 0) st.dock.map { "a:$it" } + entries.filter { !(it.startsWith("a:") && it.removePrefix("a:") in dockSet) } else entries
-                        Column(Modifier.fillMaxSize()) {
-                            if (page == 0) QhWidgets(homeTheme, vm, st) { openDrawer(true) }
-                            androidx.compose.foundation.lazy.LazyColumn(
-                                Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.Bottom,
-                                contentPadding = PaddingValues(horizontal = 30.dp, vertical = 8.dp),
-                            ) {
-                                items(niItems.size) { idx ->
-                                    val item = niItems[idx]
-                                    if (item.startsWith("a:")) {
-                                        val app = appMap[item.removePrefix("a:")]
-                                        if (app != null && isShown(app.pkg)) {
-                                            val nm = st.labelOf(app.pkg, app.label) + if (isLocked(app.pkg)) "  \uD83D\uDD12" else ""
-                                            Text(nm, fontSize = 28.sp, fontWeight = FontWeight.Medium, color = Color(homeTheme.text), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                                modifier = Modifier.fillMaxWidth().alpha(if (isDim(app.pkg)) 0.35f else 1f)
-                                                    .combinedClickable(onClick = { launch(app.pkg) }, onLongClick = { menuApp = app }).padding(vertical = 9.dp))
-                                        }
-                                    } else {
-                                        val f = st.folder(item.removePrefix("f:"))
-                                        if (f != null) Text("\u25B8 " + f.name, fontSize = 28.sp, fontWeight = FontWeight.Medium, color = Color(homeTheme.accent), maxLines = 1,
-                                            modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { openFolder = f.id }, onLongClick = { menuFolder = f.id }).padding(vertical = 9.dp))
-                                    }
-                                }
-                            }
-                        }
-                    } else
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(st.cols), userScrollEnabled = page == 0,
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp), modifier = Modifier.fillMaxSize(),
                     ) {
-                        if (page == 0 && hStyle == "lawn") item(span = { GridItemSpan(st.cols) }) {
-                            val day = remember { SimpleDateFormat("EEEE", Locale.getDefault()).format(Date()) }
-                            val date = remember { SimpleDateFormat("d MMMM", Locale.getDefault()).format(Date()) }
-                            Column(Modifier.fillMaxWidth().padding(start = 10.dp, top = 14.dp, bottom = 6.dp)) {
-                                Text(day, fontSize = 34.sp, fontWeight = FontWeight.Light, color = Color(homeTheme.text))
-                                Text(date, fontSize = 15.sp, color = Color(homeTheme.muted))
-                            }
-                        }
                         if (page == 0) item(span = { GridItemSpan(st.cols) }) { QhWidgets(homeTheme, vm, st) { openDrawer(true) } }
                         items(entries) { item ->
                             if (item.startsWith("a:")) {
@@ -1074,11 +1001,6 @@ fun QuestHomeScreen(onLeave: () -> Unit, vm: QuestHomeViewModel = hiltViewModel(
                     }
                 }
             }
-            if (hStyle == "smart") {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    listOf("Social", "Media", "Games", "Tools").forEach { c -> QhPill(c, false, homeTheme) { qhPendingCat = c; openDrawer(false) } }
-                }
-            }
             // swipe-up handle
             Box(
                 Modifier.fillMaxWidth().height(28.dp).clickable { openDrawer(false) }
@@ -1088,9 +1010,9 @@ fun QuestHomeScreen(onLeave: () -> Unit, vm: QuestHomeViewModel = hiltViewModel(
                     },
                 contentAlignment = Alignment.Center,
             ) { QhSvgIcon(QhSvg.HANDLE, Color(homeTheme.muted), 28.dp) }
-            // dock: up to four apps and the drawer button (Niagara has none; its apps are the list)
-            if (hStyle != "niagara") Surface(
-                shape = RoundedCornerShape(if (st.dockStyle == "floating" || hStyle == "lawn") 40.dp else 28.dp),
+            // dock: up to four apps and the drawer button
+            Surface(
+                shape = RoundedCornerShape(if (st.dockStyle == "floating") 40.dp else 28.dp),
                 color = if (st.dockStyle == "none") Color.Transparent else Color(homeTheme.dock),
                 border = if (st.dockStyle == "floating") androidx.compose.foundation.BorderStroke(1.dp, Color(homeTheme.muted).copy(alpha = 0.35f)) else null,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = if (st.dockStyle == "floating") 22.dp else 10.dp, vertical = 6.dp)
@@ -1110,17 +1032,6 @@ fun QuestHomeScreen(onLeave: () -> Unit, vm: QuestHomeViewModel = hiltViewModel(
                                 }
                             }
                         }
-                    }
-                }
-            }
-            if (hStyle == "lawn") {
-                Surface(
-                    shape = RoundedCornerShape(30.dp), color = Color(homeTheme.text).copy(alpha = 0.10f),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 6.dp).clickable { openDrawer(true) },
-                ) {
-                    Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        QhSvgIcon(QhSvg.SEARCH, Color(homeTheme.muted), 20.dp)
-                        Text("Search apps", color = Color(homeTheme.muted), fontSize = 15.sp, modifier = Modifier.padding(start = 10.dp))
                     }
                 }
             }
@@ -1144,7 +1055,7 @@ fun QuestHomeScreen(onLeave: () -> Unit, vm: QuestHomeViewModel = hiltViewModel(
                 onTurnOff = {
                     if (TermuxMode.strictNow(ctx) || vm.focusRunning()) {
                         android.widget.Toast.makeText(ctx, "Not while a Focus session is running", android.widget.Toast.LENGTH_SHORT).show()
-                    } else { settings = false; QuestHomeMode.set(ctx, false); AppThemes.enforce(ctx) }
+                    } else { settings = false; QuestHomeMode.set(ctx, false) }
                 },
                 onReset = { QhStore.reset(ctx); vm.update { QhStore.load(ctx) }; vm.reloadApps() },
                 onClose = { settings = false },
@@ -1181,73 +1092,6 @@ fun QuestHomeScreen(onLeave: () -> Unit, vm: QuestHomeViewModel = hiltViewModel(
     }
 
     // ── pick an Android widget ──
-    // ── v216: long press on empty home space ──
-    if (homeMenu.isNotEmpty()) {
-        val closeMenu = { homeMenu = "" }
-        when (homeMenu) {
-            "wall" -> QhDialog(theme, "Wallpaper", closeMenu) {
-                QhMenuItem(theme, "Set phone wallpaper\u2026") {
-                    closeMenu()
-                    runCatching { ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Set wallpaper").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                        .onFailure { Toast.makeText(ctx, "Can't open the wallpaper picker", Toast.LENGTH_SHORT).show() }
-                }
-                QhMenuItem(theme, "Pick a picture for the launcher\u2026") { closeMenu(); pickWall.launch("image/*") }
-                Text("Use the wall as", fontSize = 12.sp, color = Color(theme.muted), modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                    QhPill("Theme", st.wall == "svg", theme) { vm.update { it.copy(wall = "svg") } }
-                    QhPill("Phone", st.wall == "phone", theme) { vm.update { it.copy(wall = "phone") } }
-                    QhPill("Phone + theme", st.wall == "phonesvg", theme) { vm.update { it.copy(wall = "phonesvg") } }
-                    QhPill("Colour", st.wall == "color", theme) { vm.update { it.copy(wall = "color") } }
-                    if (QhWallFile.exists(ctx)) QhPill("My picture", st.wall == "picture", theme) { vm.update { it.copy(wall = "picture") } }
-                }
-                Text("Dim ${st.dim}%", fontSize = 12.sp, color = Color(theme.muted), modifier = Modifier.padding(top = 10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    QhPill("\u2212 10", false, theme) { vm.update { it.copy(dim = (it.dim - 10).coerceIn(0, 80)) } }
-                    QhPill("+ 10", false, theme) { vm.update { it.copy(dim = (it.dim + 10).coerceIn(0, 80)) } }
-                }
-                Text("Blur ${st.blur}%", fontSize = 12.sp, color = Color(theme.muted), modifier = Modifier.padding(top = 10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    QhPill("\u2212 10", false, theme) { vm.update { it.copy(blur = (it.blur - 10).coerceIn(0, 100)) } }
-                    QhPill("+ 10", false, theme) { vm.update { it.copy(blur = (it.blur + 10).coerceIn(0, 100)) } }
-                }
-            }
-            "theme" -> QhDialog(theme, "Theme", closeMenu) {
-                qhAllThemes(ctx).forEach { t -> QhMenuItem(theme, (if (st.theme == t.id) "\u2713  " else "") + t.name) { vm.update { it.copy(theme = t.id) } } }
-                // v219: the other app themes can be equipped from here too
-                val others = AppThemes.enabledList(ctx).filter { it != "home" }
-                if (others.isNotEmpty()) Text("App theme", fontSize = 12.sp, color = Color(theme.muted), modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
-                others.forEach { id -> QhMenuItem(theme, AppThemes.label(id)) {
-                    if (vm.focusRunning()) { Toast.makeText(ctx, "Not while a Focus session is running", Toast.LENGTH_SHORT).show() }
-                    else { closeMenu(); AppThemes.apply(ctx, id)?.let { err -> Toast.makeText(ctx, err, Toast.LENGTH_SHORT).show() } }
-                } }
-            }
-            "icons" -> QhDialog(theme, "Icons", closeMenu) {
-                Text("Icons come from", fontSize = 12.sp, color = Color(theme.muted), modifier = Modifier.padding(bottom = 4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                    com.krishna.questblock.data.QhSet.ICON_SRC.forEach { src -> QhPill(src, st.iconSrc == src, theme) { vm.update { it.copy(iconSrc = src) }; qhIconsChanged() } }
-                }
-                Text("Size ${st.iconSize}%", fontSize = 12.sp, color = Color(theme.muted), modifier = Modifier.padding(top = 10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    QhPill("\u2212 10", false, theme) { vm.update { it.copy(iconSize = (it.iconSize - 10).coerceIn(70, 130)) } }
-                    QhPill("+ 10", false, theme) { vm.update { it.copy(iconSize = (it.iconSize + 10).coerceIn(70, 130)) } }
-                }
-                Text("Columns ${st.cols}", fontSize = 12.sp, color = Color(theme.muted), modifier = Modifier.padding(top = 10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(4, 5, 6).forEach { n -> QhPill("$n", st.cols == n, theme) { vm.update { it.copy(cols = n) } } }
-                }
-                QhMenuItem(theme, if (st.labels) "Hide labels" else "Show labels") { vm.update { it.copy(labels = !it.labels) } }
-            }
-            else -> QhDialog(theme, "Home", closeMenu) {
-                QhMenuItem(theme, "\uD83D\uDDBC  Wallpaper") { homeMenu = "wall" }
-                QhMenuItem(theme, "\uD83E\uDDE9  Widgets") { closeMenu(); pickWidget = true }
-                QhMenuItem(theme, "\uD83C\uDFA8  Theme") { homeMenu = "theme" }
-                QhMenuItem(theme, "\u25FB  Icons and grid") { homeMenu = "icons" }
-                QhMenuItem(theme, "\u2699  Launcher settings") { closeMenu(); settings = true }
-                QhMenuItem(theme, "\u2694  Open QuestBlock") { closeMenu(); qhOpenQuestBlock(ctx) }
-            }
-        }
-    }
-
     if (pickWidget) {
         val list = remember { runCatching { awm.installedProviders.sortedBy { it.loadLabel(ctx.packageManager).lowercase() } }.getOrDefault(emptyList()) }
         QhDialog(theme, "Add an Android widget", { pickWidget = false }) {
@@ -1264,7 +1108,6 @@ fun QuestHomeScreen(onLeave: () -> Unit, vm: QuestHomeViewModel = hiltViewModel(
         val onHomePage = st.onHome(app.pkg)
         val inFolder = st.folderOf(app.pkg)
         val isOwn = app.pkg == own
-        var more by remember(app.pkg) { mutableStateOf(false) }
         val shortcuts by produceState(emptyList<android.content.pm.ShortcutInfo>(), app.pkg) {
             value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 runCatching {
@@ -1284,28 +1127,23 @@ fun QuestHomeScreen(onLeave: () -> Unit, vm: QuestHomeViewModel = hiltViewModel(
                     menuApp = null
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                QhPill("Edit", false, theme) { editApp = app; menuApp = null }
-                if (!isOwn) QhPill("App info", false, theme) { qhAppInfo(ctx, app.pkg); menuApp = null }
-                if (!isOwn) QhPill("Uninstall", false, theme) { qhUninstall(ctx, app.pkg); menuApp = null }
+            QhMenuItem(theme, "Edit name and icon\u2026") { editApp = app; menuApp = null }
+            if (!onHomePage && inFolder == null) QhMenuItem(theme, "Add to home") { vm.update { it.addHome(app.pkg) }; menuApp = null }
+            if (onHomePage) {
+                QhMenuItem(theme, "Remove from home") { vm.update { it.removeHome(app.pkg) }; menuApp = null }
+                QhMenuItem(theme, "Move earlier") { vm.update { it.moveItem("a:${app.pkg}", -1) } }
+                QhMenuItem(theme, "Move later") { vm.update { it.moveItem("a:${app.pkg}", 1) } }
+                QhMenuItem(theme, "Move to previous page") { vm.update { it.moveToPage("a:${app.pkg}", -1) } }
+                QhMenuItem(theme, "Move to next page") { vm.update { it.moveToPage("a:${app.pkg}", 1) } }
             }
-            QhMenuItem(theme, if (more) "Less \u25B4" else "More \u25BE") { more = !more }
-            if (more) {
-                if (!onHomePage && inFolder == null) QhMenuItem(theme, "Add to home") { vm.update { it.addHome(app.pkg) }; menuApp = null }
-                if (onHomePage) {
-                    QhMenuItem(theme, "Remove from home") { vm.update { it.removeHome(app.pkg) }; menuApp = null }
-                    QhMenuItem(theme, "Move earlier") { vm.update { it.moveItem("a:${app.pkg}", -1) } }
-                    QhMenuItem(theme, "Move later") { vm.update { it.moveItem("a:${app.pkg}", 1) } }
-                    QhMenuItem(theme, "Move to previous page") { vm.update { it.moveToPage("a:${app.pkg}", -1) } }
-                    QhMenuItem(theme, "Move to next page") { vm.update { it.moveToPage("a:${app.pkg}", 1) } }
-                }
-                if (app.pkg in st.dock) QhMenuItem(theme, "Remove from dock") { vm.update { it.removeDock(app.pkg) }; menuApp = null }
-                else if (st.dock.size < st.dockMax) QhMenuItem(theme, "Add to dock") { vm.update { it.addDock(app.pkg) }; menuApp = null }
-                QhMenuItem(theme, "Move to folder\u2026") { folderPick = app; menuApp = null }
-                if (inFolder != null) QhMenuItem(theme, "Take out of folder (${inFolder.name})") { vm.update { it.removeFromFolder(inFolder.id, app.pkg) }; menuApp = null }
-                if (!isOwn) {
-                    QhMenuItem(theme, if (app.pkg in st.hidden) "Unhide" else "Hide") { if (app.pkg in st.hidden) vm.unhide(app.pkg) else vm.update { it.hide(app.pkg) }; menuApp = null }
-                }
+            if (app.pkg in st.dock) QhMenuItem(theme, "Remove from dock") { vm.update { it.removeDock(app.pkg) }; menuApp = null }
+            else if (st.dock.size < st.dockMax) QhMenuItem(theme, "Add to dock") { vm.update { it.addDock(app.pkg) }; menuApp = null }
+            QhMenuItem(theme, "Move to folder\u2026") { folderPick = app; menuApp = null }
+            if (inFolder != null) QhMenuItem(theme, "Take out of folder (${inFolder.name})") { vm.update { it.removeFromFolder(inFolder.id, app.pkg) }; menuApp = null }
+            if (!isOwn) {
+                QhMenuItem(theme, if (app.pkg in st.hidden) "Unhide" else "Hide") { if (app.pkg in st.hidden) vm.unhide(app.pkg) else vm.update { it.hide(app.pkg) }; menuApp = null }
+                QhMenuItem(theme, "App info") { qhAppInfo(ctx, app.pkg); menuApp = null }
+                QhMenuItem(theme, "Uninstall", danger = true) { qhUninstall(ctx, app.pkg); menuApp = null }
             }
         }
     }
