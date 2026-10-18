@@ -143,7 +143,7 @@ fun StatsSection(vm: StatsViewModel = hiltViewModel()) {
         }
 
         // Daily leaderboard
-        item { LeaderboardCard(player, weeklyData) }
+        if (com.krishna.questblock.data.Flags.get("leaderboard")) item { LeaderboardCard(player, weeklyData) }
 
         // Shorts and Reels counters
         item {

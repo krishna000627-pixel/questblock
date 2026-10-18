@@ -243,7 +243,7 @@ fun AttendanceScreen(onBack: () -> Unit, vm: AttendanceViewModel = hiltViewModel
                 c.add(Calendar.DAY_OF_MONTH, -1)
             }
         }
-        Column(Modifier.fillMaxWidth().background(ColorSurface, RoundedCornerShape(16.dp)).padding(14.dp),
+        if (com.krishna.questblock.data.Flags.get("mood")) Column(Modifier.fillMaxWidth().background(ColorSurface, RoundedCornerShape(16.dp)).padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("\uD83D\uDCC3 Mood", color = ColorText, fontWeight = FontWeight.Bold)
             Text("How was ${SimpleDateFormat("EEE d MMM", Locale.getDefault()).format(selCal.time)}?", color = ColorMuted, style = MaterialTheme.typography.bodySmall)

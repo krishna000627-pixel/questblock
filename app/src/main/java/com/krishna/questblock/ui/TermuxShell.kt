@@ -64,11 +64,13 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "help" to listOf("core", "quests", "focus", "blocking", "economy", "progress", "settings"),
     "man" to TOP_COMMANDS,
     "theme" to listOf("ls", "set"),
-    "icons" to listOf("list", "on", "off"),
+    "icons" to listOf("list", "on", "off", "reset"),
+    "icons on" to SvgIcons.ICONS.keys.toList(),
+    "icons off" to SvgIcons.ICONS.keys.toList(),
     "theme set" to listOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "termux", "questhome"),
     "flags" to listOf("ls", "on", "off"),
-    "flags on" to listOf("phone", "termux", "home", "homework"),
-    "flags off" to listOf("phone", "termux", "home", "homework"),
+    "flags on" to listOf("phone", "termux", "home", "homework", "icons", "sounds", "mood", "leaderboard", "experiments"),
+    "flags off" to listOf("phone", "termux", "home", "homework", "icons", "sounds", "mood", "leaderboard", "experiments"),
     "quests" to listOf("--today", "--done", "--overdue", "--focus"),
     "quest" to listOf("add", "show", "edit", "done", "rm", "focus", "link", "step", "skip", "steps"),
     "focus" to listOf("start", "status", "stop", "apps", "last", "log"),
@@ -143,8 +145,8 @@ private val MAN: Map<String, String> = mapOf(
     "alias" to "alias [name=cmd]    list or make a shortcut, e.g. alias qt=quests --today",
     "unalias" to "unalias <name>     remove a shortcut",
     "theme" to "theme [ls] | [set default|phone|paper|linen|sage|sky|lilac|chalk|termux|questhome]   default/phone = the normal look (Quest Phone), paper, linen, sage, sky, lilac, chalk = the plain light shop themes (you must own it: shop buy <name>), questhome = the launcher. theme ls lists the app themes that are on (flags hides the ones turned off) and the one in use. A theme turned off in flags is refused. refused during Focus (theme ls still works)",
-    "flags" to "flags [ls] | on <phone|termux|home|homework> | off <phone|termux|home|homework>   turn the three app themes and the homework tracker on or off (the one theme left on can't be turned off). refused during Focus (flags ls still works)",
-    "icons" to "icons [list] | on | off   emoji drawn as SVG icons on the normal pages (the terminal stays plain text). list shows each emoji and the icon it becomes. on and off are refused during Focus (icons and icons list still work)",
+    "flags" to "flags [ls] | on <name> | off <name>   names: phone termux home (app themes, the one left on can't be turned off), homework, icons, sounds, mood, leaderboard, experiments. flags ls shows every flag. refused during Focus (flags ls still works)",
+    "icons" to "icons [list] | on|off [name] | reset   emoji drawn as SVG icons on the normal pages (the terminal stays plain text). on|off alone is the master switch, on|off <name> switches one icon (flags page > SVG icons > Choose). reset turns every icon on. list shows each icon, its emoji and its state. on, off and reset are refused during Focus (icons and icons list still work)",
     "logo" to "logo                 the app logo in ASCII (a green block with a star)",
     "home" to "home                go to the phone home screen",
     "setup" to "setup               first-run steps: set name/goal/dob, perms, then setup done",
@@ -749,9 +751,9 @@ class TermuxViewModel @Inject constructor(
             "cd" -> cmdCd(s, a)
             "pwd" -> s.out(s.prompt.removeSuffix(" $"))
             "poster" -> { if (extras.poster(s, a)) posterPick = true }
-            "mood" -> extras.mood(s, a)
+            "mood" -> if (!com.krishna.questblock.data.Flags.get("mood")) s.err("Mood check-in is turned off in flags") else extras.mood(s, a)
             "achievements" -> extras.achievements(s)
-            "leaderboard" -> extras.leaderboard(s)
+            "leaderboard" -> if (!com.krishna.questblock.data.Flags.get("leaderboard")) s.err("Daily leaderboard is turned off in flags") else extras.leaderboard(s)
             "exit", "logout" -> s.err("logout: not allowed. to leave the terminal: theme set default")
             else -> {
                 s.err("${cmd.tm()}: command not found")
@@ -776,7 +778,7 @@ class TermuxViewModel @Inject constructor(
             "inv" -> sub in setOf("use", "equip", "unequip")
             "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "questhome")
             "flags" -> sub in setOf("on", "off")
-            "icons" -> sub in setOf("on", "off")
+            "icons" -> sub in setOf("on", "off", "reset")
             "set" -> sub != null && sub != "ls"
             else -> false
         }
@@ -1086,7 +1088,8 @@ class TermuxViewModel @Inject constructor(
                 s.out("${AppThemes.label(id).padEnd(12)} " + (if (on) "{g}on{/}" else "{r}off{/}") + use)
             }
             s.out("${"Homework".padEnd(12)} " + (if (com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) "{g}on{/}" else "{r}off{/}"))
-            s.dim("flags on|off <phone|termux|home|homework>")
+            FlagRows.ALL.forEach { r -> s.out("${r.label.padEnd(18)} " + (if (r.get(ctx)) "{g}on{/}" else "{r}off{/}") + " {d}${r.id}{/}") }
+            s.dim("flags on|off <phone|termux|home|homework|icons|sounds|mood|leaderboard|experiments>")
             return
         }
         if (sub != "on" && sub != "off") { s.err("usage: flags [ls] | on <theme> | off <theme>"); return }
@@ -1095,8 +1098,9 @@ class TermuxViewModel @Inject constructor(
             s.ok("Homework: $sub")
             return
         }
+        FlagRows.find(a.pos.getOrNull(2))?.let { r -> r.set(ctx, sub == "on"); s.ok("${r.label}: $sub"); return }
         val id = AppThemes.parse(a.pos.getOrNull(2))
-        if (id == null) { s.err("usage: flags $sub <phone|termux|home|homework>"); return }
+        if (id == null) { s.err("usage: flags $sub <phone|termux|home|homework|icons|sounds|mood|leaderboard|experiments>"); return }
         val err = AppThemes.setEnabled(ctx, id, sub == "on")
         if (err != null) s.err(err) else s.ok("${AppThemes.label(id)}: $sub")
     }
@@ -1106,19 +1110,31 @@ class TermuxViewModel @Inject constructor(
         when (a.pos.getOrNull(1)?.lowercase()) {
             null -> {
                 s.head("icons")
-                s.out("SVG icons " + (if (SvgIconsOn) "{g}on{/}" else "{r}off{/}") + "  {d}(${SvgIcons.ICONS.size} icons, ${SvgIcons.EMOJI.size} emoji){/}")
-                s.dim("icons list | on | off")
+                s.out("SVG icons " + (if (SvgIconsOn) "{g}on{/}" else "{r}off{/}") + "  {d}(${SvgIcons.ICONS.size - SvgIconsOff.size} of ${SvgIcons.ICONS.size} icons on){/}")
+                s.dim("icons list | on|off [name] | reset")
             }
             "on", "off" -> {
                 val on = a.pos[1].lowercase() == "on"
-                SvgIconsMode.set(ctx, on)
-                s.ok("SVG icons: " + (if (on) "on" else "off"))
+                val name = a.pos.getOrNull(2)?.lowercase()
+                if (name == null) {
+                    SvgIconsMode.set(ctx, on)
+                    s.ok("SVG icons: " + (if (on) "on" else "off"))
+                } else if (name !in SvgIcons.ICONS) {
+                    s.err("no icon '${name.tm()}': icons list")
+                } else {
+                    SvgIconsMode.setIcon(ctx, name, on)
+                    s.ok("$name: " + (if (on) "on" else "off"))
+                }
             }
+            "reset" -> { SvgIconsMode.setAll(ctx, true); s.ok("every icon is on") }
             "list" -> {
-                s.head("emoji -> icon")
-                SvgIcons.EMOJI.entries.groupBy({ it.value }, { it.key }).forEach { (name, ems) -> s.out("{c}${name.padEnd(13)}{/} ${ems.joinToString(" ")}") }
+                s.head("icons")
+                SvgIcons.EMOJI.entries.groupBy({ it.value }, { it.key }).forEach { (name, ems) ->
+                    s.out("{c}${name.padEnd(13)}{/} " + (if (name in SvgIconsOff) "{r}off{/}" else "{g}on{/} ") + " ${ems.joinToString(" ")}")
+                }
+                s.dim("icons on|off <name> | reset")
             }
-            else -> s.err("usage: icons [list] | on | off")
+            else -> s.err("usage: icons [list] | on|off [name] | reset")
         }
     }
 

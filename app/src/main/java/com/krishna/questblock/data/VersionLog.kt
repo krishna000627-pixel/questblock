@@ -3,6 +3,17 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("226.0.0", "SVG icons flag has a sub page, one switch per icon",
+        listOf(
+            "Flags > SVG icons has a Choose button that opens a sub page (ui/SvgIconsPage.kt): every icon with its picture, its emoji and a switch, plus All on and All off. An icon that is off keeps showing its emoji. Saved in svg_icons_off and read at start (SvgIconsOff in ui/SvgIcons.kt); the master switch still turns all of them off",
+            "Terminal: icons on|off <name> switches one icon, icons reset turns every icon on, icons list shows each icon with its state and emoji. on, off and reset are refused during strict Focus. Help, man icons and chips (icon names) updated",
+        )),
+    VersionEntry("225.0.0", "More flags on the flags page",
+        listOf(
+            "Flags page has a More flags list under the themes and Homework: SVG icons, Sound effects, Mood check-in (Attendance page), Daily leaderboard (Stats), Experiments card (Hub). All on by default; each switch is refused during a Focus session. Some screens pick a change up after you reopen them",
+            "FlagRows in ui/FlagsScreen.kt is the one list the page and the terminal share; the three feature flags are Flags.EXTRA in data/Flags.kt (Flags.get(id)). Add a flag by adding one line there and wrapping the feature in Flags.get",
+            "Terminal: flags ls shows every flag with its id, flags on|off <icons|sounds|mood|leaderboard|experiments> turns one on or off (refused during strict Focus, ls still works). mood and leaderboard say they are turned off in flags. Help, man flags and chips updated",
+        )),
     VersionEntry("224.0.0", "Emoji as SVG icons, simpler theme settings, remastered logo",
         listOf(
             "Settings no longer has the Termux and Quest Home switch buttons, because both are already App themes in Shop > My Items (equip there). The Quest Home buttons (settings, Home app, turn off) only show while Quest Home is on. Themes turned off on the flags page stay hidden from My Items. Terminal: theme ls lists the app themes that are on and the one in use (works during strict Focus)",

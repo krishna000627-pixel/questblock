@@ -29,9 +29,23 @@ class SvgIcon(val paths: List<String>, val fill: Long = 0L)
 
 var SvgIconsOn by mutableStateOf(true)
 
+/** v226: icon names switched off one by one (flags > SVG icons > sub page). Their emoji stay as text. */
+var SvgIconsOff by mutableStateOf<Set<String>>(emptySet())
+
 object SvgIconsMode {
     private const val KEY = "svg_icons"
-    fun load(ctx: Context) { SvgIconsOn = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getBoolean(KEY, true) }
+    private const val OFF_KEY = "svg_icons_off"
+    fun load(ctx: Context) {
+        val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
+        SvgIconsOn = sp.getBoolean(KEY, true)
+        SvgIconsOff = (sp.getString(OFF_KEY, "") ?: "").split(',').filter { it.isNotEmpty() }.toSet()
+    }
+    private fun saveOff(ctx: Context, s: Set<String>) {
+        ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).edit().putString(OFF_KEY, s.joinToString(",")).apply()
+        SvgIconsOff = s
+    }
+    fun setIcon(ctx: Context, name: String, on: Boolean) = saveOff(ctx, if (on) SvgIconsOff - name else SvgIconsOff + name)
+    fun setAll(ctx: Context, on: Boolean) = saveOff(ctx, if (on) emptySet() else SvgIcons.ICONS.keys.toSet())
     fun set(ctx: Context, on: Boolean) {
         ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).edit().putBoolean(KEY, on).apply()
         SvgIconsOn = on
@@ -289,7 +303,7 @@ object SvgIcons {
     private val BY_CODEPOINT: Map<Int, List<String>> = EMOJI.keys.groupBy { it.codePointAt(0) }
 
     /** The text with every known emoji swapped for an inline icon, or null when it has none. */
-    fun annotate(s: String): SvgTextResult? {
+    fun annotate(s: String, off: Set<String> = emptySet()): SvgTextResult? {
         var any = false
         for (ch in s) if (ch.code >= 0x2190) { any = true; break }
         if (!any) return null
@@ -299,7 +313,7 @@ object SvgIcons {
             while (i < s.length) {
                 val cp = s.codePointAt(i)
                 val len = Character.charCount(cp)
-                val name = BY_CODEPOINT[cp]?.firstOrNull { s.startsWith(it, i) }?.let { EMOJI[it] }
+                val name = BY_CODEPOINT[cp]?.firstOrNull { s.startsWith(it, i) }?.let { EMOJI[it] }?.takeIf { it !in off }
                 if (name != null) {
                     var end = i + len
                     if (end < s.length && s[end] == '\uFE0F') end++

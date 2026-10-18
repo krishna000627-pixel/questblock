@@ -132,7 +132,7 @@ fun PlayerHubScreen(
             item { NavCard("📈 Weekly review", "Report, coins and one change", onOpenReports) }
             item { NavCard("🏆 Badges", "${st.badges.count { it.unlocked }} of ${st.badges.size} unlocked", onOpenBadges) }
             item { NavCard("⚙️ Rules", "Limits and locks", onOpenRules) }
-            item { NavCard("🧪 Experiments", "Optional features, all switches are yours", onOpenExperiments) }
+            if (com.krishna.questblock.data.Flags.get("experiments")) item { NavCard("🧪 Experiments", "Optional features, all switches are yours", onOpenExperiments) }
         } else {
             item { Spacer(Modifier.height(1.dp)) }
         }

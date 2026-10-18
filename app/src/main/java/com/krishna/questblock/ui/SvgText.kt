@@ -43,7 +43,7 @@ fun Text(
     style: TextStyle = LocalTextStyle.current,
 ) {
     val useSvg = SvgIconsOn && !TermuxOn
-    val res = if (useSvg) remember(text) { SvgIcons.annotate(text) } else null
+    val res = if (useSvg) remember(text, SvgIconsOff) { SvgIcons.annotate(text, SvgIconsOff) } else null
     if (res == null) {
         androidx.compose.material3.Text(text, modifier, color, fontSize, fontStyle, fontWeight, fontFamily, letterSpacing,
             textDecoration, textAlign, lineHeight, overflow, softWrap, maxLines, minLines, onTextLayout, style)

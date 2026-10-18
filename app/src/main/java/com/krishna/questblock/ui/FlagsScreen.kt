@@ -29,12 +29,27 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+/** v225: one row of the "More flags" list, shared by the flags page and the terminal. */
+class FlagRow(val id: String, val label: String, val desc: String, val get: (android.content.Context) -> Boolean, val set: (android.content.Context, Boolean) -> Unit)
+
+object FlagRows {
+    val ALL: List<FlagRow> = listOf(
+        FlagRow("icons", "SVG icons", "Emoji drawn as SVG icons on the normal pages", { SvgIconsOn }, { c, v -> SvgIconsMode.set(c, v) }),
+        FlagRow("sounds", "Sound effects", "Coin, level up and chime sounds", { com.krishna.questblock.util.Sounds.sfxOn }, { _, v -> com.krishna.questblock.util.Sounds.sfxOn = v }),
+    ) + com.krishna.questblock.data.Flags.EXTRA.map { d ->
+        FlagRow(d.id, d.label, d.desc, { com.krishna.questblock.data.Flags.get(d.id) }, { c, v -> com.krishna.questblock.data.Flags.set(c, d.id, v) })
+    }
+    fun find(w: String?): FlagRow? = ALL.firstOrNull { it.id == w?.lowercase() }
+}
+
 /** v219: the flags page (7 taps on the newest entry in Version info). Terminal version: flags. */
 @Composable
 fun FlagsScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
     val on = remember { mutableStateMapOf<String, Boolean>().also { m -> AppThemes.IDS.forEach { m[it] = AppThemes.enabled(ctx, it) } } }
     var msg by remember { mutableStateOf("") }
+    var showIcons by remember { mutableStateOf(false) }
+    if (showIcons) { SvgIconsPage(onBack = { showIcons = false }); return }
     val desc = mapOf(
         "phone" to "The normal pages with the bottom bar",
         "termux" to "The whole app as one terminal",
@@ -47,7 +62,7 @@ fun FlagsScreen(onBack: () -> Unit) {
                 TitleIcon("Flags", 24.dp, endPad = 8.dp)
                 Column {
                     Text("Flags", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
-                    Text("Turn an app theme or the homework tracker on or off. A theme that is off can't be equipped.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                    Text("Turn app themes, the homework tracker and single features on or off. A theme that is off can't be equipped.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
                 }
             }
         }
@@ -80,6 +95,25 @@ fun FlagsScreen(onBack: () -> Unit) {
                         if (TermuxMode.strictNow(ctx)) msg = "refused: a strict Focus session is running"
                         else { com.krishna.questblock.data.Flags.setHomework(ctx, v); hw = v; msg = "Some screens pick it up after you reopen them" }
                     })
+                }
+            }
+        }
+        item(key = "more_head") { Text("More flags", fontWeight = FontWeight.SemiBold, color = ColorMuted, modifier = Modifier.padding(top = 6.dp)) }
+        FlagRows.ALL.forEach { row ->
+            item(key = "flag_" + row.id) {
+                var v by remember { mutableStateOf(row.get(ctx)) }
+                Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(row.label, fontWeight = FontWeight.SemiBold, color = ColorText)
+                            Text(row.desc, style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                        }
+                        if (row.id == "icons") androidx.compose.material3.TextButton(onClick = { showIcons = true }) { Text("Choose") }
+                        Switch(checked = v, onCheckedChange = { nv ->
+                            if (TermuxMode.strictNow(ctx)) msg = "refused: a strict Focus session is running"
+                            else { row.set(ctx, nv); v = nv; msg = "" }
+                        })
+                    }
                 }
             }
         }
