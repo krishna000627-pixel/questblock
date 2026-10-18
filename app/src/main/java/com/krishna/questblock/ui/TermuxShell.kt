@@ -57,7 +57,7 @@ private val TOP_COMMANDS = listOf(
     "stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub",
     "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas",
     "suggest", "timers", "fun", "fg", "last", "poster", "mood", "achievements", "leaderboard",
-    "cd", "pwd",
+    "cd", "pwd", "qhome",
 )
 
 private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
@@ -85,7 +85,13 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "debuglog" to listOf("clear"),
     "ideas" to listOf("add", "done", "rm", "clear", "copy"),
     "about" to listOf("open"),
-    "theme set" to listOf("default", "paper", "termux"),
+    "theme set" to listOf("default", "paper", "termux", "questhome"),
+    "qhome" to listOf("status", "themes", "theme", "icons", "widget", "pages", "add", "rm", "dock", "folder", "hide", "unhide", "hidden", "apps", "default", "reset"),
+    "qhome icons" to listOf("circle", "squircle", "square", "leaf", "hexagon", "diamond", "theme"),
+    "qhome widget" to listOf("clock", "status", "focus", "quests", "homework"),
+    "qhome dock" to listOf("add", "rm"),
+    "qhome folder" to listOf("new", "rm", "add", "take", "rename"),
+    "qhome theme" to listOf("dungeon", "forest", "cyber", "terminal", "paper", "ocean", "sakura", "desert", "space", "steel"),
     "poster" to listOf("pick", "on", "off", "tint", "dim"),
     "suggest" to listOf("add", "physics", "chemistry", "maths", "boards"),
     "ideas add" to listOf("bug", "feature", "ui", "termux", "idea"),
@@ -104,7 +110,7 @@ private val GROUPS: Map<String, List<String>> = linkedMapOf(
     "blocking" to listOf("vault", "unlock", "sites", "limits", "categories", "timers"),
     "economy" to listOf("coins", "shop", "inv", "fun"),
     "progress" to listOf("stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub", "mood", "achievements", "leaderboard"),
-    "settings" to listOf("set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas", "poster"),
+    "settings" to listOf("qhome", "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas", "poster"),
 )
 
 private val MAN: Map<String, String> = mapOf(
@@ -173,6 +179,11 @@ private val MAN: Map<String, String> = mapOf(
     "leaderboard" to "leaderboard         top 10 of 80 simulated players and where you are",
     "mood" to "mood | mood 1-5 [days ago] | mood clear [days ago]   one tap a day",
     "fun" to "fun | fun buy         buy +5 fun minutes for 25 coins",
+    "qhome" to "qhome | qhome status        Quest Home (the launcher theme): theme, layout, dock, folders, widgets. switch it on: theme set questhome\n" +
+        "qhome themes | theme <n|name>   10 themes (dungeon forest cyber terminal paper ocean sakura desert space steel)   qhome icons <shape|theme>\n" +
+        "qhome pages | apps [text]       what is where   qhome add|rm <app>   qhome dock add|rm <app> (4 apps)   qhome hide|unhide <app>   qhome hidden\n" +
+        "qhome folder [new <name> <app>...|rm|add|take|rename]   qhome widget <clock|status|focus|quests|homework> on|off\n" +
+        "qhome default (Android's own Home app page)   qhome reset. the launcher needs Android's Home app set to QuestBlock; not while a strict Focus session runs",
     "hw" to "hw add <subject> \"text\" [--due fri|\"fri 18:00\"] [--ch 3] [--copy] [-t 30m]   subject: p c m h e. no --due = tomorrow 08:00; --ch links a chapter\n" +
         "hw | hw board              the five subjects, due in 24 hours, clean-day streak\n" +
         "hw ls [subject] [--due|--overdue|--done]   hw done|undo|rm <id>   hw edit <id> [--text] [--subj] [--due] [--ch n|0] [--copy|--study] [-t]\n" +
@@ -189,7 +200,7 @@ private val DIR_OF: Map<String, String> = mapOf(
     "coins" to "shop", "shop" to "shop", "inv" to "shop", "fun" to "shop",
     "stats" to "stats", "usage" to "stats", "weekly" to "stats", "attendance" to "stats", "marks" to "stats", "chapters" to "stats",
     "badges" to "stats", "goals" to "stats", "hub" to "stats", "mood" to "stats", "achievements" to "stats", "leaderboard" to "stats",
-    "set" to "settings", "strict" to "settings", "dnd" to "settings", "perms" to "settings", "backup" to "settings", "restore" to "settings",
+    "qhome" to "settings", "set" to "settings", "strict" to "settings", "dnd" to "settings", "perms" to "settings", "backup" to "settings", "restore" to "settings",
     "reliability" to "settings", "selftest" to "settings", "debuglog" to "settings", "versions" to "settings", "about" to "settings",
     "poster" to "settings", "theme" to "settings",
     "ideas" to "ideas",
@@ -241,6 +252,11 @@ class TermuxViewModel @Inject constructor(
         ctx, repo, prefs,
         { s, q, y -> confirm(s, q, y) },
         { pkg -> labelOfPkg(pkg) },
+    )
+    private val qhCmd = TermuxQuestHome(
+        ctx,
+        { s, q -> pickApp(s, q) },
+        { s, q, y -> confirm(s, q, y) },
     )
     private var hwSoonAt = 0L
     private var hwSoon: List<HwItem> = emptyList()
@@ -454,7 +470,11 @@ class TermuxViewModel @Inject constructor(
         val appSubs = mapOf(
             "vault" to setOf("add", "rm", "info", "study", "unstudy", "opt"),
             "categories" to setOf("set", "safe", "lock"),
+            "qhome" to setOf("add", "rm", "hide", "unhide"),
         )
+        if (cmd == "qhome" && sub == "dock" && done.size == 3 && done[2].lowercase() in setOf("add", "rm")) {
+            return fuzzy(cur, appWords()).take(8).map { TermuxChip(it, "$prefix$it ") }
+        }
         if (cmd == "unlock" && done.size == 1) return fuzzy(cur, appWords()).take(8).map { TermuxChip(it, "$prefix$it ") }
         if (sub != null && appSubs[cmd]?.contains(sub) == true && done.size == 2) {
             return fuzzy(cur, appWords()).take(8).map { TermuxChip(it, "$prefix$it ") }
@@ -667,6 +687,7 @@ class TermuxViewModel @Inject constructor(
             "about" -> cmdAbout(s, a)
             "ideas" -> cmdIdeas(s, a)
             "hw" -> hwCmd.run(s, a)
+            "qhome" -> qhCmd.run(s, a)
             "suggest" -> extras.suggest(s, a)
             "timers" -> extras.timers(s)
             "fun" -> extras.funBuy(s, a)
@@ -699,7 +720,7 @@ class TermuxViewModel @Inject constructor(
             "perms" -> sub == "grant"
             "shop" -> sub in setOf("buy", "reward")
             "inv" -> sub in setOf("use", "equip", "unequip")
-            "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "paper")
+            "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "paper", "questhome")
             "set" -> sub != null && sub != "ls"
             else -> false
         }
@@ -953,7 +974,7 @@ class TermuxViewModel @Inject constructor(
         val sub = a.pos.getOrNull(1)?.lowercase()
         if (sub == null) {
             s.out("theme: {c}termux{/}   shop look: ${repo.player.first().equippedTheme}")
-            s.dim("theme set default|termux")
+            s.dim("theme set default|paper|termux|questhome")
             return
         }
         if (sub != "set") { s.err("usage: theme set default|termux"); return }
@@ -974,7 +995,15 @@ class TermuxViewModel @Inject constructor(
                 delay(400L)
                 TermuxMode.set(ctx, false)
             }
-            else -> s.err("usage: theme set default|paper|termux")
+            "questhome" -> {
+                if (TermuxMode.strictNow(ctx)) { s.err("refused: a strict Focus session is running"); return }
+                s.ok("Quest Home is on. switching\u2026")
+                s.dim("make it your Home app: qhome default (Android's own page, you come back here)")
+                delay(400L)
+                QuestHomeMode.set(ctx, true)
+                runCatching { ctx.startActivity(Intent(ctx, QuestHomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            }
+            else -> s.err("usage: theme set default|paper|termux|questhome")
         }
     }
 
@@ -2139,6 +2168,10 @@ class TermuxViewModel @Inject constructor(
             boolKey("sfx", "sound effects", { Sounds.sfxOn }, { Sounds.sfxOn = it }),
             boolKey("keepalive", "keep-alive notification", { prefs.keepAlive }, { prefs.keepAlive = it }),
             boolKey("auto_verify", "auto-verify quests from usage", { prefs.autoVerify }, { prefs.autoVerify = it }),
+            SetKey("appname", "launcher name: follow (Terminal while the Termux theme is on) questblock terminal", { AppName.mode(ctx) }) { v ->
+                val m = v.trim().lowercase()
+                if (m !in AppName.MODES) "appname: follow, questblock or terminal" else { AppName.setMode(ctx, m); null }
+            },
             SetKey("accent", "accent colour: " + ACCENTS.joinToString(" ") { it.first.lowercase() },
                 { ACCENTS.firstOrNull { it.second == prefs.accentArgb }?.first?.lowercase() ?: "custom" }) { v ->
                 val c = ACCENTS.firstOrNull { it.first.equals(v, ignoreCase = true) }

@@ -26,11 +26,72 @@ object TermuxMode {
     fun set(ctx: Context, on: Boolean) {
         ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).edit().putBoolean(KEY, on).apply()
         TermuxOn = on
+        if (on && QuestHomeOn) QuestHomeMode.set(ctx, false)    // one theme of the two at a time
+        AppName.applyAll(ctx)                                    // the launcher name follows the theme
     }
     /** A strict Focus session is running right now (same test MainScreen uses). */
     fun strictNow(ctx: Context): Boolean {
         val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
         return sp.getBoolean("focus_strict", false) && sp.getLong("focus_until_cache", 0L) > System.currentTimeMillis()
+    }
+}
+
+/** v212: Quest Home, the launcher theme (QuestHomeActivity). Mutually exclusive with the Termux theme. */
+var QuestHomeOn by mutableStateOf(false)
+
+object QuestHomeMode {
+    private const val KEY = "questhome_theme"
+    fun load(ctx: Context) {
+        QuestHomeOn = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getBoolean(KEY, false)
+    }
+    fun set(ctx: Context, on: Boolean) {
+        ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).edit().putBoolean(KEY, on).apply()
+        QuestHomeOn = on
+        if (on && TermuxOn) TermuxMode.set(ctx, false)
+        AppName.applyAll(ctx)
+    }
+}
+
+/**
+ * v212: the name and icon on the home screen. Android can't rename an app freely, so there are two launcher entries
+ * in the manifest (AliasQuestBlock "QuestBlock" and AliasTerminal "Terminal" with a >_ icon) and one is switched on.
+ * Mode: follow (Terminal while the Termux theme is on), questblock (always), terminal (always).
+ */
+object AppName {
+    private const val ALIAS_QB = "com.krishna.questblock.ui.AliasQuestBlock"
+    private const val ALIAS_TERM = "com.krishna.questblock.ui.AliasTerminal"
+    private const val HOME_ACTIVITY = "com.krishna.questblock.ui.QuestHomeActivity"
+    val MODES = listOf("follow", "questblock", "terminal")
+
+    fun mode(ctx: Context): String =
+        ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getString("app_name_mode", "follow") ?: "follow"
+
+    fun setMode(ctx: Context, m: String) {
+        ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).edit().putString("app_name_mode", m).apply()
+        applyAll(ctx)
+    }
+
+    fun wantTerminal(ctx: Context): Boolean = when (mode(ctx)) {
+        "terminal" -> true
+        "questblock" -> false
+        else -> TermuxOn
+    }
+
+    /** Switches the launcher entries and the Quest Home activity to match the theme. Safe to call any time. */
+    fun applyAll(ctx: Context) {
+        val pm = ctx.packageManager
+        val term = wantTerminal(ctx)
+        setEnabled(ctx, pm, if (term) ALIAS_TERM else ALIAS_QB, true)      // switch the new one on first, so one is always there
+        setEnabled(ctx, pm, if (term) ALIAS_QB else ALIAS_TERM, false)
+        setEnabled(ctx, pm, HOME_ACTIVITY, QuestHomeOn)
+    }
+
+    private fun setEnabled(ctx: Context, pm: android.content.pm.PackageManager, cls: String, on: Boolean) {
+        val cn = android.content.ComponentName(ctx.packageName, cls)
+        val want = if (on) android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED else android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        runCatching {
+            if (pm.getComponentEnabledSetting(cn) != want) pm.setComponentEnabledSetting(cn, want, android.content.pm.PackageManager.DONT_KILL_APP)
+        }
     }
 }
 

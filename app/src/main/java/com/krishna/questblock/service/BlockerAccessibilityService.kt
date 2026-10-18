@@ -1398,6 +1398,10 @@ class BlockerAccessibilityService : AccessibilityService() {
 
         fun openRecents(): Boolean = instance?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS) ?: false
 
+        /** v212: Quest Home's double tap. Needs Android 9 or newer and the accessibility service to be on. */
+        fun lockScreen(): Boolean =
+            if (Build.VERSION.SDK_INT >= 28) instance?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN) ?: false else false
+
         private val BROWSERS = setOf(
             "com.android.chrome", "com.chrome.beta", "org.chromium.chrome", "org.mozilla.firefox", "org.mozilla.firefox_beta",
             "org.mozilla.fenix", "com.brave.browser", "com.microsoft.emmx", "com.sec.android.app.sbrowser", "com.opera.browser",

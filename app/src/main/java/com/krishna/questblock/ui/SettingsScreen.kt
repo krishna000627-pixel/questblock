@@ -165,6 +165,39 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                 modifier = Modifier.fillMaxWidth()) { Text("Switch to the Termux look (the whole app becomes a terminal)") }
             Text("Back to this look any time with: theme set default (refused while a strict Focus session runs).",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            Spacer(Modifier.height(8.dp))
+            Text("Quest Home (launcher)", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
+            OutlinedButton(
+                onClick = {
+                    QuestHomeMode.set(ctx, true)
+                    runCatching { ctx.startActivity(Intent(ctx, QuestHomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                },
+                shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth(),
+            ) { Text(if (QuestHomeOn) "Open Quest Home" else "Switch to Quest Home (this app becomes your launcher)") }
+            if (QuestHomeOn) {
+                OutlinedButton(onClick = { qhPickHomeApp(ctx) }, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    Text("Make Quest Home my Home app")
+                }
+                OutlinedButton(onClick = { QuestHomeMode.set(ctx, false) }, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    Text("Turn off Quest Home")
+                }
+            }
+            Text("10 themes, app drawer, folders, dock, widgets. Long-press an empty spot on the launcher for its settings.",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+            Spacer(Modifier.height(8.dp))
+            Text("Name and icon on the home screen", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
+            var nameMode by remember { mutableStateOf(AppName.mode(ctx)) }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                AppName.MODES.forEach { m ->
+                    OutlinedButton(
+                        onClick = { AppName.setMode(ctx, m); nameMode = m },
+                        shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 4.dp),
+                    ) { Text(if (nameMode == m) "\u2713 " + m else m, maxLines = 1) }
+                }
+            }
+            Text("follow = \"Terminal\" with a >_ icon while the Termux theme is on, \"QuestBlock\" otherwise. The icon can take a few seconds to change.",
+                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
 
         // ── Economy ──────────────────────────────────────────────────────
