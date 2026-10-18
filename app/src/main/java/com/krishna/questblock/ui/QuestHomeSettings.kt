@@ -32,6 +32,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,7 +75,24 @@ fun QhSettingsPage(
     vm: QuestHomeViewModel,
 ) {
     val ctx = LocalContext.current
-    BackHandler(enabled = true) { onClose() }
+    var sp by remember { mutableStateOf("") }     // v218: "" = the list of pages
+    var find by remember { mutableStateOf("") }
+    val pageScroll = rememberScrollState()
+    LaunchedEffect(sp) { pageScroll.scrollTo(0) }
+    BackHandler(enabled = true) { if (sp.isNotEmpty()) sp = "" else onClose() }
+    // id, name, one line, words the finder also matches
+    val pages = listOf(
+        Quad("look", "Theme and wall", "Theme, night theme, own themes, wall, dim, blur", "colour night picture wallpaper animation parallax"),
+        Quad("icons", "Icons", "Shape, size, labels, tile, icon pack", "icon shape size label tile pack glyph letters"),
+        Quad("layout", "Layout", "Columns, dock, rows, pages, page change, folders", "columns dock rows pages dots folder transition"),
+        Quad("drawer", "Drawer", "List or grid, sort, A to Z, rows, search", "sort recent most used az search contacts"),
+        Quad("gestures", "Gestures", "Double tap, long press, swipes", "double tap long press swipe two finger"),
+        Quad("widgets", "Widgets", "Cards on the first page and Android widgets", "clock status focus quests quick add widget"),
+        Quad("hidden", "Hidden apps and locks", "Hidden space, locked apps, blocking, rules", "hide lock block unlock sheet study first notification dots usage"),
+        Quad("backup", "Backup", "Save and restore the launcher, reset", "backup restore reset export"),
+        Quad("more", "More", "Home app, QuestBlock, turn off", "default home app turn off"),
+    )
+    val pageNames = pages.associate { it.first to it.second }
     val txt = Color(theme.text)
     val mut = Color(theme.muted)
     val acc = Color(theme.accent)
@@ -133,12 +151,23 @@ fun QhSettingsPage(
     Box(Modifier.fillMaxSize().background(Color(theme.top).copy(alpha = 1f)).clickable(enabled = false) {}.statusBarsPadding().navigationBarsPadding()) {
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Quest Home settings", color = txt, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text(if (sp.isEmpty()) "Quest Home settings" else "\u2039  " + (pageNames[sp] ?: ""), color = txt, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).clickable(enabled = sp.isNotEmpty()) { sp = "" })
                 TextButton(onClick = onClose) { Text("Done", color = acc, fontWeight = FontWeight.Bold) }
             }
-            Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 32.dp)) {
+            Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(pageScroll).padding(horizontal = 16.dp).padding(bottom = 32.dp)) {
 
                 // ── Look ──
+                if (sp.isEmpty()) {
+                    androidx.compose.material3.OutlinedTextField(value = find, onValueChange = { find = it }, singleLine = true, label = { Text("Find a setting") }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                    val f = find.trim().lowercase()
+                    pages.filter { f.isEmpty() || (it.second + " " + it.third + " " + it.fourth).lowercase().contains(f) }.forEach { (id, name, hint, _) ->
+                        Column(Modifier.fillMaxWidth().clickable { sp = id }.padding(vertical = 14.dp)) {
+                            Text(name, color = txt, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                            Text(hint, color = mut, fontSize = 12.sp)
+                        }
+                    }
+                }
+                if (sp == "look") {
                 Title("Look")
                 Label("Theme")
                 val allThemes = remember(st.customThemes) { qhAllThemes(ctx) }
@@ -217,6 +246,8 @@ fun QhSettingsPage(
                 Num("Dim", st.dim, 0, 80, "%") { v -> update { it.copy(dim = v) } }
                 Num("Blur", st.blur, 0, 100, "") { v -> update { it.copy(blur = v) } }
                 Text("Blur works on Android 12 and newer; older phones only dim. Phone and picture walls always get at least a light dim so text stays readable (the text turns light there).", color = mut, fontSize = 11.sp)
+                }
+                if (sp == "icons") {
                 Label("Icon shape")
                 Pills(listOf("") + QH_SHAPES, st.shape, { if (it.isEmpty()) "theme" else it }) { sh -> update { it.copy(shape = sh) } }
                 Num("Icon size", st.iconSize, 70, 130, "%") { v -> update { it.copy(iconSize = v) } }
@@ -234,6 +265,8 @@ fun QhSettingsPage(
                 Text("Long-press an app, then Edit name and icon, to change one app (name, picture, emoji, letters, shape, colour).", color = mut, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
 
                 // ── Layout ──
+                }
+                if (sp == "layout") {
                 Title("Layout")
                 Label("Columns", "On the home pages and in the drawer")
                 Pills(listOf("4", "5", "6"), st.cols.toString()) { v -> update { it.copy(cols = v.toInt()) } }
@@ -249,6 +282,8 @@ fun QhSettingsPage(
                 Label("Folder style"); Pills(QhSet.FOLDERS, st.folderStyle) { v -> update { it.copy(folderStyle = v) } }
 
                 // ── Drawer ──
+                }
+                if (sp == "drawer") {
                 Title("Drawer")
                 SwitchRow("List instead of grid", st.drawerList) { b -> update { it.copy(drawerList = b) } }
                 Label("Sort"); Pills(QhSet.SORTS, st.sort, { when (it) { "az" -> "A to Z"; "za" -> "Z to A"; "recent" -> "Recent"; else -> "Most used" } }) { v -> update { it.copy(sort = v) } }
@@ -265,6 +300,8 @@ fun QhSettingsPage(
                 SwitchRow("Hidden apps show in search", st.searchHidden, "Off: hidden apps are also hidden from drawer search") { b -> update { it.copy(searchHidden = b) } }
 
                 // ── Gestures ──
+                }
+                if (sp == "gestures") {
                 Title("Gestures")
                 val acts = QhSet.ACTIONS
                 Label("Double tap"); Pills(acts, st.gDouble, { actionNames[it] ?: it }) { a -> update { it.copy(gDouble = a) } }
@@ -275,6 +312,8 @@ fun QhSettingsPage(
                 Label("Two fingers down"); Pills(acts, st.g2Down, { actionNames[it] ?: it }) { a -> update { it.copy(g2Down = a) } }
 
                 // ── Widgets ──
+                }
+                if (sp == "widgets") {
                 Title("Widgets on the first page")
                 Text("Tap to show or hide. Arrows change the order.", color = mut, fontSize = 11.sp)
                 st.widgetOrder.forEachIndexed { i, n ->
@@ -301,6 +340,8 @@ fun QhSettingsPage(
                 TextButton(onClick = onAddWidget) { Text("Add an Android widget", color = acc, fontWeight = FontWeight.Bold) }
 
                 // ── Hidden and locks ──
+                }
+                if (sp == "hidden") {
                 Title("Hidden apps and locks")
                 SwitchRow("Hidden count on the apps button", st.hiddenBadge) { b -> update { it.copy(hiddenBadge = b) } }
                 SwitchRow("Focus home", st.focusHome, "During a Focus session, apps that were not picked are hidden instead of dimmed") { b -> update { it.copy(focusHome = b) } }
@@ -353,6 +394,8 @@ fun QhSettingsPage(
                 )
 
                 // ── Backup ──
+                }
+                if (sp == "backup") {
                 Title("Backup")
                 Text("The layout (pages, dock, folders, hidden apps, labels and every setting above) is also in QuestBlock's own backup. The own wall picture is a file and is kept only on this phone.", color = mut, fontSize = 11.sp)
                 Row {
@@ -376,11 +419,14 @@ fun QhSettingsPage(
                 }
 
                 // ── About ──
+                }
+                if (sp == "more") {
                 Title("More")
                 Text("Make Quest Home my Home app", color = txt, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth().clickable { onHomeApp() }.padding(vertical = 10.dp))
                 Text("Open QuestBlock", color = txt, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth().clickable { onOpenQuestBlock() }.padding(vertical = 10.dp))
                 Text("Turn off Quest Home", color = Color(0xFFFF6B6B), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth().clickable { onTurnOff() }.padding(vertical = 10.dp))
                 Text("Terminal: qhome set ls shows every setting here.", color = mut, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+                }
             }
         }
     }
@@ -391,3 +437,6 @@ internal fun qhUsageGranted(ctx: Context): Boolean = runCatching {
     val ops = ctx.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
     ops.unsafeCheckOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), ctx.packageName) == android.app.AppOpsManager.MODE_ALLOWED
 }.getOrDefault(false)
+
+/** v218: one row of the settings list (id, name, line, finder words). */
+private data class Quad(val first: String, val second: String, val third: String, val fourth: String)

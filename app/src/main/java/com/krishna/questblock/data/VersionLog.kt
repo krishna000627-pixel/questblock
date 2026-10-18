@@ -3,6 +3,12 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("218.0.0", "Quest Home settings in nine pages",
+        listOf(
+            "Launcher settings open on a list of pages: Theme and wall, Icons, Layout, Drawer, Gestures, Widgets, Hidden apps and locks, Backup, More. Back or the title goes up one level, Done closes",
+            "Find a setting: type a word (night, columns, swipe, hide, backup ...) and the list shows the pages that hold it",
+            "Each page opens at the top",
+        )),
     VersionEntry("217.0.0", "Quest Home: three launcher themes that change the layout (Niagara, Smart, Lawn)",
         listOf(
             "The ten old themes are gone. New built-in themes: Niagara, Smart, Lawn. Your own themes and Material You stay and use the classic grid",
