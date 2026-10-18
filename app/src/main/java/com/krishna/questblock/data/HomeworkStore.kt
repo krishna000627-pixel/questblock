@@ -178,10 +178,11 @@ object Hw {
 
     /** Open items that are overdue or due within the next 24 hours, soonest first. */
     fun dueSoon(c: Context, now: Long = System.currentTimeMillis()): List<HwItem> =
-        all(c).filter { !it.done && it.due <= now + DUE_SOON_MS }.sortedBy { it.due }
+        if (!Flags.HOMEWORK_ENABLED) emptyList() else all(c).filter { !it.done && it.due <= now + DUE_SOON_MS }.sortedBy { it.due }
 
     /** A line when tonight's list will not fit before bedtime, else null. */
     fun fitWarning(c: Context, now: Long = System.currentTimeMillis()): String? {
+        if (!Flags.HOMEWORK_ENABLED) return null
         val list = dueSoon(c, now)
         if (list.isEmpty()) return null
         val need = list.sumOf { estimate(c, it) }
@@ -319,6 +320,7 @@ object Hw {
      * (every 7th day pays [STREAK_BONUS]). Returns the lines to show. Safe to call as often as you like.
      */
     suspend fun dailyTick(c: Context, repo: GameRepository, now: Long = System.currentTimeMillis()): List<String> {
+        if (!Flags.HOMEWORK_ENABLED) return emptyList()
         val s = sp(c)
         val today = startOfToday(now)
         var d = s.getLong("tick_day", 0L)

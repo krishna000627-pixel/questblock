@@ -280,7 +280,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SlimPill("\uD83D\uDCDA Chapters", true, onOpenChapters, Modifier.weight(1f))
                     SlimPill("\uD83D\uDCC5 Attendance", true, onOpenAttendance, Modifier.weight(1f))
-                    SlimPill("\uD83D\uDCDD Homework" + if (hwDue > 0) " ($hwDue)" else "", hwDue > 0, onOpenHomework, Modifier.weight(1f))
+                    if (com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) SlimPill("\uD83D\uDCDD Homework" + if (hwDue > 0) " ($hwDue)" else "", hwDue > 0, onOpenHomework, Modifier.weight(1f))
                 }
             }
         }

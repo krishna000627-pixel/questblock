@@ -197,8 +197,10 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
             composable("versions") { VersionScreen(onBack = { navController.popBackStack() }) }
             composable("selftest") { SelfTestScreen(onBack = { navController.popBackStack() }) }
             composable("attendance") { AttendanceScreen(onBack = { navController.popBackStack() }) }
-            composable("homework") { HomeworkScreen(onBack = { navController.popBackStack() }, onGoFocus = { navController.goTab("focus") }) }
-            composable("homework_add") { HomeworkScreen(onBack = { navController.popBackStack() }, onGoFocus = { navController.goTab("focus") }) }
+            if (com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) {
+                composable("homework") { HomeworkScreen(onBack = { navController.popBackStack() }, onGoFocus = { navController.goTab("focus") }) }
+                composable("homework_add") { HomeworkScreen(onBack = { navController.popBackStack() }, onGoFocus = { navController.goTab("focus") }) }
+            }
             composable("chapters") { ChaptersScreen(onBack = { navController.popBackStack() },
                 onOpenSubject = { id, school -> navController.openPage("chapter_subject/$id/$school") },
                 onOpenMarks = { navController.openPage("marks") }) }

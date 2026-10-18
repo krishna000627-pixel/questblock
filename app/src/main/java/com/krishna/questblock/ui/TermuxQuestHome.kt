@@ -22,7 +22,7 @@ class TermuxQuestHome(
     /** Opens Android's own picture picker (wall or one app's icon) and reports back to the session. */
     private val requestPick: (String) -> Unit = {},
 ) {
-    private val widgetIds = listOf("clock", "status", "focus", "quests", "homework", "quickadd")
+    private val widgetIds = listOf("clock", "status", "focus", "quests", "homework", "quickadd").filter { it != "homework" || com.krishna.questblock.data.Flags.HOMEWORK_ENABLED }
 
     suspend fun run(s: TermuxSession, a: TermuxArgs) {
         when (a.pos.getOrNull(1)?.lowercase()) {

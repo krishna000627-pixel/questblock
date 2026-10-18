@@ -3,6 +3,29 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("217.0.0", "Quest Home: three launcher themes that change the layout (Niagara, Smart, Lawn)",
+        listOf(
+            "The ten old themes are gone. New built-in themes: Niagara, Smart, Lawn. Your own themes and Material You stay and use the classic grid",
+            "Niagara: pure black, no tiles and no dock. Home is a big bottom-aligned text list (dock apps first), the drawer is a text list with the A to Z scrubber",
+            "Smart: blue glass look. The drawer has tabs (All, Social, Media, Games, Tools, Other, sorted by app kind) and four shortcuts above the dock open the drawer on that tab",
+            "Lawn: soft grey. Day and date on top of the first page, floating dock, search pill at the bottom",
+            "A theme that was removed falls back to Niagara. qhome theme now lists niagara, smart, lawn",
+        )),
+    VersionEntry("216.0.0", "Quest Home: long press on empty home space opens a Home menu",
+        listOf(
+            "Long press on empty space now opens the Home menu: Wallpaper, Widgets, Theme, Icons and grid, Launcher settings, Open QuestBlock. It is the new default (a long press that was still set to Launcher settings moves to Home menu once; pick any action again under Gestures)",
+            "Wallpaper: Set phone wallpaper (Android's own picker), pick a picture for the launcher, wall mode (theme, phone, phone + theme, colour, my picture), dim and blur in steps of 10",
+            "Theme: every built-in, own and Material You theme in one list with a tick on the active one",
+            "Icons and grid: icon source (system, glyph, pack, none), size, columns 4 to 6, labels on or off. Changes show behind the sheet straight away",
+            "New gesture action Home menu in Settings > Gestures and for qhome g.long",
+        )),
+    VersionEntry("215.0.0", "Quest Home icons at system size, long-press with three buttons, homework disconnected, exact Focus clock",
+        listOf(
+            "Icons: system, icon pack and own-picture icons are drawn full size (about 52dp x the icon size %) with no second tile behind them, in the grid and the list. Emoji, letters and glyphs keep the tile",
+            "Long-press on an app: shortcuts, then three buttons (Edit, App info, Uninstall), then a More toggle for home, dock, folder and hide",
+            "Homework tracker disconnected with one switch (data/Flags.kt, HOMEWORK_ENABLED = false): widget, search, quick add, Home pill and warning, notifications, lock page lines, terminal command and pages are off. Data and code stay",
+            "Focus clock: the page and the terminal strip now wake right after the shown second changes (they used to tick every 1000 ms from a random moment, up to a second late). The big clock rounds up like the notification, so both always show the same time, and sessions over an hour show h:mm:ss",
+        )),
     VersionEntry("214.0.0", "Quest Home: everything left from the v212 list (drag and drop, icon packs, hidden space, unlock sheet, themes, ideas sheet and more)",
         listOf(
             "Drag and drop on the home pages: long-press a tile and drag. Drop on another app (middle of the tile) to make a folder, on a folder to add to it, on the edge of a tile to place it before that tile, on the dock to put it there, on empty space to move it to the page you are on, and hold at the screen edge to flip pages (drop past the last page to start a new one). A long-press without moving still opens the menu. Dock apps can be dragged out onto the pages. Dragging from the drawer is not supported.",

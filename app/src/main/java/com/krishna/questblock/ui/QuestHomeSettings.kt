@@ -126,7 +126,7 @@ fun QhSettingsPage(
     }
 
     val actionNames = mapOf(
-        "lock" to "Lock screen", "drawer" to "Open drawer", "search" to "Open search", "settings" to "Launcher settings",
+        "lock" to "Lock screen", "menu" to "Home menu", "drawer" to "Open drawer", "search" to "Open search", "settings" to "Launcher settings",
         "questblock" to "Open QuestBlock", "focus" to "Start Focus", "notifications" to "Notifications", "none" to "Nothing",
     )
 
@@ -278,7 +278,7 @@ fun QhSettingsPage(
                 Title("Widgets on the first page")
                 Text("Tap to show or hide. Arrows change the order.", color = mut, fontSize = 11.sp)
                 st.widgetOrder.forEachIndexed { i, n ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    if (n != "homework" || com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Switch(checked = n in st.widgets, onCheckedChange = { b -> update { it.copy(widgets = if (b) it.widgets + n else it.widgets - n) } },
                             colors = SwitchDefaults.colors(checkedTrackColor = acc, checkedThumbColor = Color(theme.top)))
                         Text(when (n) { "quickadd" -> "Quick add"; else -> n.replaceFirstChar { it.uppercase() } }, color = txt, fontSize = 14.sp, modifier = Modifier.weight(1f).padding(start = 10.dp))
@@ -288,7 +288,7 @@ fun QhSettingsPage(
                 }
                 Num("Clock size", st.clockScale, 60, 140, "%") { v -> update { it.copy(clockScale = v) } }
                 Num("Quest lines", st.questsCount, 1, 6) { v -> update { it.copy(questsCount = v) } }
-                Num("Homework lines", st.hwCount, 1, 6) { v -> update { it.copy(hwCount = v) } }
+                if (com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) Num("Homework lines", st.hwCount, 1, 6) { v -> update { it.copy(hwCount = v) } }
                 Num("One-tap Focus length", st.focusPreset, 5, 180, " min") { v -> update { it.copy(focusPreset = v) } }
                 Label("Android widgets", "Real widgets from other apps, shown on the first page below the cards")
                 st.hostWidgets.forEach { id ->

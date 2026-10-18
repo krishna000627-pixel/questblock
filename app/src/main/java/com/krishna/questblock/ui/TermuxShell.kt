@@ -107,7 +107,7 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "qhome widget" to listOf("clock", "status", "focus", "quests", "homework"),
     "qhome dock" to listOf("add", "rm"),
     "qhome folder" to listOf("new", "rm", "add", "take", "rename"),
-    "qhome theme" to listOf("dungeon", "forest", "cyber", "terminal", "paper", "ocean", "sakura", "desert", "space", "steel"),
+    "qhome theme" to listOf("niagara", "smart", "lawn"),
     "poster" to listOf("pick", "on", "off", "tint", "dim"),
     "suggest" to listOf("add", "physics", "chemistry", "maths", "boards"),
     "cd" to listOf("~", "quests", "hw", "focus", "vault", "shop", "stats", "settings", "ideas"),
@@ -319,7 +319,8 @@ class TermuxViewModel @Inject constructor(
         viewModelScope.launch {
             while (true) {
                 runCatching { tickFocus() }
-                delay(1000L)
+                val left = player.value.focusModeUntil - System.currentTimeMillis()
+                delay(if (left > 0L) (left % 1000L) + 5L else 1000L)
             }
         }
     }
@@ -728,7 +729,7 @@ class TermuxViewModel @Inject constructor(
             "versions" -> cmdVersions(s, a)
             "about" -> cmdAbout(s, a)
             "ideas" -> cmdIdeas(s, a)
-            "hw" -> hwCmd.run(s, a)
+            "hw" -> if (com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) hwCmd.run(s, a) else s.warn("homework tracker is disconnected for now")
             "qhome" -> qhCmd.run(s, a)
             "suggest" -> extras.suggest(s, a)
             "timers" -> extras.timers(s)
