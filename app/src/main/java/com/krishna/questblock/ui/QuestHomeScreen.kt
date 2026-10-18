@@ -121,7 +121,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val WIDGET_NAMES = listOf("clock" to "Clock", "status" to "Status", "focus" to "Focus", "quests" to "Quests", "homework" to "Homework").filter { it.first != "homework" || com.krishna.questblock.data.Flags.HOMEWORK_ENABLED }
+private val WIDGET_NAMES get() = listOf("clock" to "Clock", "status" to "Status", "focus" to "Focus", "quests" to "Quests", "homework" to "Homework").filter { it.first != "homework" || com.krishna.questblock.data.Flags.HOMEWORK_ENABLED }
 
 /** v213: accents are stripped (Ä, É count as A, E); digits, symbols and anything else go under "#". */
 private fun letterOf(label: String): Char {
@@ -1144,7 +1144,7 @@ fun QuestHomeScreen(onLeave: () -> Unit, vm: QuestHomeViewModel = hiltViewModel(
                 onTurnOff = {
                     if (TermuxMode.strictNow(ctx) || vm.focusRunning()) {
                         android.widget.Toast.makeText(ctx, "Not while a Focus session is running", android.widget.Toast.LENGTH_SHORT).show()
-                    } else { settings = false; QuestHomeMode.set(ctx, false) }
+                    } else { settings = false; QuestHomeMode.set(ctx, false); AppThemes.enforce(ctx) }
                 },
                 onReset = { QhStore.reset(ctx); vm.update { QhStore.load(ctx) }; vm.reloadApps() },
                 onClose = { settings = false },
@@ -1213,6 +1213,13 @@ fun QuestHomeScreen(onLeave: () -> Unit, vm: QuestHomeViewModel = hiltViewModel(
             }
             "theme" -> QhDialog(theme, "Theme", closeMenu) {
                 qhAllThemes(ctx).forEach { t -> QhMenuItem(theme, (if (st.theme == t.id) "\u2713  " else "") + t.name) { vm.update { it.copy(theme = t.id) } } }
+                // v219: the other app themes can be equipped from here too
+                val others = AppThemes.enabledList(ctx).filter { it != "home" }
+                if (others.isNotEmpty()) Text("App theme", fontSize = 12.sp, color = Color(theme.muted), modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+                others.forEach { id -> QhMenuItem(theme, AppThemes.label(id)) {
+                    if (vm.focusRunning()) { Toast.makeText(ctx, "Not while a Focus session is running", Toast.LENGTH_SHORT).show() }
+                    else { closeMenu(); AppThemes.apply(ctx, id)?.let { err -> Toast.makeText(ctx, err, Toast.LENGTH_SHORT).show() } }
+                } }
             }
             "icons" -> QhDialog(theme, "Icons", closeMenu) {
                 Text("Icons come from", fontSize = 12.sp, color = Color(theme.muted), modifier = Modifier.padding(bottom = 4.dp))

@@ -3,6 +3,20 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("220.0.0", "Homework tracker is a switch on the flags page",
+        listOf(
+            "Flags page (7 taps on the newest entry in Version info) has a Homework tracker switch, off by default. It turns the widget, search, Home pill, notifications, lock page lines and terminal hw on or off. Some screens pick it up after you reopen them. Refused during a Focus session",
+            "Flags.HOMEWORK_ENABLED (data/Flags.kt) is now a flag read from the saved switch when the app starts, not a fixed value",
+            "Terminal: flags lists Homework, flags on|off homework (or hw) toggles it. Help, man flags and chips updated; on and off stay refused during strict Focus",
+        )),
+    VersionEntry("219.0.0", "App themes in the inventory, flags page, no avatar picture, no header emoji",
+        listOf(
+            "Avatar picture removed from the Home hero card and the Profile page. The hexagon frame and the badge stay, so frames and badges still show",
+            "Quest Phone (the normal pages), Termux and Quest Home are free items in My Items under App themes. Equip switches to that theme; they have no Unequip, equip another one instead. Quest Home's long-press Home menu > Theme lists the other app themes too, so you can switch from there",
+            "The emoji tile in front of page titles is gone (the title of every tab page and the QuestBlock title on Home). Titles are plain text now",
+            "Flags page: 7 quick taps on the newest entry in Version info open it. One switch each for Quest Phone, Termux and Quest Home. A theme that is off can't be equipped (inventory, settings, terminal, Quest Home); if the one in use is turned off the app moves to one that is on, and the last one left on can't be turned off. Refused during a Focus session",
+            "Terminal (ui/TermuxShell.kt, ui/AppThemes.kt): flags [ls] | on|off <phone|termux|home>; inv lists the three app themes last and inv equip <n> switches to one; theme set accepts phone and checks the flags. Help, man flags, chips and the strict-Focus rules are updated (flags ls works during strict Focus, on and off do not)",
+        )),
     VersionEntry("218.0.0", "Quest Home settings in nine pages",
         listOf(
             "Launcher settings open on a list of pages: Theme and wall, Icons, Layout, Drawer, Gestures, Widgets, Hidden apps and locks, Backup, More. Back or the title goes up one level, Done closes",

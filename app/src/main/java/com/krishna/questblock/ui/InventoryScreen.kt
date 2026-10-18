@@ -386,7 +386,20 @@ private fun RewardDialog(
 private fun MyItemsTab(inventory0: List<InventoryItem>, shownBadge: String, onEquip: (InventoryItem) -> Unit, onUnequip: (InventoryItem) -> Unit, onRedeem: (InventoryItem) -> Unit) {
     val beginner = InventoryItem(id = -1L, itemId = "badge_beginner", category = "cosmetic_badge", name = "Beginner Badge",
         emoji = "\uD83C\uDF31", isEquipped = shownBadge == "badge_beginner")
-    val inventory = inventory0 + beginner
+    // v219: the app themes are free items: Quest Phone, Termux, Quest Home (the ones turned on in flags)
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val active = AppThemes.active()
+    val appItems = AppThemes.enabledList(ctx).mapIndexed { i, id ->
+        InventoryItem(id = -10L - i, itemId = AppThemes.itemId(id), category = "app_theme", name = AppThemes.label(id), emoji = "", isEquipped = active == id)
+    }
+    val inventory = appItems + inventory0 + beginner
+    val equipAny: (InventoryItem) -> Unit = { it0 ->
+        if (it0.category == "app_theme") {
+            AppThemes.parse(it0.itemId.removePrefix("app_"))?.let { id ->
+                AppThemes.apply(ctx, id)?.let { err -> android.widget.Toast.makeText(ctx, err, android.widget.Toast.LENGTH_SHORT).show() }
+            }
+        } else onEquip(it0)
+    }
     if (inventory.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -401,6 +414,7 @@ private fun MyItemsTab(inventory0: List<InventoryItem>, shownBadge: String, onEq
     LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         val groups = inventory.groupBy { it.category }
         val catLabels = mapOf(
+            "app_theme"      to "App themes",
             "custom"         to "🎁 My Rewards",
             "powerup"        to "⚡ Power-ups",
             "cosmetic_frame" to "🖼️ Frames",
@@ -413,7 +427,7 @@ private fun MyItemsTab(inventory0: List<InventoryItem>, shownBadge: String, onEq
                 Text(label, style = MaterialTheme.typography.labelLarge, color = ColorMuted)
             }
             items(list, key = { it.id }) { inv ->
-                InventoryItemCard(inv, onEquip = { onEquip(inv) }, onUnequip = { onUnequip(inv) }, onRedeem = { onRedeem(inv) })
+                InventoryItemCard(inv, onEquip = { equipAny(inv) }, onUnequip = { onUnequip(inv) }, onRedeem = { onRedeem(inv) })
             }
         }
     }
@@ -423,10 +437,11 @@ private fun MyItemsTab(inventory0: List<InventoryItem>, shownBadge: String, onEq
 private fun InventoryItemCard(item: InventoryItem, onEquip: () -> Unit, onUnequip: () -> Unit, onRedeem: () -> Unit) {
     val isCosmetic = item.category.startsWith("cosmetic")
     val isCustom = item.category == "custom"
+    val isApp = item.category == "app_theme"
     Card(colors = CardDefaults.cardColors(containerColor = ColorSurface), shape = RoundedCornerShape(12.dp)) {
         Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(40.dp).background(ColorSurfaceHigh, RoundedCornerShape(10.dp)),
+            if (!isApp) Box(Modifier.size(40.dp).background(ColorSurfaceHigh, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center) { ArtIcon(Art.shop(item.itemId), item.emoji, 36.dp) }
 
             Column(Modifier.weight(1f)) {
@@ -435,6 +450,7 @@ private fun InventoryItemCard(item: InventoryItem, onEquip: () -> Unit, onUnequi
                 val rentTxt = if (item.category == "cosmetic_theme") ShopCatalog.items.firstOrNull { it.id == item.itemId }?.let { " · ${it.price}🪙/day" }.orEmpty() else ""
                 val statusText = when {
                     item.isEquipped     -> "✓ Equipped$rentTxt"
+                    isApp               -> "Free"
                     isCustom && item.usedAt == null -> "Ready to redeem"
                     item.usedAt != null -> "Used"
                     else                -> "Not equipped$rentTxt"
@@ -448,7 +464,7 @@ private fun InventoryItemCard(item: InventoryItem, onEquip: () -> Unit, onUnequi
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                 ) { Text("Unequip", style = MaterialTheme.typography.labelSmall) }
             }
-            if (isCosmetic && !item.isEquipped) {
+            if ((isCosmetic || isApp) && !item.isEquipped) {
                 Button(onClick = onEquip,
                     colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
                     shape = RoundedCornerShape(8.dp),

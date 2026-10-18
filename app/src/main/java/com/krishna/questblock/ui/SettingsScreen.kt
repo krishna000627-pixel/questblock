@@ -161,13 +161,13 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             Spacer(Modifier.height(8.dp))
             Text("Termux theme", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
-            OutlinedButton(onClick = { TermuxMode.set(ctx, true) }, shape = RoundedCornerShape(10.dp),
+            if (AppThemes.enabled(ctx, "termux")) OutlinedButton(onClick = { TermuxMode.set(ctx, true) }, shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth()) { Text("Switch to the Termux look (the whole app becomes a terminal)") }
             Text("Back to this look any time with: theme set default (refused while a strict Focus session runs).",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             Spacer(Modifier.height(8.dp))
             Text("Quest Home (launcher)", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
-            OutlinedButton(
+            if (QuestHomeOn || AppThemes.enabled(ctx, "home")) OutlinedButton(
                 onClick = {
                     QuestHomeMode.set(ctx, true)
                     runCatching { ctx.startActivity(Intent(ctx, QuestHomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
@@ -182,7 +182,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                 OutlinedButton(onClick = { qhPickHomeApp(ctx) }, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Text("Make Quest Home my Home app")
                 }
-                OutlinedButton(onClick = { QuestHomeMode.set(ctx, false) }, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+                if (AppThemes.enabled(ctx, "phone")) OutlinedButton(onClick = { QuestHomeMode.set(ctx, false) }, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Text("Turn off Quest Home")
                 }
             }

@@ -1,5 +1,6 @@
 package com.krishna.questblock.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,7 +21,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -34,6 +38,11 @@ import com.krishna.questblock.data.VERSION_LOG
 fun VersionScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
     val current = remember { runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?" }
+    // v219: 7 quick taps on the newest entry open the flags page
+    var showFlags by remember { mutableStateOf(false) }
+    var taps by remember { mutableStateOf(0) }
+    var lastTap by remember { mutableStateOf(0L) }
+    if (showFlags) { FlagsScreen(onBack = { showFlags = false }); return }
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -62,8 +71,14 @@ fun VersionScreen(onBack: () -> Unit) {
             }
         }
         items(VERSION_LOG) { entry ->
+            val latest = entry === VERSION_LOG.first()
             Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth()) {
+                modifier = Modifier.fillMaxWidth().then(if (!latest) Modifier else Modifier.clickable {
+                    val now = System.currentTimeMillis()
+                    taps = if (now - lastTap > 1500L) 1 else taps + 1
+                    lastTap = now
+                    if (taps >= 7) { taps = 0; showFlags = true }
+                })) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically) {
