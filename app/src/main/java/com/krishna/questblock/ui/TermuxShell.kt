@@ -86,7 +86,12 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "ideas" to listOf("add", "done", "rm", "clear", "copy"),
     "about" to listOf("open"),
     "theme set" to listOf("default", "paper", "termux", "questhome"),
-    "qhome" to listOf("status", "themes", "theme", "icons", "widget", "pages", "add", "rm", "dock", "folder", "hide", "unhide", "hidden", "apps", "default", "reset"),
+    "qhome" to listOf("status", "themes", "theme", "icons", "icon", "widget", "pages", "add", "rm", "dock", "folder", "hide", "unhide", "hidden", "apps", "set", "wall", "grid", "block", "focushome", "export", "import", "default", "reset"),
+    "qhome set" to listOf("ls", "wall", "dim", "blur", "wallcolor", "cols", "dock", "iconsize", "labels", "lines", "tile", "az", "searchhidden", "hiddenbadge", "focushome", "lockedhide", "block", "g.double", "g.long", "g.up", "g.down"),
+    "qhome wall" to listOf("svg", "phone", "phonesvg", "color", "picture", "dim", "blur"),
+    "qhome grid" to listOf("4", "5", "6"),
+    "qhome block" to listOf("accessibility", "launcher", "both"),
+    "qhome focushome" to listOf("on", "off"),
     "qhome icons" to listOf("circle", "squircle", "square", "leaf", "hexagon", "diamond", "theme"),
     "qhome widget" to listOf("clock", "status", "focus", "quests", "homework"),
     "qhome dock" to listOf("add", "rm"),
@@ -183,6 +188,10 @@ private val MAN: Map<String, String> = mapOf(
         "qhome themes | theme <n|name>   10 themes (dungeon forest cyber terminal paper ocean sakura desert space steel)   qhome icons <shape|theme>\n" +
         "qhome pages | apps [text]       what is where   qhome add|rm <app>   qhome dock add|rm <app> (4 apps)   qhome hide|unhide <app>   qhome hidden\n" +
         "qhome folder [new <name> <app>...|rm|add|take|rename]   qhome widget <clock|status|focus|quests|homework> on|off\n" +
+        "qhome wall [svg|phone|phonesvg|color|picture|dim <0-80>|blur <0-100>|color <#hex>]   qhome grid <4-6>   qhome icon <app> label <text>|reset\n" +
+        "qhome set ls | set <key> <value>   every launcher setting (grid, dock 4-6, icon size, labels, drawer, gestures, hiding)   qhome export | import <text>\n" +
+        "qhome block [accessibility|launcher|both]   what blocks an app: accessibility is strong; launcher only guards taps inside Quest Home (notifications, recents, other launchers and links stay open)\n" +
+        "qhome focushome on|off   during Focus hide every app that was not picked (instead of dimming it)\n" +
         "qhome default (Android's own Home app page)   qhome reset. the launcher needs Android's Home app set to QuestBlock; not while a strict Focus session runs",
     "hw" to "hw add <subject> \"text\" [--due fri|\"fri 18:00\"] [--ch 3] [--copy] [-t 30m]   subject: p c m h e. no --due = tomorrow 08:00; --ch links a chapter\n" +
         "hw | hw board              the five subjects, due in 24 hours, clean-day streak\n" +

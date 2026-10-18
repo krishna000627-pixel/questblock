@@ -175,6 +175,10 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                 shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth(),
             ) { Text(if (QuestHomeOn) "Open Quest Home" else "Switch to Quest Home (this app becomes your launcher)") }
             if (QuestHomeOn) {
+                OutlinedButton(
+                    onClick = { runCatching { ctx.startActivity(Intent(ctx, QuestHomeActivity::class.java).putExtra(EXTRA_QH_SETTINGS, true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } },
+                    shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth(),
+                ) { Text("Quest Home settings") }
                 OutlinedButton(onClick = { qhPickHomeApp(ctx) }, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Text("Make Quest Home my Home app")
                 }

@@ -9,4 +9,11 @@
 
     <!-- Lock page: same, opens straight into the chosen theme -->
     <style name="Theme.QuestBlock.Lock" parent="Theme.QuestBlock" />
+
+    <!-- v213: Quest Home. Transparent window that shows the phone wallpaper; the other wall modes paint over it. -->
+    <style name="Theme.QuestBlock.Home" parent="Theme.QuestBlock">
+        <item name="android:windowShowWallpaper">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+    </style>
 </resources>

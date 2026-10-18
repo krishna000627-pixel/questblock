@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import com.krishna.questblock.data.QhApps
+import com.krishna.questblock.data.QhSet
+import com.krishna.questblock.data.QhWallFile
 import com.krishna.questblock.data.QhState
 import com.krishna.questblock.data.QhStore
 import kotlinx.coroutines.Dispatchers
@@ -38,7 +40,15 @@ class TermuxQuestHome(
             "apps" -> apps(s, a)
             "default" -> default(s)
             "reset" -> reset(s)
-            else -> s.err("usage: qhome status|themes|theme|icons|widget|pages|add|rm|dock|folder|hide|unhide|hidden|apps|default|reset  (man qhome)")
+            "set" -> setting(s, a)
+            "wall" -> wall(s, a)
+            "grid" -> grid(s, a)
+            "icon" -> icon(s, a)
+            "block" -> block(s, a)
+            "focushome" -> flag(s, a, "focushome", "Focus home")
+            "export" -> exportLayout(s)
+            "import" -> importLayout(s, a)
+            else -> s.err("usage: qhome status|themes|theme|icons|icon|widget|pages|add|rm|dock|folder|hide|unhide|hidden|apps|set|wall|grid|block|focushome|export|import|default|reset  (man qhome)")
         }
     }
 
@@ -62,10 +72,12 @@ class TermuxQuestHome(
             if (isDefaultHome()) s.ok("QuestBlock is your Home app")
             else s.warn("another launcher is your Home app: {c}qhome default{/}")
         }
-        s.out("pages   {c}${st.pages.size}{/}  (${st.pages.joinToString(" + ") { it.size.toString() }} items)   dock {c}${st.dock.size}{/}/${QhStore.DOCK_MAX}   folders ${st.folders.size}   hidden ${st.hidden.size}")
+        s.out("pages   {c}${st.pages.size}{/}  (${st.pages.joinToString(" + ") { it.size.toString() }} items)   dock {c}${st.dock.size}{/}/${st.dockMax}   folders ${st.folders.size}   hidden ${st.hidden.size}")
         s.out("dock    ${if (st.dock.isEmpty()) "-" else st.dock.joinToString(", ") { (lab[it] ?: it).tm() }}")
         s.out("widgets ${widgetIds.joinToString(" ") { if (it in st.widgets) "{g}$it{/}" else "{d}$it{/}" }}")
-        s.dim("qhome themes \u00b7 qhome pages \u00b7 qhome apps \u00b7 qhome folder \u00b7 qhome widget")
+        s.out("wall    {c}${st.wall}{/}  dim ${st.dim}%  blur ${st.blur}   grid ${st.cols}x  icons ${st.iconSize}%  labels ${if (st.labels) "on" else "off"}")
+        s.out("blocking {c}${st.block}{/}  {d}(qhome block accessibility|launcher|both){/}   focus home ${if (st.focusHome) "{g}on{/}" else "off"}")
+        s.dim("qhome set ls \u00b7 qhome themes \u00b7 qhome pages \u00b7 qhome apps \u00b7 qhome folder \u00b7 qhome widget")
     }
 
     private fun themes(s: TermuxSession) {
@@ -149,7 +161,7 @@ class TermuxQuestHome(
         if (sub == null) {
             val lab = labels()
             val st = QhStore.load(ctx)
-            s.out("dock {c}${st.dock.size}{/}/${QhStore.DOCK_MAX}: ${if (st.dock.isEmpty()) "-" else st.dock.joinToString(", ") { (lab[it] ?: it).tm() }}")
+            s.out("dock {c}${st.dock.size}{/}/${st.dockMax}: ${if (st.dock.isEmpty()) "-" else st.dock.joinToString(", ") { (lab[it] ?: it).tm() }}")
             s.dim("qhome dock add|rm <app>")
             return
         }
@@ -158,7 +170,7 @@ class TermuxQuestHome(
             "add" -> {
                 val st = QhStore.load(ctx)
                 if (app.pkg in st.dock) { s.warn("already in the dock"); return }
-                if (st.dock.size >= QhStore.DOCK_MAX) { s.err("the dock holds ${QhStore.DOCK_MAX} apps: qhome dock rm <app> first"); return }
+                if (st.dock.size >= st.dockMax) { s.err("the dock holds ${st.dockMax} apps: qhome dock rm <app> first"); return }
                 QhStore.update(ctx) { it.addDock(app.pkg) }
                 s.ok("${app.label.tm()} is in the dock")
             }
@@ -263,6 +275,124 @@ class TermuxQuestHome(
         if (!QuestHomeOn) { s.warn("Quest Home is off: theme set questhome first"); return }
         s.step("opening Android's own Home app page. pick QuestBlock there")
         qhPickHomeApp(ctx)
+    }
+
+    // ── v213 ──
+    private fun setting(s: TermuxSession, a: TermuxArgs) {
+        val k = a.pos.getOrNull(2)?.lowercase()
+        val st = QhStore.load(ctx)
+        if (k == null || k == "ls") {
+            s.head("quest home settings")
+            QhSet.KEYS.forEach { key -> s.out("{c}${key.padEnd(13)}{/} ${(QhSet.get(st, key) ?: "").padEnd(14)} {d}${QhSet.help(key).tm()}{/}") }
+            s.dim("qhome set <key> <value>")
+            return
+        }
+        val v = a.pos.getOrNull(3)
+        if (v == null) { s.out("$k = ${QhSet.get(st, k) ?: "?"}   {d}${if (k in QhSet.KEYS) QhSet.help(k).tm() else "see: qhome set ls"}{/}"); return }
+        if (k == "wall" && v.lowercase() == "picture" && !QhWallFile.exists(ctx)) {
+            s.err("no own picture yet. pick one once in the launcher settings page (Look > My picture), then: qhome wall picture"); return
+        }
+        var bad = false
+        val n = QhSet.set(st, k, v) { s.err(it.tm()); bad = true }
+        if (n == null || bad) return
+        QhStore.save(ctx, n)
+        s.ok("$k = ${QhSet.get(n, k)}")
+    }
+
+    private fun wall(s: TermuxSession, a: TermuxArgs) {
+        val st = QhStore.load(ctx)
+        val v = a.pos.getOrNull(2)
+        if (v == null) {
+            s.out("wall {c}${st.wall}{/}   dim ${st.dim}%   blur ${st.blur}   colour ${QhSet.get(st, "wallcolor")}   own picture ${if (QhWallFile.exists(ctx)) "set" else "none"}")
+            s.dim("qhome wall <${QhSet.WALLS.joinToString("|")}>   qhome wall dim <0-80>   qhome wall blur <0-100>   qhome wall color <#RRGGBB>")
+            return
+        }
+        when (v.lowercase()) {
+            "dim", "blur", "color", "colour" -> {
+                val key = if (v.lowercase().startsWith("colo")) "wallcolor" else v.lowercase()
+                val x = a.pos.getOrNull(3)
+                if (x == null) { s.err("usage: qhome wall $v <value>"); return }
+                var bad = false
+                val n = QhSet.set(st, key, x) { s.err(it.tm()); bad = true }
+                if (n != null && !bad) { QhStore.save(ctx, n); s.ok("$key = ${QhSet.get(n, key)}") }
+            }
+            else -> {
+                if (v.lowercase() == "picture" && !QhWallFile.exists(ctx)) { s.err("no own picture yet. pick one once in the launcher settings page (Look > My picture)"); return }
+                var bad = false
+                val n = QhSet.set(st, "wall", v) { s.err(it.tm()); bad = true }
+                if (n != null && !bad) { QhStore.save(ctx, n); s.ok("wall = ${n.wall}") }
+            }
+        }
+    }
+
+    private fun grid(s: TermuxSession, a: TermuxArgs) {
+        val st = QhStore.load(ctx)
+        val v = a.pos.getOrNull(2)
+        if (v == null) { s.out("grid {c}${st.cols}{/} columns   dock ${st.dockMax}   icons ${st.iconSize}%   labels ${if (st.labels) "on" else "off"} (${st.labelLines} line${if (st.labelLines == 1) "" else "s"})"); s.dim("qhome grid <4-6>   (qhome set dock|iconsize|labels|lines)"); return }
+        val cols = v.substringBefore('x').toIntOrNull()
+        if (cols == null || cols !in 4..6) { s.err("columns: 4 to 6 (qhome grid 5)"); return }
+        QhStore.update(ctx) { it.copy(cols = cols) }
+        s.ok("home and drawer grid: $cols columns")
+    }
+
+    private suspend fun icon(s: TermuxSession, a: TermuxArgs) {
+        // qhome icon <app> label <text> | reset
+        val sub = a.pos.getOrNull(2)
+        if (sub == null) { s.err("usage: qhome icon <app> label <text> | reset   (other icon options: qhome icons, qhome grid, qhome set)"); return }
+        val app = pick(s, sub) ?: return
+        when (a.pos.getOrNull(3)?.lowercase()) {
+            "label" -> {
+                val t = a.rest(4).trim()
+                if (t.isEmpty()) { s.err("usage: qhome icon ${app.label.tm()} label <text>"); return }
+                QhStore.update(ctx) { it.copy(appLabels = it.appLabels + (app.pkg to t.take(24))) }
+                s.ok("${app.label.tm()} is now called ${t.take(24).tm()} on the launcher")
+            }
+            "reset" -> {
+                QhStore.update(ctx) { it.copy(appLabels = it.appLabels - app.pkg) }
+                s.ok("${app.label.tm()} is back to its own name")
+            }
+            "image" -> s.warn("icon pictures and icon packs are not in this version yet")
+            else -> s.err("usage: qhome icon <app> label <text> | reset")
+        }
+    }
+
+    private fun block(s: TermuxSession, a: TermuxArgs) {
+        val v = a.pos.getOrNull(2)?.lowercase()
+        val st = QhStore.load(ctx)
+        if (v == null) {
+            s.out("blocking {c}${st.block}{/}")
+            s.dim("accessibility: strong, catches every way of opening an app (needs QuestBlock accessibility)")
+            s.dim("launcher: only taps inside Quest Home open the lock page first; notifications, recents, other launchers and links stay open")
+            s.dim("both: the launcher goes straight to the lock page and accessibility still covers the rest")
+            return
+        }
+        if (v !in QhSet.BLOCKS) { s.err("blocking: ${QhSet.BLOCKS.joinToString(", ")}"); return }
+        QhStore.update(ctx) { it.copy(block = v) }
+        s.ok("blocking mode: $v")
+    }
+
+    private fun flag(s: TermuxSession, a: TermuxArgs, key: String, name: String) {
+        val st = QhStore.load(ctx)
+        val v = a.pos.getOrNull(2)
+        if (v == null) { s.out("$name ${QhSet.get(st, key)}"); return }
+        var bad = false
+        val n = QhSet.set(st, key, v) { s.err(it.tm()); bad = true }
+        if (n != null && !bad) { QhStore.save(ctx, n); s.ok("$name ${QhSet.get(n, key)}") }
+    }
+
+    private fun exportLayout(s: TermuxSession) {
+        s.head("quest home export")
+        s.out(android.util.Base64.encodeToString(QhStore.exportJson(ctx).toByteArray(), android.util.Base64.NO_WRAP or android.util.Base64.URL_SAFE))
+        s.dim("copy this one line. restore it with: qhome import <the line>   (the own wall picture is a file and is not in it)")
+    }
+
+    private fun importLayout(s: TermuxSession, a: TermuxArgs) {
+        val t = a.rest(2).trim()
+        if (t.isEmpty()) { s.err("usage: qhome import <text from qhome export>"); return }
+        confirm(s, "replace the whole launcher layout and settings with this text?") {
+            val json = runCatching { String(android.util.Base64.decode(t, android.util.Base64.URL_SAFE)) }.getOrNull()
+            if (json != null && QhStore.importJson(ctx, json)) s.ok("layout imported") else s.err("that is not a Quest Home export")
+        }
     }
 
     private fun reset(s: TermuxSession) {

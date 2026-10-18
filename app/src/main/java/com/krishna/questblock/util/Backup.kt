@@ -35,7 +35,7 @@ object Backup {
     private const val SAFETY_PREFIX = "QuestBlock_before_restore_"
     private const val KEEP_SAFETY = 3
     // other on-phone data besides the main settings: Quest board scrolls and the usage stats
-    private val EXTRA_PREFS = listOf("qb_ideas", "qb_shorts", "qb_screen", "qb_music")
+    private val EXTRA_PREFS = listOf("qb_ideas", "qb_shorts", "qb_screen", "qb_music", "qb_launcher")
 
     private val MAGIC = byteArrayOf('Q'.code.toByte(), 'B'.code.toByte(), 'E'.code.toByte(), '1'.code.toByte())
 

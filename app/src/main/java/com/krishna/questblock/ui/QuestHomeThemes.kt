@@ -59,6 +59,11 @@ class QhTheme(
     val layers: List<QhLayer>,
 )
 
+/** v213: the same theme with light text and dark tiles, for walls that are a photo (phone wallpaper, own picture). */
+fun qhReadable(t: QhTheme): QhTheme = QhTheme(
+    t.id, t.name, t.tagline, t.top, t.bottom, 0xFFFFFFFF, 0xFFD6D6DE, t.accent, 0x40000000, 0x59000000, t.shape, t.layers,
+)
+
 private fun n(v: Float): String = String.format(java.util.Locale.US, "%.1f", v)
 private fun circ(cx: Float, cy: Float, r: Float): String =
     "M${n(cx - r)},${n(cy)} A${n(r)},${n(r)} 0 1,0 ${n(cx + r)},${n(cy)} A${n(r)},${n(r)} 0 1,0 ${n(cx - r)},${n(cy)} Z"
@@ -231,12 +236,12 @@ fun qhColor(v: Long): Color = Color(v)
 
 /** The theme background: a gradient with the SVG layers on top, a few of them slowly moving. */
 @Composable
-fun QhBackground(theme: QhTheme, modifier: Modifier = Modifier.fillMaxSize()) {
+fun QhBackground(theme: QhTheme, modifier: Modifier = Modifier.fillMaxSize(), fill: Boolean = true) {
     val paths = remember(theme.id) { theme.layers.map { PathParser().parsePathString(it.d).toPath() } }
     val tr = rememberInfiniteTransition(label = "qh")
     val t by tr.animateFloat(0f, 1f, infiniteRepeatable(tween(14000, easing = LinearEasing), RepeatMode.Restart), label = "qht")
     Canvas(modifier) {
-        drawRect(Brush.verticalGradient(listOf(Color(theme.top), Color(theme.bottom))))
+        if (fill) drawRect(Brush.verticalGradient(listOf(Color(theme.top), Color(theme.bottom))))
         val sx = size.width / 100f
         val sy = size.height / 220f
         theme.layers.forEachIndexed { i, l ->

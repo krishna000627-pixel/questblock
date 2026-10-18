@@ -48,7 +48,10 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /** Package changes and the Home button reach the launcher through this. */
+const val EXTRA_QH_SETTINGS = "qh_open_settings"
+
 object QuestHomeBus {
+    var openSettings by mutableIntStateOf(0)
     var tick by mutableIntStateOf(0)
     var homePress by mutableIntStateOf(0)
 }
@@ -69,6 +72,7 @@ class QuestHomeActivity : ComponentActivity() {
         TermuxMode.load(this)
         QuestHomeMode.load(this)
         enableEdgeToEdge()
+        if (intent?.getBooleanExtra(EXTRA_QH_SETTINGS, false) == true) QuestHomeBus.openSettings = QuestHomeBus.openSettings + 1
         setContent {
             QuestTheme {
                 QuestHomeScreen(onLeave = {
@@ -100,6 +104,7 @@ class QuestHomeActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         QuestHomeBus.homePress = QuestHomeBus.homePress + 1    // Home pressed while already here: back to the first page
+        if (intent.getBooleanExtra(EXTRA_QH_SETTINGS, false)) QuestHomeBus.openSettings = QuestHomeBus.openSettings + 1
     }
 }
 
@@ -220,4 +225,22 @@ internal fun qhLockScreen(ctx: Context) {
     if (!BlockerAccessibilityService.lockScreen()) {
         Toast.makeText(ctx, "Turn on QuestBlock accessibility to lock the screen with a double tap", Toast.LENGTH_SHORT).show()
     }
+}
+
+/** v213: opens the lock page straight away (no flash of the app first). The lock page opens the app itself after an unlock. */
+internal fun qhLockPage(ctx: Context, pkg: String) {
+    runCatching {
+        ctx.startActivity(
+            Intent(ctx, BlockActivity::class.java)
+                .putExtra(BlockActivity.EXTRA_PKG, pkg)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NO_ANIMATION),
+        )
+    }.onFailure { Toast.makeText(ctx, "Can't open the lock page", Toast.LENGTH_SHORT).show() }
+}
+
+/** v213: the picked picture is copied into the app (QhWallFile) and the wall is switched to it. */
+internal fun qhImportWall(ctx: Context, uri: Uri): Boolean {
+    val ok = com.krishna.questblock.data.QhWallFile.import(ctx, uri)
+    if (!ok) Toast.makeText(ctx, "Could not read that picture", Toast.LENGTH_SHORT).show()
+    return ok
 }
