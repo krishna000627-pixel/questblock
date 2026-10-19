@@ -99,13 +99,14 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
     val snack = remember { SnackbarHostState() }
     LaunchedEffect(Unit) {
         UndoBus.events.collect { u ->
-            val r = snack.showSnackbar("Quest done", actionLabel = "Undo", duration = SnackbarDuration.Long)
+            val r = snack.showSnackbar(if (SystemOn) "[SYSTEM] QUEST CLEARED" else "Quest done", actionLabel = "Undo", duration = SnackbarDuration.Long)
             if (r == SnackbarResult.ActionPerformed) undoVm.undo(u)
         }
     }
 
     Scaffold(
         containerColor = ColorBg,
+        topBar = { if (SystemOn) SystemBar() },
         snackbarHost = { SnackbarHost(snack) },
         bottomBar = {
             if (!strict) NavigationBar(
@@ -129,7 +130,7 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
         }
     ) { innerPadding ->
         NavHost(navController = navController, startDestination = startDest,
-            modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            modifier = Modifier.fillMaxSize().padding(innerPadding).systemGrid()) {
             composable("home") {
                 HomeScreen(
                     onAddQuest = { navController.openPage("quest_types") },

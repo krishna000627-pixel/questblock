@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
 
 /**
  * v224: this Text shadows material3's Text in the ui package (same name, same parameters). With Settings > Icons on,
@@ -42,6 +43,8 @@ fun Text(
     onTextLayout: (TextLayoutResult) -> Unit = {},
     style: TextStyle = LocalTextStyle.current,
 ) {
+    val fontFamily = fontFamily ?: if (SystemOn) FontFamily.Monospace else null
+    val letterSpacing = if (letterSpacing == TextUnit.Unspecified && SystemOn) 0.3.sp else letterSpacing
     val useSvg = SvgIconsOn && !TermuxOn
     val res = if (useSvg) remember(text, SvgIconsOff) { SvgIcons.annotate(text, SvgIconsOff) } else null
     if (res == null) {
@@ -76,6 +79,7 @@ fun Text(
     onTextLayout: (TextLayoutResult) -> Unit = {},
     style: TextStyle = LocalTextStyle.current,
 ) {
-    androidx.compose.material3.Text(text, modifier, color, fontSize, fontStyle, fontWeight, fontFamily, letterSpacing,
+    androidx.compose.material3.Text(text, modifier, color, fontSize, fontStyle, fontWeight, fontFamily ?: if (SystemOn) FontFamily.Monospace else null,
+        if (letterSpacing == TextUnit.Unspecified && SystemOn) 0.3.sp else letterSpacing,
         textDecoration, textAlign, lineHeight, overflow, softWrap, maxLines, minLines, inlineContent, onTextLayout, style)
 }

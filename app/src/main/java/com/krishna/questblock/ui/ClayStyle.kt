@@ -50,5 +50,7 @@ fun Button(
     content: @Composable RowScope.() -> Unit,
 ) {
     if (ClayOn) androidx.compose.material3.Button(onClick, modifier.clay(CLAY_BUTTON, 6), enabled, CLAY_BUTTON, colors, ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp), null, contentPadding, interactionSource, content)
+    else if (SystemOn) androidx.compose.material3.Button(onClick, modifier, enabled, SYS_BUTTON, systemButtonColors(colors),
+        ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp), systemBorder(), contentPadding, interactionSource, content)
     else androidx.compose.material3.Button(onClick, modifier, enabled, shape, colors, elevation, border, contentPadding, interactionSource, content)
 }

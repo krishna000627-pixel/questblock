@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("236.0.0", "System theme (RPG main character window)",
+        listOf(
+            "New shop theme System Window (5 coins a day): a dark navy and electric blue look like the status windows in a main character system. More than colours: cards get cut corners (top-left and bottom-right), a thin glowing blue frame and bright corner brackets; buttons get the same cut corners and become outlined and see-through; all text is monospace; the pages sit on a faint blue HUD grid; a [ SYSTEM ] strip with PLAYER STATUS \u00b7 ONLINE sits at the top of every page; and the Undo bar after a quest reads [SYSTEM] QUEST CLEARED. Done in ui/SystemStyle.kt (Card in Glass.kt, Button in ClayStyle.kt and Text in SvgText.kt only change anything while this theme is on). Off over a poster and in the terminal. Danger buttons also take the blue accent while it is on",
+            "Terminal: theme set system (you must own it: shop buy system) equips it and leaves the terminal like the other shop themes; the terminal keeps its own look and nothing in it opens a page. Help, man theme and the suggestion chips list system; refused during strict Focus like the other themes",
+        )),
     VersionEntry("235.0.0", "Achievement, badge and rank art is SVG",
         listOf(
             "All drawn pictures in ui/Art.kt are now the thin outline SVG icons used by the Shop cards, in a ring in the accent colour: the 12 achievements (Home, recent achievements), the 25 badges on the Badges page (grey and faded while locked), the six ranks on the Player hub, and the two empty pages (no quests, empty inventory). Icon picks: first step feet, streaks flame, week warrior swords, legend trophy, adventurer map, hero (new icon, a caped person), champion crown, coin hoarder coin, levels star and sparkles, focused target, timer master stopwatch; ranks sprout, bolt, shield, medal, crown, galaxy. The old art_ach_*, art_badge_*, art_rank_* and art_empty_* files are deleted. Shop pictures, texts and the terminal are unchanged (the terminal shows no pictures, so it needs no new command)",
