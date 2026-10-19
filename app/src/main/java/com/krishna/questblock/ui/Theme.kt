@@ -50,6 +50,7 @@ private val SHOP_THEME_LIGHT = mapOf(
     "theme_itachi" to true, "theme_angel" to true, "theme_naruto" to false,
     "theme_katana" to true,
     "theme_linen" to true, "theme_sage" to true, "theme_sky" to true, "theme_lilac" to true, "theme_chalk" to true,
+    "theme_clay" to true,
 )
 fun themeForcedLight(id: String = ShopTheme): Boolean? = if (PosterOn) false else SHOP_THEME_LIGHT[id]
 
@@ -163,6 +164,11 @@ private val SHOP_PALETTES = mapOf(
         longArrayOf(0xFFF3EFF8, 0xFFFCFAFF, 0xFFE6DFF1, 0xFFFCFAFF, 0xFFD5CBE5),
         longArrayOf(0xFFEFEAF7, 0xFF8D83A6, 0xFFE0A15A, 0xFFD9B26A, 0xFFC7A8FF),
         longArrayOf(0xFF1E1728, 0xFF72688A, 0xFFB5651D, 0xFF9C6B1E, 0xFF6A4FB0)),
+    "theme_clay" to ShopPalette(0xFFEF5D8F,
+        longArrayOf(0xFF1D1830, 0xFF282240, 0xFF352D52, 0xFF2D2748, 0xFF40375E),
+        longArrayOf(0xFFE9E4F5, 0xFFF6F2FC, 0xFFDDD6EF, 0xFFF8F5FD, 0xFFD3CAE8),
+        longArrayOf(0xFFF1ECFF, 0xFF9C92BC, 0xFFFFA24D, 0xFFFFC066, 0xFF6FDCC8),
+        longArrayOf(0xFF2B2440, 0xFF7A7094, 0xFFC8661A, 0xFFB87414, 0xFF2FA58F)),
     "theme_chalk" to ShopPalette(0xFF444B55,
         longArrayOf(0xFF0E0E0E, 0xFF171717, 0xFF222222, 0xFF1C1C1C, 0xFF2E2E2E),
         longArrayOf(0xFFFAFAF8, 0xFFFFFFFF, 0xFFECECE8, 0xFFFFFFFF, 0xFFDADAD4),

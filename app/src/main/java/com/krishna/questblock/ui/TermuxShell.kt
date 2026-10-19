@@ -67,7 +67,7 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "icons" to listOf("list", "on", "off", "reset"),
     "icons on" to SvgIcons.EMOJI_ICONS.toList(),
     "icons off" to SvgIcons.EMOJI_ICONS.toList(),
-    "theme set" to listOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "termux", "questhome"),
+    "theme set" to listOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "termux", "questhome"),
     "flags" to listOf("ls", "on", "off"),
     "flags on" to listOf("phone", "termux", "home", "homework", "icons", "sounds", "mood", "leaderboard", "experiments"),
     "flags off" to listOf("phone", "termux", "home", "homework", "icons", "sounds", "mood", "leaderboard", "experiments"),
@@ -144,7 +144,7 @@ private val MAN: Map<String, String> = mapOf(
     "whoami" to "whoami              hero name, goal, birthday, level",
     "alias" to "alias [name=cmd]    list or make a shortcut, e.g. alias qt=quests --today",
     "unalias" to "unalias <name>     remove a shortcut",
-    "theme" to "theme [ls] | [set default|phone|paper|linen|sage|sky|lilac|chalk|termux|questhome]   default/phone = the normal look (Quest Phone), paper, linen, sage, sky, lilac, chalk = the plain light shop themes (you must own it: shop buy <name>), questhome = the launcher. theme ls lists the app themes that are on (flags hides the ones turned off) and the one in use. A theme turned off in flags is refused. refused during Focus (theme ls still works)",
+    "theme" to "theme [ls] | [set default|phone|paper|linen|sage|sky|lilac|chalk|clay|termux|questhome]   default/phone = the normal look (Quest Phone), paper, linen, sage, sky, lilac, chalk = the plain light shop themes, clay = the soft puffy Claymorphism one (you must own it: shop buy <name>), questhome = the launcher. theme ls lists the app themes that are on (flags hides the ones turned off) and the one in use. A theme turned off in flags is refused. refused during Focus (theme ls still works)",
     "flags" to "flags [ls] | on <name> | off <name>   names: phone termux home (app themes, the one left on can't be turned off), homework, icons, sounds, mood, leaderboard, experiments. flags ls shows every flag. refused during Focus (flags ls still works)",
     "icons" to "icons [list] | on|off [name] | reset   emoji drawn as SVG icons on the normal pages (the terminal stays plain text). on|off alone is the master switch, on|off <name> switches one icon (flags page > SVG icons > Choose). reset turns every icon on. list shows each icon, its emoji and its state. on, off and reset are refused during Focus (icons and icons list still work)",
     "logo" to "logo                 the app logo in ASCII (a green block with a star)",
@@ -776,7 +776,7 @@ class TermuxViewModel @Inject constructor(
             "perms" -> sub == "grant"
             "shop" -> sub in setOf("buy", "reward")
             "inv" -> sub in setOf("use", "equip", "unequip")
-            "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "questhome")
+            "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "questhome")
             "flags" -> sub in setOf("on", "off")
             "icons" -> sub in setOf("on", "off", "reset")
             "set" -> sub != null && sub != "ls"
@@ -1032,7 +1032,7 @@ class TermuxViewModel @Inject constructor(
         val sub = a.pos.getOrNull(1)?.lowercase()
         if (sub == null) {
             s.out("theme: {c}termux{/}   shop look: ${repo.player.first().equippedTheme}")
-            s.dim("theme set default|phone|paper|linen|sage|sky|lilac|chalk|termux|questhome  \u00b7 flags: turn themes on or off")
+            s.dim("theme set default|phone|paper|linen|sage|sky|lilac|chalk|clay|termux|questhome  \u00b7 flags: turn themes on or off")
             return
         }
         if (sub == "ls") {
@@ -1043,7 +1043,7 @@ class TermuxViewModel @Inject constructor(
             s.dim("themes turned off in flags are not listed. switch: theme set <name> or inv equip <n>")
             return
         }
-        if (sub != "set") { s.err("usage: theme [ls] | set default|phone|paper|linen|sage|sky|lilac|chalk|termux|questhome"); return }
+        if (sub != "set") { s.err("usage: theme [ls] | set default|phone|paper|linen|sage|sky|lilac|chalk|clay|termux|questhome"); return }
         when (a.pos.getOrNull(2)?.lowercase()) {
             "termux" -> s.ok("theme is already termux")
             "default", "phone" -> {
@@ -1053,7 +1053,7 @@ class TermuxViewModel @Inject constructor(
                 delay(400L)
                 AppThemes.apply(ctx, "phone")
             }
-            "paper", "linen", "sage", "sky", "lilac", "chalk" -> {
+            "paper", "linen", "sage", "sky", "lilac", "chalk", "clay" -> {
                 val word = a.pos.getOrNull(2)!!.lowercase()
                 val title = ShopCatalog.items.firstOrNull { it.id == "theme_$word" }?.name ?: word
                 if (TermuxMode.strictNow(ctx)) { s.err("refused: a strict Focus session is running"); return }
@@ -1073,7 +1073,7 @@ class TermuxViewModel @Inject constructor(
                 delay(400L)
                 AppThemes.apply(ctx, "home")
             }
-            else -> s.err("usage: theme set default|phone|paper|linen|sage|sky|lilac|chalk|termux|questhome")
+            else -> s.err("usage: theme set default|phone|paper|linen|sage|sky|lilac|chalk|clay|termux|questhome")
         }
     }
 
@@ -2332,10 +2332,6 @@ class TermuxViewModel @Inject constructor(
             boolKey("sfx", "sound effects", { Sounds.sfxOn }, { Sounds.sfxOn = it }),
             boolKey("keepalive", "keep-alive notification", { prefs.keepAlive }, { prefs.keepAlive = it }),
             boolKey("auto_verify", "auto-verify quests from usage", { prefs.autoVerify }, { prefs.autoVerify = it }),
-            SetKey("appname", "launcher name: follow (Terminal while the Termux theme is on) questblock terminal", { AppName.mode(ctx) }) { v ->
-                val m = v.trim().lowercase()
-                if (m !in AppName.MODES) "appname: follow, questblock or terminal" else { AppName.setMode(ctx, m); null }
-            },
             SetKey("accent", "accent colour: " + ACCENTS.joinToString(" ") { it.first.lowercase() },
                 { ACCENTS.firstOrNull { it.second == prefs.accentArgb }?.first?.lowercase() ?: "custom" }) { v ->
                 val c = ACCENTS.firstOrNull { it.first.equals(v, ignoreCase = true) }

@@ -140,9 +140,6 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                     ) { if (accent == argb) Text("✓", color = ColorOnPrimary, fontWeight = FontWeight.Black) }
                 }
             }
-            Text("Some elements pick the new colour up after you reopen the app.",
-                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-            Spacer(Modifier.height(8.dp))
             if (QuestHomeOn) {
                 Text("Quest Home (launcher)", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
                 OutlinedButton(
@@ -158,22 +155,6 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                 Text("Long-press an empty spot on the launcher for its settings.",
                     style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             }
-            Text("Termux and Quest Home are switched in Shop > My Items > App themes (or flags to turn them off).",
-                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-            Spacer(Modifier.height(8.dp))
-            Text("Name and icon on the home screen", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
-            var nameMode by remember { mutableStateOf(AppName.mode(ctx)) }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                AppName.MODES.forEach { m ->
-                    OutlinedButton(
-                        onClick = { AppName.setMode(ctx, m); nameMode = m },
-                        shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp),
-                    ) { Text(if (nameMode == m) "\u2713 " + m else m, maxLines = 1) }
-                }
-            }
-            Text("follow = \"Terminal\" with a >_ icon while the Termux theme is on, \"QuestBlock\" otherwise. The icon can take a few seconds to change.",
-                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
         }
 
         // ── Economy ──────────────────────────────────────────────────────

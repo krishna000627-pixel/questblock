@@ -197,6 +197,18 @@ object SvgIcons {
     "clock" to SvgIcon(listOf("M12 4a8 8 0 1 0 0 16a8 8 0 1 0 0-16z", "M12 8v4l3 2")),
     "versions" to SvgIcon(listOf("M10 7h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z", "M6 17V6a1 1 0 0 1 1-1h9")),
     "calendar_week" to SvgIcon(listOf("M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z", "M16 3v4", "M8 3v4", "M4 11h16", "M8 15h8")),
+    "home" to SvgIcon(listOf("M3 11l9-8 9 8", "M5 10v10h14V10", "M10 20v-6h4v6")),
+    "arrow_left" to SvgIcon(listOf("M19 12H5", "M12 5l-7 7 7 7")),
+    "plus" to SvgIcon(listOf("M12 5v14", "M5 12h14")),
+    "minus" to SvgIcon(listOf("M5 12h14")),
+    "trash" to SvgIcon(listOf("M4 7h16", "M10 11v6", "M14 11v6", "M6 7l1 13h10l1-13", "M9 7V4h6v3")),
+    "x" to SvgIcon(listOf("M6 6l12 12", "M18 6L6 18")),
+    "play" to SvgIcon(listOf("M7 4l13 8-13 8z")),
+    "search" to SvgIcon(listOf("M11 4a7 7 0 1 0 0 14a7 7 0 1 0 0-14z", "M20 20l-4-4")),
+    "copy" to SvgIcon(listOf("M8 8h12v12H8z", "M4 16V4h12")),
+    "checkbox" to SvgIcon(listOf("M5 5h14v14H5z")),
+    "checkbox_check" to SvgIcon(listOf("M5 5h14v14H5z", "M8.5 12l2.5 2.5 4.5-5")),
+    "tick" to SvgIcon(listOf("M5 12l5 5 9-10")),
     )
 
     /** emoji (without the variation selector) -> icon name */

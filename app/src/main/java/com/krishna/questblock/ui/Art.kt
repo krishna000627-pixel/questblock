@@ -62,30 +62,14 @@ object Art {
         "focus_1" to R.drawable.art_ach_focus_1,
         "timer_quest_1" to R.drawable.art_ach_timer_quest_1,
     )
-    private val SHOP = mapOf(
-        "xp_boost_1h" to R.drawable.art_shop_xp_boost_1h,
-        "xp_boost_3h" to R.drawable.art_shop_xp_boost_3h,
-        "coin_mult_1h" to R.drawable.art_shop_coin_mult_1h,
-        "coin_mult_3h" to R.drawable.art_shop_coin_mult_3h,
-        "streak_shield" to R.drawable.art_shop_streak_shield,
-        "streak_repair" to R.drawable.art_shop_streak_repair,
-        "streak_freeze" to R.drawable.art_shop_streak_freeze,
-        "frame_fire" to R.drawable.art_shop_frame_fire,
-        "frame_ice" to R.drawable.art_shop_frame_ice,
-        "frame_gold" to R.drawable.art_shop_frame_gold,
-        "frame_galaxy" to R.drawable.art_shop_frame_galaxy,
-        "badge_star" to R.drawable.art_shop_badge_star,
-        "badge_crown" to R.drawable.art_shop_badge_crown,
-        "badge_sword" to R.drawable.art_shop_badge_sword,
-        "badge_dragon" to R.drawable.art_shop_badge_dragon,
-        "badge_beginner" to R.drawable.art_shop_badge_beginner,
-    )
     private val RANKS = listOf(R.drawable.art_rank_0, R.drawable.art_rank_1, R.drawable.art_rank_2, R.drawable.art_rank_3, R.drawable.art_rank_4, R.drawable.art_rank_5)
     private val RANK_NAMES = listOf("NOVICE", "INITIATE", "DISCIPLINED", "ELITE", "MASTER", "ASCENDANT")
 
     fun badge(id: String): Int? = BADGES[id]
     fun ach(id: String): Int? = ACH[id]
-    fun shop(id: String): Int? = SHOP[id]
+    /** v233: shop items (power-ups, frames, badges) have no drawn art any more, their emoji is drawn as an SVG icon like the themes. */
+    @Suppress("UNUSED_PARAMETER")
+    fun shop(id: String): Int? = null
     fun rank(name: String): Int? = RANK_NAMES.indexOf(name.uppercase()).takeIf { it >= 0 }?.let { RANKS[it] }
 }
 

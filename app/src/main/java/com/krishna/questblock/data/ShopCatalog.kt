@@ -40,6 +40,7 @@ object ShopCatalog {
         ShopItem("theme_sky",    "Sky Paper",         "🌤️", "Light: pale blue paper, calm blue accent", 4, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_lilac",  "Lilac Paper",       "🪻", "Light: pale lilac paper, soft violet accent", 4, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_chalk",  "Chalk & Charcoal",  "⚪", "Light: clean white, charcoal accent",    4, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_clay",   "Claymorphism",      "\uD83C\uDFA8", "Light: soft pastel clay, puffy cards and buttons", 4, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_rose",   "Rose Quartz",       "🌸", "Soft pink and plum",              5, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_indigo", "Midnight Indigo",   "🌌", "Deep indigo night sky",           6, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_mist",   "Mist Hashira (demo)", "🌫️", "Teal mist poster behind every screen", 0, "cosmetic_theme", isConsumable = false),

@@ -3,6 +3,25 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("233.0.0", "Shop power-ups, frames and badges use the SVG icons",
+        listOf(
+            "The 16 round gradient pictures on the Shop and My Items cards (XP Boost, XP Surge, Coin Magnet, Coin Storm, Streak Shield, Streak Repair, Streak Freeze, the four frames, the four badges) are replaced by the thin outline SVG icons the themes already use (bolt, magnet, shield, bandage, cube, flame, snowflake, sparkles, galaxy, star, crown, swords, dragon). The old art_shop_* files are deleted. The Badges page and the achievement art are unchanged",
+        )),
+    VersionEntry("232.0.0", "Filled Material icons replaced by the SVG set",
+        listOf(
+            "The app's own icons were still the filled Material ones: back arrow, add, remove, delete, close, edit, tick, check circle, play, stop, search, clock, calendar, copy, check boxes, menu book, tune, apps, and the bottom bar (home, star, bolt, lock, person). They are now drawn as thin outline icons from the same SVG set as the emoji icons (12 new: home, arrow, plus, minus, trash, x, play, search, copy, checkbox, checkbox with tick, tick). ui/SvgMaterialIcon.kt holds an Icon that shadows material3's Icon and maps the Material name to the SVG one; any icon without a match stays as it was. No screen was edited",
+            "Includes v231 (Settings > Look without the extra words and the Name and icon choice, terminal set appname removed): its zip was made but never shown as a download, so it could not be installed",
+        )),
+    VersionEntry("231.0.0", "Settings > Look is shorter",
+        listOf(
+            "Removed from Settings > Look: the hint under the accent colours, the note about Termux and Quest Home themes, and the Name and icon on the home screen choice (follow / questblock / terminal). Accent colours stay, and the Quest Home buttons still show while Quest Home is on. The saved name choice keeps working, there is just no screen for it",
+            "Terminal: set appname is removed to match, the other set keys are unchanged",
+        )),
+    VersionEntry("230.0.0", "Claymorphism theme",
+        listOf(
+            "New shop theme Claymorphism (4 coins a day, like the other light themes): soft lavender paper, candy-pink accent, mint second accent. Cards get a big 28 dp radius, a soft coloured drop shadow and a light rim on the top left, buttons get the same puffy look. Done in ui/ClayStyle.kt: Card and Button shadow the material3 ones in the ui package (like Text), and only change anything while this theme is on. Boxes drawn with a plain background colour (not a Card or Button) keep their flat look",
+            "Terminal: theme set clay (you must own it: shop buy clay) equips it and leaves the terminal like the other shop themes; the terminal itself keeps its own look. Help, man theme and chips updated; refused during strict Focus like the other themes",
+        )),
     VersionEntry("229.0.0", "About me: one icon instead of two",
         listOf(
             "The big emoji on the About me card (man + laptop joined into one) showed as two SVG icons in a row. Joined emoji now draw only their first icon, here the person. This applies everywhere an emoji sequence is joined, no other screen changed",
