@@ -115,6 +115,7 @@ fun ThemeExtrasHost() {
     LaunchedEffect(SystemEvents.penaltyStamp) {
         if (fx == Fx.PIXEL && SystemEvents.penaltyStamp != startP) { gameOver = true; delay(1800); gameOver = false }
     }
+    LevelUpHost(fx)
     if (boot) BootScreen { boot = false; ThemeExtras.booted = true }
     if (show) CenterPopup { QuestFx(fx, SystemEvents.lastCoins, SystemEvents.lastXp) }
     if (gameOver) CenterPopup {
@@ -184,6 +185,81 @@ private fun QuestFx(fx: Fx, coins: Int, xp: Int) {
             Modifier.graphicsLayer { rotationZ = -12f; scaleX = pop; scaleY = pop; alpha = a }.border(3.dp, c).padding(horizontal = 16.dp, vertical = 6.dp),
         ) { Text("APPROVED", color = c, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 3.sp) }
         Fx.NONE, Fx.NINJA -> Unit
+    }
+}
+
+/** v244: a full-screen level up for every style theme except System (own screen in SystemStyle.kt) and Ninja (no extras). Behind that theme's fx_<theme> flag, like the rest. */
+@Composable
+private fun LevelUpHost(fx: Fx) {
+    if (fx == Fx.NONE || fx == Fx.SYSTEM || fx == Fx.NINJA) return
+    val start = remember { SystemEvents.levelUpStamp }
+    var show by remember { mutableStateOf(false) }
+    LaunchedEffect(SystemEvents.levelUpStamp) {
+        if (SystemEvents.levelUpStamp != start) { show = true; delay(2400); show = false }
+    }
+    if (!show) return
+    Dialog(onDismissRequest = { show = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) { LevelUpFx(fx) }
+}
+
+@Composable
+private fun LevelUpFx(fx: Fx) {
+    val p = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { p.animateTo(1f, tween(2200, easing = LinearEasing)) }
+    val v = p.value
+    val a = if (v > 0.85f) (1f - v) / 0.15f else 1f
+    val pop = 1f + 0.8f * (1f - minOf(1f, v * 5f))
+    val c = ColorPrimary
+    val dark = fx == Fx.MONARCH || fx == Fx.HASHIRA || fx == Fx.GOTHIC || fx == Fx.PIXEL
+    val veil = if (dark) Color.Black.copy(alpha = 0.8f * a) else ColorBg.copy(alpha = 0.94f * a)
+    Box(Modifier.fillMaxSize().background(veil), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            when (fx) {
+                Fx.MONARCH -> for (k in 0..2) drawCircle(c.copy(alpha = 0.6f * a * (1f - k * 0.25f)), 30.dp.toPx() + (140.dp.toPx() + k * 40.dp.toPx()) * v, center, style = Stroke(3.dp.toPx()))
+                Fx.GOTHIC -> {
+                    drawCircle(c.copy(alpha = a), 70.dp.toPx() + 20.dp.toPx() * v, Offset2(center.x, center.y - 50.dp.toPx()), style = Stroke(3.dp.toPx()))
+                    drawCircle(c.copy(alpha = 0.5f * a), 50.dp.toPx() + 14.dp.toPx() * v, Offset2(center.x, center.y - 50.dp.toPx()), style = Stroke(1.5.dp.toPx()))
+                }
+                Fx.HASHIRA -> for (k in 0..2) {
+                    val r = size.minDimension * (0.3f + 0.5f * v) * (1f - 0.18f * k)
+                    val o = Offset2(center.x + (k - 1) * 70f * v, center.y - k * 30f * v)
+                    drawCircle(Brush.radialGradient(listOf(c.copy(alpha = 0.5f * a), Color.Transparent), o, r), r, o)
+                }
+                else -> Unit
+            }
+        }
+        when (fx) {
+            Fx.MONARCH -> Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.graphicsLayer { scaleX = pop; scaleY = pop; alpha = a }) {
+                Text("ARISE", color = c, fontSize = 44.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 6.sp)
+                Text("YOU GREW STRONGER", color = Color.White, fontSize = 12.sp, letterSpacing = 3.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+            Fx.HASHIRA -> Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.graphicsLayer { alpha = a }) {
+                Text("LEVEL UP", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Light, letterSpacing = 6.sp)
+                Text("Next form unlocked", color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+            Fx.GOTHIC -> Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 120.dp).graphicsLayer { alpha = a }) {
+                Text("ASCENDED", color = Color.White, fontSize = 32.sp, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold, letterSpacing = 5.sp)
+                Text("So it is written", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp, fontFamily = FontFamily.Serif, modifier = Modifier.padding(top = 8.dp))
+            }
+            Fx.GUILD -> Box(
+                Modifier.size(150.dp).graphicsLayer { scaleX = pop; scaleY = pop; alpha = a }
+                    .background(Color(0xFF9B1C1C), CircleShape).border(4.dp, Color(0xFF6E1010), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) { Text("RANK UP", color = Color(0xFFFFE0D0), fontSize = 22.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif) }
+            Fx.PIXEL -> Text(
+                "LEVEL UP!", color = c, fontSize = 40.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace, letterSpacing = 3.sp,
+                modifier = Modifier.graphicsLayer { alpha = a * (if ((v * 12).toInt() % 2 == 0) 1f else 0.35f); translationY = -40f * v },
+            )
+            Fx.HANDHELD -> Box(Modifier.graphicsLayer { alpha = a }.border(4.dp, ColorText).background(ColorBg).padding(horizontal = 26.dp, vertical = 16.dp)) {
+                Text("LEVEL UP", color = ColorText, fontSize = 28.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
+            }
+            Fx.BLUEPRINT -> Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.graphicsLayer { rotationZ = -10f; scaleX = pop; scaleY = pop; alpha = a }) {
+                Box(Modifier.border(3.dp, c).padding(horizontal = 18.dp, vertical = 8.dp)) {
+                    Text("LEVEL UP", color = c, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 3.sp)
+                }
+                Text("REVISION ACCEPTED", color = c, fontSize = 11.sp, letterSpacing = 2.sp, modifier = Modifier.padding(top = 6.dp))
+            }
+            else -> Unit
+        }
     }
 }
 

@@ -3,6 +3,19 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("244.0.0", "A level up screen for every style theme",
+        listOf(
+            "Every style theme now has its own full-screen level up, shown for about 2 seconds when a quest finishes with a level up: Shadow Monarch ARISE with violet rings, Hashira Mist LEVEL UP in drifting mist, Gothic Halo ASCENDED under red halo rings, Guild Board RANK UP wax seal, Pixel Arcade blinking LEVEL UP!, Handheld LEVEL UP box, Blueprint LEVEL UP stamp with REVISION ACCEPTED. System keeps its own [ LEVEL UP ] screen",
+            "Each one is part of that theme's extras, so it follows the theme's own flag (fx_monarch, fx_hashira, fx_gothic, fx_guild, fx_pixel, fx_handheld, fx_blueprint) and the master flag themefx. Ninja Scroll has none (its extras were removed in v241). Code: LevelUpHost in ui/ThemeExtras.kt, triggered by SystemEvents.levelUp()",
+        )),
+    VersionEntry("243.0.0", "Leftovers of the removed picture themes are gone",
+        listOf(
+            "Removed the dead picture theme code from ui/Theme.kt: the Poster class, the empty SHOP_POSTERS list, the poster bitmap cache and the branch in windowBackgroundFor that drew a theme picture. The gallery picture (Rules > Poster) is unchanged. The five poster jpgs and their shop items were already gone in v239; nothing else in the app still mentions them",
+        )),
+    VersionEntry("242.0.0", "Ninja Scroll: round hanko seal",
+        listOf(
+            "The red square on every Ninja Scroll card is now a round hanko seal: red disc, thin inner ring and the kanji 忍, tilted 8 degrees. Drawn in ui/ThemeFx.kt (fxFrame); it follows the theme's red, nothing new in flags",
+        )),
     VersionEntry("241.0.0", "Status bar space on every theme, bare quest icon, theme extras per theme",
         listOf(
             "Ninja Scroll and Hashira Mist have no top strip, and the strip was what kept the page below the status bar, so their pages started under the clock. FxBar now leaves the status bar space when there is no strip (ui/ThemeFx.kt)",

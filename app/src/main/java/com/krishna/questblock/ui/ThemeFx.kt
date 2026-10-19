@@ -34,6 +34,8 @@ import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
@@ -150,6 +152,10 @@ internal fun Modifier.fxFrame(): Modifier {
     val ink = ColorText
     val shape = fxShape()
     val extras = ThemeExtras.on
+    val sealInk = Color(0xFFFFFCF3)
+    val sealPaint = remember { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = android.graphics.Typeface.create(android.graphics.Typeface.SERIF, android.graphics.Typeface.BOLD)
+        textAlign = android.graphics.Paint.Align.CENTER; color = 0xFFFFFCF3.toInt() } }
     val tilt = remember { ((0..100).random() - 50) / 60f }
     val scan = if (fx == Fx.SYSTEM) rememberInfiniteTransition(label = "scan").animateFloat(
         0f, 1f, infiniteRepeatable(tween(7000, easing = LinearEasing)), label = "scanY") else null
@@ -172,7 +178,15 @@ internal fun Modifier.fxFrame(): Modifier {
                     topLeft = Offset(0f, y - 28f), size = Size(size.width, 56f),
                 )
             }
-            Fx.NINJA -> drawRoundRect(c.copy(alpha = 0.9f), Offset(size.width - 22.dp.toPx(), 6.dp.toPx()), Size(14.dp.toPx(), 14.dp.toPx()), CornerRadius(2.dp.toPx()))
+            Fx.NINJA -> { // v242: round hanko seal with the kanji 忍, tilted a little
+                val d = 22.dp.toPx(); val ctr = Offset(size.width - 9.dp.toPx() - d / 2, 7.dp.toPx() + d / 2)
+                rotate(8f, ctr) {
+                    drawCircle(c.copy(alpha = 0.92f), d / 2, ctr)
+                    drawCircle(sealInk.copy(alpha = 0.9f), d / 2 - 2.dp.toPx(), ctr, style = Stroke(1.dp.toPx()))
+                    sealPaint.textSize = d * 0.56f
+                    drawContext.canvas.nativeCanvas.drawText("\u5FCD", ctr.x, ctr.y + sealPaint.textSize * 0.35f, sealPaint)
+                }
+            }
             Fx.HASHIRA -> drawRect(Brush.linearGradient(listOf(Color.White.copy(alpha = 0.10f), Color.Transparent), Offset.Zero, Offset(size.width, size.height)))
             Fx.MONARCH -> drawLine(c, Offset(0f, 1f), Offset(size.width, 1f), 2f)
             Fx.GOTHIC -> drawRect(ink.copy(alpha = 0.5f), Offset(4.dp.toPx(), 4.dp.toPx()), Size(size.width - 8.dp.toPx(), size.height - 8.dp.toPx()), style = Stroke(1f))

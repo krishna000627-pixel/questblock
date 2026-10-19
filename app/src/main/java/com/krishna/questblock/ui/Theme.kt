@@ -286,13 +286,7 @@ val ACCENTS: List<Pair<String, Long>> = listOf(
     "Coral"  to 0xFFFF7A59,
 )
 
-// ── Poster themes ────────────────────────────────────────────────────────────
-/** A theme with a picture: it is drawn as the window background, tinted and dimmed, and the screens above it are see-through. id → (picture, tint colour, dim 0-255) */
-private class Poster(val res: Int, val tint: Long, val dim: Int, val light: Boolean = false)
-private val SHOP_POSTERS = mapOf<String, Poster>()   // v239: the picture themes were removed; the gallery picture (PosterSettings.kt) is separate
-private var posterKey: String? = null
-private var posterBmp: Bitmap? = null
-
+// ── Gallery picture ──────────────────────────────────────────────────────────
 private var userKey: String? = null
 private var userBmp: Bitmap? = null
 
@@ -326,36 +320,10 @@ private fun userPosterDrawable(ctx: Context): Drawable? {
     return LayerDrawable(arrayOf(ColorDrawable(0xFF000000.toInt()), pic, ColorDrawable((dim * 255 / 100) shl 24)))
 }
 
-/** The window background: the gallery picture if one is on, else the equipped theme's poster, else the plain theme colour. */
+/** The window background: the gallery picture if one is on, else the plain theme colour. */
 fun windowBackgroundFor(ctx: Context): Drawable {
     if (PosterOn) userPosterDrawable(ctx)?.let { return it }
-    val p = SHOP_POSTERS[ShopTheme] ?: return ColorDrawable(ColorBg.toArgb())
-    val dm = ctx.resources.displayMetrics
-    val key = "$ShopTheme ${dm.widthPixels}x${dm.heightPixels}"
-    if (posterKey != key || posterBmp == null) {
-        runCatching {
-            val src = BitmapFactory.decodeResource(ctx.resources, p.res)
-            // centre-crop to the screen shape so nothing is stretched
-            val want = dm.widthPixels.toFloat() / dm.heightPixels
-            val have = src.width.toFloat() / src.height
-            val w = if (have > want) (src.height * want).toInt() else src.width
-            val h = if (have > want) src.height else (src.width / want).toInt()
-            posterBmp = Bitmap.createBitmap(src, (src.width - w) / 2, (src.height - h) / 2, w, h)
-            posterKey = key
-        }
-    }
-    val bmp = posterBmp ?: return ColorDrawable(ColorBg.toArgb())
-    val pic = BitmapDrawable(ctx.resources, bmp)
-    // one-colour look: gray picture multiplied by the tint, then dimmed so text stays readable (tint 0 = leave the colours as they are)
-    if (p.tint != 0L) {
-        val cm = ColorMatrix().apply { setSaturation(0f) }
-        val t = Color(p.tint)
-        cm.postConcat(ColorMatrix(floatArrayOf(t.red, 0f, 0f, 0f, 0f, 0f, t.green, 0f, 0f, 0f, 0f, 0f, t.blue, 0f, 0f, 0f, 0f, 0f, 1f, 0f)))
-        pic.colorFilter = ColorMatrixColorFilter(cm)
-    }
-    val base = if (p.light) 0xFFFFFFFF.toInt() else 0xFF000000.toInt()
-    val veil = (p.dim shl 24) or (if (p.light) 0xFFFFFF else 0x000000)
-    return LayerDrawable(arrayOf(ColorDrawable(base), pic, ColorDrawable(veil)))
+    return ColorDrawable(ColorBg.toArgb())
 }
 
 @Composable
