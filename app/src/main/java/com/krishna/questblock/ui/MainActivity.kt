@@ -42,8 +42,22 @@ class MainActivity : ComponentActivity() {
         openRoute = intent.getStringExtra(EXTRA_OPEN_ROUTE)
     }
 
+    override fun onStart() {
+        super.onStart()
+        AppName.inForeground = true
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) {
+            AppName.inForeground = false
+            AppName.flush(applicationContext)   // v251: now the old launcher entry can be switched off safely
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppName.inForeground = true   // v251: the launcher icon swap waits until the app is in the background
         onboardingDone = prefs.onboardingDone
         openRoute = intent?.getStringExtra(EXTRA_OPEN_ROUTE)
         if (onboardingDone) KeepAlive.start(this)

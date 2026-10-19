@@ -59,6 +59,7 @@ import kotlinx.coroutines.flow.Flow
     @Update suspend fun update(item: InventoryItem)
     @Query("UPDATE inventory_items SET isEquipped = 0 WHERE category = :category") suspend fun unequipAll(category: String)
     @Query("UPDATE inventory_items SET isEquipped = 1 WHERE id = :id") suspend fun equip(id: Long)
+    @Query("DELETE FROM inventory_items WHERE category = 'cosmetic_theme' AND itemId NOT IN (:keep)") suspend fun deleteThemesNotIn(keep: List<String>)
 }
 
 @Dao interface StudySessionDao {

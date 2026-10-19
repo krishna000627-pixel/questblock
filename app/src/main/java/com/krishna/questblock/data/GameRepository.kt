@@ -891,6 +891,14 @@ class GameRepository @Inject constructor(
         })
     }
 
+    /** v251: themes that are no longer in the shop (the removed picture themes and any other dead one) are taken out of the inventory; if one was equipped the look goes back to default. Safe to run any time. */
+    suspend fun removeDeadThemes() = db.withTransaction {
+        val live = ShopCatalog.items.filter { it.category == "cosmetic_theme" }.map { it.id }
+        inventoryDao.deleteThemesNotIn(live)
+        val p = playerDao.get() ?: return@withTransaction
+        if (p.equippedTheme != "default" && p.equippedTheme !in live) playerDao.upsert(p.copy(equippedTheme = "default"))
+    }
+
     /** One-time clean-up: v184 test coins (9,999,999) that may still sit on the balance are taken off. Real balances never get near that. */
     suspend fun removeLeftoverTestCoins() = db.withTransaction {
         val p = playerDao.get() ?: return@withTransaction

@@ -58,6 +58,7 @@ class HomeViewModel @Inject constructor(
             loginBonus = repo.claimDailyLogin()
             rentNote = runCatching { repo.chargeThemeRent() }.getOrNull()
             runCatching { repo.removeLeftoverTestCoins() }
+            runCatching { repo.removeDeadThemes() }
             runCatching { autoVerifier.run() }
             hubStore.refresh()
         }

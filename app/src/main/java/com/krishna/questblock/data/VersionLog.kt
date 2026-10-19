@@ -3,6 +3,16 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("252.0.0", "Removed themes are gone from the inventory",
+        listOf(
+            "Themes that are no longer in the shop (the five picture themes removed in v239 and any other dead one) are deleted from My Items. If one was still equipped the look goes back to default. It runs when the Home page or the Inventory opens. Code: GameRepository.removeDeadThemes, InventoryDao.deleteThemesNotIn",
+            "Includes v251 (the launcher icon swap waits until the app is in the background, so changing the theme no longer sends you to the home screen)",
+        )),
+    VersionEntry("251.0.0", "Fix: app icon change no longer throws you to the home screen",
+        listOf(
+            "Changing the theme (or the app name mode) used to switch off the launcher entry the open app was started from, so Android closed the app, sent you to the home screen and the old icon showed \"app isn't installed\". Now the icon swap waits until you leave the app (MainActivity.onStop calls AppName.flush); the new icon appears when the app goes to the background. The Quest Home switch is still immediate",
+            "Code: AppName.inForeground, AppName.applyAll (Quest Home now, launcher entries only while the app is in the background) and AppName.flush in ui/TermuxCore.kt. A copy of the icon you pinned on the home screen can still show \"app isn't installed\" after the swap on some launchers: remove it and pin the new one from the app drawer",
+        )),
     VersionEntry("250.0.0", "New shield logo, app icon follows the theme",
         listOf(
             "New app logo: a shield with a check (gold on navy) replaces the green block. The home screen icon now follows the equipped theme: Ninja Scroll (red on cream), System Window (cyan on dark blue), Paper & Ink (dark on paper) and Gothic Halo (light grey on black) have their own colours; every other theme keeps the gold one. The Termux theme still shows the >_ Terminal icon. One-colour version for themed icons (Android 13+) is the shield outline with the check",

@@ -42,6 +42,7 @@ import javax.inject.Inject
 class InventoryViewModel @Inject constructor(private val repo: GameRepository) : ViewModel() {
     val player    = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
     val inventory = repo.inventory.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    init { viewModelScope.launch { runCatching { repo.removeDeadThemes() } } }   // v251: removed themes leave the inventory
     val rewards   = repo.customRewards.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     var buyResult by mutableStateOf<String?>(null)

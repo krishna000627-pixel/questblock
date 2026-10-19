@@ -80,8 +80,23 @@ object AppName {
         else -> TermuxOn
     }
 
-    /** Switches the launcher entries and the Quest Home activity to match the theme. Safe to call any time. */
+    /**
+     * v251: true while MainActivity is on screen. Turning off the launcher entry the running app was started from makes
+     * Android close the app (you land on the home screen) and leaves the old icon saying "app isn't installed", so the
+     * entry swap waits until the app is in the background (MainActivity.onStop calls [flush]).
+     */
+    @Volatile var inForeground = false
+
+    /** Switches the Quest Home activity now and the launcher entries to match the theme (the entries wait while the app is open). Safe to call any time. */
     fun applyAll(ctx: Context) {
+        setEnabled(ctx, ctx.packageManager, HOME_ACTIVITY, QuestHomeOn)
+        if (!inForeground) applyLauncher(ctx)
+    }
+
+    /** v251: called when the app leaves the screen; does the launcher entry swap that was waiting. */
+    fun flush(ctx: Context) = applyLauncher(ctx)
+
+    private fun applyLauncher(ctx: Context) {
         val pm = ctx.packageManager
         val term = wantTerminal(ctx)
         val themed = if (!term && com.krishna.questblock.data.Flags.get("themeicon")) THEME_ALIASES[ShopTheme]?.let { PKG + it } else null
@@ -89,7 +104,6 @@ object AppName {
         val all = listOf(ALIAS_QB, ALIAS_TERM) + THEME_ALIASES.values.map { PKG + it }
         setEnabled(ctx, pm, want, true)                                    // switch the new one on first, so one is always there
         all.filter { it != want }.forEach { setEnabled(ctx, pm, it, false) }
-        setEnabled(ctx, pm, HOME_ACTIVITY, QuestHomeOn)
     }
 
     private fun setEnabled(ctx: Context, pm: android.content.pm.PackageManager, cls: String, on: Boolean) {
