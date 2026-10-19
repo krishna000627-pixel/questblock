@@ -282,12 +282,9 @@ fun FxBar() {
         Fx.HANDHELD -> { l = "QUESTBOY"; r = "BATT \u25AE\u25AE\u25AE" }
         Fx.GOTHIC -> { l = "MEMENTO"; r = if (ThemeExtras.on) "${ThemeExtras.daysLeft()} DAYS LEFT" else "VITA BREVIS" }
         else -> {
-            // v241: no strip (Ninja, Hashira): still keep the page below the status bar
-            if (fx == Fx.NINJA) { // v245: the one fixed hanko seal, top right of every page, not on the cards
-                Box(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding().height(30.dp).padding(end = 16.dp), contentAlignment = Alignment.CenterEnd) {
-                    NinjaSeal(c)
-                }
-            } else Spacer(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding())
+            // v241: no strip (Ninja, Hashira): still keep the page below the status bar.
+            // v249: Ninja's hanko seal no longer takes a header row of its own; it sits in front of the page title (TitleIcon).
+            Spacer(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding())
             return
         }
     }
@@ -303,10 +300,6 @@ fun FxBar() {
         else Text(r, color = ColorMuted, fontSize = 10.sp, letterSpacing = 1.sp)
     }
 }
-
-/** v245: the Ninja Scroll hanko seal: red disc, thin inner ring, the kanji, tilted 8 degrees. Drawn once per page in FxBar. */
-@Composable
-private fun NinjaSeal(c: Color) = HankoSeal(24.dp, c)
 
 @Composable
 internal fun rememberHankoPaint(): android.graphics.Paint = remember {

@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("249.0.0", "Ninja Scroll: seal in front of the page title",
+        listOf(
+            "The hanko seal no longer has its own row at the top of every page (that row added too much header space). Ninja now only keeps the status bar space on top, like Hashira. The seal sits in front of the page name instead, in the same spot where the other themes show their title icon (Home, Quests, Shop, Stats, Settings and every other page). Code: TitleIcon in ui/TitleIcons.kt draws HankoSeal when the Ninja theme is on; FxBar in ui/ThemeFx.kt lost its seal row and the NinjaSeal helper. No new flags",
+        )),
     VersionEntry("248.0.0", "Theme effects: Focus ring, XP bar, level up and quest done pop for every style theme",
         listOf(
             "Four things per style theme, all behind that theme's own flag fx_<theme> (and the master flag themefx); with the flag off the normal ring, bar and screens come back. No moving lines anywhere (no rotating or sweeping arcs, no shimmer, no wave). Only motion: Hashira breathing glow (scale 1 to 1.07), Monarch rising motes, Pixel last pixel blink, plus the one-shot level up and quest done animations and the bar filling",
