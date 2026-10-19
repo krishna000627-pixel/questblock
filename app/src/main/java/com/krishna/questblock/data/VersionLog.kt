@@ -3,6 +3,13 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("240.0.0", "One special thing per style theme, behind a flag",
+        listOf(
+            "New flag Theme extras (themefx, on by default; flags page and terminal flags on|off themefx) switches the own words and effects of every style theme at once. New file ui/ThemeExtras.kt; Quest done events come from GameRepository through util/SystemEvents.kt",
+            "Words: quest difficulty names, the Undo bar text and the empty page texts. Ninja Genin, Chunin, Jonin and Scroll sealed; Hashira Form 1 to 3; Monarch Soldier, Knight, Elite and SHADOW EXTRACTED; Gothic Rite I to III and So it is written; Guild Copper, Silver, Gold and Reward collected; Pixel STAGE 1 to 3, STAGE CLEAR! and PRESS START; Handheld SAVING... and NO DATA; Blueprint TYPE A to C, APPROVED and SHEET EMPTY; System NO ACTIVE QUESTS",
+            "Effects after a finished quest (a small pop-up in the middle that does not block taps): System result window with the coins and XP, Ninja red hanko DONE stamp, Hashira puff of mist, Monarch violet burst and +1 SHADOW with a Shadow Army counter in the top strip, Gothic red halo rings, Guild wax seal, Pixel +coins pop, Handheld SAVING box, Blueprint APPROVED stamp. Also: Gothic strip counts the days left this year, Guild cards tilt a little like pinned notices, Blueprint cards get a dimension line, Pixel shows GAME OVER when Focus is broken, Handheld shows a QUESTBOY boot screen once per app start",
+            "Not included: the Pixel block XP bar, the Handheld page wipe, the Hashira breathing Focus ring and the Blueprint FIG. labels, because each needs a deeper change to a page. Terminal: flags on|off themefx is listed in help, man flags and the suggestion chips; the terminal itself shows none of these effects and no page opens from it",
+        )),
     VersionEntry("239.0.0", "Style themes, System upgrades, picture themes removed",
         listOf(
             "Built on v237 on purpose (v238 was skipped, so the icon ring change from v238 is not in): every icon ring stays as in v237",

@@ -192,7 +192,7 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
                     Box(Modifier.fillMaxWidth().padding(60.dp), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             EmptyArt("clipboard")
-                            Text("Nothing here", style = MaterialTheme.typography.titleMedium, color = ColorText)
+                            Text(ThemeExtras.word("emptyQuests", "Nothing here"), style = MaterialTheme.typography.titleMedium, color = ColorText)
                         }
                     }
                 }
@@ -368,7 +368,7 @@ private fun QuestCard(
                 // Tags + due date share one row (plain Row: a scrollable row would fight the swipe gesture)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (SystemOn) TagChip("RANK ${questRank(task.difficulty, task.isTimerQuest)}", diffColor)
-                    TagChip(DIFF_NAMES.getOrElse(task.difficulty - 1) { "Easy" }, diffColor)
+                    TagChip(ThemeExtras.diff(task.difficulty, DIFF_NAMES.getOrElse(task.difficulty - 1) { "Easy" }), diffColor)
                     TagChip(task.category, catColor)
                     TagChip("+${baseReward(task.difficulty)}🪙", ColorCoin)
                     if (task.isTimerQuest) TagChip("⏱️", ColorAccent)

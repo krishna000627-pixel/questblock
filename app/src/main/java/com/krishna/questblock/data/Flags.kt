@@ -11,6 +11,7 @@ object Flags {
         Def("mood", "Mood check-in", "The Mood section on the Attendance page, terminal mood"),
         Def("leaderboard", "Daily leaderboard", "The leaderboard card on Stats, terminal leaderboard"),
         Def("experiments", "Experiments card", "The Experiments card in the Hub"),
+        Def("themefx", "Theme extras", "Own words and effects of each style theme: quest done stamps, rank names, empty page texts, the shadow army, the boot screen"),
     )
 
     var HOMEWORK_ENABLED: Boolean = false

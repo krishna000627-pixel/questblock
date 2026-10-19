@@ -405,7 +405,7 @@ private fun MyItemsTab(inventory0: List<InventoryItem>, shownBadge: String, onEq
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 EmptyArt("bag")
-                Text("Your inventory is empty", style = MaterialTheme.typography.titleMedium, color = ColorText)
+                Text(ThemeExtras.word("emptyInv", "Your inventory is empty"), style = MaterialTheme.typography.titleMedium, color = ColorText)
                 Text("Buy items from the shop!", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             }
         }

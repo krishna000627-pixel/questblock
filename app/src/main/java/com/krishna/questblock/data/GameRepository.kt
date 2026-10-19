@@ -328,6 +328,8 @@ class GameRepository @Inject constructor(
         val wasOpen = taskDao.get(task.id)?.done == false
         var soundCoins = false
         var soundLevelUp = false
+        var qdCoins = 0
+        var qdXp = 0
         db.withTransaction {
             val fresh = taskDao.get(task.id) ?: return@withTransaction
             if (fresh.done) return@withTransaction
@@ -385,6 +387,7 @@ class GameRepository @Inject constructor(
             ))
             soundCoins = earned + milestoneXp / 5 > 0
             soundLevelUp = (p.xp + xpEarned + milestoneXp) / 100 > p.xp / 100
+            qdCoins = earned + milestoneXp / 5; qdXp = xpEarned + milestoneXp
             if (earned > 0) logCoin(earned, "Quest", fresh.title)
             if (milestoneXp > 0) logCoin(milestoneXp / 5, "Streak bonus", "$newStreak-day streak")
             checkAchievements(p.copy(xp = p.xp + xpEarned, streak = newStreak))
@@ -410,6 +413,7 @@ class GameRepository @Inject constructor(
         if (wasOpen && taskDao.get(task.id)?.done == true) {
             com.krishna.questblock.util.Sounds.questDone(soundCoins, soundLevelUp)
             if (soundLevelUp) com.krishna.questblock.util.SystemEvents.levelUp()
+            com.krishna.questblock.util.SystemEvents.questDone(qdCoins, qdXp)
             com.krishna.questblock.ui.chapterQuestEnded(ctx, task.title, true)
         }
     }

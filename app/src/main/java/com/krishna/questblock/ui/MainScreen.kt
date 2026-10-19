@@ -99,7 +99,7 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
     val snack = remember { SnackbarHostState() }
     LaunchedEffect(Unit) {
         UndoBus.events.collect { u ->
-            val r = snack.showSnackbar(if (SystemOn) "[SYSTEM] QUEST CLEARED" else "Quest done", actionLabel = "Undo", duration = SnackbarDuration.Long)
+            val r = snack.showSnackbar(ThemeExtras.word("done", "Quest done"), actionLabel = "Undo", duration = SnackbarDuration.Long)
             if (r == SnackbarResult.ActionPerformed) undoVm.undo(u)
         }
     }
@@ -109,6 +109,7 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
         topBar = { if (FxOn) androidx.compose.foundation.layout.Column {
             FxBar()
             if (SystemOn) SystemHost(strict) { navController.goTab("quests") }
+            if (ThemeExtras.on) ThemeExtrasHost()
         } },
         snackbarHost = { SnackbarHost(snack) },
         bottomBar = {

@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -147,13 +149,15 @@ internal fun Modifier.fxFrame(): Modifier {
     val c = fxAccent()
     val ink = ColorText
     val shape = fxShape()
+    val extras = ThemeExtras.on
+    val tilt = remember { ((0..100).random() - 50) / 60f }
     val scan = if (fx == Fx.SYSTEM) rememberInfiniteTransition(label = "scan").animateFloat(
         0f, 1f, infiniteRepeatable(tween(7000, easing = LinearEasing)), label = "scanY") else null
     val base: Modifier = when (fx) {
         Fx.SYSTEM -> this.shadow(5.dp, shape, ambientColor = c.copy(alpha = 0.55f), spotColor = c.copy(alpha = 0.55f))
         Fx.MONARCH -> this.shadow(10.dp, shape, ambientColor = c.copy(alpha = 0.8f), spotColor = c.copy(alpha = 0.8f))
         Fx.HASHIRA -> this.shadow(8.dp, shape, ambientColor = c.copy(alpha = 0.35f), spotColor = c.copy(alpha = 0.35f))
-        Fx.GUILD -> this.shadow(3.dp, shape, ambientColor = Color(0x66000000), spotColor = Color(0x66000000))
+        Fx.GUILD -> this.graphicsLayer { if (extras) rotationZ = tilt }.shadow(3.dp, shape, ambientColor = Color(0x66000000), spotColor = Color(0x66000000))
         Fx.PIXEL -> this.drawBehind { drawRect(ink.copy(alpha = 0.85f), topLeft = Offset(4.dp.toPx(), 4.dp.toPx()), size = size) }
         else -> this
     }
@@ -178,7 +182,15 @@ internal fun Modifier.fxFrame(): Modifier {
                 drawCircle(brass, r, Offset(m, size.height - m)); drawCircle(brass, r, Offset(size.width - m, size.height - m))
             }
             Fx.HANDHELD -> drawRect(ink.copy(alpha = 0.35f), Offset(6.dp.toPx(), 6.dp.toPx()), Size(size.width - 12.dp.toPx(), size.height - 12.dp.toPx()), style = Stroke(1.5f))
-            Fx.BLUEPRINT -> brackets(c, 8.dp.toPx(), 1.5.dp.toPx(), topEnd = true, bottomStart = true, topStart = true, bottomEnd = true)
+            Fx.BLUEPRINT -> {
+                brackets(c, 8.dp.toPx(), 1.5.dp.toPx(), topEnd = true, bottomStart = true, topStart = true, bottomEnd = true)
+                if (extras) { // dimension line along the bottom edge
+                    val y = size.height - 5.dp.toPx(); val x0 = 14.dp.toPx(); val x1 = size.width - 14.dp.toPx(); val tk = 3.dp.toPx()
+                    drawLine(c.copy(alpha = 0.5f), Offset(x0, y), Offset(x1, y), 1f)
+                    drawLine(c.copy(alpha = 0.5f), Offset(x0, y - tk), Offset(x0, y + tk), 1f)
+                    drawLine(c.copy(alpha = 0.5f), Offset(x1, y - tk), Offset(x1, y + tk), 1f)
+                }
+            }
             else -> Unit
         }
     }
@@ -250,9 +262,9 @@ fun FxBar() {
         Fx.GUILD -> { l = "GUILD BOARD"; r = "QUESTS OPEN" }
         Fx.PIXEL -> { l = "PLAYER 1"; r = "INSERT COIN" }
         Fx.BLUEPRINT -> { l = "SHEET 01"; r = "QUESTBLOCK \u00b7 REV A" }
-        Fx.MONARCH -> { l = "ARISE"; r = "SHADOW ARMY" }
+        Fx.MONARCH -> { l = "ARISE"; r = if (ThemeExtras.on) "SHADOW ARMY: ${SystemEvents.armyCount}" else "SHADOW ARMY" }
         Fx.HANDHELD -> { l = "QUESTBOY"; r = "BATT \u25AE\u25AE\u25AE" }
-        Fx.GOTHIC -> { l = "MEMENTO"; r = "VITA BREVIS" }
+        Fx.GOTHIC -> { l = "MEMENTO"; r = if (ThemeExtras.on) "${ThemeExtras.daysLeft()} DAYS LEFT" else "VITA BREVIS" }
         else -> return
     }
     Row(
