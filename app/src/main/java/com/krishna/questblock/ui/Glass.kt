@@ -57,9 +57,9 @@ fun Card(
     if (ClayOn) androidx.compose.material3.Card(
         modifier = modifier.clay(CLAY_CARD, 10), shape = CLAY_CARD, colors = colors,
         elevation = CardDefaults.cardElevation(0.dp), border = null, content = content,
-    ) else if (SystemOn) androidx.compose.material3.Card(
-        modifier = modifier.systemWindow(), shape = SYS_SHAPE, colors = colors,
-        elevation = CardDefaults.cardElevation(0.dp), border = systemBorder(), content = content,
+    ) else if (FxOn) androidx.compose.material3.Card(
+        modifier = modifier.fxFrame(), shape = fxShape(), colors = colors,
+        elevation = CardDefaults.cardElevation(0.dp), border = fxBorder(), content = content,
     ) else androidx.compose.material3.Card(
         modifier = modifier, shape = shape, colors = colors, elevation = elevation, border = border, content = content,
     )
@@ -79,9 +79,9 @@ fun Card(
     if (ClayOn) androidx.compose.material3.Card(
         onClick = onClick, modifier = modifier.clay(CLAY_CARD, 10), enabled = enabled, shape = CLAY_CARD, colors = colors,
         elevation = CardDefaults.cardElevation(0.dp), border = null, content = content,
-    ) else if (SystemOn) androidx.compose.material3.Card(
-        onClick = onClick, modifier = modifier.systemWindow(), enabled = enabled, shape = SYS_SHAPE, colors = colors,
-        elevation = CardDefaults.cardElevation(0.dp), border = systemBorder(), content = content,
+    ) else if (FxOn) androidx.compose.material3.Card(
+        onClick = onClick, modifier = modifier.fxFrame(), enabled = enabled, shape = fxShape(), colors = colors,
+        elevation = CardDefaults.cardElevation(0.dp), border = fxBorder(), content = content,
     ) else androidx.compose.material3.Card(
         onClick = onClick, modifier = modifier, enabled = enabled, shape = shape, colors = colors, elevation = elevation,
         border = border, content = content,

@@ -409,6 +409,7 @@ class GameRepository @Inject constructor(
         }
         if (wasOpen && taskDao.get(task.id)?.done == true) {
             com.krishna.questblock.util.Sounds.questDone(soundCoins, soundLevelUp)
+            if (soundLevelUp) com.krishna.questblock.util.SystemEvents.levelUp()
             com.krishna.questblock.ui.chapterQuestEnded(ctx, task.title, true)
         }
     }
@@ -560,6 +561,7 @@ class GameRepository @Inject constructor(
         if (running && prefs.focusStrict && !force) return 0
         val elapsed = now - (p0.focusModeUntil - p0.focusTotalMs)
         finishFocus(completed = false)
+        if (running) com.krishna.questblock.util.SystemEvents.penalty()
         if (!running || (elapsed < 60_000L && !force) || prefs.focusExitPenalty <= 0) return 0
         return db.withTransaction {
             val p = playerDao.get() ?: return@withTransaction 0

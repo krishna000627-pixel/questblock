@@ -106,7 +106,10 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
 
     Scaffold(
         containerColor = ColorBg,
-        topBar = { if (SystemOn) SystemBar() },
+        topBar = { if (FxOn) androidx.compose.foundation.layout.Column {
+            FxBar()
+            if (SystemOn) SystemHost(strict) { navController.goTab("quests") }
+        } },
         snackbarHost = { SnackbarHost(snack) },
         bottomBar = {
             if (!strict) NavigationBar(
@@ -130,7 +133,7 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
         }
     ) { innerPadding ->
         NavHost(navController = navController, startDestination = startDest,
-            modifier = Modifier.fillMaxSize().padding(innerPadding).systemGrid()) {
+            modifier = Modifier.fillMaxSize().padding(innerPadding).fxBackground()) {
             composable("home") {
                 HomeScreen(
                     onAddQuest = { navController.openPage("quest_types") },

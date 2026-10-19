@@ -47,11 +47,12 @@ fun applyThemeMode(mode: Int, systemDark: Boolean) {
 private val SHOP_THEME_LIGHT = mapOf(
     "theme_sunset" to true, "theme_paper" to true, "theme_rose" to true,
     "theme_ocean" to false, "theme_forest" to false, "theme_neon" to false, "theme_scifi" to false,
-    "theme_amoled" to false, "theme_terminal" to false, "theme_indigo" to false, "theme_mist" to false,
-    "theme_itachi" to true, "theme_angel" to true, "theme_naruto" to false,
-    "theme_katana" to true,
+    "theme_amoled" to false, "theme_terminal" to false, "theme_indigo" to false, 
+    
+    
     "theme_linen" to true, "theme_sage" to true, "theme_sky" to true, "theme_lilac" to true, "theme_chalk" to true,
-    "theme_clay" to true, "theme_system" to false,
+    "theme_clay" to true, "theme_system" to false, "theme_ninja" to true, "theme_hashira" to false, "theme_monarch" to false, "theme_gothic" to false,
+    "theme_guild" to true, "theme_pixel" to false, "theme_handheld" to true, "theme_blueprint" to false,
 )
 fun themeForcedLight(id: String = ShopTheme): Boolean? = if (PosterOn) false else SHOP_THEME_LIGHT[id]
 
@@ -170,6 +171,46 @@ private val SHOP_PALETTES = mapOf(
         longArrayOf(0xFFE8F2FB, 0xFFFFFFFF, 0xFFD8E8F7, 0xFFFFFFFF, 0xFFC9DBEC),
         longArrayOf(0xFFD6EBFF, 0xFF6F8CB0, 0xFFFFB02E, 0xFFFFD24D, 0xFF3DF2C0),
         longArrayOf(0xFF0F1D2B, 0xFF5F7C99, 0xFFB5651D, 0xFF9C6B1E, 0xFF0A8CA0)),
+    "theme_ninja" to ShopPalette(0xFFC62828,
+        longArrayOf(0xFF15110C, 0xFF1D1812, 0xFF2A231A, 0xFF231D15, 0xFF332A1E),
+        longArrayOf(0xFFF3EBDD, 0xFFFBF6EA, 0xFFE8DCC5, 0xFFFFFBF0, 0xFFD9C9A8),
+        longArrayOf(0xFFF2E8D5, 0xFFA89880, 0xFFE0A15A, 0xFFD9B26A, 0xFF7FBF8F),
+        longArrayOf(0xFF2A1F14, 0xFF7A6A55, 0xFFB5651D, 0xFF9C6B1E, 0xFF3F7F4F)),
+    "theme_hashira" to ShopPalette(0xFF4FD6C4,
+        longArrayOf(0xFF06151A, 0xFF0B2229, 0xFF123239, 0xFF0E2A31, 0xFF1B4048),
+        longArrayOf(0xFFE6F6F4, 0xFFFFFFFF, 0xFFD2ECE8, 0xFFFFFFFF, 0xFFBFDDD8),
+        longArrayOf(0xFFDDF6F2, 0xFF7FAAA6, 0xFFFFB86B, 0xFFFFD27A, 0xFF5CF0B0),
+        longArrayOf(0xFF0F2B2B, 0xFF5A807C, 0xFFB5651D, 0xFF9C6B1E, 0xFF0A8C6A)),
+    "theme_monarch" to ShopPalette(0xFF9B5CFF,
+        longArrayOf(0xFF07050F, 0xFF0F0B1C, 0xFF191232, 0xFF140F28, 0xFF241A44),
+        longArrayOf(0xFFF1EAFF, 0xFFFFFFFF, 0xFFE2D6FA, 0xFFFFFFFF, 0xFFCFC2EC),
+        longArrayOf(0xFFE9DEFF, 0xFF8F80B5, 0xFFFFB02E, 0xFFFFD24D, 0xFF5CF0C0),
+        longArrayOf(0xFF1E1233, 0xFF6F5F96, 0xFFB5651D, 0xFF9C6B1E, 0xFF0A8C6A)),
+    "theme_gothic" to ShopPalette(0xFFD3122F,
+        longArrayOf(0xFF0A0A0A, 0xFF121212, 0xFF1C1C1C, 0xFF161616, 0xFF2A2A2A),
+        longArrayOf(0xFFF2F2F2, 0xFFFFFFFF, 0xFFE4E4E4, 0xFFFFFFFF, 0xFFD2D2D2),
+        longArrayOf(0xFFEDEDED, 0xFF8E8E8E, 0xFFE0A15A, 0xFFD9B26A, 0xFF8FBF8F),
+        longArrayOf(0xFF141414, 0xFF6B6B6B, 0xFFB5651D, 0xFF9C6B1E, 0xFF2F7F4F)),
+    "theme_guild" to ShopPalette(0xFF8C5A1E,
+        longArrayOf(0xFF1A140B, 0xFF231B10, 0xFF30251A, 0xFF2A2014, 0xFF3D2F1E),
+        longArrayOf(0xFFE9D8B4, 0xFFF4E7C8, 0xFFDCC79B, 0xFFF8EDD2, 0xFFC9B084),
+        longArrayOf(0xFFEFE0BE, 0xFFA8946A, 0xFFE0A15A, 0xFFD9B26A, 0xFF8FBF7F),
+        longArrayOf(0xFF3A2A14, 0xFF7A6540, 0xFFA8561B, 0xFF8A6A12, 0xFF4A7A3A)),
+    "theme_pixel" to ShopPalette(0xFFFFD400,
+        longArrayOf(0xFF0B0B1E, 0xFF14143A, 0xFF1E1E52, 0xFF191945, 0xFF2B2B6B),
+        longArrayOf(0xFFF2F2FF, 0xFFFFFFFF, 0xFFDEDEFA, 0xFFFFFFFF, 0xFFC8C8EE),
+        longArrayOf(0xFFF4F4FF, 0xFF8C8CC8, 0xFFFF8A3D, 0xFFFFD400, 0xFF3DFF8C),
+        longArrayOf(0xFF14143A, 0xFF6B6BA6, 0xFFB5651D, 0xFF9C6B1E, 0xFF0A9C4C)),
+    "theme_handheld" to ShopPalette(0xFF306230,
+        longArrayOf(0xFF0F380F, 0xFF17481A, 0xFF1F5A22, 0xFF1B501E, 0xFF2B6B2E),
+        longArrayOf(0xFFBDD07A, 0xFFCBDC8C, 0xFFA9BF63, 0xFFC9DA89, 0xFF8FA84F),
+        longArrayOf(0xFF9BBC0F, 0xFF6A8F1F, 0xFFC8A00F, 0xFFE0D020, 0xFF8BEF4F),
+        longArrayOf(0xFF0F380F, 0xFF3D5A27, 0xFF6B3A0F, 0xFF4A4A0F, 0xFF1F5F1F)),
+    "theme_blueprint" to ShopPalette(0xFF9BE1FF,
+        longArrayOf(0xFF0B2F66, 0xFF103A7A, 0xFF184B94, 0xFF0F3570, 0xFF2A5FAF),
+        longArrayOf(0xFFE6F0FF, 0xFFFFFFFF, 0xFFD2E2FA, 0xFFFFFFFF, 0xFFBCD2F2),
+        longArrayOf(0xFFEAF4FF, 0xFF8FB4E8, 0xFFFFC857, 0xFFFFE08A, 0xFF7FFFD4),
+        longArrayOf(0xFF0B2F66, 0xFF5A7DB0, 0xFFB5651D, 0xFF9C6B1E, 0xFF0A8C6A)),
     "theme_clay" to ShopPalette(0xFFEF5D8F,
         longArrayOf(0xFF1D1830, 0xFF282240, 0xFF352D52, 0xFF2D2748, 0xFF40375E),
         longArrayOf(0xFFE9E4F5, 0xFFF6F2FC, 0xFFDDD6EF, 0xFFF8F5FD, 0xFFD3CAE8),
@@ -190,32 +231,6 @@ private val SHOP_PALETTES = mapOf(
         longArrayOf(0xFFEEF0FF, 0xFFFFFFFF, 0xFFDDE0FF, 0xFFFFFFFF, 0xFFC9CEF5),
         longArrayOf(0xFFE8EAFF, 0xFF7479B0, 0xFF9BE7FF, 0xFFC7B9FF, 0xFFFF7BD5),
         longArrayOf(0xFF12143A, 0xFF5F649A, 0xFF2A6FD6, 0xFF5A4FCF, 0xFFC23FA0)),
-    "theme_mist" to ShopPalette(0xFF5CE0D0,
-        longArrayOf(0x8006100F, 0xE60B1A1A, 0xEB12292A, 0xE60F2222, 0xFF1E3A3A),
-        longArrayOf(0x8006100F, 0xE60B1A1A, 0xEB12292A, 0xE60F2222, 0xFF1E3A3A),
-        longArrayOf(0xFFE6F7F5, 0xFF7FA3A0, 0xFF7FFFD4, 0xFFA8F0E6, 0xFF8FB8FF),
-        longArrayOf(0xFFE6F7F5, 0xFF7FA3A0, 0xFF7FFFD4, 0xFFA8F0E6, 0xFF8FB8FF)),
-    "theme_itachi" to ShopPalette(0xFFE0314B,
-        longArrayOf(0x70FFFFFF, 0xE8FFFFFF, 0xEEF4ECEF, 0xE6FFFFFF, 0xFFE3D6DB),
-        longArrayOf(0x70FFFFFF, 0xE8FFFFFF, 0xEEF4ECEF, 0xE6FFFFFF, 0xFFE3D6DB),
-        longArrayOf(0xFF16101A, 0xFF6E6470, 0xFFC47A00, 0xFFB8800A, 0xFFB0204A),
-        longArrayOf(0xFF16101A, 0xFF6E6470, 0xFFC47A00, 0xFFB8800A, 0xFFB0204A)),
-    "theme_angel" to ShopPalette(0xFFFF2D55,
-        longArrayOf(0x70FFFFFF, 0xE8FFFFFF, 0xEEF4ECEF, 0xE6FFFFFF, 0xFFE3D6DB),
-        longArrayOf(0x70FFFFFF, 0xE8FFFFFF, 0xEEF4ECEF, 0xE6FFFFFF, 0xFFE3D6DB),
-        longArrayOf(0xFF16101A, 0xFF6E6470, 0xFFC47A00, 0xFFB8800A, 0xFFB0204A),
-        longArrayOf(0xFF16101A, 0xFF6E6470, 0xFFC47A00, 0xFFB8800A, 0xFFB0204A)),
-    "theme_naruto" to ShopPalette(0xFFFF3B30,
-        longArrayOf(0x80000000, 0xE6080404, 0xEB150A0A, 0xE60D0606, 0xFF2A1212),
-        longArrayOf(0x80000000, 0xE6080404, 0xEB150A0A, 0xE60D0606, 0xFF2A1212),
-        longArrayOf(0xFFF5ECEC, 0xFFA08C8C, 0xFFFF7A5C, 0xFFFFD08A, 0xFFFF5C5C),
-        longArrayOf(0xFFF5ECEC, 0xFFA08C8C, 0xFFFF7A5C, 0xFFFFD08A, 0xFFFF5C5C)),
-    // light poster (ink sword, cherry blossom): white glass over the picture, ink text, crimson accent
-    "theme_katana" to ShopPalette(0xFFD81B60,
-        longArrayOf(0x70FFFFFF, 0xE8FFFFFF, 0xEEF4ECEF, 0xE6FFFFFF, 0xFFE3D6DB),
-        longArrayOf(0x70FFFFFF, 0xE8FFFFFF, 0xEEF4ECEF, 0xE6FFFFFF, 0xFFE3D6DB),
-        longArrayOf(0xFF16101A, 0xFF6E6470, 0xFFC47A00, 0xFFB8800A, 0xFFB0204A),
-        longArrayOf(0xFF16101A, 0xFF6E6470, 0xFFC47A00, 0xFFB8800A, 0xFFB0204A)),
 )
 private fun tone(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (LightMode) it.lTone[i] else it.dTone[i]) }
 private fun themed(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (LightMode) it.light[i] else it.dark[i]) }
@@ -274,15 +289,7 @@ val ACCENTS: List<Pair<String, Long>> = listOf(
 // ── Poster themes ────────────────────────────────────────────────────────────
 /** A theme with a picture: it is drawn as the window background, tinted and dimmed, and the screens above it are see-through. id → (picture, tint colour, dim 0-255) */
 private class Poster(val res: Int, val tint: Long, val dim: Int, val light: Boolean = false)
-private val SHOP_POSTERS = mapOf(
-    "theme_mist" to Poster(R.drawable.poster_mist, 0xFF5CE0D0, 0x99),
-    // tint 0 = keep the picture's own colours (the red stays red); the two pale pictures are dimmed more so text stays readable
-    "theme_itachi" to Poster(R.drawable.poster_itachi, 0L, 0x99, true),
-    "theme_angel" to Poster(R.drawable.poster_angel, 0L, 0x99, true),
-    "theme_naruto" to Poster(R.drawable.poster_naruto, 0L, 0x59),
-    // light poster: white underneath and a white veil on top (the other posters use black), so the page stays light with dark text
-    "theme_katana" to Poster(R.drawable.poster_katana, 0L, 0x8C, true),
-)
+private val SHOP_POSTERS = mapOf<String, Poster>()   // v239: the picture themes were removed; the gallery picture (PosterSettings.kt) is separate
 private var posterKey: String? = null
 private var posterBmp: Bitmap? = null
 

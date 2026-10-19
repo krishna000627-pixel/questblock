@@ -111,11 +111,12 @@ fun PlayerHubScreen(
                             Text("score", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
                         }
                     }
+                    if (SystemOn) Text("[ STATUS WINDOW ]", color = ColorPrimary, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                     st.attrs.forEach { a ->
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("${a.emoji} ${a.name}", color = ColorText, style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(112.dp))
+                            Text(if (SystemOn) a.name.take(3).uppercase() else "${a.emoji} ${a.name}", color = ColorText, style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(112.dp))
                             Bar(a.into.toFloat() / a.per, Modifier.weight(1f))
-                            Text("Lv ${a.level}", color = ColorMuted, style = MaterialTheme.typography.labelSmall,
+                            Text(if (SystemOn) "${a.level}" else "Lv ${a.level}", color = ColorMuted, style = MaterialTheme.typography.labelSmall,
                                 modifier = Modifier.width(36.dp), textAlign = TextAlign.End)
                         }
                     }

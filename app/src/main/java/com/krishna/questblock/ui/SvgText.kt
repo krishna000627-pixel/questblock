@@ -43,8 +43,8 @@ fun Text(
     onTextLayout: (TextLayoutResult) -> Unit = {},
     style: TextStyle = LocalTextStyle.current,
 ) {
-    val fontFamily = fontFamily ?: if (SystemOn) FontFamily.Monospace else null
-    val letterSpacing = if (letterSpacing == TextUnit.Unspecified && SystemOn) 0.3.sp else letterSpacing
+    val fontFamily = fontFamily ?: FxFont
+    val letterSpacing = if (letterSpacing == TextUnit.Unspecified) FxSpacing else letterSpacing
     val useSvg = SvgIconsOn && !TermuxOn
     val res = if (useSvg) remember(text, SvgIconsOff) { SvgIcons.annotate(text, SvgIconsOff) } else null
     if (res == null) {
@@ -79,7 +79,7 @@ fun Text(
     onTextLayout: (TextLayoutResult) -> Unit = {},
     style: TextStyle = LocalTextStyle.current,
 ) {
-    androidx.compose.material3.Text(text, modifier, color, fontSize, fontStyle, fontWeight, fontFamily ?: if (SystemOn) FontFamily.Monospace else null,
-        if (letterSpacing == TextUnit.Unspecified && SystemOn) 0.3.sp else letterSpacing,
+    androidx.compose.material3.Text(text, modifier, color, fontSize, fontStyle, fontWeight, fontFamily ?: FxFont,
+        if (letterSpacing == TextUnit.Unspecified) FxSpacing else letterSpacing,
         textDecoration, textAlign, lineHeight, overflow, softWrap, maxLines, minLines, inlineContent, onTextLayout, style)
 }
