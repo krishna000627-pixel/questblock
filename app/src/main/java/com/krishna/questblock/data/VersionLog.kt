@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("234.0.0", "Build fix: Card defined twice",
+        listOf(
+            "Fixed the build errors in AboutMeScreen, BadgesScreen, ClayStyle, CoinLogScreen, FlagsScreen and Glass: ui/ClayStyle.kt and ui/Glass.kt both defined Card in the ui package. The two Card functions now live only in Glass.kt and also draw the Claymorphism look (big radius, soft shadow, rim) when that theme is on. Button stays in ClayStyle.kt. Nothing else changed, no new setting or page, so the terminal needs no new command",
+        )),
     VersionEntry("233.0.0", "Shop power-ups, frames and badges use the SVG icons",
         listOf(
             "The 16 round gradient pictures on the Shop and My Items cards (XP Boost, XP Surge, Coin Magnet, Coin Storm, Streak Shield, Streak Repair, Streak Freeze, the four frames, the four badges) are replaced by the thin outline SVG icons the themes already use (bolt, magnet, shield, bandage, cube, flame, snowflake, sparkles, galaxy, star, crown, swords, dragon). The old art_shop_* files are deleted. The Badges page and the achievement art are unchanged",

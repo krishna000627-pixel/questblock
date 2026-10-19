@@ -23,47 +23,18 @@ import androidx.compose.ui.unit.dp
 
 /**
  * v230: the Claymorphism shop theme (theme_clay). Soft pastel colours (Theme.kt) plus puffy shapes: with the theme on,
- * Card and Button (which shadow the material3 ones in the ui package, like Text does) get a big radius, a soft coloured
+ * Card (in Glass.kt) and Button (which shadow the material3 ones in the ui package, like Text does) get a big radius, a soft coloured
  * drop shadow and a light rim on the top left. Every other time they call straight through to material3.
  */
 val ClayOn: Boolean get() = ShopTheme == "theme_clay" && !PosterOn && !TermuxOn
 
-private val CLAY_CARD = RoundedCornerShape(28.dp)
+internal val CLAY_CARD = RoundedCornerShape(28.dp)
 private val CLAY_BUTTON = RoundedCornerShape(22.dp)
 private val ClayShadow = Color(0x887C6CA8)
 
-private fun Modifier.clay(shape: Shape, lift: Int): Modifier = this
+internal fun Modifier.clay(shape: Shape, lift: Int): Modifier = this
     .shadow(lift.dp, shape, ambientColor = ClayShadow, spotColor = ClayShadow)
     .border(2.dp, Brush.linearGradient(listOf(Color.White.copy(alpha = 0.95f), Color.White.copy(alpha = 0f), Color(0x227C6CA8))), shape)
-
-@Composable
-fun Card(
-    modifier: Modifier = Modifier,
-    shape: Shape = CardDefaults.shape,
-    colors: CardColors = CardDefaults.cardColors(),
-    elevation: CardElevation = CardDefaults.cardElevation(),
-    border: BorderStroke? = null,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    if (ClayOn) androidx.compose.material3.Card(modifier.clay(CLAY_CARD, 10), CLAY_CARD, colors, CardDefaults.cardElevation(0.dp), null, content)
-    else androidx.compose.material3.Card(modifier, shape, colors, elevation, border, content)
-}
-
-@Composable
-fun Card(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    shape: Shape = CardDefaults.shape,
-    colors: CardColors = CardDefaults.cardColors(),
-    elevation: CardElevation = CardDefaults.cardElevation(),
-    border: BorderStroke? = null,
-    interactionSource: MutableInteractionSource? = null,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    if (ClayOn) androidx.compose.material3.Card(onClick, modifier.clay(CLAY_CARD, 10), enabled, CLAY_CARD, colors, CardDefaults.cardElevation(0.dp), null, interactionSource, content)
-    else androidx.compose.material3.Card(onClick, modifier, enabled, shape, colors, elevation, border, interactionSource, content)
-}
 
 @Composable
 fun Button(

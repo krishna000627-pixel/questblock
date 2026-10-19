@@ -53,9 +53,14 @@ fun Card(
     elevation: CardElevation = CardDefaults.cardElevation(),
     border: BorderStroke? = glowBorder(),
     content: @Composable ColumnScope.() -> Unit,
-) = androidx.compose.material3.Card(
-    modifier = modifier, shape = shape, colors = colors, elevation = elevation, border = border, content = content,
-)
+) {
+    if (ClayOn) androidx.compose.material3.Card(
+        modifier = modifier.clay(CLAY_CARD, 10), shape = CLAY_CARD, colors = colors,
+        elevation = CardDefaults.cardElevation(0.dp), border = null, content = content,
+    ) else androidx.compose.material3.Card(
+        modifier = modifier, shape = shape, colors = colors, elevation = elevation, border = border, content = content,
+    )
+}
 
 @Composable
 fun Card(
@@ -67,10 +72,15 @@ fun Card(
     elevation: CardElevation = CardDefaults.cardElevation(),
     border: BorderStroke? = glowBorder(),
     content: @Composable ColumnScope.() -> Unit,
-) = androidx.compose.material3.Card(
-    onClick = onClick, modifier = modifier, enabled = enabled, shape = shape, colors = colors, elevation = elevation,
-    border = border, content = content,
-)
+) {
+    if (ClayOn) androidx.compose.material3.Card(
+        onClick = onClick, modifier = modifier.clay(CLAY_CARD, 10), enabled = enabled, shape = CLAY_CARD, colors = colors,
+        elevation = CardDefaults.cardElevation(0.dp), border = null, content = content,
+    ) else androidx.compose.material3.Card(
+        onClick = onClick, modifier = modifier, enabled = enabled, shape = shape, colors = colors, elevation = elevation,
+        border = border, content = content,
+    )
+}
 
 /** Badge shape (level badge, avatar, welcome pages). Was a hexagon until v195; the name stays so every place that used it now shows a circle. */
 val HexShape: Shape = CircleShape
