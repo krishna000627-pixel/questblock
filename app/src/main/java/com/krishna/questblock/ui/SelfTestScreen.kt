@@ -145,6 +145,10 @@ class SelfTestViewModel @Inject constructor(
             t("Rules", "Streak Freeze in the shop") {
                 if (ShopCatalog.items.any { it.id == "streak_freeze" }) ok("listed") else fail("missing from the shop")
             }
+            t("Rules", "Every theme has an SVG logo") {
+                val bad = ShopCatalog.items.filter { it.category == "cosmetic_theme" && !SvgIcons.EMOJI.containsKey(it.emoji.replace("\uFE0F", "")) }
+                if (bad.isEmpty()) ok("all ${ShopCatalog.items.count { it.category == "cosmetic_theme" }} themes") else fail("no SVG for ${bad.joinToString { it.name }}: see #svg-logo in ShopCatalog.kt")
+            }
             t("Rules", "Blocked websites") {
                 val sites = prefs.blockedSites()
                 if (sites.isEmpty()) warn("no sites blocked, nothing to test")

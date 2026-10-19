@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("237.0.0", "System theme logo as SVG, and a rule so every theme has one",
+        listOf(
+            "The System Window theme's logo (a diamond inside a diamond) now draws as an SVG icon like every other theme logo: new icon system in SvgIcons.kt and its emoji added to SvgIcons.EMOJI, so it also shows in the switch-per-icon page and the terminal icons list",
+            "Rule for every future theme, tagged #svg-logo in ShopCatalog.kt and Theme.kt: add the theme's emoji to SvgIcons.EMOJI (and an icon if none fits). Hub > Self test has a new check, Every theme has an SVG logo, that fails and names any theme without one. Nothing new for the terminal, no new setting or page",
+        )),
     VersionEntry("236.0.0", "System theme (RPG main character window)",
         listOf(
             "New shop theme System Window (5 coins a day): a dark navy and electric blue look like the status windows in a main character system. More than colours: cards get cut corners (top-left and bottom-right), a thin glowing blue frame and bright corner brackets; buttons get the same cut corners and become outlined and see-through; all text is monospace; the pages sit on a faint blue HUD grid; a [ SYSTEM ] strip with PLAYER STATUS \u00b7 ONLINE sits at the top of every page; and the Undo bar after a quest reads [SYSTEM] QUEST CLEARED. Done in ui/SystemStyle.kt (Card in Glass.kt, Button in ClayStyle.kt and Text in SvgText.kt only change anything while this theme is on). Off over a poster and in the terminal. Danger buttons also take the blue accent while it is on",

@@ -27,6 +27,8 @@ object ShopCatalog {
         ShopItem("frame_gold",   "Gold Frame",        "✨", "Legendary golden frame",        300, "cosmetic_frame", isConsumable = false),
         ShopItem("frame_galaxy", "Galaxy Frame",      "🌌", "Cosmic galaxy frame",           500, "cosmetic_frame", isConsumable = false),
         // ─── Themes: the price is coins PER DAY while the theme is equipped (no one-time buy). Not enough coins = back to default ───
+        // #svg-logo  NEW THEME RULE: every theme's emoji must draw as an SVG icon. When you add a theme here, also add its emoji
+        // to SvgIcons.EMOJI (and a new icon to ICONS if none fits). Hub > Self test, "Every theme has an SVG logo", fails if you forget.
         ShopItem("theme_sunset", "Sunset Theme",      "🌅", "Warm orange & pink UI",           4, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_ocean",  "Ocean Theme",       "🌊", "Deep blue calm UI",               4, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_forest", "Forest Theme",      "🌲", "Earthy green UI",                 4, "cosmetic_theme", isConsumable = false),

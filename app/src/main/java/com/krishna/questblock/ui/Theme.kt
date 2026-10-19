@@ -43,6 +43,7 @@ fun applyThemeMode(mode: Int, systemDark: Boolean) {
 }
 
 /** Each shop theme has its own type: true = a light theme (white), false = a dark theme (black). It picks that by itself, whatever Dark / Light / System says. Default look: null = follow the setting. */
+// #svg-logo  NEW THEME CHECKLIST: 1 SHOP_THEME_LIGHT (here) 2 SHOP_PALETTES 3 ShopCatalog item + its SVG logo in SvgIcons.EMOJI 4 terminal: theme set / help / chips / strict list.
 private val SHOP_THEME_LIGHT = mapOf(
     "theme_sunset" to true, "theme_paper" to true, "theme_rose" to true,
     "theme_ocean" to false, "theme_forest" to false, "theme_neon" to false, "theme_scifi" to false,
