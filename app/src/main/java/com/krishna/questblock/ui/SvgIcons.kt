@@ -141,6 +141,7 @@ object SvgIcons {
     "trident" to SvgIcon(listOf("M12 21V8", "M6 4v5a6 6 0 0 0 12 0V4", "M12 3v5")),
     "gem" to SvgIcon(listOf("M6 4h12l3 5-9 12L3 9z", "M3 9h18", "M9 4l3 5 3-5")),
     "volcano" to SvgIcon(listOf("M3 20l6-10h6l6 10z", "M9 10l-1-4", "M15 10l1-5", "M12 7v3")),
+    "hero" to SvgIcon(listOf("M12 3a3 3 0 1 0 0 6a3 3 0 1 0 0-6z", "M6 21v-5a6 6 0 0 1 12 0v5", "M12 12v3", "M10.5 13.5h3")),
     "feet" to SvgIcon(listOf("M8 4a2 3 0 1 0 0 6a2 3 0 1 0 0-6z", "M7 13h3v3a1.5 1.5 0 0 1-3 0z", "M16 10a2 3 0 1 0 0 6a2 3 0 1 0 0-6z", "M15 19h3v1a1.5 1.5 0 0 1-3 0z")),
     "map" to SvgIcon(listOf("M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z", "M9 4v14", "M15 6v14")),
     "bandage" to SvgIcon(listOf("M4 14L14 4a3 3 0 0 1 6 6L10 20a3 3 0 0 1-6-6z", "M9 9l6 6")),

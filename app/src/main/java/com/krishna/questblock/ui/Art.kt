@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,58 +21,50 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.krishna.questblock.R
 
-/** Drawn vector art (res/drawable/art_*.xml). Anything without art keeps its emoji. */
+/** v235: achievement, badge and rank pictures are SVG icons (names from SvgIcons.ICONS) in a thin ring, like the Shop cards. */
 object Art {
     private val BADGES = mapOf(
-        "beginner" to R.drawable.art_badge_beginner,
-        "iron_will" to R.drawable.art_badge_iron_will,
-        "deep_diver" to R.drawable.art_badge_deep_diver,
-        "scholar" to R.drawable.art_badge_scholar,
-        "machine" to R.drawable.art_badge_machine,
-        "triple" to R.drawable.art_badge_triple,
-        "ghost" to R.drawable.art_badge_ghost,
-        "unbroken" to R.drawable.art_badge_unbroken,
-        "streak7" to R.drawable.art_badge_streak7,
-        "streak30" to R.drawable.art_badge_streak30,
-        "hundred" to R.drawable.art_badge_hundred,
-        "focus10" to R.drawable.art_badge_focus10,
-        "coder" to R.drawable.art_badge_coder,
-        "first_quest" to R.drawable.art_badge_first_quest,
-        "quest10" to R.drawable.art_badge_quest10,
-        "quest50" to R.drawable.art_badge_quest50,
-        "streak3" to R.drawable.art_badge_streak3,
-        "streak100" to R.drawable.art_badge_streak100,
-        "focus_hour" to R.drawable.art_badge_focus_hour,
-        "focus50" to R.drawable.art_badge_focus50,
-        "bookworm" to R.drawable.art_badge_bookworm,
-        "fullstack" to R.drawable.art_badge_fullstack,
-        "clean_slate" to R.drawable.art_badge_clean_slate,
-        "double_focus" to R.drawable.art_badge_double_focus,
-        "balanced" to R.drawable.art_badge_balanced,
+        "beginner" to "sprout", "iron_will" to "shield", "deep_diver" to "target", "scholar" to "books",
+        "machine" to "gear", "triple" to "trident", "ghost" to "ghost", "unbroken" to "gem",
+        "streak7" to "flame", "streak30" to "volcano", "hundred" to "rosette", "focus10" to "hourglass",
+        "coder" to "laptop", "first_quest" to "swords", "quest10" to "rocket", "quest50" to "medal",
+        "streak3" to "flame", "streak100" to "crown", "focus_hour" to "stopwatch", "focus50" to "meditate",
+        "bookworm" to "book", "fullstack" to "moon", "clean_slate" to "sparkles", "double_focus" to "repeat",
+        "balanced" to "scale",
     )
     private val ACH = mapOf(
-        "first_quest" to R.drawable.art_ach_first_quest,
-        "streak_3" to R.drawable.art_ach_streak_3,
-        "streak_7" to R.drawable.art_ach_streak_7,
-        "streak_30" to R.drawable.art_ach_streak_30,
-        "quests_10" to R.drawable.art_ach_quests_10,
-        "quests_50" to R.drawable.art_ach_quests_50,
-        "quests_100" to R.drawable.art_ach_quests_100,
-        "coins_100" to R.drawable.art_ach_coins_100,
-        "level_5" to R.drawable.art_ach_level_5,
-        "level_10" to R.drawable.art_ach_level_10,
-        "focus_1" to R.drawable.art_ach_focus_1,
-        "timer_quest_1" to R.drawable.art_ach_timer_quest_1,
+        "first_quest" to "feet", "streak_3" to "flame", "streak_7" to "swords", "streak_30" to "trophy",
+        "quests_10" to "map", "quests_50" to "hero", "quests_100" to "crown", "coins_100" to "coin",
+        "level_5" to "star", "level_10" to "sparkles", "focus_1" to "target", "timer_quest_1" to "stopwatch",
     )
-    private val RANKS = listOf(R.drawable.art_rank_0, R.drawable.art_rank_1, R.drawable.art_rank_2, R.drawable.art_rank_3, R.drawable.art_rank_4, R.drawable.art_rank_5)
+    private val RANK_ICONS = listOf("sprout", "bolt", "shield", "medal", "crown", "galaxy")
     private val RANK_NAMES = listOf("NOVICE", "INITIATE", "DISCIPLINED", "ELITE", "MASTER", "ASCENDANT")
 
-    fun badge(id: String): Int? = BADGES[id]
-    fun ach(id: String): Int? = ACH[id]
-    /** v233: shop items (power-ups, frames, badges) have no drawn art any more, their emoji is drawn as an SVG icon like the themes. */
+    fun badge(id: String): String? = BADGES[id]
+    fun ach(id: String): String? = ACH[id]
+    /** v233: shop items (power-ups, frames, badges) have no drawn art, their emoji is drawn as an SVG icon like the themes. */
     @Suppress("UNUSED_PARAMETER")
     fun shop(id: String): Int? = null
-    fun rank(name: String): Int? = RANK_NAMES.indexOf(name.uppercase()).takeIf { it >= 0 }?.let { RANKS[it] }
+    fun rank(name: String): String? = RANK_NAMES.indexOf(name.uppercase()).takeIf { it >= 0 }?.let { RANK_ICONS[it] }
+}
+
+/** An SVG icon in a thin ring (accent colour; grey and faded when not active). No icon name: the emoji as text. */
+@Composable
+fun SvgArtIcon(name: String?, emoji: String, size: Dp, modifier: Modifier = Modifier, active: Boolean = true) {
+    if (name == null) { Text(emoji, fontSize = (size.value * 0.62f).sp); return }
+    val tint = if (active) ColorPrimary else ColorMuted.copy(alpha = 0.55f)
+    Box(
+        modifier.size(size).clip(CircleShape)
+            .background(if (active) ColorPrimary.copy(alpha = 0.12f) else Color.Transparent)
+            .border(1.5.dp, if (active) ColorPrimary else ColorDivider, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) { SvgGlyph(name, tint, Modifier.size(size * 0.54f)) }
+}
+
+/** Big muted icon for an empty page. */
+@Composable
+fun EmptyArt(name: String, size: Dp = 120.dp) {
+    Box(Modifier.size(size), contentAlignment = Alignment.Center) { SvgGlyph(name, ColorMuted.copy(alpha = 0.7f), Modifier.size(size * 0.6f)) }
 }
 
 /** The art if there is one, else the emoji. */
@@ -80,23 +74,14 @@ fun ArtIcon(res: Int?, emoji: String, size: Dp, modifier: Modifier = Modifier) {
     else Text(emoji, fontSize = (size.value * 0.62f).sp)
 }
 
-/** A badge on the Badges page: its drawn hexagon (grey and faded while locked), or the old hexagon with the emoji. */
+/** A badge on the Badges page: its SVG icon in a ring (grey and faded while locked), or the emoji ring when it has no icon. */
 @Composable
 fun BadgeArt(id: String, emoji: String, unlocked: Boolean, size: Dp = 56.dp) {
-    val res = Art.badge(id)
-    if (res != null) {
-        Image(
-            painterResource(res), contentDescription = null,
-            modifier = Modifier.size(size),
-            alpha = if (unlocked) 1f else 0.38f,
-            colorFilter = if (unlocked) null else ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }),
-        )
-    } else {
-        Box(
-            Modifier.size(size).clip(HexShape)
-                .background(if (unlocked) Brush.verticalGradient(listOf(ColorPrimary.copy(0.55f), ColorPrimary.copy(0.12f))) else Brush.verticalGradient(listOf(ColorSurfaceHigh, ColorSurfaceHigh)))
-                .border(2.dp, if (unlocked) ColorPrimary else ColorDivider, HexShape),
-            contentAlignment = Alignment.Center,
-        ) { Text(if (unlocked) emoji else "\uD83D\uDD12", fontSize = 24.sp) }
-    }
+    val name = Art.badge(id)
+    if (name != null) SvgArtIcon(name, emoji, size, active = unlocked)
+    else Box(
+        Modifier.size(size).clip(CircleShape)
+            .border(1.5.dp, if (unlocked) ColorPrimary else ColorDivider, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) { Text(if (unlocked) emoji else "\uD83D\uDD12", fontSize = 24.sp) }
 }

@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("235.0.0", "Achievement, badge and rank art is SVG",
+        listOf(
+            "All drawn pictures in ui/Art.kt are now the thin outline SVG icons used by the Shop cards, in a ring in the accent colour: the 12 achievements (Home, recent achievements), the 25 badges on the Badges page (grey and faded while locked), the six ranks on the Player hub, and the two empty pages (no quests, empty inventory). Icon picks: first step feet, streaks flame, week warrior swords, legend trophy, adventurer map, hero (new icon, a caped person), champion crown, coin hoarder coin, levels star and sparkles, focused target, timer master stopwatch; ranks sprout, bolt, shield, medal, crown, galaxy. The old art_ach_*, art_badge_*, art_rank_* and art_empty_* files are deleted. Shop pictures, texts and the terminal are unchanged (the terminal shows no pictures, so it needs no new command)",
+        )),
     VersionEntry("234.0.0", "Build fix: Card defined twice",
         listOf(
             "Fixed the build errors in AboutMeScreen, BadgesScreen, ClayStyle, CoinLogScreen, FlagsScreen and Glass: ui/ClayStyle.kt and ui/Glass.kt both defined Card in the ui package. The two Card functions now live only in Glass.kt and also draw the Claymorphism look (big radius, soft shadow, rim) when that theme is on. Button stays in ClayStyle.kt. Nothing else changed, no new setting or page, so the terminal needs no new command",

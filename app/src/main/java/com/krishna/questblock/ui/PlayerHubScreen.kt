@@ -99,7 +99,7 @@ fun PlayerHubScreen(
                 HubCard {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Art.rank(st.rank)?.let { androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(it), null, Modifier.size(60.dp)) }
+                        Art.rank(st.rank)?.let { SvgArtIcon(it, "", 60.dp) }
                         Column {
                             Text(st.rank, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = ColorPrimary)
                             Text("Level ${snap.level}" + (st.toNext?.let { " • $it to next" } ?: ""),

@@ -191,7 +191,7 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
                 item {
                     Box(Modifier.fillMaxWidth().padding(60.dp), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(com.krishna.questblock.R.drawable.art_empty_quests), null, Modifier.size(120.dp))
+                            EmptyArt("clipboard")
                             Text("Nothing here", style = MaterialTheme.typography.titleMedium, color = ColorText)
                         }
                     }

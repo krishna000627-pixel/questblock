@@ -326,7 +326,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
                             Column(Modifier.padding(12.dp).width(96.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                ArtIcon(Art.ach(ach.id), ach.emoji, 48.dp)
+                                SvgArtIcon(Art.ach(ach.id), ach.emoji, 48.dp)
                                 Text(ach.name, style = MaterialTheme.typography.labelSmall,
                                     color = ColorText, fontWeight = FontWeight.Bold)
                             }
