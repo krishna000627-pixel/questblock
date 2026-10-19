@@ -3,6 +3,12 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("253.0.0", "Theme effects on the lock screens",
+        listOf(
+            "The lock page (BlockScreen) and its three sisters (Fun limit, Focus lock, Study first) get the look of the style theme, behind that theme's own flag fx_<theme> (and themefx); with the flag off they look as before. Nothing moves except a one-shot pop in of the emblem (0.45 s) and the existing Hashira mist and Monarch motes of the page background",
+            "Lock emblem around the app icon (new FxLockEmblem in ui/ThemeFx.kt) with a padlock badge: System corner brackets and dashed ring; Ninja ink brush circle and a red hanko seal; Hashira mist glow and thin ring; Monarch violet glow and dotted ring; Gothic double ring with a red diamond; Guild parchment disc with 12 brass studs; Pixel 16 square pixels; Handheld 24 dots; Blueprint dashed ring, 24 ticks and crosshair",
+            "Theme word under the title (new FxLockWord, ThemeExtras.WORDS key locked): [ ACCESS DENIED ], Sealed, The mist blocks the way, THE GATE IS CLOSED, The gate is shut, Closed to adventurers, LOCKED - INSERT COIN, NO CARTRIDGE, ACCESS RESTRICTED. The page background uses the theme drawing (grid, dots, mist, motes) like the other pages. The flag descriptions mention the lock screen",
+        )),
     VersionEntry("252.0.0", "Removed themes are gone from the inventory",
         listOf(
             "Themes that are no longer in the shop (the five picture themes removed in v239 and any other dead one) are deleted from My Items. If one was still equipped the look goes back to default. It runs when the Home page or the Inventory opens. Code: GameRepository.removeDeadThemes, InventoryDao.deleteThemesNotIn",

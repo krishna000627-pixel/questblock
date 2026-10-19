@@ -66,14 +66,15 @@ object ThemeExtras {
     var booted = false
 
     private val WORDS: Map<Fx, Map<String, String>> = mapOf(
-        Fx.SYSTEM to mapOf("done" to "[SYSTEM] QUEST CLEARED", "emptyQuests" to "NO ACTIVE QUESTS", "emptyInv" to "INVENTORY EMPTY"),
-        Fx.HASHIRA to mapOf("easy" to "Form 1", "medium" to "Form 2", "hard" to "Form 3", "done" to "Total concentration", "emptyQuests" to "Still as mist. No quests.", "emptyInv" to "Nothing in the mist"),
-        Fx.MONARCH to mapOf("easy" to "Soldier", "medium" to "Knight", "hard" to "Elite", "done" to "SHADOW EXTRACTED", "emptyQuests" to "The throne is quiet.", "emptyInv" to "No spoils yet"),
-        Fx.GOTHIC to mapOf("easy" to "Rite I", "medium" to "Rite II", "hard" to "Rite III", "done" to "So it is written", "emptyQuests" to "Rest, then rise.", "emptyInv" to "The reliquary is empty"),
-        Fx.GUILD to mapOf("easy" to "Copper", "medium" to "Silver", "hard" to "Gold", "done" to "Reward collected", "emptyQuests" to "The board is bare.", "emptyInv" to "The vault is empty"),
-        Fx.PIXEL to mapOf("easy" to "STAGE 1", "medium" to "STAGE 2", "hard" to "STAGE 3", "done" to "STAGE CLEAR!", "emptyQuests" to "PRESS START", "emptyInv" to "NO ITEMS"),
-        Fx.HANDHELD to mapOf("easy" to "EASY", "medium" to "NORMAL", "hard" to "HARD", "done" to "SAVING...", "emptyQuests" to "NO DATA", "emptyInv" to "SLOT EMPTY"),
-        Fx.BLUEPRINT to mapOf("easy" to "TYPE A", "medium" to "TYPE B", "hard" to "TYPE C", "done" to "APPROVED", "emptyQuests" to "SHEET EMPTY", "emptyInv" to "STORE EMPTY"),
+        Fx.NINJA to mapOf("locked" to "Sealed"),
+        Fx.SYSTEM to mapOf("locked" to "[ ACCESS DENIED ]", "done" to "[SYSTEM] QUEST CLEARED", "emptyQuests" to "NO ACTIVE QUESTS", "emptyInv" to "INVENTORY EMPTY"),
+        Fx.HASHIRA to mapOf("locked" to "The mist blocks the way", "easy" to "Form 1", "medium" to "Form 2", "hard" to "Form 3", "done" to "Total concentration", "emptyQuests" to "Still as mist. No quests.", "emptyInv" to "Nothing in the mist"),
+        Fx.MONARCH to mapOf("locked" to "THE GATE IS CLOSED", "easy" to "Soldier", "medium" to "Knight", "hard" to "Elite", "done" to "SHADOW EXTRACTED", "emptyQuests" to "The throne is quiet.", "emptyInv" to "No spoils yet"),
+        Fx.GOTHIC to mapOf("locked" to "The gate is shut", "easy" to "Rite I", "medium" to "Rite II", "hard" to "Rite III", "done" to "So it is written", "emptyQuests" to "Rest, then rise.", "emptyInv" to "The reliquary is empty"),
+        Fx.GUILD to mapOf("locked" to "Closed to adventurers", "easy" to "Copper", "medium" to "Silver", "hard" to "Gold", "done" to "Reward collected", "emptyQuests" to "The board is bare.", "emptyInv" to "The vault is empty"),
+        Fx.PIXEL to mapOf("locked" to "LOCKED - INSERT COIN", "easy" to "STAGE 1", "medium" to "STAGE 2", "hard" to "STAGE 3", "done" to "STAGE CLEAR!", "emptyQuests" to "PRESS START", "emptyInv" to "NO ITEMS"),
+        Fx.HANDHELD to mapOf("locked" to "NO CARTRIDGE", "easy" to "EASY", "medium" to "NORMAL", "hard" to "HARD", "done" to "SAVING...", "emptyQuests" to "NO DATA", "emptyInv" to "SLOT EMPTY"),
+        Fx.BLUEPRINT to mapOf("locked" to "ACCESS RESTRICTED", "easy" to "TYPE A", "medium" to "TYPE B", "hard" to "TYPE C", "done" to "APPROVED", "emptyQuests" to "SHEET EMPTY", "emptyInv" to "STORE EMPTY"),
     )
 
     fun word(key: String, default: String): String = if (!on) default else WORDS[FxNow]?.get(key) ?: default

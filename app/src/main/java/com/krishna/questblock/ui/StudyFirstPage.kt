@@ -23,14 +23,15 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun StudyFirstPage(chapter: String, onHome: () -> Unit, onQuests: () -> Unit) {
     Column(
-        Modifier.fillMaxSize().background(ColorBg).padding(24.dp),
+        Modifier.fillMaxSize().background(ColorBg).let { if (ThemeExtras.on) it.fxBackground() else it }.padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("\uD83D\uDCDA", style = MaterialTheme.typography.displayMedium)
+        if (ThemeExtras.on) FxLockEmblem { Text("\uD83D\uDCDA", style = MaterialTheme.typography.displayMedium) } else Text("\uD83D\uDCDA", style = MaterialTheme.typography.displayMedium)
         Spacer(Modifier.height(16.dp))
         Text("Study first", style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold, color = ColorText, textAlign = TextAlign.Center)
+        FxLockWord()
         Spacer(Modifier.height(8.dp))
         Text(chapter, style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold, color = ColorWarning, textAlign = TextAlign.Center)

@@ -6,6 +6,7 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -27,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
@@ -584,6 +586,94 @@ internal fun FxXpBar(fraction: Float, xp: Int) {
                     }
                 }
                 else -> Unit
+            }
+        }
+    }
+}
+
+// ── v253: lock screens (BlockScreen, Fun limit, Focus lock, Study first) in the look of the style theme ──────────
+
+/** v253: the theme word under the title of a lock page ("[ ACCESS DENIED ]", "Sealed", ...). Empty (nothing drawn) when the theme's extras are off. */
+@Composable
+internal fun FxLockWord() {
+    val w = ThemeExtras.word("locked", "")
+    if (w.isEmpty()) return
+    Spacer(Modifier.height(6.dp))
+    Text(w, color = fxAccent(), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+}
+
+/** v253: [content] (the app icon or emoji of a lock page) inside a static themed emblem with a padlock badge (Ninja: red hanko seal). Only motion: a one-shot pop in (0.45 s). Call only while ThemeExtras.on. */
+@Composable
+internal fun FxLockEmblem(content: @Composable () -> Unit) {
+    val fx = FxNow
+    val c = ColorPrimary
+    val ink = ColorText
+    val p = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { p.animateTo(1f, tween(450)) }
+    Box(
+        Modifier.size(132.dp).graphicsLayer { val sc = 1.2f - 0.2f * p.value; scaleX = sc; scaleY = sc; alpha = p.value },
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val ctr = center
+            val full = size.minDimension / 2
+            when (fx) {
+                Fx.SYSTEM -> {
+                    drawCircle(c.copy(alpha = 0.45f), full - 6.dp.toPx(), ctr, style = Stroke(2.dp.toPx(), pathEffect = dash(8.dp.toPx(), 6.dp.toPx())))
+                    val l = 20.dp.toPx(); val w = 3.dp.toPx(); val h = w / 2; val sw = size.width; val sh = size.height
+                    drawLine(c, Offset(0f, h), Offset(l, h), w); drawLine(c, Offset(h, 0f), Offset(h, l), w)
+                    drawLine(c, Offset(sw - l, h), Offset(sw, h), w); drawLine(c, Offset(sw - h, 0f), Offset(sw - h, l), w)
+                    drawLine(c, Offset(0f, sh - h), Offset(l, sh - h), w); drawLine(c, Offset(h, sh - l), Offset(h, sh), w)
+                    drawLine(c, Offset(sw - l, sh - h), Offset(sw, sh - h), w); drawLine(c, Offset(sw - h, sh - l), Offset(sw - h, sh), w)
+                }
+                Fx.NINJA -> {
+                    val r = full - 8.dp.toPx()
+                    drawArc(ink, -60f, 300f, false, topLeft = Offset(ctr.x - r, ctr.y - r), size = Size(r * 2, r * 2), style = Stroke(8.dp.toPx(), cap = StrokeCap.Round))
+                }
+                Fx.HASHIRA -> {
+                    drawCircle(Brush.radialGradient(listOf(c.copy(alpha = 0.40f), Color.Transparent), ctr, full), full, ctr)
+                    drawCircle(Color.White.copy(alpha = 0.30f), full - 10.dp.toPx(), ctr, style = Stroke(1.dp.toPx()))
+                }
+                Fx.MONARCH -> {
+                    drawCircle(Brush.radialGradient(listOf(c.copy(alpha = 0.35f), Color.Transparent), ctr, full), full, ctr)
+                    drawCircle(c.copy(alpha = 0.7f), full - 6.dp.toPx(), ctr, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round, pathEffect = dash(0.1f, 9.dp.toPx())))
+                }
+                Fx.GOTHIC -> {
+                    drawCircle(ink.copy(alpha = 0.7f), full - 4.dp.toPx(), ctr, style = Stroke(1.dp.toPx()))
+                    drawCircle(ink.copy(alpha = 0.7f), full - 10.dp.toPx(), ctr, style = Stroke(1.dp.toPx()))
+                    diamond(Offset(ctr.x, ctr.y - full + 4.dp.toPx()), 5.dp.toPx(), c)
+                }
+                Fx.GUILD -> {
+                    drawCircle(ColorCard, full - 2.dp.toPx(), ctr)
+                    drawCircle(ink.copy(alpha = 0.5f), full - 2.dp.toPx(), ctr, style = Stroke(2.dp.toPx()))
+                    for (i in 0 until 12) drawCircle(c, 2.5.dp.toPx(), polar(ctr, full - 9.dp.toPx(), -90f + i * 30f))
+                }
+                Fx.PIXEL -> {
+                    val side = 10.dp.toPx()
+                    for (i in 0 until 16) { val q = polar(ctr, full - 8.dp.toPx(), -90f + i * 22.5f); drawRect(c, Offset(q.x - side / 2, q.y - side / 2), Size(side, side)) }
+                }
+                Fx.HANDHELD -> {
+                    for (i in 0 until 24) drawCircle(ink, 3.dp.toPx(), polar(ctr, full - 6.dp.toPx(), -90f + i * 15f))
+                }
+                Fx.BLUEPRINT -> {
+                    drawCircle(ink.copy(alpha = 0.45f), full - 8.dp.toPx(), ctr, style = Stroke(1.5.dp.toPx(), pathEffect = dash(6.dp.toPx(), 4.dp.toPx())))
+                    for (i in 0 until 24) drawLine(ink.copy(alpha = 0.7f), polar(ctr, full - 3.dp.toPx(), -90f + i * 15f), polar(ctr, full - 8.dp.toPx(), -90f + i * 15f), 1.dp.toPx())
+                    drawLine(ink.copy(alpha = 0.25f), Offset(0f, ctr.y), Offset(size.width, ctr.y), 1.dp.toPx())
+                    drawLine(ink.copy(alpha = 0.25f), Offset(ctr.x, 0f), Offset(ctr.x, size.height), 1.dp.toPx())
+                }
+                else -> Unit
+            }
+        }
+        content()
+        if (fx == Fx.NINJA) {
+            Box(Modifier.align(Alignment.BottomEnd)) { HankoSeal(36.dp, c) }
+        } else {
+            Canvas(Modifier.size(28.dp).align(Alignment.BottomEnd)) {
+                val w = size.width; val h = size.height
+                drawCircle(ColorBg, w / 2, center)
+                drawArc(c, 180f, 180f, false, topLeft = Offset(w * 0.30f, h * 0.18f), size = Size(w * 0.40f, h * 0.42f), style = Stroke(2.5.dp.toPx()))
+                drawRoundRect(c, Offset(w * 0.22f, h * 0.42f), Size(w * 0.56f, h * 0.40f), CornerRadius(2.dp.toPx()))
+                drawCircle(ColorBg, w * 0.05f, Offset(w * 0.5f, h * 0.62f))
             }
         }
     }

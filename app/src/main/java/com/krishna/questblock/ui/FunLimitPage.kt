@@ -33,14 +33,15 @@ fun FunLimitPage(pkg: String, onHome: () -> Unit, onQuests: () -> Unit) {
     }
     val st = FunLimit.last
     Column(
-        Modifier.fillMaxSize().background(ColorBg).padding(24.dp),
+        Modifier.fillMaxSize().background(ColorBg).let { if (ThemeExtras.on) it.fxBackground() else it }.padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        AppIcon(pkg, label, 84.dp)
+        if (ThemeExtras.on) FxLockEmblem { AppIcon(pkg, label, 84.dp) } else AppIcon(pkg, label, 84.dp)
         Spacer(Modifier.height(16.dp))
         Text("$label is locked", style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold, color = ColorText, textAlign = TextAlign.Center)
+        FxLockWord()
         Spacer(Modifier.height(8.dp))
         Text(if (com.krishna.questblock.data.FunSignal.quiet) "\uD83D\uDD12 Fun apps are locked right now" else "\uD83C\uDFAE Fun limit reached", style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold, color = ColorWarning)

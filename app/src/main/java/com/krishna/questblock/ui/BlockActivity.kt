@@ -430,6 +430,7 @@ fun BlockScreen(
         Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(ColorBg, ColorSurface)))
+            .let { if (ThemeExtras.on) it.fxBackground() else it }
     ) {
         Column(
             Modifier
@@ -439,18 +440,21 @@ fun BlockScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            // App icon
-            Box(
-                Modifier.size(64.dp).clip(RoundedCornerShape(16.dp)).background(ColorSurfaceHigh),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (iconBitmap != null) {
-                    Image(iconBitmap, contentDescription = null, contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize())
-                } else {
-                    Text(label.firstOrNull()?.uppercase() ?: "?", fontSize = 28.sp, color = ColorText, fontWeight = FontWeight.Bold)
+            // App icon (v253: inside the themed lock emblem while the theme's extras are on)
+            val iconBox: @Composable () -> Unit = {
+                Box(
+                    Modifier.size(64.dp).clip(RoundedCornerShape(16.dp)).background(ColorSurfaceHigh),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (iconBitmap != null) {
+                        Image(iconBitmap, contentDescription = null, contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize())
+                    } else {
+                        Text(label.firstOrNull()?.uppercase() ?: "?", fontSize = 28.sp, color = ColorText, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
+            if (ThemeExtras.on) FxLockEmblem(iconBox) else iconBox()
 
             Spacer(Modifier.height(12.dp))
 
@@ -461,6 +465,7 @@ fun BlockScreen(
                 color = ColorText,
                 textAlign = TextAlign.Center,
             )
+            FxLockWord()
 
             if (quotesOn) {
                 Spacer(Modifier.height(6.dp))
