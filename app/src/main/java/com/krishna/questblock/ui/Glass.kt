@@ -110,7 +110,8 @@ fun AvatarFill() {
 @Composable
 fun LevelInHex(level: Int) {
     // v247: a picked avatar (Profile > tap the badge) replaces the level number; the level stays in the text next to the badge
-    androidx.compose.runtime.remember { Avatars.load(androidx.compose.ui.platform.LocalContext.current) }
+    val avCtx = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.runtime.remember { Avatars.load(avCtx) }
     if (Avatars.get(Avatars.current) != null) {
         Box(Modifier.size(40.dp)) { AvatarGlyph(Avatars.current, ColorText) }
         return
