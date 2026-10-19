@@ -50,6 +50,8 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
 
 
     val snack = remember { SnackbarHostState() }
+    var pickAvatar by remember { mutableStateOf(false) }
+    if (pickAvatar) AvatarPickerDialog { pickAvatar = false }
 
     Scaffold(containerColor = ColorBg, contentWindowInsets = WindowInsets(0), snackbarHost = { SnackbarHost(snack) }) { pad ->
         Column(
@@ -70,7 +72,7 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                     else           -> ColorPrimary
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Box(Modifier.clickable { pickAvatar = true }, contentAlignment = Alignment.Center) {
                         Box(Modifier.size(80.dp).background(
                             Brush.radialGradient(listOf(frameColor.copy(0.5f), frameColor.copy(0.1f))), CircleShape))
                         Box(
@@ -101,6 +103,7 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                         fontWeight = FontWeight.Bold, color = ColorText)
                     Text("Level ${player.level()} · ${player.xpIntoLevel()}/100 XP",
                         style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                    Text("Tap the badge to change your avatar", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
                 }
             }
 

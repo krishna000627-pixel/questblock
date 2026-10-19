@@ -14,7 +14,9 @@ object SystemEvents {
     var armyCount by mutableIntStateOf(0)
     var lastCoins = 0
     var lastXp = 0
-    fun levelUp() { levelUpStamp++ }
+    /** v248: the level reached (the level up screens show "LV 4 to 5" and "Level 5"). */
+    var lastLevel = 1
+    fun levelUp(level: Int = lastLevel + 1) { lastLevel = level; levelUpStamp++ }
     fun penalty() { penaltyOn = true; penaltyStamp++ }
     fun questDone(coins: Int, xp: Int) { lastCoins = coins; lastXp = xp; questDoneStamp++ }
 }

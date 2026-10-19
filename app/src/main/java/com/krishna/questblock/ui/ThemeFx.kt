@@ -1,13 +1,22 @@
 package com.krishna.questblock.ui
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,18 +39,24 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.krishna.questblock.util.SystemEvents
+import kotlin.math.roundToInt
 
 /**
  * v239: the look engine for the style themes. A theme here changes more than colours: card and button shapes, borders,
@@ -152,10 +167,6 @@ internal fun Modifier.fxFrame(): Modifier {
     val ink = ColorText
     val shape = fxShape()
     val extras = ThemeExtras.on
-    val sealInk = Color(0xFFFFFCF3)
-    val sealPaint = remember { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = android.graphics.Typeface.create(android.graphics.Typeface.SERIF, android.graphics.Typeface.BOLD)
-        textAlign = android.graphics.Paint.Align.CENTER; color = 0xFFFFFCF3.toInt() } }
     val tilt = remember { ((0..100).random() - 50) / 60f }
     val scan = if (fx == Fx.SYSTEM) rememberInfiniteTransition(label = "scan").animateFloat(
         0f, 1f, infiniteRepeatable(tween(7000, easing = LinearEasing)), label = "scanY") else null
@@ -177,15 +188,6 @@ internal fun Modifier.fxFrame(): Modifier {
                     Brush.verticalGradient(listOf(Color.Transparent, c.copy(alpha = 0.10f), Color.Transparent), startY = y - 28f, endY = y + 28f),
                     topLeft = Offset(0f, y - 28f), size = Size(size.width, 56f),
                 )
-            }
-            Fx.NINJA -> { // v242: round hanko seal with the kanji 忍, tilted a little
-                val d = 22.dp.toPx(); val ctr = Offset(size.width - 9.dp.toPx() - d / 2, 7.dp.toPx() + d / 2)
-                rotate(8f, ctr) {
-                    drawCircle(c.copy(alpha = 0.92f), d / 2, ctr)
-                    drawCircle(sealInk.copy(alpha = 0.9f), d / 2 - 2.dp.toPx(), ctr, style = Stroke(1.dp.toPx()))
-                    sealPaint.textSize = d * 0.56f
-                    drawContext.canvas.nativeCanvas.drawText("\u5FCD", ctr.x, ctr.y + sealPaint.textSize * 0.35f, sealPaint)
-                }
             }
             Fx.HASHIRA -> drawRect(Brush.linearGradient(listOf(Color.White.copy(alpha = 0.10f), Color.Transparent), Offset.Zero, Offset(size.width, size.height)))
             Fx.MONARCH -> drawLine(c, Offset(0f, 1f), Offset(size.width, 1f), 2f)
@@ -281,7 +283,11 @@ fun FxBar() {
         Fx.GOTHIC -> { l = "MEMENTO"; r = if (ThemeExtras.on) "${ThemeExtras.daysLeft()} DAYS LEFT" else "VITA BREVIS" }
         else -> {
             // v241: no strip (Ninja, Hashira): still keep the page below the status bar
-            Spacer(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding())
+            if (fx == Fx.NINJA) { // v245: the one fixed hanko seal, top right of every page, not on the cards
+                Box(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding().height(30.dp).padding(end = 16.dp), contentAlignment = Alignment.CenterEnd) {
+                    NinjaSeal(c)
+                }
+            } else Spacer(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding())
             return
         }
     }
@@ -295,5 +301,297 @@ fun FxBar() {
         Spacer(Modifier.weight(1f))
         if (fx == Fx.SYSTEM) TypedText(r, color = ColorMuted, fontSize = 10.sp)
         else Text(r, color = ColorMuted, fontSize = 10.sp, letterSpacing = 1.sp)
+    }
+}
+
+/** v245: the Ninja Scroll hanko seal: red disc, thin inner ring, the kanji, tilted 8 degrees. Drawn once per page in FxBar. */
+@Composable
+private fun NinjaSeal(c: Color) = HankoSeal(24.dp, c)
+
+@Composable
+internal fun rememberHankoPaint(): android.graphics.Paint = remember {
+    android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = android.graphics.Typeface.create(android.graphics.Typeface.SERIF, android.graphics.Typeface.BOLD)
+        textAlign = android.graphics.Paint.Align.CENTER; color = 0xFFFFFCF3.toInt()
+    }
+}
+
+/** v248: one hanko seal (red disc, thin inner ring, the kanji) of diameter [d] px around [ctr]. Shared by FxBar, the Ninja XP bar and the Ninja level up. */
+internal fun DrawScope.drawHanko(ctr: Offset, d: Float, c: Color, paint: android.graphics.Paint, tilt: Float = 8f) {
+    rotate(tilt, ctr) {
+        drawCircle(c.copy(alpha = 0.92f), d / 2, ctr)
+        drawCircle(Color(0xFFFFFCF3).copy(alpha = 0.9f), d / 2 - d * 0.083f, ctr, style = Stroke(d * 0.042f))
+        paint.textSize = d * 0.56f
+        drawContext.canvas.nativeCanvas.drawText("\u5FCD", ctr.x, ctr.y + paint.textSize * 0.35f, paint)
+    }
+}
+
+@Composable
+internal fun HankoSeal(dia: Dp, c: Color, tilt: Float = 8f) {
+    val paint = rememberHankoPaint()
+    Canvas(Modifier.size(dia)) { drawHanko(center, this.size.minDimension, c, paint, tilt) }
+}
+
+// ── v248: themed Focus ring and XP bar (static looks, only the allowed motion) ───────────────────────────
+
+/** Point on a circle, [deg] 0 = right, -90 = top, clockwise. */
+private fun polar(ctr: Offset, r: Float, deg: Float): Offset {
+    val a = Math.toRadians(deg.toDouble())
+    return Offset(ctr.x + r * Math.cos(a).toFloat(), ctr.y + r * Math.sin(a).toFloat())
+}
+
+private fun DrawScope.diamond(at: Offset, d: Float, c: Color) {
+    val p = Path().apply { moveTo(at.x, at.y - d); lineTo(at.x + d, at.y); lineTo(at.x, at.y + d); lineTo(at.x - d, at.y); close() }
+    drawPath(p, c)
+}
+
+private fun DrawScope.dash(on: Float, off: Float): PathEffect = PathEffect.dashPathEffect(floatArrayOf(on, off), 0f)
+
+/**
+ * v248: the Focus ring of the running session in the look of the style theme (only called while ThemeExtras.on, so behind fx_<theme>).
+ * [frac] 1 = full time left, [left] is the time text (fmtLeft). Allowed motion: Hashira breathing glow, Monarch rising motes, Pixel last pixel blink.
+ */
+@Composable
+internal fun FxFocusRing(frac: Float, left: String) {
+    val fx = FxNow
+    val c = ColorPrimary
+    val ink = ColorText
+    val muted = ColorMuted
+    val breath = if (fx == Fx.HASHIRA) rememberInfiniteTransition(label = "breath").animateFloat(
+        0f, 1f, infiniteRepeatable(tween(3600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "breathT") else null
+    val rise = if (fx == Fx.MONARCH) rememberInfiniteTransition(label = "rise").animateFloat(
+        0f, 1f, infiniteRepeatable(tween(6000, easing = LinearEasing)), label = "riseT") else null
+    val blink = if (fx == Fx.PIXEL) rememberInfiniteTransition(label = "pxblink").animateFloat(
+        0f, 1f, infiniteRepeatable(tween(900, easing = LinearEasing)), label = "pxblinkT") else null
+    val f = frac.coerceIn(0f, 1f)
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(280.dp)) {
+        Canvas(Modifier.fillMaxSize()) {
+            val ctr = center
+            val full = size.minDimension / 2
+            val sweep = 360f * f
+            when (fx) {
+                Fx.SYSTEM -> {
+                    val r = full - 22.dp.toPx()
+                    val tl = Offset(ctr.x - r, ctr.y - r); val sz = Size(r * 2, r * 2)
+                    drawArc(c.copy(alpha = 0.45f), -90f, 360f, false, topLeft = tl, size = sz, style = Stroke(3.dp.toPx(), pathEffect = dash(10.dp.toPx(), 8.dp.toPx())))
+                    drawArc(c, -90f, sweep, false, topLeft = tl, size = sz, style = Stroke(7.dp.toPx()))
+                    for (i in 0 until 12) {
+                        val a = -90f + i * 30f
+                        drawLine(c.copy(alpha = 0.8f), polar(ctr, r + 12.dp.toPx(), a), polar(ctr, r + 20.dp.toPx(), a), 2.dp.toPx())
+                    }
+                }
+                Fx.NINJA -> {
+                    val r = full - 26.dp.toPx()
+                    val tl = Offset(ctr.x - r, ctr.y - r); val sz = Size(r * 2, r * 2)
+                    drawArc(ink.copy(alpha = 0.08f), -90f, 360f, false, topLeft = tl, size = sz, style = Stroke(24.dp.toPx()))
+                    drawArc(ink, -90f, sweep, false, topLeft = tl, size = sz, style = Stroke(22.dp.toPx(), cap = StrokeCap.Round))
+                    val rs = r - 4.dp.toPx()
+                    drawArc(ColorBg.copy(alpha = 0.30f), -90f, sweep, false, topLeft = Offset(ctr.x - rs, ctr.y - rs), size = Size(rs * 2, rs * 2), style = Stroke(2.5.dp.toPx()))
+                    val e = polar(ctr, r, -90f + sweep)
+                    drawCircle(c, 11.dp.toPx(), e)
+                    drawCircle(Color(0xFFFFFCF3).copy(alpha = 0.85f), 8.dp.toPx(), e, style = Stroke(1.dp.toPx()))
+                }
+                Fx.HASHIRA -> {
+                    val r = full - 26.dp.toPx()
+                    val tl = Offset(ctr.x - r, ctr.y - r); val sz = Size(r * 2, r * 2)
+                    val s = 1f + 0.07f * (breath?.value ?: 0f)
+                    val gr = r + 16.dp.toPx()
+                    scale(s, ctr) { drawCircle(Brush.radialGradient(listOf(c.copy(alpha = 0.40f), Color.Transparent), ctr, gr), gr, ctr) }
+                    drawArc(c.copy(alpha = 0.15f), -90f, 360f, false, topLeft = tl, size = sz, style = Stroke(10.dp.toPx()))
+                    drawArc(c, -90f, sweep, false, topLeft = tl, size = sz, style = Stroke(10.dp.toPx(), cap = StrokeCap.Round))
+                    drawCircle(Color.White.copy(alpha = 0.30f), r - 18.dp.toPx(), ctr, style = Stroke(1.dp.toPx()))
+                }
+                Fx.MONARCH -> {
+                    val r = full - 30.dp.toPx()
+                    val tl = Offset(ctr.x - r, ctr.y - r); val sz = Size(r * 2, r * 2)
+                    drawCircle(c.copy(alpha = 0.7f), r + 18.dp.toPx(), ctr, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round, pathEffect = dash(0.1f, 11.dp.toPx())))
+                    drawArc(c.copy(alpha = 0.10f), -90f, 360f, false, topLeft = tl, size = sz, style = Stroke(22.dp.toPx()))
+                    drawArc(c.copy(alpha = 0.22f), -90f, 360f, false, topLeft = tl, size = sz, style = Stroke(12.dp.toPx()))
+                    drawArc(c.copy(alpha = 0.30f), -90f, sweep, false, topLeft = tl, size = sz, style = Stroke(18.dp.toPx(), cap = StrokeCap.Round))
+                    drawArc(c, -90f, sweep, false, topLeft = tl, size = sz, style = Stroke(8.dp.toPx(), cap = StrokeCap.Round))
+                    val xs = floatArrayOf(-62f, 28f, -20f, 60f, 4f)
+                    val p0 = rise?.value ?: 0f
+                    for (i in 0 until 5) {
+                        val ph = (p0 + i / 5f) % 1f
+                        val y = ctr.y + r * 0.75f - ph * r * 1.5f
+                        drawCircle(c.copy(alpha = (Math.sin(ph * Math.PI).toFloat() * 0.9f).coerceIn(0f, 1f)), 2.5.dp.toPx(), Offset(ctr.x + xs[i].dp.toPx(), y))
+                    }
+                }
+                Fx.GOTHIC -> {
+                    val r = full - 20.dp.toPx()
+                    drawCircle(ink.copy(alpha = 0.7f), r, ctr, style = Stroke(1.dp.toPx()))
+                    drawCircle(ink.copy(alpha = 0.7f), r - 8.dp.toPx(), ctr, style = Stroke(1.dp.toPx()))
+                    val ra = r - 4.dp.toPx()
+                    drawArc(ink, -90f, sweep, false, topLeft = Offset(ctr.x - ra, ctr.y - ra), size = Size(ra * 2, ra * 2), style = Stroke(2.dp.toPx()))
+                    diamond(polar(ctr, ra, -90f + sweep), 7.dp.toPx(), c)
+                }
+                Fx.GUILD -> {
+                    val big = full - 4.dp.toPx()
+                    drawCircle(ColorCard, big, ctr)
+                    drawCircle(ink.copy(alpha = 0.5f), big, ctr, style = Stroke(2.dp.toPx()))
+                    for (i in 0 until 12) drawCircle(c, 3.dp.toPx(), polar(ctr, big - 9.dp.toPx(), -90f + i * 30f))
+                    val r = big - 36.dp.toPx()
+                    val tl = Offset(ctr.x - r, ctr.y - r); val sz = Size(r * 2, r * 2)
+                    drawArc(ink.copy(alpha = 0.12f), -90f, 360f, false, topLeft = tl, size = sz, style = Stroke(14.dp.toPx()))
+                    drawArc(c, -90f, sweep, false, topLeft = tl, size = sz, style = Stroke(14.dp.toPx(), cap = StrokeCap.Round))
+                }
+                Fx.PIXEL -> {
+                    val r = full - 18.dp.toPx(); val n = 24; val side = 20.dp.toPx()
+                    val lit = (f * n).roundToInt().coerceIn(0, n)
+                    for (i in 0 until n) {
+                        val p = polar(ctr, r, -90f + i * 360f / n)
+                        val on = i < lit
+                        val dim = on && i == lit - 1 && (blink?.value ?: 0f) > 0.5f
+                        val col = if (!on) muted.copy(alpha = 0.25f) else if (dim) c.copy(alpha = 0.15f) else c
+                        drawRect(col, Offset(p.x - side / 2, p.y - side / 2), Size(side, side))
+                    }
+                }
+                Fx.HANDHELD -> {
+                    val r = full - 14.dp.toPx(); val n = 36
+                    val lit = (f * n).roundToInt().coerceIn(0, n)
+                    for (i in 0 until n) {
+                        val on = i < lit
+                        drawCircle(if (on) ink else ink.copy(alpha = 0.22f), if (on) 5.dp.toPx() else 2.dp.toPx(), polar(ctr, r, -90f + i * 360f / n))
+                    }
+                }
+                Fx.BLUEPRINT -> {
+                    val r = full - 26.dp.toPx()
+                    val tl = Offset(ctr.x - r, ctr.y - r); val sz = Size(r * 2, r * 2)
+                    drawCircle(ink.copy(alpha = 0.45f), r, ctr, style = Stroke(1.5.dp.toPx(), pathEffect = dash(8.dp.toPx(), 5.dp.toPx())))
+                    drawArc(c, -90f, sweep, false, topLeft = tl, size = sz, style = Stroke(4.dp.toPx(), pathEffect = dash(12.dp.toPx(), 6.dp.toPx())))
+                    for (i in 0 until 36) {
+                        val a = -90f + i * 10f
+                        val len = if (i % 9 == 0) 20.dp.toPx() else 14.dp.toPx()
+                        drawLine(ink.copy(alpha = 0.7f), polar(ctr, r + 8.dp.toPx(), a), polar(ctr, r + len, a), 1.dp.toPx())
+                    }
+                    drawLine(ink.copy(alpha = 0.25f), Offset(ctr.x - r, ctr.y), Offset(ctr.x + r, ctr.y), 1.dp.toPx())
+                    drawLine(ink.copy(alpha = 0.25f), Offset(ctr.x, ctr.y - r), Offset(ctr.x, ctr.y + r), 1.dp.toPx())
+                }
+                else -> Unit
+            }
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            val txt = if (fx == Fx.SYSTEM) "[ $left ]" else left
+            val fs = when (fx) {
+                Fx.SYSTEM -> if (txt.length > 9) 22.sp else 30.sp
+                Fx.PIXEL, Fx.HANDHELD, Fx.BLUEPRINT -> 44.sp
+                Fx.NINJA, Fx.GUILD, Fx.GOTHIC -> 54.sp
+                else -> 56.sp
+            }
+            Text(txt, fontSize = fs, fontWeight = FontWeight.Black, color = ink)
+            Text(if (fx == Fx.BLUEPRINT) "\u00D8 92" else "remaining", color = muted, fontSize = 12.sp, letterSpacing = 1.sp)
+        }
+    }
+}
+
+/**
+ * v248: the XP level bar of the Home hero card in the look of the style theme (only called while ThemeExtras.on, so behind fx_<theme>).
+ * [fraction] is the animated XP into the level (0..1, so the bar fills when XP is gained), [xp] the XP into the level out of 100. No moving lines.
+ */
+@Composable
+internal fun FxXpBar(fraction: Float, xp: Int) {
+    val fx = FxNow
+    val f = fraction.coerceIn(0f, 1f)
+    val c = ColorPrimary
+    val ink = ColorText
+    val paint = rememberHankoPaint()
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        if (fx == Fx.SYSTEM) Text("[ XP ] $xp/100", color = c, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        if (fx == Fx.BLUEPRINT) Text("FIG. 2 TYPE B", color = ColorMuted, fontSize = 9.sp, letterSpacing = 1.5.sp)
+        val mod = when (fx) {
+            Fx.SYSTEM -> Modifier.fillMaxWidth().height(12.dp)
+            Fx.NINJA -> Modifier.fillMaxWidth().height(26.dp)
+            Fx.HASHIRA -> Modifier.fillMaxWidth().height(10.dp)
+            Fx.MONARCH, Fx.GOTHIC, Fx.GUILD -> Modifier.fillMaxWidth().height(18.dp)
+            Fx.PIXEL -> Modifier.fillMaxWidth().height(16.dp)
+            Fx.HANDHELD -> Modifier.fillMaxWidth().height(20.dp).border(3.dp, ink).padding(3.dp)
+            Fx.BLUEPRINT -> Modifier.fillMaxWidth().height(16.dp)
+            else -> Modifier.fillMaxWidth().height(10.dp)
+        }
+        Canvas(mod) {
+            val w = size.width; val h = size.height; val mid = h / 2
+            when (fx) {
+                Fx.SYSTEM -> {
+                    val n = 20; val gap = 3.dp.toPx(); val bw = (w - gap * (n - 1)) / n
+                    val lit = (f * n).roundToInt()
+                    for (i in 0 until n) {
+                        val x = i * (bw + gap)
+                        if (i < lit) drawRect(c, Offset(x, 0f), Size(bw, h))
+                        else drawRect(c.copy(alpha = 0.6f), Offset(x + 0.5f, 0.5f), Size(bw - 1f, h - 1f), style = Stroke(1.dp.toPx()))
+                    }
+                }
+                Fx.NINJA -> {
+                    val sealR = 11.dp.toPx()
+                    val endX = (f * w).coerceIn(sealR, w - sealR)
+                    val th = 6.dp.toPx()
+                    drawRoundRect(ink.copy(alpha = 0.10f), Offset(0f, mid - 4.dp.toPx()), Size(w, 8.dp.toPx()), CornerRadius(4.dp.toPx()))
+                    val taper = maxOf(0f, endX - 28.dp.toPx())
+                    val p = Path().apply { moveTo(0f, mid - th); lineTo(taper, mid - th); lineTo(endX, mid); lineTo(taper, mid + th); lineTo(0f, mid + th); close() }
+                    drawPath(p, ink)
+                    if (taper > 8.dp.toPx()) drawLine(ColorBg.copy(alpha = 0.25f), Offset(4.dp.toPx(), mid - 1.dp.toPx()), Offset(taper, mid - 1.dp.toPx()), 1.5.dp.toPx())
+                    drawHanko(Offset(endX, mid), sealR * 2, c, paint)
+                }
+                Fx.HASHIRA -> {
+                    drawRoundRect(c.copy(alpha = 0.18f), Offset.Zero, Size(w, h), CornerRadius(h / 2))
+                    if (f > 0f) drawRoundRect(c, Offset.Zero, Size(maxOf(f * w, h), h), CornerRadius(h / 2))
+                }
+                Fx.MONARCH -> {
+                    val bh = 8.dp.toPx(); val y = mid - bh / 2
+                    drawRoundRect(c.copy(alpha = 0.15f), Offset(0f, y), Size(w, bh), CornerRadius(bh / 2))
+                    if (f > 0f) {
+                        val fw = maxOf(f * w, bh)
+                        drawRoundRect(c.copy(alpha = 0.18f), Offset(0f, y - 5.dp.toPx()), Size(fw, bh + 10.dp.toPx()), CornerRadius(bh / 2 + 5.dp.toPx()))
+                        drawRoundRect(c.copy(alpha = 0.30f), Offset(0f, y - 2.dp.toPx()), Size(fw, bh + 4.dp.toPx()), CornerRadius(bh / 2 + 2.dp.toPx()))
+                        drawRoundRect(c, Offset(0f, y), Size(fw, bh), CornerRadius(bh / 2))
+                    }
+                }
+                Fx.GOTHIC -> {
+                    val d = 6.dp.toPx()
+                    val endX = (f * w).coerceIn(d, w - d)
+                    drawLine(ink.copy(alpha = 0.45f), Offset(0f, mid - 3.dp.toPx()), Offset(w, mid - 3.dp.toPx()), 1.dp.toPx())
+                    drawLine(ink.copy(alpha = 0.45f), Offset(0f, mid + 3.dp.toPx()), Offset(w, mid + 3.dp.toPx()), 1.dp.toPx())
+                    drawLine(ink, Offset(0f, mid), Offset(endX, mid), 2.dp.toPx())
+                    diamond(Offset(endX, mid), d, c)
+                }
+                Fx.GUILD -> {
+                    val cr = CornerRadius(4.dp.toPx())
+                    drawRoundRect(ink.copy(alpha = 0.20f), Offset.Zero, Size(w, h), cr)
+                    drawRoundRect(ink.copy(alpha = 0.6f), Offset.Zero, Size(w, h), cr, style = Stroke(1.5.dp.toPx()))
+                    val fw = f * w - 4.dp.toPx()
+                    if (fw > 0f) drawRoundRect(c, Offset(2.dp.toPx(), 2.dp.toPx()), Size(fw, h - 4.dp.toPx()), CornerRadius(3.dp.toPx()))
+                    for (i in 1..9) { val x = w * i / 10f; drawLine(ink.copy(alpha = 0.35f), Offset(x, 3.dp.toPx()), Offset(x, h - 3.dp.toPx()), 1.dp.toPx()) }
+                    drawCircle(ColorCoin, 3.dp.toPx(), Offset(7.dp.toPx(), mid))
+                    drawCircle(ColorCoin, 3.dp.toPx(), Offset(w - 7.dp.toPx(), mid))
+                }
+                Fx.PIXEL -> {
+                    val n = 10; val gap = 3.dp.toPx(); val sh = 2.dp.toPx()
+                    val bw = (w - sh - gap * (n - 1)) / n; val bh = h - sh
+                    val lit = (f * n).toInt()
+                    for (i in 0 until n) {
+                        val x = i * (bw + gap)
+                        if (i < lit) {
+                            drawRect(ink.copy(alpha = 0.85f), Offset(x + sh, sh), Size(bw, bh))
+                            drawRect(c, Offset(x, 0f), Size(bw, bh))
+                        } else drawRect(ColorMuted.copy(alpha = 0.25f), Offset(x, 0f), Size(bw, bh))
+                    }
+                }
+                Fx.HANDHELD -> {
+                    val n = 24; val gap = 2.dp.toPx(); val sw = (w - gap * (n - 1)) / n
+                    val lit = (f * n).roundToInt()
+                    for (i in 0 until n) drawRect(if (i < lit) ink else ink.copy(alpha = 0.12f), Offset(i * (sw + gap), 0f), Size(sw, h))
+                }
+                Fx.BLUEPRINT -> {
+                    val endX = f * w
+                    drawLine(ink.copy(alpha = 0.5f), Offset(0f, mid), Offset(w, mid), 1.dp.toPx())
+                    drawLine(ink, Offset(0.75.dp.toPx(), 0f), Offset(0.75.dp.toPx(), h), 1.5.dp.toPx())
+                    drawLine(ink, Offset(w - 0.75.dp.toPx(), 0f), Offset(w - 0.75.dp.toPx(), h), 1.5.dp.toPx())
+                    if (f > 0f) {
+                        drawLine(c, Offset(0f, mid), Offset(endX, mid), 3.dp.toPx())
+                        drawLine(c, Offset(endX, mid - 5.dp.toPx()), Offset(endX, mid + 5.dp.toPx()), 2.dp.toPx())
+                    }
+                }
+                else -> Unit
+            }
+        }
     }
 }

@@ -2,7 +2,9 @@ package com.krishna.questblock.ui
 
 import android.content.Context
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
@@ -20,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -67,7 +71,7 @@ fun questRank(difficulty: Int, timer: Boolean): String = when {
 /** Everything the System theme adds on top of the page: the level-up screen, the penalty timer and the daily quest popup. */
 @Composable
 fun SystemHost(strict: Boolean, onOpenQuests: () -> Unit) {
-    LevelUpOverlay()
+    if (ThemeExtras.on) LevelUpOverlay()
     LaunchedEffect(SystemEvents.penaltyOn) {
         if (SystemEvents.penaltyOn) { delay(90_000L); SystemEvents.penaltyOn = false }
     }
@@ -83,24 +87,32 @@ private fun LevelUpOverlay() {
         if (SystemEvents.levelUpStamp != start) {
             show = true
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            delay(2600)
+            delay(2200)
             show = false
         }
     }
     if (!show) return
     Dialog(onDismissRequest = { show = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        val s = remember { Animatable(0.6f) }
-        LaunchedEffect(Unit) { s.animateTo(1f, tween(450)) }
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.78f)), contentAlignment = Alignment.Center) {
-            Column(
-                Modifier.graphicsLayer { scaleX = s.value; scaleY = s.value }
-                    .border(2.dp, ColorPrimary, SYS_SHAPE).background(ColorBg.copy(alpha = 0.92f), SYS_SHAPE)
-                    .padding(horizontal = 32.dp, vertical = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text("[ LEVEL UP ]", color = ColorPrimary, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 3.sp)
+        // v248: four corner brackets pop in from far out, "[ LEVEL UP ]" and "LV 4 -> 5", about 2 s, nothing moves after the pop
+        val s = remember { Animatable(0f) }
+        LaunchedEffect(Unit) { s.animateTo(1f, tween(2000, easing = LinearEasing)) }
+        val v = s.value
+        val pop = 1f + 1.2f * (1f - minOf(1f, v / 0.2f))
+        val a = if (v > 0.85f) (1f - v) / 0.15f else 1f
+        val c = ColorPrimary
+        val lv = SystemEvents.lastLevel
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.78f * a)), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.size(300.dp, 170.dp).graphicsLayer { scaleX = pop; scaleY = pop; alpha = a }) {
+                val l = 28.dp.toPx(); val w = 3.dp.toPx(); val h = w / 2
+                drawLine(c, Offset(0f, h), Offset(l, h), w); drawLine(c, Offset(h, 0f), Offset(h, l), w)
+                drawLine(c, Offset(size.width - l, h), Offset(size.width, h), w); drawLine(c, Offset(size.width - h, 0f), Offset(size.width - h, l), w)
+                drawLine(c, Offset(0f, size.height - h), Offset(l, size.height - h), w); drawLine(c, Offset(h, size.height - l), Offset(h, size.height), w)
+                drawLine(c, Offset(size.width - l, size.height - h), Offset(size.width, size.height - h), w); drawLine(c, Offset(size.width - h, size.height - l), Offset(size.width - h, size.height), w)
+            }
+            Column(Modifier.graphicsLayer { scaleX = pop; scaleY = pop; alpha = a }, horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("[ LEVEL UP ]", color = c, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 3.sp)
                 Spacer(Modifier.height(10.dp))
-                TypedText("YOU HAVE GROWN STRONGER", color = ColorText, fontSize = 12.sp)
+                Text("LV ${lv - 1} \u2192 $lv", color = ColorText, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
             }
         }
     }

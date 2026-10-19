@@ -3,6 +3,27 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("248.0.0", "Theme effects: Focus ring, XP bar, level up and quest done pop for every style theme",
+        listOf(
+            "Four things per style theme, all behind that theme's own flag fx_<theme> (and the master flag themefx); with the flag off the normal ring, bar and screens come back. No moving lines anywhere (no rotating or sweeping arcs, no shimmer, no wave). Only motion: Hashira breathing glow (scale 1 to 1.07), Monarch rising motes, Pixel last pixel blink, plus the one-shot level up and quest done animations and the bar filling",
+            "Ninja Scroll has a flag again: fx_ninja (flags page and terminal, on by default). It has no words, only the look and effects below. ThemeExtras.on no longer skips Ninja",
+            "Focus ring (static, ActiveFocus in ui/FocusModeScreen.kt, new FxFocusRing in ui/ThemeFx.kt): System dashed cyan track, solid arc, 12 ticks and [ 18:24 ] in mono; Ninja thick ink brush arc with a red hanko dot at the arc end and serif time; Hashira breathing teal mist glow, arc and thin inner ring; Monarch dotted outer ring, violet glow track, arc and five rising motes; Gothic double thin ring, thin arc and a red diamond at the arc end; Guild parchment disc, brass arc and 12 brass studs; Pixel 24 square pixels, the last lit one blinks; Handheld 36 dots, the lit ones big; Blueprint dashed ring, 36 ticks, crosshair and a diameter label",
+            "XP level bar (hero card on Home, new FxXpBar in ui/ThemeFx.kt, fills when XP is gained): System 20 outlined blocks with [ XP ] 56/100; Ninja ink brush with a tapered end and a red seal with the kanji at the end; Hashira teal pill; Monarch violet bar with a glow layer; Gothic double line, white fill line and red diamond; Guild plank with brass fill, tick marks and stud ends; Pixel 10 chunky blocks with a hard shadow; Handheld LCD box with 24 segments; Blueprint dimension line with end ticks and the label FIG. 2 TYPE B",
+            "Level up (about 2 s): new for Ninja (red seal stamps down, Level 5 below); System now shows corner brackets that pop in, [ LEVEL UP ] and LV 4 to 5 (it follows fx_system now); Hashira LEVEL UP rises, Guild has a star in the wax seal with RANK UP below, Pixel has falling confetti squares, Handheld LEVEL UP blinks. SystemEvents.levelUp now takes the new level, set from GameRepository.completeTask",
+            "Quest done pop: now a small pop in every theme with the theme word (ThemeExtras.WORDS done; Ninja says DONE) and +XP, +coins; the old big mist, ring and seal effects are gone. Terminal: fx_ninja is in flags help and tab completion (the terminal itself shows none of these effects)",
+        )),
+    VersionEntry("247.0.0", "Line style avatars",
+        listOf(
+            "12 avatars drawn in the same style as the SVG icons (24 grid, stroke 2, round caps, one colour): Ninja, Samurai, Fox, Oni, Wizard, Knight, Dragon, Robot, Cat, Owl, Skull, Panda. Profile: tap the badge to pick one (the first tile, Level, goes back to the level number). The pick shows in the badge on Home and Profile in the theme text colour; the level stays in the text next to it. Code: ui/Avatars.kt, LevelInHex in ui/Glass.kt, ProfileScreen. Nothing new in flags; the choice is saved as avatar_id",
+        )),
+    VersionEntry("246.0.0", "Flags page: intro text removed",
+        listOf(
+            "The explanation line under the Flags title (Turn app themes, the homework tracker and single features on or off...) is gone. Only the title is left. ui/FlagsScreen.kt",
+        )),
+    VersionEntry("245.0.0", "Ninja Scroll: one fixed seal",
+        listOf(
+            "The hanko seal is no longer drawn on every card (it sat on top of Add, Shuffle and the XP text). There is now a single seal, fixed at the top right of every page under the status bar, same spot everywhere. Code: FxBar and NinjaSeal in ui/ThemeFx.kt; nothing new in flags",
+        )),
     VersionEntry("244.0.0", "A level up screen for every style theme",
         listOf(
             "Every style theme now has its own full-screen level up, shown for about 2 seconds when a quest finishes with a level up: Shadow Monarch ARISE with violet rings, Hashira Mist LEVEL UP in drifting mist, Gothic Halo ASCENDED under red halo rings, Guild Board RANK UP wax seal, Pixel Arcade blinking LEVEL UP!, Handheld LEVEL UP box, Blueprint LEVEL UP stamp with REVISION ACCEPTED. System keeps its own [ LEVEL UP ] screen",

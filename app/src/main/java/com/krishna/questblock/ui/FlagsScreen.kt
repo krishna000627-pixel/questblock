@@ -60,7 +60,6 @@ fun FlagsScreen(onBack: () -> Unit) {
                 TitleIcon("Flags", 24.dp, endPad = 8.dp)
                 Column {
                     Text("Flags", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
-                    Text("Turn app themes, the homework tracker and single features on or off. A theme that is off can't be equipped.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
                 }
             }
         }

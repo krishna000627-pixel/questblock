@@ -12,14 +12,15 @@ object Flags {
         Def("leaderboard", "Daily leaderboard", "The leaderboard card on Stats, terminal leaderboard"),
         Def("experiments", "Experiments card", "The Experiments card in the Hub"),
         Def("themefx", "Theme extras (all)", "Master switch for the own words and effects of the style themes. Each theme also has its own switch below"),
-        Def("fx_system", "System extras", "System Window: result window, [SYSTEM] words"),
-        Def("fx_hashira", "Hashira Mist extras", "Hashira Mist: Form 1 to 3 words, mist puff after a quest"),
-        Def("fx_monarch", "Shadow Monarch extras", "Shadow Monarch: shadow army counter, SHADOW EXTRACTED burst, rank words"),
-        Def("fx_gothic", "Gothic Halo extras", "Gothic Halo: red halo rings, days left in the strip, rite words"),
-        Def("fx_guild", "Guild Board extras", "Guild Board: tilted notices, wax seal, Copper Silver Gold words"),
-        Def("fx_pixel", "Pixel Arcade extras", "Pixel Arcade: +coins pop, GAME OVER, STAGE words"),
-        Def("fx_handheld", "Handheld extras", "Handheld: QUESTBOY boot screen, SAVING box"),
-        Def("fx_blueprint", "Blueprint extras", "Blueprint: APPROVED stamp, dimension lines, TYPE words"),
+        Def("fx_system", "System extras", "System Window: HUD Focus ring, XP blocks, bracket level up, [SYSTEM] words and quest done pop"),
+        Def("fx_ninja", "Ninja Scroll extras", "Ninja Scroll: ink brush Focus ring and XP bar, red seal level up, DONE pop"),
+        Def("fx_hashira", "Hashira Mist extras", "Hashira Mist: breathing mist Focus ring, pill XP bar, mist level up, Form 1 to 3 words"),
+        Def("fx_monarch", "Shadow Monarch extras", "Shadow Monarch: violet Focus ring with motes, glow XP bar, ARISE level up, shadow army counter"),
+        Def("fx_gothic", "Gothic Halo extras", "Gothic Halo: double ring and diamond Focus ring, line XP bar, red halo level up, days left, rite words"),
+        Def("fx_guild", "Guild Board extras", "Guild Board: brass stud Focus ring, plank XP bar, wax seal level up, tilted notices, Copper Silver Gold words"),
+        Def("fx_pixel", "Pixel Arcade extras", "Pixel Arcade: pixel Focus ring, block XP bar, confetti level up, GAME OVER, STAGE words"),
+        Def("fx_handheld", "Handheld extras", "Handheld: dot matrix Focus ring, LCD XP bar, LEVEL UP box, QUESTBOY boot screen, SAVING box"),
+        Def("fx_blueprint", "Blueprint extras", "Blueprint: drafting Focus ring, dimension line XP bar, REVISION ACCEPTED stamp, dimension lines, TYPE words"),
     )
 
     var HOMEWORK_ENABLED: Boolean = false

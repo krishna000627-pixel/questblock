@@ -466,7 +466,7 @@ private fun ActiveFocus(remainingMs: Long, totalMs: Long, questTitle: String?, a
         style = MaterialTheme.typography.titleMedium, color = ColorPrimary, fontWeight = FontWeight.Bold,
         maxLines = 2, overflow = TextOverflow.Ellipsis)
 
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(280.dp)) {
+    if (ThemeExtras.on) FxFocusRing(frac, com.krishna.questblock.data.fmtLeft(remainingMs)) else Box(contentAlignment = Alignment.Center, modifier = Modifier.size(280.dp)) {
         Canvas(Modifier.fillMaxSize()) {
             val stroke = Stroke(width = 16.dp.toPx(), cap = StrokeCap.Round)
             drawArc(ColorPrimary.copy(0.15f), -90f, 360f, false, style = stroke)
