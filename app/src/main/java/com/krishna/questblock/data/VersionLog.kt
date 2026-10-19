@@ -3,6 +3,13 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("241.0.0", "Status bar space on every theme, bare quest icon, theme extras per theme",
+        listOf(
+            "Ninja Scroll and Hashira Mist have no top strip, and the strip was what kept the page below the status bar, so their pages started under the clock. FxBar now leaves the status bar space when there is no strip (ui/ThemeFx.kt)",
+            "Home, Today's quests: the quest type icon (the tick for One-time) has no coloured tile any more and is drawn in the theme colour (ColorPrimary), so it changes with every theme (ui/HomeScreen.kt, HomeQuestRow). The round tick button on the right is unchanged",
+            "Ninja Scroll lost its extras: the DONE hanko stamp and the Genin, Chunin, Jonin, Scroll sealed and empty page words are gone. Its look stays (washi paper, serif text, hanko mark on cards)",
+            "Every other style theme has its own extras flag on the flags page and in the terminal (flags on|off fx_system, fx_hashira, fx_monarch, fx_gothic, fx_guild, fx_pixel, fx_handheld, fx_blueprint, all on by default). The old flag themefx stays as the master switch for all of them (Data/Flags.kt, ThemeExtras.on)",
+        )),
     VersionEntry("240.0.0", "One special thing per style theme, behind a flag",
         listOf(
             "New flag Theme extras (themefx, on by default; flags page and terminal flags on|off themefx) switches the own words and effects of every style theme at once. New file ui/ThemeExtras.kt; Quest done events come from GameRepository through util/SystemEvents.kt",

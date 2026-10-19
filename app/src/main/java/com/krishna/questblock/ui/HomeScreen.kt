@@ -565,7 +565,10 @@ private fun HomeQuestRow(task: TaskEntity, now: Long, onComplete: () -> Unit) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            IconTile(questTypeInfo(task.questType).emoji, catColor, 42.dp)
+            // v241: the quest type icon has no tile behind it and takes the theme colour
+            Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {
+                Text(questTypeInfo(task.questType).emoji, color = ColorPrimary, fontSize = 26.sp)
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(task.title, style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold, color = ColorText,

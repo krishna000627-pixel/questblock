@@ -11,7 +11,15 @@ object Flags {
         Def("mood", "Mood check-in", "The Mood section on the Attendance page, terminal mood"),
         Def("leaderboard", "Daily leaderboard", "The leaderboard card on Stats, terminal leaderboard"),
         Def("experiments", "Experiments card", "The Experiments card in the Hub"),
-        Def("themefx", "Theme extras", "Own words and effects of each style theme: quest done stamps, rank names, empty page texts, the shadow army, the boot screen"),
+        Def("themefx", "Theme extras (all)", "Master switch for the own words and effects of the style themes. Each theme also has its own switch below"),
+        Def("fx_system", "System extras", "System Window: result window, [SYSTEM] words"),
+        Def("fx_hashira", "Hashira Mist extras", "Hashira Mist: Form 1 to 3 words, mist puff after a quest"),
+        Def("fx_monarch", "Shadow Monarch extras", "Shadow Monarch: shadow army counter, SHADOW EXTRACTED burst, rank words"),
+        Def("fx_gothic", "Gothic Halo extras", "Gothic Halo: red halo rings, days left in the strip, rite words"),
+        Def("fx_guild", "Guild Board extras", "Guild Board: tilted notices, wax seal, Copper Silver Gold words"),
+        Def("fx_pixel", "Pixel Arcade extras", "Pixel Arcade: +coins pop, GAME OVER, STAGE words"),
+        Def("fx_handheld", "Handheld extras", "Handheld: QUESTBOY boot screen, SAVING box"),
+        Def("fx_blueprint", "Blueprint extras", "Blueprint: APPROVED stamp, dimension lines, TYPE words"),
     )
 
     var HOMEWORK_ENABLED: Boolean = false

@@ -45,19 +45,19 @@ import com.krishna.questblock.util.SystemEvents
 import kotlinx.coroutines.delay
 
 /**
- * v240: what is special to each style theme, on top of its look (ThemeFx.kt). All of it is behind the flag "themefx"
- * (flags page and terminal: flags on|off themefx). Words: rank names, the Undo bar text and the empty page texts.
- * Effects: System result window, Ninja hanko stamp, Hashira mist puff, Monarch shadow army counter and burst, Gothic
+ * v240: what is special to each style theme, on top of its look (ThemeFx.kt). v241: each theme has its own flag fx_<theme>
+ * (flags page and terminal: flags on|off fx_pixel ...) plus the master flag "themefx"; Ninja Scroll has no extras any more. Words: rank names, the Undo bar text and the empty page texts.
+ * Effects: System result window, Hashira mist puff, Monarch shadow army counter and burst, Gothic
  * halo and days left, Guild tilted notices and wax seal, Pixel coin pop and GAME OVER, Handheld boot screen, Blueprint APPROVED stamp and dimension lines.
  * #svg-logo  Every new theme gets its entry in WORDS and in QuestFx below.
  */
 object ThemeExtras {
-    val on: Boolean get() = FxOn && Flags.get("themefx")
+    /** v241: the extras of the theme in use. Off for Ninja (it has none any more), and when the master flag or that theme's own flag (fx_<theme>) is off. */
+    val on: Boolean get() = FxOn && FxNow != Fx.NINJA && Flags.get("themefx") && Flags.get("fx_" + FxNow.name.lowercase())
     var booted = false
 
     private val WORDS: Map<Fx, Map<String, String>> = mapOf(
         Fx.SYSTEM to mapOf("done" to "[SYSTEM] QUEST CLEARED", "emptyQuests" to "NO ACTIVE QUESTS", "emptyInv" to "INVENTORY EMPTY"),
-        Fx.NINJA to mapOf("easy" to "Genin", "medium" to "Chunin", "hard" to "Jonin", "done" to "Scroll sealed", "emptyQuests" to "No missions, shinobi.", "emptyInv" to "Your pouch is empty"),
         Fx.HASHIRA to mapOf("easy" to "Form 1", "medium" to "Form 2", "hard" to "Form 3", "done" to "Total concentration", "emptyQuests" to "Still as mist. No quests.", "emptyInv" to "Nothing in the mist"),
         Fx.MONARCH to mapOf("easy" to "Soldier", "medium" to "Knight", "hard" to "Elite", "done" to "SHADOW EXTRACTED", "emptyQuests" to "The throne is quiet.", "emptyInv" to "No spoils yet"),
         Fx.GOTHIC to mapOf("easy" to "Rite I", "medium" to "Rite II", "hard" to "Rite III", "done" to "So it is written", "emptyQuests" to "Rest, then rise.", "emptyInv" to "The reliquary is empty"),
@@ -152,11 +152,6 @@ private fun QuestFx(fx: Fx, coins: Int, xp: Int) {
             Text("REWARD ACQUIRED", color = ColorText, fontSize = 12.sp)
             Text("+$coins COINS   +$xp XP", color = ColorCoin, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         }
-        Fx.NINJA -> Box(
-            Modifier.graphicsLayer { scaleX = pop; scaleY = pop; rotationZ = -8f; alpha = a }
-                .border(4.dp, c, RoundedCornerShape(6.dp)).background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(6.dp)).padding(horizontal = 22.dp, vertical = 12.dp),
-            contentAlignment = Alignment.Center,
-        ) { Text("DONE", color = c, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Serif) }
         Fx.HASHIRA -> Canvas(Modifier.size(300.dp)) {
             val ctr = center
             for (k in 0..2) {
@@ -188,7 +183,7 @@ private fun QuestFx(fx: Fx, coins: Int, xp: Int) {
         Fx.BLUEPRINT -> Box(
             Modifier.graphicsLayer { rotationZ = -12f; scaleX = pop; scaleY = pop; alpha = a }.border(3.dp, c).padding(horizontal = 16.dp, vertical = 6.dp),
         ) { Text("APPROVED", color = c, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 3.sp) }
-        Fx.NONE -> Unit
+        Fx.NONE, Fx.NINJA -> Unit
     }
 }
 

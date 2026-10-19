@@ -251,7 +251,7 @@ internal fun Modifier.fxBackground(): Modifier {
     }
 }
 
-/** The strip at the top of every page (not for Ninja Scroll and Hashira Mist, which keep the page clean). */
+/** The strip at the top of every page. Ninja Scroll and Hashira Mist have no strip, only the status bar space (v241). */
 @Composable
 fun FxBar() {
     val fx = FxNow
@@ -265,7 +265,11 @@ fun FxBar() {
         Fx.MONARCH -> { l = "ARISE"; r = if (ThemeExtras.on) "SHADOW ARMY: ${SystemEvents.armyCount}" else "SHADOW ARMY" }
         Fx.HANDHELD -> { l = "QUESTBOY"; r = "BATT \u25AE\u25AE\u25AE" }
         Fx.GOTHIC -> { l = "MEMENTO"; r = if (ThemeExtras.on) "${ThemeExtras.daysLeft()} DAYS LEFT" else "VITA BREVIS" }
-        else -> return
+        else -> {
+            // v241: no strip (Ninja, Hashira): still keep the page below the status bar
+            Spacer(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding())
+            return
+        }
     }
     Row(
         Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding().height(24.dp)
