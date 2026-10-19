@@ -2341,15 +2341,6 @@ class TermuxViewModel @Inject constructor(
                 val c = ACCENTS.firstOrNull { it.first.equals(v, ignoreCase = true) }
                 if (c == null) "accent: ${ACCENTS.joinToString(" ") { it.first.lowercase() }}" else { prefs.accentArgb = c.second; ColorPrimary = androidx.compose.ui.graphics.Color(c.second); null }
             },
-            SetKey("mode", "default look: dark light system", { listOf("dark", "light", "system").getOrElse(prefs.themeMode) { "system" } }) { v ->
-                val m = listOf("dark", "light", "system").indexOf(v.lowercase())
-                if (m < 0) "mode: dark, light or system" else {
-                    prefs.themeMode = m
-                    val sysDark = (ctx.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
-                    applyThemeMode(m, sysDark)
-                    null
-                }
-            },
         )
     }
 

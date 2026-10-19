@@ -127,23 +127,6 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
 
         // ── Look ─────────────────────────────────────────────────────────
         Section("🎨 Look") {
-            Text("Theme", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
-            val sysDark = androidx.compose.foundation.isSystemInDarkTheme()
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("\uD83C\uDF19 Dark" to 0, "\u2600\uFE0F Light" to 1, "\uD83D\uDCF1 System" to 2).forEach { (label, m) ->
-                    val sel = ThemeMode == m
-                    Box(
-                        Modifier
-                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
-                            .background(if (sel) ColorPrimary.copy(alpha = 0.18f) else ColorSurfaceHigh)
-                            .clickable { prefs.themeMode = m; applyThemeMode(m, sysDark) }
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                        contentAlignment = Alignment.Center,
-                    ) { Text(label, color = if (sel) ColorPrimary else ColorText, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal) }
-                }
-            }
-            Text("A shop theme picks its own white or black by itself. This choice is for the default look.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-            Spacer(Modifier.height(8.dp))
             Text("Accent colour", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
             var accent by remember { mutableLongStateOf(prefs.accentArgb) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -176,15 +159,6 @@ fun SettingsScreen(onBack: () -> Unit, onOpenReliability: () -> Unit, onOpenCate
                     style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             }
             Text("Termux and Quest Home are switched in Shop > My Items > App themes (or flags to turn them off).",
-                style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-            Spacer(Modifier.height(8.dp))
-            Text("Icons", color = ColorMuted, style = MaterialTheme.typography.labelLarge)
-            var svgOn by remember { mutableStateOf(SvgIconsOn) }
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text("Draw emoji as SVG icons", modifier = Modifier.weight(1f), color = ColorText)
-                androidx.compose.material3.Switch(checked = svgOn, onCheckedChange = { svgOn = it; SvgIconsMode.set(ctx, it) })
-            }
-            Text("Terminal: icons on | off | list. The Termux theme stays plain text.",
                 style = MaterialTheme.typography.bodySmall, color = ColorMuted)
             Spacer(Modifier.height(8.dp))
             Text("Name and icon on the home screen", color = ColorMuted, style = MaterialTheme.typography.labelLarge)

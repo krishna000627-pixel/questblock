@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("227.0.0", "Settings: Theme toggles and Icons switch removed",
+        listOf(
+            "Settings > Look no longer has the Dark / Light / System toggles, and the Icons switch is gone from Settings. Accent colour and the app name stay. SVG icons are still switched on the flags page (SVG icons > Choose) and in the terminal (icons on|off). The saved dark/light choice keeps working, there is just no screen for it",
+            "Terminal: set mode (dark light system) is removed to match, the other set keys are unchanged",
+        )),
     VersionEntry("226.0.0", "SVG icons flag has a sub page, one switch per icon",
         listOf(
             "Flags > SVG icons has a Choose button that opens a sub page (ui/SvgIconsPage.kt): every icon with its picture, its emoji and a switch, plus All on and All off. An icon that is off keeps showing its emoji. Saved in svg_icons_off and read at start (SvgIconsOff in ui/SvgIcons.kt); the master switch still turns all of them off",
