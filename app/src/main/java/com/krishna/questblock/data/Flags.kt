@@ -11,6 +11,7 @@ object Flags {
         Def("mood", "Mood check-in", "The Mood section on the Attendance page, terminal mood"),
         Def("leaderboard", "Daily leaderboard", "The leaderboard card on Stats, terminal leaderboard"),
         Def("experiments", "Experiments card", "The Experiments card in the Hub"),
+        Def("themeicon", "Theme app icon", "The shield app icon on the home screen takes the colours of the equipped theme (Ninja, System, Paper, Gothic). Off = always the gold one"),
         Def("themefx", "Theme extras (all)", "Master switch for the own words and effects of the style themes. Each theme also has its own switch below"),
         Def("fx_system", "System extras", "System Window: HUD Focus ring, XP blocks, bracket level up, [SYSTEM] words and quest done pop"),
         Def("fx_ninja", "Ninja Scroll extras", "Ninja Scroll: ink brush Focus ring and XP bar, red seal level up, DONE pop"),
@@ -46,5 +47,6 @@ object Flags {
     fun set(ctx: android.content.Context, id: String, on: Boolean) {
         sp(ctx).edit().putBoolean("flag_$id", on).apply()
         state[id] = on
+        if (id == "themeicon") com.krishna.questblock.ui.AppName.applyAll(ctx)
     }
 }

@@ -3,6 +3,12 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("250.0.0", "New shield logo, app icon follows the theme",
+        listOf(
+            "New app logo: a shield with a check (gold on navy) replaces the green block. The home screen icon now follows the equipped theme: Ninja Scroll (red on cream), System Window (cyan on dark blue), Paper & Ink (dark on paper) and Gothic Halo (light grey on black) have their own colours; every other theme keeps the gold one. The Termux theme still shows the >_ Terminal icon. One-colour version for themed icons (Android 13+) is the shield outline with the check",
+            "How: the manifest has four more launcher entries (AliasNinja, AliasSystem, AliasPaper, AliasGothic, off by default) next to AliasQuestBlock; AppName.applyAll switches on the one that matches ShopTheme first, then the others off. MainScreen calls it when the theme changes. Icons: res/drawable/ic_shield_<theme>_fg.xml and res/mipmap-anydpi-v26/ic_shield_<theme>.xml, colours in values/colors_shield_icons.xml. The icon can take a few seconds to refresh and some launchers drop a pinned copy when the entry changes (pin it again)",
+            "New flag Theme app icon (themeicon, on by default; flags page and terminal flags on|off themeicon): off = always the gold shield. Terminal: logo now draws the shield (works during strict Focus)",
+        )),
     VersionEntry("249.0.0", "Ninja Scroll: seal in front of the page title",
         listOf(
             "The hanko seal no longer has its own row at the top of every page (that row added too much header space). Ninja now only keeps the status bar space on top, like Hashira. The seal sits in front of the page name instead, in the same spot where the other themes show their title icon (Home, Quests, Shop, Stats, Settings and every other page). Code: TitleIcon in ui/TitleIcons.kt draws HankoSeal when the Ninja theme is on; FxBar in ui/ThemeFx.kt lost its seal row and the NinjaSeal helper. No new flags",

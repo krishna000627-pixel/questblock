@@ -85,6 +85,7 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
     LaunchedEffect(themeId) {
         ShopTheme = themeId
         themeCtx.getSharedPreferences("questblock", android.content.Context.MODE_PRIVATE).edit().putString("shop_theme", themeId).apply()
+        AppName.applyAll(themeCtx)     // v250: the launcher icon follows the theme (Ninja, System, Paper, Gothic have their own colours)
     }
     // v205: while a strict Focus session runs QuestBlock only shows the Focus timer
     var strict by remember { mutableStateOf(strictNow()) }

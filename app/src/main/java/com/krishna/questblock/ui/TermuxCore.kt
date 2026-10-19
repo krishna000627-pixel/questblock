@@ -60,6 +60,9 @@ object QuestHomeMode {
 object AppName {
     private const val ALIAS_QB = "com.krishna.questblock.ui.AliasQuestBlock"
     private const val ALIAS_TERM = "com.krishna.questblock.ui.AliasTerminal"
+    private const val PKG = "com.krishna.questblock.ui."
+    /** v250: shield logo in the Ninja, System, Paper and Gothic colours; every other theme keeps the gold one (AliasQuestBlock). */
+    private val THEME_ALIASES = mapOf("theme_ninja" to "AliasNinja", "theme_system" to "AliasSystem", "theme_paper" to "AliasPaper", "theme_gothic" to "AliasGothic")
     private const val HOME_ACTIVITY = "com.krishna.questblock.ui.QuestHomeActivity"
     val MODES = listOf("follow", "questblock", "terminal")
 
@@ -81,8 +84,11 @@ object AppName {
     fun applyAll(ctx: Context) {
         val pm = ctx.packageManager
         val term = wantTerminal(ctx)
-        setEnabled(ctx, pm, if (term) ALIAS_TERM else ALIAS_QB, true)      // switch the new one on first, so one is always there
-        setEnabled(ctx, pm, if (term) ALIAS_QB else ALIAS_TERM, false)
+        val themed = if (!term && com.krishna.questblock.data.Flags.get("themeicon")) THEME_ALIASES[ShopTheme]?.let { PKG + it } else null
+        val want = if (term) ALIAS_TERM else themed ?: ALIAS_QB
+        val all = listOf(ALIAS_QB, ALIAS_TERM) + THEME_ALIASES.values.map { PKG + it }
+        setEnabled(ctx, pm, want, true)                                    // switch the new one on first, so one is always there
+        all.filter { it != want }.forEach { setEnabled(ctx, pm, it, false) }
         setEnabled(ctx, pm, HOME_ACTIVITY, QuestHomeOn)
     }
 

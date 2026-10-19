@@ -88,6 +88,63 @@
             </intent-filter>
         </activity-alias>
 
+        <!-- v250: the same launcher entry with the shield logo in the Ninja, System, Paper and Gothic colours. AppName.applyAll switches the one that matches the equipped theme. -->
+        <activity-alias
+            android:name=".ui.AliasNinja"
+            android:targetActivity=".ui.MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_shield_ninja"
+            android:roundIcon="@mipmap/ic_shield_ninja"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".ui.AliasSystem"
+            android:targetActivity=".ui.MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_shield_system"
+            android:roundIcon="@mipmap/ic_shield_system"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".ui.AliasPaper"
+            android:targetActivity=".ui.MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_shield_paper"
+            android:roundIcon="@mipmap/ic_shield_paper"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".ui.AliasGothic"
+            android:targetActivity=".ui.MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_shield_gothic"
+            android:roundIcon="@mipmap/ic_shield_gothic"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
         <!-- v212: Quest Home, the launcher theme. Off until the theme is on (AppName.applyAll switches it). -->
         <activity
             android:name=".ui.QuestHomeActivity"

@@ -69,8 +69,8 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "icons off" to SvgIcons.EMOJI_ICONS.toList(),
     "theme set" to listOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint", "termux", "questhome"),
     "flags" to listOf("ls", "on", "off"),
-    "flags on" to listOf("phone", "termux", "home", "homework", "icons", "sounds", "mood", "leaderboard", "experiments", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint"),
-    "flags off" to listOf("phone", "termux", "home", "homework", "icons", "sounds", "mood", "leaderboard", "experiments", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint"),
+    "flags on" to listOf("phone", "termux", "home", "homework", "icons", "sounds", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint"),
+    "flags off" to listOf("phone", "termux", "home", "homework", "icons", "sounds", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint"),
     "quests" to listOf("--today", "--done", "--overdue", "--focus"),
     "quest" to listOf("add", "show", "edit", "done", "rm", "focus", "link", "step", "skip", "steps"),
     "focus" to listOf("start", "status", "stop", "apps", "last", "log"),
@@ -145,9 +145,9 @@ private val MAN: Map<String, String> = mapOf(
     "alias" to "alias [name=cmd]    list or make a shortcut, e.g. alias qt=quests --today",
     "unalias" to "unalias <name>     remove a shortcut",
     "theme" to "theme [ls] | [set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux|questhome]   default/phone = the normal look (Quest Phone), paper, linen, sage, sky, lilac, chalk = the plain light shop themes, clay = the soft puffy Claymorphism one, system = the dark blue RPG System-window look (cut corners, mono text, HUD grid; both: you must own it, shop buy <name>), ninja, hashira, monarch, gothic, guild, pixel, handheld, blueprint = more style shop themes with their own shapes, fonts, strips and backgrounds (you must own them too: shop buy <name>), questhome = the launcher. theme ls lists the app themes that are on (flags hides the ones turned off) and the one in use. A theme turned off in flags is refused. refused during Focus (theme ls still works)",
-    "flags" to "flags [ls] | on <name> | off <name>   names: phone termux home (app themes, the one left on can't be turned off), homework, icons, sounds, mood, leaderboard, experiments, themefx (master for the extras of all style themes), fx_system fx_ninja fx_hashira fx_monarch fx_gothic fx_guild fx_pixel fx_handheld fx_blueprint (extras of one theme). flags ls shows every flag. refused during Focus (flags ls still works)",
+    "flags" to "flags [ls] | on <name> | off <name>   names: phone termux home (app themes, the one left on can't be turned off), homework, icons, sounds, mood, leaderboard, experiments, themeicon (app icon follows the theme), themefx (master for the extras of all style themes), fx_system fx_ninja fx_hashira fx_monarch fx_gothic fx_guild fx_pixel fx_handheld fx_blueprint (extras of one theme). flags ls shows every flag. refused during Focus (flags ls still works)",
     "icons" to "icons [list] | on|off [name] | reset   emoji drawn as SVG icons on the normal pages (the terminal stays plain text). on|off alone is the master switch, on|off <name> switches one icon (flags page > SVG icons > Choose). reset turns every icon on. list shows each icon, its emoji and its state. on, off and reset are refused during Focus (icons and icons list still work)",
-    "logo" to "logo                 the app logo in ASCII (a green block with a star)",
+    "logo" to "logo                 the app logo in ASCII (a shield with a check)",
     "home" to "home                go to the phone home screen",
     "setup" to "setup               first-run steps: set name/goal/dob, perms, then setup done",
     "quests" to "quests [--today|--done|--overdue|--focus]",
@@ -1089,7 +1089,7 @@ class TermuxViewModel @Inject constructor(
             }
             s.out("${"Homework".padEnd(12)} " + (if (com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) "{g}on{/}" else "{r}off{/}"))
             FlagRows.ALL.forEach { r -> s.out("${r.label.padEnd(18)} " + (if (r.get(ctx)) "{g}on{/}" else "{r}off{/}") + " {d}${r.id}{/}") }
-            s.dim("flags on|off <phone|termux|home|homework|icons|sounds|mood|leaderboard|experiments|themefx|fx_<theme>>")
+            s.dim("flags on|off <phone|termux|home|homework|icons|sounds|mood|leaderboard|experiments|themeicon|themefx|fx_<theme>>")
             return
         }
         if (sub != "on" && sub != "off") { s.err("usage: flags [ls] | on <theme> | off <theme>"); return }
@@ -1100,7 +1100,7 @@ class TermuxViewModel @Inject constructor(
         }
         FlagRows.find(a.pos.getOrNull(2))?.let { r -> r.set(ctx, sub == "on"); s.ok("${r.label}: $sub"); return }
         val id = AppThemes.parse(a.pos.getOrNull(2))
-        if (id == null) { s.err("usage: flags $sub <phone|termux|home|homework|icons|sounds|mood|leaderboard|experiments|themefx|fx_<theme>>"); return }
+        if (id == null) { s.err("usage: flags $sub <phone|termux|home|homework|icons|sounds|mood|leaderboard|experiments|themeicon|themefx|fx_<theme>>"); return }
         val err = AppThemes.setEnabled(ctx, id, sub == "on")
         if (err != null) s.err(err) else s.ok("${AppThemes.label(id)}: $sub")
     }
@@ -1142,16 +1142,16 @@ class TermuxViewModel @Inject constructor(
     private fun cmdLogo(s: TermuxSession) {
         s.head("QuestBlock")
         listOf(
-            "        _.-'''-._",
-            "      .'    *    '.",
-            "     /'-._     _.-'\\",
-            "    |     '-.-'     |",
-            "    |       |       |",
-            "     \\      |      /",
-            "      '-.   |   .-'",
-            "         '-.|.-'",
-        ).forEach { s.out("{g}$it{/}") }
-        s.dim("a green block (three faces) with a quest star on top")
+            "   .-------------.",
+            "   |             |",
+            "   |          /  |",
+            "   |  \\      /   |",
+            "   |   \\    /    |",
+            "    \\   \\  /    /",
+            "     '.  \\/   .'",
+            "       '-.__.-'",
+        ).forEach { s.out("{y}$it{/}") }
+        s.dim("a shield with a check; its colours follow the theme (Ninja, System, Paper, Gothic)")
     }
 
     private fun cmdHome(s: TermuxSession) {

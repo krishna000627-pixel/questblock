@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v250: shield logo, one colour set per theme (launcher icon follows the equipped theme, see AppName.applyAll) -->
+<resources>
+    <color name="ic_shield_default_bg">#201C50</color>
+    <color name="ic_shield_ninja_bg">#F2EADF</color>
+    <color name="ic_shield_system_bg">#0A1220</color>
+    <color name="ic_shield_paper_bg">#FAF7F0</color>
+    <color name="ic_shield_gothic_bg">#111111</color>
+</resources>
