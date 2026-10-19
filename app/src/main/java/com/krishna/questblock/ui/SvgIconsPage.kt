@@ -38,7 +38,7 @@ fun SvgIconsPage(onBack: () -> Unit) {
                 IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
                 Column {
                     Text("SVG icons", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
-                    Text("${SvgIcons.ICONS.size - SvgIconsOff.size} of ${SvgIcons.ICONS.size} icons on. An icon that is off shows its emoji.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                    Text("${SvgIcons.EMOJI_ICONS.size - SvgIconsOff.size} of ${SvgIcons.EMOJI_ICONS.size} icons on. An icon that is off shows its emoji.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
                 }
             }
         }

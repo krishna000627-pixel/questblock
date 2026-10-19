@@ -65,8 +65,8 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "man" to TOP_COMMANDS,
     "theme" to listOf("ls", "set"),
     "icons" to listOf("list", "on", "off", "reset"),
-    "icons on" to SvgIcons.ICONS.keys.toList(),
-    "icons off" to SvgIcons.ICONS.keys.toList(),
+    "icons on" to SvgIcons.EMOJI_ICONS.toList(),
+    "icons off" to SvgIcons.EMOJI_ICONS.toList(),
     "theme set" to listOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "termux", "questhome"),
     "flags" to listOf("ls", "on", "off"),
     "flags on" to listOf("phone", "termux", "home", "homework", "icons", "sounds", "mood", "leaderboard", "experiments"),
@@ -1110,7 +1110,7 @@ class TermuxViewModel @Inject constructor(
         when (a.pos.getOrNull(1)?.lowercase()) {
             null -> {
                 s.head("icons")
-                s.out("SVG icons " + (if (SvgIconsOn) "{g}on{/}" else "{r}off{/}") + "  {d}(${SvgIcons.ICONS.size - SvgIconsOff.size} of ${SvgIcons.ICONS.size} icons on){/}")
+                s.out("SVG icons " + (if (SvgIconsOn) "{g}on{/}" else "{r}off{/}") + "  {d}(${SvgIcons.EMOJI_ICONS.size - SvgIconsOff.size} of ${SvgIcons.EMOJI_ICONS.size} icons on){/}")
                 s.dim("icons list | on|off [name] | reset")
             }
             "on", "off" -> {
@@ -1119,7 +1119,7 @@ class TermuxViewModel @Inject constructor(
                 if (name == null) {
                     SvgIconsMode.set(ctx, on)
                     s.ok("SVG icons: " + (if (on) "on" else "off"))
-                } else if (name !in SvgIcons.ICONS) {
+                } else if (name !in SvgIcons.EMOJI_ICONS) {
                     s.err("no icon '${name.tm()}': icons list")
                 } else {
                     SvgIconsMode.setIcon(ctx, name, on)

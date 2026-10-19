@@ -45,7 +45,7 @@ object SvgIconsMode {
         SvgIconsOff = s
     }
     fun setIcon(ctx: Context, name: String, on: Boolean) = saveOff(ctx, if (on) SvgIconsOff - name else SvgIconsOff + name)
-    fun setAll(ctx: Context, on: Boolean) = saveOff(ctx, if (on) emptySet() else SvgIcons.ICONS.keys.toSet())
+    fun setAll(ctx: Context, on: Boolean) = saveOff(ctx, if (on) emptySet() else SvgIcons.EMOJI_ICONS)
     fun set(ctx: Context, on: Boolean) {
         ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).edit().putBoolean(KEY, on).apply()
         SvgIconsOn = on
@@ -164,6 +164,39 @@ object SvgIcons {
     "divide" to SvgIcon(listOf("M5 12h14", "M12 6h.01", "M12 18h.01")),
     "infinity" to SvgIcon(listOf("M8 8a4 4 0 1 0 0 8c4 0 4-8 8-8a4 4 0 1 1 0 8c-4 0-4-8-8-8z")),
     "runner" to SvgIcon(listOf("M14 4a1.5 1.5 0 1 0 0 .01", "M8 20l3-5 3 2 1 4", "M11 15l-1-5 5-1 3 3", "M10 10l-3 2")),
+    "speaker" to SvgIcon(listOf("M4 9h4l5-4v14l-5-4H4z", "M16 9a4 4 0 0 1 0 6", "M18.5 6.5a8 8 0 0 1 0 11")),
+    "brain" to SvgIcon(listOf("M12 5v14", "M12 5a3 3 0 0 0-5-1 3 3 0 0 0-3 3 3 3 0 0 0-1 4 3 3 0 0 0 2 4 3 3 0 0 0 4 2 3 3 0 0 0 3-1", "M12 5a3 3 0 0 1 5-1 3 3 0 0 1 3 3 3 3 0 0 1 1 4 3 3 0 0 1-2 4 3 3 0 0 1-4 2 3 3 0 0 1-3-1")),
+    "openbook" to SvgIcon(listOf("M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z", "M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z")),
+    "school" to SvgIcon(listOf("M3 21V10l9-6 9 6v11z", "M9 21v-6h6v6", "M12 8h.01")),
+    "palm" to SvgIcon(listOf("M12 21V11", "M12 11c-1-4-5-5-8-4 3-1 6 0 8 4z", "M12 11c1-4 5-5 8-4-3-1-6 0-8 4z", "M12 11c-2-1-4 1-5 4 2-2 4-2 5-4z", "M12 11c2-1 4 1 5 4-2-2-4-2-5-4z")),
+    "coffee" to SvgIcon(listOf("M5 8h11v7a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z", "M16 10h2a2 2 0 0 1 0 4h-2", "M8 3v2", "M12 3v2")),
+    "stop" to SvgIcon(listOf("M6 6h12v12H6z")),
+    "shuffle" to SvgIcon(listOf("M3 7h4l10 10h4", "M3 17h4l3-3", "M14 10l3-3h4", "M18 4l3 3-3 3", "M18 14l3 3-3 3")),
+    "cart" to SvgIcon(listOf("M3 4h2l2.5 11h10l2-8H6", "M9 20h.01", "M17 20h.01")),
+    "compass" to SvgIcon(listOf("M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z", "M15.5 8.5l-2 5-5 2 2-5z")),
+    "atom" to SvgIcon(listOf("M12 11a1 1 0 1 0 0 2a1 1 0 1 0 0-2z", "M2.5 12c0-2.5 4-4.5 9.5-4.5s9.5 2 9.5 4.5-4 4.5-9.5 4.5S2.5 14.5 2.5 12z", "M12 2.5c2.5 0 4.5 4 4.5 9.5s-2 9.5-4.5 9.5-4.5-4-4.5-9.5S9.500 2.5 12 2.5z")),
+    "puzzle" to SvgIcon(listOf("M10 4a2 2 0 1 1 4 0v2h4v4h-2a2 2 0 1 0 0 4h2v4h-4v-2a2 2 0 1 0-4 0v2H6v-4h2a2 2 0 1 0 0-4H6V6h4z")),
+    "party" to SvgIcon(listOf("M4 20l4-12 8 8z", "M14 4h.01", "M18 8h.01", "M20 13h.01", "M15 8c1-2 2-2 3-2")),
+    "sprout" to SvgIcon(listOf("M12 21v-9", "M12 12c0-4-3-6-7-6 0 4 3 6 7 6z", "M12 14c0-3 2-5 6-5 0 3-2 5-6 5z")),
+    "memo" to SvgIcon(listOf("M6 3h9l4 4v14H6z", "M15 3v4h4", "M9 12h6", "M9 16h4")),
+    "rain" to SvgIcon(listOf("M7 15a4 4 0 0 1-.5-8A5.5 5.5 0 0 1 17 8a3.5 3.5 0 0 1 .5 7z", "M8 18l-1 3", "M12 18l-1 3", "M16 18l-1 3")),
+    "dot_brown" to SvgIcon(listOf("M12 5a7 7 0 1 0 0 14a7 7 0 1 0 0-14z"), 0xFF8B5E3CL),
+    "face_sad" to SvgIcon(listOf("M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z", "M9 10h.01", "M15 10h.01", "M9 16c1-1.5 5-1.5 6 0")),
+    "face_meh" to SvgIcon(listOf("M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z", "M9 10h.01", "M15 10h.01", "M9 15c2-1 4 1 6 0")),
+    "face_smile" to SvgIcon(listOf("M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z", "M9 10h.01", "M15 10h.01", "M9 14c1 1.5 5 1.5 6 0")),
+    "face_happy" to SvgIcon(listOf("M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z", "M9 10h.01", "M15 10h.01", "M8 13h8a4 4 0 0 1-8 0z")),
+    "meditate" to SvgIcon(listOf("M12 4a2 2 0 1 0 0 4a2 2 0 1 0 0-4z", "M12 9v4", "M5 18c3 0 4-3 7-3s4 3 7 3", "M7 18c0 2 3 3 5 3s5-1 5-3")),
+    "checklist" to SvgIcon(listOf("M3.5 5.5l1.5 1.5 2.5-2.5", "M3.5 11.5l1.5 1.5 2.5-2.5", "M3.5 17.5l1.5 1.5 2.5-2.5", "M11 6h9", "M11 12h9", "M11 18h9")),
+    "sliders" to SvgIcon(listOf("M4 8h6", "M14 8h6", "M12 6a2 2 0 1 0 0 4a2 2 0 1 0 0-4z", "M4 16h2", "M10 16h10", "M8 14a2 2 0 1 0 0 4a2 2 0 1 0 0-4z")),
+    "rosette" to SvgIcon(listOf("M12 3a6 6 0 1 0 0 12a6 6 0 1 0 0-12z", "M9 14.5L8 21l4-2 4 2-1-6.5")),
+    "calendar_check" to SvgIcon(listOf("M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z", "M16 3v4", "M8 3v4", "M4 11h16", "M9 16l2 2 4-4")),
+    "apps" to SvgIcon(listOf("M4 4h6v6H4z", "M14 4h6v6h-6z", "M4 14h6v6H4z", "M14 17a3 3 0 1 0 6 0a3 3 0 1 0-6 0z")),
+    "notebook" to SvgIcon(listOf("M6 4h11a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6z", "M6 4v16", "M10 9h5", "M10 13h5")),
+    "shield_check" to SvgIcon(listOf("M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z", "M9 12l2 2 4-4")),
+    "selftest" to SvgIcon(listOf("M4 6l1.5 1.5L8 5", "M4 13l1.5 1.5L8 12", "M11 6h9", "M11 13h9", "M4 19h4", "M11 19h6")),
+    "clock" to SvgIcon(listOf("M12 4a8 8 0 1 0 0 16a8 8 0 1 0 0-16z", "M12 8v4l3 2")),
+    "versions" to SvgIcon(listOf("M10 7h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z", "M6 17V6a1 1 0 0 1 1-1h9")),
+    "calendar_week" to SvgIcon(listOf("M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z", "M16 3v4", "M8 3v4", "M4 11h16", "M8 15h8")),
     )
 
     /** emoji (without the variation selector) -> icon name */
@@ -298,6 +331,60 @@ object SvgIcons {
     "\u2797" to "divide",
     "\u267E" to "infinity",
     "\uD83C\uDFC3" to "runner",
+    "\uD83D\uDD0A" to "speaker",
+    "\u2600" to "sun",
+    "\uD83E\uDDD8" to "meditate",
+    "\uD83E\uDDE0" to "brain",
+    "\uD83D\uDCD6" to "openbook",
+    "\uD83C\uDFEB" to "school",
+    "\uD83C\uDF34" to "palm",
+    "\u2615" to "coffee",
+    "\u23F9" to "stop",
+    "\uD83D\uDD00" to "shuffle",
+    "\uD83D\uDED2" to "cart",
+    "\uD83E\uDDED" to "compass",
+    "\u269B" to "atom",
+    "\uD83E\uDDE9" to "puzzle",
+    "\uD83C\uDF89" to "party",
+    "\uD83C\uDF31" to "sprout",
+    "\uD83D\uDCDD" to "memo",
+    "\uD83C\uDF27" to "rain",
+    "\uD83D\uDFE4" to "dot_brown",
+    "\uD83D\uDE1E" to "face_sad",
+    "\uD83D\uDE15" to "face_meh",
+    "\uD83D\uDE42" to "face_smile",
+    "\uD83D\uDE04" to "face_happy",
+    )
+
+    /** Icons that stand for an emoji (the rest are page-title icons). */
+    val EMOJI_ICONS: Set<String> = EMOJI.values.toSet()
+
+    /** Page title -> icon name (v228: TitleIcon draws from the same set). */
+    val TITLES: Map<String, String> = mapOf(
+        "QuestBlock" to "sword",
+        "Quests" to "checklist",
+        "Focus" to "bolt",
+        "Vault" to "lock",
+        "Settings" to "sliders",
+        "Badges" to "rosette",
+        "Rules" to "doc",
+        "Chapters" to "books",
+        "Attendance" to "calendar_check",
+        "Stats" to "bars",
+        "About me" to "person",
+        "App categories" to "apps",
+        "Debug log" to "bug",
+        "Flags" to "flag",
+        "Homework" to "notebook",
+        "Quest board" to "scroll",
+        "Shop" to "bag",
+        "Marks" to "pencil",
+        "Reliability" to "shield_check",
+        "Self test" to "selftest",
+        "App usage" to "clock",
+        "Version info" to "versions",
+        "Weekly review" to "calendar_week",
+        "Experiments" to "flask",
     )
 
     private val BY_CODEPOINT: Map<Int, List<String>> = EMOJI.keys.groupBy { it.codePointAt(0) }
@@ -317,6 +404,12 @@ object SvgIcons {
                 if (name != null) {
                     var end = i + len
                     if (end < s.length && s[end] == '\uFE0F') end++
+                    // v229: a joined emoji (man + laptop) is one picture, so the parts after the joiner are skipped
+                    while (end + 1 < s.length && s[end] == '\u200D') {
+                        var e2 = end + 1 + Character.charCount(s.codePointAt(end + 1))
+                        if (e2 < s.length && s[e2] == '\uFE0F') e2++
+                        end = e2
+                    }
                     appendInlineContent(name, "?")
                     names.add(name)
                     i = end

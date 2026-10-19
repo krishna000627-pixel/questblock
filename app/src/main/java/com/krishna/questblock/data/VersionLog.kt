@@ -3,6 +3,15 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("229.0.0", "About me: one icon instead of two",
+        listOf(
+            "The big emoji on the About me card (man + laptop joined into one) showed as two SVG icons in a row. Joined emoji now draw only their first icon, here the person. This applies everywhere an emoji sequence is joined, no other screen changed",
+        )),
+    VersionEntry("228.0.0", "SVG icons: the left-over emoji and one icon set",
+        listOf(
+            "23 more emoji now draw as SVG icons: speaker, brain, open book, school, palm, coffee, stop, shuffle, cart, compass, atom, puzzle, party, sprout, memo, rain, brown dot, meditate, and the mood faces (sad, confused, smile, grin; the neutral face was already there). The sun also covers the plain sun emoji, so Settings > Light and Sound are no longer left as emoji. Still emoji on purpose: notifications, the widget, the floating timer bubble, two Toasts, the terminal output, and any emoji you type that is not in the set",
+            "The page-title icons (TitleIcons.kt) no longer have their own path list: TitleIcon draws from the same set as the emoji icons (SvgIcons.TITLES maps a title to an icon name, 11 new title-only icons added). Same pictures as before, one place to edit. The switch-per-icon page and the terminal icons list only show the emoji icons",
+        )),
     VersionEntry("227.0.0", "Settings: Theme toggles and Icons switch removed",
         listOf(
             "Settings > Look no longer has the Dark / Light / System toggles, and the Icons switch is gone from Settings. Accent colour and the app name stay. SVG icons are still switched on the flags page (SVG icons > Choose) and in the terminal (icons on|off). The saved dark/light choice keeps working, there is just no screen for it",
