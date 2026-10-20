@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("278.0.0", "Build fix",
+        listOf(
+            "Fixed the CI compile errors: the private diamond helper in ui/ThemeFx2.kt clashed with the internal one in ui/ThemeFx.kt, so it is now fx2Diamond. No behaviour change",
+        )),
     VersionEntry("277.0.0", "Six new themes: three minimalist, three maximalist",
         listOf(
             "Minimalist: Mono (pure white or black by your Dark/Light/System setting, one hairline red accent, thin Focus line, 2 px XP rule, level number fading in, small Done. pop), Whitespace (always white, huge margins, no card borders, dividers only, no header strip, lock page shows the time), Zen (stone grey, ens\u014D brush Focus ring and XP stroke, number in a brush circle for level up, silent with one soft haptic)",

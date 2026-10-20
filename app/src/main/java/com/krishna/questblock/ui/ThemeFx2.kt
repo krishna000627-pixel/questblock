@@ -184,7 +184,7 @@ private fun DrawScope.padlock(c: Color) {
 /** v277: the clashing colour set of Carnival (and the cyan of Vaporwave comes from ColorAccent). */
 private fun carnivalSet(c: Color, coin: Color): List<Color> = listOf(c, coin, ColorAccent, Color(0xFF7CFF3B))
 
-private fun DrawScope.diamond(at: Offset, s: Float, col: Color) {
+private fun DrawScope.fx2Diamond(at: Offset, s: Float, col: Color) {
     val p = Path().apply { moveTo(at.x, at.y - s); lineTo(at.x + s * 0.7f, at.y); lineTo(at.x, at.y + s); lineTo(at.x - s * 0.7f, at.y); close() }
     drawPath(p, col)
 }
@@ -309,8 +309,8 @@ private fun DrawScope.stripLine(fx: Fx2, c: Color, coin: Color, ink: Color) {
         Fx2.BAROQUE -> {
             drawLine(c.copy(alpha = 0.8f), Offset(0f, y), Offset(w, y), 1.dp.toPx())
             drawLine(c.copy(alpha = 0.4f), Offset(0f, y - 4.dp.toPx()), Offset(w, y - 4.dp.toPx()), 1f)
-            diamond(Offset(w / 2, y - 2.dp.toPx()), 5.dp.toPx(), coin)
-            diamond(Offset(w / 2 - 20.dp.toPx(), y - 2.dp.toPx()), 2.5.dp.toPx(), c.copy(alpha = 0.7f)); diamond(Offset(w / 2 + 20.dp.toPx(), y - 2.dp.toPx()), 2.5.dp.toPx(), c.copy(alpha = 0.7f))
+            fx2Diamond(Offset(w / 2, y - 2.dp.toPx()), 5.dp.toPx(), coin)
+            fx2Diamond(Offset(w / 2 - 20.dp.toPx(), y - 2.dp.toPx()), 2.5.dp.toPx(), c.copy(alpha = 0.7f)); fx2Diamond(Offset(w / 2 + 20.dp.toPx(), y - 2.dp.toPx()), 2.5.dp.toPx(), c.copy(alpha = 0.7f))
         }
         Fx2.VAPORWAVE -> {
             drawLine(Brush.horizontalGradient(listOf(c, ColorAccent)), Offset(0f, y - 1.dp.toPx()), Offset(w, y - 1.dp.toPx()), 2.dp.toPx())
@@ -461,7 +461,7 @@ private fun DrawScope.cardDeco(fx: Fx2, c: Color, coin: Color, ink: Color) {
         Fx2.BAROQUE -> {
             drawRoundRect(c.copy(alpha = 0.55f), Offset(5.dp.toPx(), 5.dp.toPx()), Size(w - 10.dp.toPx(), h - 10.dp.toPx()), CornerRadius(2.dp.toPx()), style = Stroke(1.dp.toPx()))
             val q = 5.dp.toPx()
-            for (at in listOf(Offset(q, q), Offset(w - q, q), Offset(q, h - q), Offset(w - q, h - q))) diamond(at, 3.5.dp.toPx(), coin)
+            for (at in listOf(Offset(q, q), Offset(w - q, q), Offset(q, h - q), Offset(w - q, h - q))) fx2Diamond(at, 3.5.dp.toPx(), coin)
         }
         Fx2.VAPORWAVE -> {
             drawLine(Brush.horizontalGradient(listOf(c, ColorAccent), m, w - m), Offset(m, h - 1.dp.toPx()), Offset(w - m, h - 1.dp.toPx()), 2.dp.toPx())
@@ -880,7 +880,7 @@ internal fun Fx2FocusRing(frac: Float, left: String) {
                     arc(c.copy(alpha = 0.18f), 360f, 3.dp.toPx())
                     arc(c, sweep, 5.dp.toPx(), StrokeCap.Round)
                     arc(c.copy(alpha = 0.40f), 360f, 1.dp.toPx(), rr = r + 9.dp.toPx())
-                    for (i in 0 until 24) diamond(polar(ctr, r + 9.dp.toPx(), -90f + i * 15f), 3.dp.toPx(), if (i / 24f <= f) coin else c.copy(alpha = 0.25f))
+                    for (i in 0 until 24) fx2Diamond(polar(ctr, r + 9.dp.toPx(), -90f + i * 15f), 3.dp.toPx(), if (i / 24f <= f) coin else c.copy(alpha = 0.25f))
                     val e = polar(ctr, r, end)
                     drawPath(hexPath(e, 9.dp.toPx()), coin)
                     drawPath(hexPath(e, 5.dp.toPx()), ColorBg)
@@ -1071,8 +1071,8 @@ internal fun Fx2XpBar(fraction: Float, xp: Int) {
                 val bh = 12.dp.toPx(); val y = mid - bh / 2
                 drawRoundRect(c.copy(alpha = 0.55f), Offset(0f, y), Size(w, bh), CornerRadius(2.dp.toPx()), style = Stroke(1.dp.toPx()))
                 if (f > 0f) drawRoundRect(Brush.horizontalGradient(listOf(lerp(c, Color.Black, 0.35f), c, lerp(c, Color.White, 0.5f)), 0f, maxOf(fw, 1f)), Offset(2.dp.toPx(), y + 2.dp.toPx()), Size(maxOf(fw - 4.dp.toPx(), 0f), bh - 4.dp.toPx()), CornerRadius(1.dp.toPx()))
-                for (k in 1..3) diamond(Offset(w * k / 4f, mid), 3.dp.toPx(), if (f >= k / 4f) ColorBg.copy(alpha = 0.8f) else c.copy(alpha = 0.6f))
-                diamond(Offset(fw.coerceIn(8.dp.toPx(), w - 8.dp.toPx()), mid), 8.dp.toPx(), coin)
+                for (k in 1..3) fx2Diamond(Offset(w * k / 4f, mid), 3.dp.toPx(), if (f >= k / 4f) ColorBg.copy(alpha = 0.8f) else c.copy(alpha = 0.6f))
+                fx2Diamond(Offset(fw.coerceIn(8.dp.toPx(), w - 8.dp.toPx()), mid), 8.dp.toPx(), coin)
             }
             Fx2.VAPORWAVE -> {
                 val bh = 10.dp.toPx(); val y = mid - bh / 2
@@ -1192,7 +1192,7 @@ internal fun Fx2LockEmblem(content: @Composable () -> Unit) {
                 Fx2.BAROQUE -> {
                     drawCircle(c, full - 6.dp.toPx(), ctr, style = Stroke(3.dp.toPx()))
                     drawCircle(c.copy(alpha = 0.5f), full - 13.dp.toPx(), ctr, style = Stroke(1.dp.toPx()))
-                    for (i in 0 until 8) diamond(polar(ctr, full - 6.dp.toPx(), -90f + i * 45f), 6.dp.toPx(), coin)
+                    for (i in 0 until 8) fx2Diamond(polar(ctr, full - 6.dp.toPx(), -90f + i * 45f), 6.dp.toPx(), coin)
                 }
                 Fx2.VAPORWAVE -> {
                     drawCircle(Brush.sweepGradient(listOf(c, ColorAccent, c), ctr), full - 6.dp.toPx(), ctr, style = Stroke(3.dp.toPx()))
@@ -1370,7 +1370,7 @@ private fun Fx2LevelUp(fx: Fx2) {
                     for (i in 0 until 16) drawCircle(wax, 10.dp.toPx() * sealPop, polar(sc, 40.dp.toPx() * sealPop, i * 22.5f))
                     drawCircle(wax, 42.dp.toPx() * sealPop, sc)
                     drawCircle(c.copy(alpha = a), 28.dp.toPx() * sealPop, sc, style = Stroke(2.dp.toPx()))
-                    diamond(sc, 16.dp.toPx() * sealPop, coin.copy(alpha = a))
+                    fx2Diamond(sc, 16.dp.toPx() * sealPop, coin.copy(alpha = a))
                 }
                 Fx2.VAPORWAVE -> {
                     // the sun rises over the grid floor
