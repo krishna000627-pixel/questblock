@@ -87,7 +87,7 @@ object ThemeExtras {
 }
 
 @Composable
-private fun CenterPopup(content: @Composable () -> Unit) {
+internal fun CenterPopup(content: @Composable () -> Unit) {
     Popup(
         popupPositionProvider = object : PopupPositionProvider {
             override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize) =

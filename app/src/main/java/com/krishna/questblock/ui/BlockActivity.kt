@@ -430,7 +430,7 @@ fun BlockScreen(
         Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(ColorBg, ColorSurface)))
-            .let { if (ThemeExtras.on) it.fxBackground() else it }
+            .let { if (AnyFx.on) it.fxBackground() else it }
     ) {
         Column(
             Modifier
@@ -454,7 +454,7 @@ fun BlockScreen(
                     }
                 }
             }
-            if (ThemeExtras.on) FxLockEmblem(iconBox) else iconBox()
+            if (AnyFx.on) FxLockEmblem(iconBox) else iconBox()
 
             Spacer(Modifier.height(12.dp))
 

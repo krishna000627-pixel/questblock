@@ -33,11 +33,11 @@ fun FunLimitPage(pkg: String, onHome: () -> Unit, onQuests: () -> Unit) {
     }
     val st = FunLimit.last
     Column(
-        Modifier.fillMaxSize().background(ColorBg).let { if (ThemeExtras.on) it.fxBackground() else it }.padding(24.dp),
+        Modifier.fillMaxSize().background(ColorBg).let { if (AnyFx.on) it.fxBackground() else it }.padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        if (ThemeExtras.on) FxLockEmblem { AppIcon(pkg, label, 84.dp) } else AppIcon(pkg, label, 84.dp)
+        if (AnyFx.on) FxLockEmblem { AppIcon(pkg, label, 84.dp) } else AppIcon(pkg, label, 84.dp)
         Spacer(Modifier.height(16.dp))
         Text("$label is locked", style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold, color = ColorText, textAlign = TextAlign.Center)

@@ -407,7 +407,7 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Bool
                         Text("Lv. $level", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = ColorText)
                         Text("$xp / 100 XP", style = MaterialTheme.typography.labelMedium, color = ColorMuted)
                     }
-                    if (ThemeExtras.on) FxXpBar(xpAnim, xp) else GlowBar(xpAnim, height = 10.dp)
+                    if (AnyFx.on) FxXpBar(xpAnim, xp) else GlowBar(xpAnim, height = 10.dp)
                     Text("${player.xp} XP total", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
                     if (player.goal.isNotBlank()) {
                         Text("\uD83C\uDFAF ${player.goal}", style = MaterialTheme.typography.labelSmall, color = ColorPrimary,

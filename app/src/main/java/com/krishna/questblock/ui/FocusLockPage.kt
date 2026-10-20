@@ -29,11 +29,11 @@ fun FocusLockPage(pkg: String, onHome: () -> Unit, onQuests: () -> Unit) {
         runCatching { ctx.packageManager.getApplicationLabel(ctx.packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)
     }
     Column(
-        Modifier.fillMaxSize().background(ColorBg).let { if (ThemeExtras.on) it.fxBackground() else it }.padding(24.dp),
+        Modifier.fillMaxSize().background(ColorBg).let { if (AnyFx.on) it.fxBackground() else it }.padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        if (ThemeExtras.on) FxLockEmblem { Text("\u26A1", style = MaterialTheme.typography.displayMedium) } else Text("\u26A1", style = MaterialTheme.typography.displayMedium)
+        if (AnyFx.on) FxLockEmblem { Text("\u26A1", style = MaterialTheme.typography.displayMedium) } else Text("\u26A1", style = MaterialTheme.typography.displayMedium)
         Spacer(Modifier.height(16.dp))
         Text("Focus is on", style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold, color = ColorText, textAlign = TextAlign.Center)

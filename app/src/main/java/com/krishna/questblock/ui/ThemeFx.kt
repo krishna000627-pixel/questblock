@@ -233,7 +233,7 @@ private fun DrawScope.grid(c: Color, step: Float, majorEvery: Int, majorAlpha: F
 @Composable
 internal fun Modifier.fxBackground(): Modifier {
     val fx = FxNow
-    if (fx == Fx.NONE) return this
+    if (fx == Fx.NONE) return fx2Background()
     val c = ColorPrimary
     val ink = ColorText
     val t = if (fx == Fx.HASHIRA || fx == Fx.MONARCH) rememberInfiniteTransition(label = "bg").animateFloat(
@@ -330,12 +330,12 @@ internal fun HankoSeal(dia: Dp, c: Color, tilt: Float = 8f) {
 // ── v248: themed Focus ring and XP bar (static looks, only the allowed motion) ───────────────────────────
 
 /** Point on a circle, [deg] 0 = right, -90 = top, clockwise. */
-private fun polar(ctr: Offset, r: Float, deg: Float): Offset {
+internal fun polar(ctr: Offset, r: Float, deg: Float): Offset {
     val a = Math.toRadians(deg.toDouble())
     return Offset(ctr.x + r * Math.cos(a).toFloat(), ctr.y + r * Math.sin(a).toFloat())
 }
 
-private fun DrawScope.diamond(at: Offset, d: Float, c: Color) {
+internal fun DrawScope.diamond(at: Offset, d: Float, c: Color) {
     val p = Path().apply { moveTo(at.x, at.y - d); lineTo(at.x + d, at.y); lineTo(at.x, at.y + d); lineTo(at.x - d, at.y); close() }
     drawPath(p, c)
 }
@@ -348,6 +348,7 @@ private fun DrawScope.dash(on: Float, off: Float): PathEffect = PathEffect.dashP
  */
 @Composable
 internal fun FxFocusRing(frac: Float, left: String) {
+    if (Fx2X.on) { Fx2FocusRing(frac, left); return }
     val fx = FxNow
     val c = ColorPrimary
     val ink = ColorText
@@ -485,6 +486,7 @@ internal fun FxFocusRing(frac: Float, left: String) {
  */
 @Composable
 internal fun FxXpBar(fraction: Float, xp: Int) {
+    if (Fx2X.on) { Fx2XpBar(fraction, xp); return }
     val fx = FxNow
     val f = fraction.coerceIn(0f, 1f)
     val c = ColorPrimary
@@ -596,7 +598,7 @@ internal fun FxXpBar(fraction: Float, xp: Int) {
 /** v253: the theme word under the title of a lock page ("[ ACCESS DENIED ]", "Sealed", ...). Empty (nothing drawn) when the theme's extras are off. */
 @Composable
 internal fun FxLockWord() {
-    val w = ThemeExtras.word("locked", "")
+    val w = if (Fx2X.on) Fx2X.word("locked", "") else ThemeExtras.word("locked", "")
     if (w.isEmpty()) return
     Spacer(Modifier.height(6.dp))
     Text(w, color = fxAccent(), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
@@ -605,6 +607,7 @@ internal fun FxLockWord() {
 /** v253: [content] (the app icon or emoji of a lock page) inside a static themed emblem with a padlock badge (Ninja: red hanko seal). Only motion: a one-shot pop in (0.45 s). Call only while ThemeExtras.on. */
 @Composable
 internal fun FxLockEmblem(content: @Composable () -> Unit) {
+    if (Fx2X.on) { Fx2LockEmblem(content); return }
     val fx = FxNow
     val c = ColorPrimary
     val ink = ColorText
