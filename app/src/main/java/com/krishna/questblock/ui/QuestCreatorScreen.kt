@@ -128,7 +128,7 @@ fun QuestCreatorScreen(
     var title      by remember { mutableStateOf("") }
     var notes      by remember { mutableStateOf("") }
     var difficulty by remember { mutableIntStateOf(1) }
-    var category   by remember { mutableStateOf("Personal") }
+    var category   by remember { mutableStateOf<String?>(null) }   // v255: no default, the player must pick one
     var priority   by remember { mutableIntStateOf(2) }
     var dueAt      by remember { mutableStateOf<Long?>(null) }
     var origDueAt  by remember { mutableStateOf<Long?>(null) }   // due time of the saved quest (edit mode)
@@ -187,7 +187,8 @@ fun QuestCreatorScreen(
     val pickedMask = daysMask and ALL_DAYS_MASK
     val needsDays = (isWeekly || (hasRepeat && repeat == "days")) && pickedMask == 0
     val routineNeedsSteps = isRoutine && steps.none { it.isNotBlank() }
-    val canSave = title.isNotBlank() && !needsDays && !routineNeedsSteps
+    val needsCategory = category == null
+    val canSave = title.isNotBlank() && !needsDays && !routineNeedsSteps && !needsCategory
     val dueInMore = hasRepeat && repeat == "once"      // One-time shows its due date inline instead
 
     val sdf = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
@@ -217,7 +218,7 @@ fun QuestCreatorScreen(
             }
         }
         return QuestDraft(
-            title = title, difficulty = difficulty, category = category, priority = priority,
+            title = title, difficulty = difficulty, category = category ?: "Personal", priority = priority,
             notes = notes, dueAt = due, isRecurring = rec, recurType = rt,
             linkedApps = if (isFocus) linkedApps.joinToString(",") else "",
             isTimerQuest = isFocus, timerDurationMs = if (isFocus) durMs else 0L,
@@ -244,6 +245,7 @@ fun QuestCreatorScreen(
         },
         bottomBar = {
             Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (needsCategory) Text("Pick a category.", color = ColorWarning, style = MaterialTheme.typography.labelSmall)
                 if (needsDays) Text("Pick at least one day.", color = ColorWarning, style = MaterialTheme.typography.labelSmall)
                 if (routineNeedsSteps) Text("Add at least one step.", color = ColorWarning, style = MaterialTheme.typography.labelSmall)
                 Button(
@@ -412,6 +414,28 @@ fun QuestCreatorScreen(
                 RepeatPicker(repeat, { repeat = it }, daysMask) { daysMask = it }
             }
 
+            // ── Category (required, always visible) ────────────────────────
+            item {
+                SectionLabel("Category (required)")
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(CATEGORIES) { cat ->
+                        val color = CatColors[cat] ?: ColorPrimary
+                        val selected = category == cat
+                        Box(
+                            Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(if (selected) color.copy(0.25f) else ColorSurface)
+                                .border(1.dp, if (selected) color else ColorDivider, RoundedCornerShape(20.dp))
+                                .clickable { category = cat }
+                                .padding(horizontal = 14.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(cat, color = if (selected) color else ColorMuted,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            style = MaterialTheme.typography.labelLarge) }
+                    }
+                }
+            }
+
             // ── Difficulty + Priority (compact rows) ───────────────────────
             item {
                 SectionLabel("Difficulty")
@@ -447,26 +471,6 @@ fun QuestCreatorScreen(
                         colors = creatorFieldColors(),
                         shape = RoundedCornerShape(12.dp),
                     )
-                }
-                item {
-                    SectionLabel("Category")
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(CATEGORIES) { cat ->
-                            val color = CatColors[cat] ?: ColorPrimary
-                            val selected = category == cat
-                            Box(
-                                Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(if (selected) color.copy(0.25f) else ColorSurface)
-                                    .border(1.dp, if (selected) color else ColorDivider, RoundedCornerShape(20.dp))
-                                    .clickable { category = cat }
-                                    .padding(horizontal = 14.dp, vertical = 6.dp),
-                                contentAlignment = Alignment.Center,
-                            ) { Text(cat, color = if (selected) color else ColorMuted,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                style = MaterialTheme.typography.labelLarge) }
-                        }
-                    }
                 }
                 if (dueInMore) item {
                     SectionLabel("Due date & time (optional)")

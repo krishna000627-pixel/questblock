@@ -3,6 +3,14 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("256.0.0", "Category moved out of More options",
+        listOf(
+            "The Category row (Study, Work, Health, Personal, Custom) of the quest creator is now on the main form, right above Difficulty, instead of hidden under More options. It is still required. Code: QuestCreatorScreen",
+        )),
+    VersionEntry("255.0.0", "Category is required for a new quest",
+        listOf(
+            "The quest creator no longer starts with Personal selected. You must pick a category (Study, Work, Health, Personal or Custom) before Create Quest turns on; a red hint \"Pick a category.\" shows until you do. Editing an existing quest keeps its saved category. Code: QuestCreatorScreen (category is now nullable, needsCategory in canSave)",
+        )),
     VersionEntry("254.0.0", "Theme effects for the 16 remaining themes",
         listOf(
             "Sunset, Ocean, Forest, Neon, Sci-Fi, AMOLED, Terminal, Paper, Linen, Sage, Sky, Lilac, Chalk, Clay, Rose and Indigo get the same five things as the style themes, each with its own motif: Focus ring, XP level bar, level up (about 2 s), quest done pop and lock screens (emblem with padlock plus a theme word). Their cards, buttons and fonts stay as they were. Each theme has its own flag fx_<theme> (flags page, terminal flags on|off) and the master flag themefx; with a flag off the normal ring, bar and screens come back",
