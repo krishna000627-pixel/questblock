@@ -48,6 +48,7 @@ fun FlagsScreen(onBack: () -> Unit) {
     var msg by remember { mutableStateOf("") }
     var showIcons by remember { mutableStateOf(false) }
     var showFx by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = true) { onBack() }
     if (showIcons) { SvgIconsPage(onBack = { showIcons = false }); return }
     if (showFx) { ThemeFxFlagsPage(onBack = { showFx = false }); return }
     val desc = mapOf(

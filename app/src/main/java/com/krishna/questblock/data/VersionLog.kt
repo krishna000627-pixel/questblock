@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("265.0.0", "Back button on Theme effects pages stays inside them",
+        listOf(
+            "Phone back button on a theme page (Try it) now goes back to the Theme effects list, then to Flags, instead of jumping out to the About me / Version info page. Code: BackHandler in ThemeFxFlagsPage, ThemeFxTryPage (ui/ThemeFxPage.kt) and FlagsScreen",
+        )),
     VersionEntry("264.0.0", "Ocean and Sage XP bars redone, Ocean quest card wave removed",
         listOf(
             "Ocean XP bar: a clean pill of water instead of the jagged top edge. The fill is clipped to the pill, its leading edge is a gentle wave, with two light ripples and a few bubbles inside",

@@ -115,6 +115,7 @@ fun ThemeFxFlagsPage(onBack: () -> Unit) {
     var open by remember { mutableStateOf<String?>(null) }
     var previewId by remember { mutableStateOf<String?>(null) }
     val pv = previewId
+    androidx.activity.compose.BackHandler(enabled = true) { onBack() }
     if (pv != null) { ThemeFxTryPage(themeId = pv, onBack = { previewId = null }); return }
     val master = FxFlags.get("themefx")
     val onCount = FX_THEMES.count { FxFlags.get("fx_" + it.id) }
@@ -254,6 +255,7 @@ private fun FxLine(label: String, value: String) {
  */
 @Composable
 fun ThemeFxTryPage(themeId: String, onBack: () -> Unit) {
+    androidx.activity.compose.BackHandler(enabled = true) { onBack() }
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val original = remember { ShopTheme }
