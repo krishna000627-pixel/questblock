@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("276.0.0", "App icon selector",
+        listOf(
+            "Flags > Theme app icon now has a Choose button (like Fonts). It opens an App icon page that shows the real icons: Follow the theme, Gold, Ninja, System, Paper and Gothic. Tap one to use it on the home screen; the swap happens when you leave the app. The Termux theme still shows the Terminal icon. Refused during a strict Focus session",
+            "Terminal: appicon [ls] | list | set <icon|theme> | reset. Code: ui/AppIconPage.kt, AppName.CHOICES / iconPick / setIconPick / followChoice in ui/TermuxCore.kt (a picked icon beats the theme in applyLauncher), pick saved as app_icon_pick",
+        )),
     VersionEntry("275.0.0", "Handheld page wipe removed",
         listOf(
             "The Handheld page wipe (ten dark bars closing over the page on every page change) is gone, and so is its tick. Other Handheld effects (boot screen, SAVING popup, XP bar) are unchanged. ui/HandheldWipe.kt is an empty file on purpose, the update command never deletes",

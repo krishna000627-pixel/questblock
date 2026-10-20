@@ -48,6 +48,35 @@ object AppName {
     private val THEME_ALIASES = mapOf("theme_ninja" to "AliasNinja", "theme_system" to "AliasSystem", "theme_paper" to "AliasPaper", "theme_gothic" to "AliasGothic")
     val MODES = listOf("follow", "questblock", "terminal")
 
+    /** v276: the icons you can pick yourself (Flags > Theme app icon > Choose, terminal: appicon). */
+    class IconChoice(val id: String, val label: String, val note: String, val alias: String, val res: Int)
+    val CHOICES: List<IconChoice> = listOf(
+        IconChoice("gold", "Gold", "The normal QuestBlock shield", "AliasQuestBlock", com.krishna.questblock.R.mipmap.ic_launcher),
+        IconChoice("ninja", "Ninja", "Shield in the Ninja Scroll colours", "AliasNinja", com.krishna.questblock.R.mipmap.ic_shield_ninja),
+        IconChoice("system", "System", "Shield in the System Window colours", "AliasSystem", com.krishna.questblock.R.mipmap.ic_shield_system),
+        IconChoice("paper", "Paper", "Shield in the Paper colours", "AliasPaper", com.krishna.questblock.R.mipmap.ic_shield_paper),
+        IconChoice("gothic", "Gothic", "Shield in the Gothic Halo colours", "AliasGothic", com.krishna.questblock.R.mipmap.ic_shield_gothic),
+    )
+    fun findChoice(id: String?): IconChoice? = CHOICES.firstOrNull { it.id == id?.lowercase() }
+
+    /** The icon you picked (an id of [CHOICES]), or null = follow the theme. */
+    fun iconPick(ctx: Context): String? =
+        ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getString("app_icon_pick", null)?.takeIf { findChoice(it) != null }
+
+    /** [id] null = follow the theme. The launcher entry swap waits while the app is open (see [applyAll]). */
+    fun setIconPick(ctx: Context, id: String?) {
+        val ed = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).edit()
+        if (id == null) ed.remove("app_icon_pick") else ed.putString("app_icon_pick", id)
+        ed.apply()
+        applyAll(ctx)
+    }
+
+    /** What "Follow the theme" shows right now: the theme's own colours while the Theme app icon flag is on, else gold. */
+    fun followChoice(): IconChoice {
+        val a = if (com.krishna.questblock.data.Flags.get("themeicon")) THEME_ALIASES[ShopTheme] else null
+        return CHOICES.firstOrNull { it.alias == a } ?: CHOICES[0]
+    }
+
     fun mode(ctx: Context): String =
         ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getString("app_name_mode", "follow") ?: "follow"
 
@@ -80,8 +109,9 @@ object AppName {
     private fun applyLauncher(ctx: Context) {
         val pm = ctx.packageManager
         val term = wantTerminal(ctx)
-        val themed = if (!term && com.krishna.questblock.data.Flags.get("themeicon")) THEME_ALIASES[ShopTheme]?.let { PKG + it } else null
-        val want = if (term) ALIAS_TERM else themed ?: ALIAS_QB
+        val picked = findChoice(iconPick(ctx))?.let { PKG + it.alias }      // v276: an icon you chose beats the theme
+        val themed = if (!term && picked == null && com.krishna.questblock.data.Flags.get("themeicon")) THEME_ALIASES[ShopTheme]?.let { PKG + it } else null
+        val want = if (term) ALIAS_TERM else picked ?: themed ?: ALIAS_QB
         val all = listOf(ALIAS_QB, ALIAS_TERM) + THEME_ALIASES.values.map { PKG + it }
         setEnabled(ctx, pm, want, true)                                    // switch the new one on first, so one is always there
         all.filter { it != want }.forEach { setEnabled(ctx, pm, it, false) }

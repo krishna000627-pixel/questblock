@@ -51,10 +51,12 @@ fun FlagsScreen(onBack: () -> Unit) {
     var showIcons by remember { mutableStateOf(false) }
     var showFx by remember { mutableStateOf(false) }
     var showFonts by remember { mutableStateOf(false) }
+    var showAppIcon by remember { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(enabled = true) { onBack() }
     if (showIcons) { SvgIconsPage(onBack = { showIcons = false }); return }
     if (showFx) { ThemeFxFlagsPage(onBack = { showFx = false }); return }
     if (showFonts) { ThemeFontsPage(onBack = { showFonts = false }); return }
+    if (showAppIcon) { AppIconPage(onBack = { showAppIcon = false }); return }
     val desc = mapOf(
         "phone" to "The normal pages with the bottom bar",
         "termux" to "The whole app as one terminal",
@@ -139,6 +141,7 @@ fun FlagsScreen(onBack: () -> Unit) {
                             Text(row.desc, style = MaterialTheme.typography.bodySmall, color = ColorMuted)
                         }
                         if (row.id == "icons") androidx.compose.material3.TextButton(onClick = { showIcons = true }) { Text("Choose") }
+                        if (row.id == "themeicon") androidx.compose.material3.TextButton(onClick = { showAppIcon = true }) { Text("Choose") }
                         Switch(checked = v, onCheckedChange = { nv ->
                             if (TermuxMode.strictNow(ctx)) msg = "refused: a strict Focus session is running"
                             else { row.set(ctx, nv); v = nv; msg = "" }

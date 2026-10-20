@@ -57,7 +57,7 @@ private val TOP_COMMANDS = listOf(
     "stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub",
     "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas",
     "suggest", "timers", "fun", "fg", "last", "mood", "achievements", "leaderboard",
-    "cd", "pwd", "flags", "icons", "logo", "font",
+    "cd", "pwd", "flags", "icons", "logo", "font", "appicon",
 )
 
 private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
@@ -70,6 +70,7 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "theme set" to listOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint", "termux"),
     "flags" to listOf("ls", "on", "off"),
     "font" to listOf("ls", "list", "set", "on", "off", "reset"),
+    "appicon" to listOf("ls", "list", "set", "reset"),
     "font set" to listOf("default") + APP_FONTS.map { it.id },
     "flags on" to listOf("phone", "termux", "homework", "icons", "sounds", "themesounds", "haptics", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint", "fx_sunset", "fx_ocean", "fx_forest", "fx_neon", "fx_scifi", "fx_amoled", "fx_terminal", "fx_paper", "fx_linen", "fx_sage", "fx_sky", "fx_lilac", "fx_chalk", "fx_clay", "fx_rose", "fx_indigo"),
     "flags off" to listOf("phone", "termux", "homework", "icons", "sounds", "themesounds", "haptics", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint", "fx_sunset", "fx_ocean", "fx_forest", "fx_neon", "fx_scifi", "fx_amoled", "fx_terminal", "fx_paper", "fx_linen", "fx_sage", "fx_sky", "fx_lilac", "fx_chalk", "fx_clay", "fx_rose", "fx_indigo"),
@@ -115,7 +116,7 @@ private val GROUPS: Map<String, List<String>> = linkedMapOf(
     "blocking" to listOf("vault", "unlock", "sites", "limits", "categories", "timers"),
     "economy" to listOf("coins", "shop", "inv", "fun"),
     "progress" to listOf("stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub", "mood", "achievements", "leaderboard"),
-    "settings" to listOf("set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas", "flags", "icons", "logo", "font"),
+    "settings" to listOf("set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas", "flags", "icons", "logo", "font", "appicon"),
 )
 
 private val MAN: Map<String, String> = mapOf(
@@ -128,6 +129,7 @@ private val MAN: Map<String, String> = mapOf(
     "alias" to "alias [name=cmd]    list or make a shortcut, e.g. alias qt=quests --today",
     "unalias" to "unalias <name>     remove a shortcut",
     "theme" to "theme [ls] | [set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux]   default/phone = the normal look (Quest Phone), paper, linen, sage, sky, lilac, chalk = the plain light shop themes, clay = the soft puffy Claymorphism one, system = the dark blue RPG System-window look (cut corners, mono text, HUD grid; both: you must own it, shop buy <name>), ninja, hashira, monarch, gothic, guild, pixel, handheld, blueprint = more style shop themes with their own shapes, fonts, strips and backgrounds (you must own them too: shop buy <name>). theme ls lists the app themes that are on (flags hides the ones turned off) and the one in use. A theme turned off in flags is refused. refused during Focus (theme ls still works)",
+    "appicon" to "appicon [ls] | list | set <icon|theme> | reset   the home screen icon: gold, ninja, system, paper, gothic, or theme (follows the theme, the Theme app icon flag). The icon changes when you leave the app. refused during Focus (read-only forms still work)",
     "font" to "font [ls] | list | on | off | set <font|default> | reset   one font for the whole app (29 fonts: font list). on/off is the Fonts flag; off or default = the normal font. refused during Focus (read-only forms still work)",
     "flags" to "flags [ls] | on <name> | off <name>   names: phone termux (app themes, the one left on can't be turned off), homework, icons, sounds, themesounds, haptics, mood, leaderboard, experiments, themeicon (app icon follows the theme), themefx (master for the extras of all style themes), fx_system fx_ninja fx_hashira fx_monarch fx_gothic fx_guild fx_pixel fx_handheld fx_blueprint fx_sunset fx_ocean fx_forest fx_neon fx_scifi fx_amoled fx_terminal fx_paper fx_linen fx_sage fx_sky fx_lilac fx_chalk fx_clay fx_rose fx_indigo (extras of one theme). flags ls shows every flag. refused during Focus (flags ls still works)",
     "icons" to "icons [list] | on|off [name] | reset   emoji drawn as SVG icons on the normal pages (the terminal stays plain text). on|off alone is the master switch, on|off <name> switches one icon (flags page > SVG icons > Choose). reset turns every icon on. list shows each icon, its emoji and its state. on, off and reset are refused during Focus (icons and icons list still work)",
@@ -205,14 +207,14 @@ private val DIR_OF: Map<String, String> = mapOf(
     "badges" to "stats", "goals" to "stats", "hub" to "stats", "mood" to "stats", "achievements" to "stats", "leaderboard" to "stats",
     "set" to "settings", "strict" to "settings", "dnd" to "settings", "perms" to "settings", "backup" to "settings", "restore" to "settings",
     "reliability" to "settings", "selftest" to "settings", "debuglog" to "settings", "versions" to "settings", "about" to "settings",
-    "theme" to "settings", "flags" to "settings", "font" to "settings", "icons" to "settings", "logo" to "settings",
+    "theme" to "settings", "flags" to "settings", "font" to "settings", "appicon" to "settings", "icons" to "settings", "logo" to "settings",
     "ideas" to "ideas",
     "hw" to "hw",
 )
 private val DIRS = listOf("quests", "hw", "focus", "vault", "shop", "stats", "settings", "ideas")
 
 /** Commands that still work while a strict Focus session runs. */
-private val STRICT_OK = setOf("help", "man", "clear", "history", "status", "whoami", "focus", "play", "stop", "home", "theme", "flags", "font", "icons", "logo", "versions", "about", "alias", "unalias", "ideas", "hw", "fg", "last", "cd", "pwd")
+private val STRICT_OK = setOf("help", "man", "clear", "history", "status", "whoami", "focus", "play", "stop", "home", "theme", "flags", "font", "appicon", "icons", "logo", "versions", "about", "alias", "unalias", "ideas", "hw", "fg", "last", "cd", "pwd")
 
 /** Commands on a lock page. */
 private val BLOCK_OK = setOf("help", "man", "clear", "history", "status", "quests", "coins", "unlock", "open", "home", "main", "focus")
@@ -642,6 +644,7 @@ class TermuxViewModel @Inject constructor(
             "theme" -> cmdTheme(s, a)
             "flags" -> cmdFlags(s, a)
             "font" -> cmdFont(s, a)
+            "appicon" -> cmdAppIcon(s, a)
             "icons" -> cmdIcons(s, a)
             "logo" -> cmdLogo(s)
             "home" -> cmdHome(s)
@@ -718,6 +721,7 @@ class TermuxViewModel @Inject constructor(
             "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint")
             "flags" -> sub in setOf("on", "off")
             "font" -> sub in setOf("set", "on", "off", "reset")
+            "appicon" -> sub in setOf("set", "reset")
             "icons" -> sub in setOf("on", "off", "reset")
             "set" -> sub != null && sub != "ls"
             else -> false
@@ -1038,6 +1042,35 @@ class TermuxViewModel @Inject constructor(
     }
 
     /** v272: one font for the whole app (ui/ThemeFonts.kt). The terminal itself stays monospace. */
+    private fun cmdAppIcon(s: TermuxSession, a: TermuxArgs) {
+        when (a.pos.getOrNull(1)?.lowercase()) {
+            null, "ls" -> {
+                s.head("appicon")
+                val p = AppName.findChoice(AppName.iconPick(ctx))
+                s.out("{c}icon{/}   ${p?.label ?: "follow the theme (${AppName.followChoice().label})"}")
+                s.out("{c}theme app icon flag{/}  ${if (com.krishna.questblock.data.Flags.get("themeicon")) "{g}on{/}" else "{d}off{/}"}")
+                s.dim("appicon list | set <icon|theme> | reset")
+            }
+            "list" -> {
+                s.head("app icons")
+                s.out("{c}${"theme".padEnd(8)}{/} ${"Follow the theme".padEnd(18)} {d}the icon of the equipped theme{/}")
+                AppName.CHOICES.forEach { c -> s.out("{c}${c.id.padEnd(8)}{/} ${c.label.padEnd(18)} {d}${c.note}{/}") }
+                s.dim("appicon set <icon|theme>")
+            }
+            "set" -> {
+                val word = a.pos.getOrNull(2)?.lowercase()
+                if (word == null) { s.err("usage: appicon set <icon|theme>   (appicon list shows the icons)"); return }
+                if (word == "theme" || word == "follow" || word == "auto") { AppName.setIconPick(ctx, null); s.ok("app icon: follows the theme (changes when you leave the app)"); return }
+                val c = AppName.findChoice(word)
+                if (c == null) { s.err("no icon '${word.tm()}': appicon list"); return }
+                AppName.setIconPick(ctx, c.id)
+                s.ok("app icon: ${c.label} (changes when you leave the app)")
+            }
+            "reset" -> { AppName.setIconPick(ctx, null); s.ok("app icon: follows the theme") }
+            else -> s.err("usage: appicon [ls] | list | set <icon|theme> | reset")
+        }
+    }
+
     private fun cmdFont(s: TermuxSession, a: TermuxArgs) {
         when (a.pos.getOrNull(1)?.lowercase()) {
             null, "ls" -> {
