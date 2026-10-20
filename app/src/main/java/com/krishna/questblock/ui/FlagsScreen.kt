@@ -47,7 +47,9 @@ fun FlagsScreen(onBack: () -> Unit) {
     val on = remember { mutableStateMapOf<String, Boolean>().also { m -> AppThemes.IDS.forEach { m[it] = AppThemes.enabled(ctx, it) } } }
     var msg by remember { mutableStateOf("") }
     var showIcons by remember { mutableStateOf(false) }
+    var showFx by remember { mutableStateOf(false) }
     if (showIcons) { SvgIconsPage(onBack = { showIcons = false }); return }
+    if (showFx) { ThemeFxFlagsPage(onBack = { showFx = false }); return }
     val desc = mapOf(
         "phone" to "The normal pages with the bottom bar",
         "termux" to "The whole app as one terminal",
@@ -95,8 +97,19 @@ fun FlagsScreen(onBack: () -> Unit) {
                 }
             }
         }
+        item(key = "theme_fx") {
+            Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Theme effects", fontWeight = FontWeight.SemiBold, color = ColorText)
+                        Text("Focus ring, XP bar, level up, done pop and lock screens of every theme. " + themeFxOnCount() + " of " + themeFxTotal() + " on", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                    }
+                    androidx.compose.material3.TextButton(onClick = { showFx = true }) { Text("Open") }
+                }
+            }
+        }
         item(key = "more_head") { Text("More flags", fontWeight = FontWeight.SemiBold, color = ColorMuted, modifier = Modifier.padding(top = 6.dp)) }
-        FlagRows.ALL.forEach { row ->
+        FlagRows.ALL.filter { it.id != "themefx" && !it.id.startsWith("fx_") }.forEach { row ->
             item(key = "flag_" + row.id) {
                 var v by remember { mutableStateOf(row.get(ctx)) }
                 Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {

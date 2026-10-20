@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("257.0.0", "Theme effects subpage in Flags",
+        listOf(
+            "Flags has a new Theme effects card that opens a subpage: the master switch Theme extras (all), All on and All off, filter chips (All 25, Style 9, Shop 16) and one row per theme with its own switch. Tap a row to see its Focus ring, XP bar, level up, quest done pop and lock screen, with a static mini preview in the theme colour. The 26 theme switches are gone from the More flags list. They are the same flags as before (themefx and fx_<theme>), so the terminal flags command still lists and sets them. Code: ui/ThemeFxPage.kt, FlagsScreen (the Theme effects card)",
+        )),
     VersionEntry("256.0.0", "Category moved out of More options",
         listOf(
             "The Category row (Study, Work, Health, Personal, Custom) of the quest creator is now on the main form, right above Difficulty, instead of hidden under More options. It is still required. Code: QuestCreatorScreen",
