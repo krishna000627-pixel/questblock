@@ -81,7 +81,7 @@ fun SystemHost(strict: Boolean, onOpenQuests: () -> Unit) {
 @Composable
 private fun LevelUpOverlay() {
     val start = remember { SystemEvents.levelUpStamp }
-    var show by remember { mutableStateOf(false) }
+    var show by remember(SystemEvents.cutStamp) { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     LaunchedEffect(SystemEvents.levelUpStamp) {
         if (SystemEvents.levelUpStamp != start) {

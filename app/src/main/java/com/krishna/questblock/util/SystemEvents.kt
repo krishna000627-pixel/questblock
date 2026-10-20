@@ -12,6 +12,8 @@ object SystemEvents {
     var penaltyStamp by mutableIntStateOf(0)
     var questDoneStamp by mutableIntStateOf(0)
     var armyCount by mutableIntStateOf(0)
+    /** v262: raised when the Try page of a theme closes; the effect hosts drop any pop or level up that is still showing. */
+    var cutStamp by mutableIntStateOf(0)
     var lastCoins = 0
     var lastXp = 0
     /** v248: the level reached (the level up screens show "LV 4 to 5" and "Level 5"). */

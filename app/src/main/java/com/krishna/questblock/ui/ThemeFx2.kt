@@ -3,6 +3,7 @@ package com.krishna.questblock.ui
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,6 +19,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -220,7 +224,7 @@ private fun DrawScope.stripLine(fx: Fx2, c: Color, coin: Color, ink: Color) {
         Fx2.SKY -> {
             drawLine(c.copy(alpha = 0.4f), Offset(0f, y), Offset(w, y), 1.5.dp.toPx())
             val x = w * 0.5f; val cc = c.copy(alpha = 0.4f)
-            drawCircle(cc, 4.dp.toPx(), Offset(x, h - 5.dp.toPx())); drawCircle(cc, 5.dp.toPx(), Offset(x + 7.dp.toPx(), h - 8.dp.toPx())); drawCircle(cc, 4.dp.toPx(), Offset(x + 14.dp.toPx(), h - 5.dp.toPx()))
+            drawCircle(cc, 3.5.dp.toPx(), Offset(x, h - 4.dp.toPx())); drawCircle(cc, 4.dp.toPx(), Offset(x + 7.dp.toPx(), h - 6.5.dp.toPx())); drawCircle(cc, 3.5.dp.toPx(), Offset(x + 14.dp.toPx(), h - 4.dp.toPx()))
         }
         Fx2.LILAC -> {
             drawLine(c.copy(alpha = 0.35f), Offset(0f, y), Offset(w, y), 1f)
@@ -288,21 +292,20 @@ fun Fx2Bar() {
     }
     val fam = fontOf(fx)
     val lc = if (fx == Fx2.NEON) lerp(c, Color.White, 0.5f) else c
-    Row(
-        Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding().height(24.dp)
-            .drawBehind { stripLine(fx, c, coin, ink) }
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(l, color = lc, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = if (fx == Fx2.TERMINAL) 0.sp else 2.sp, fontFamily = fam)
-        Spacer(Modifier.weight(1f))
-        Text(r, color = ColorMuted, fontSize = 10.sp, letterSpacing = 1.sp, fontFamily = fam)
+    // v262: the words sit in their own row and the drawing in a band under them, so nothing is drawn over the words
+    Column(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding()) {
+        Row(Modifier.fillMaxWidth().height(20.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(l, color = lc, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = if (fx == Fx2.TERMINAL) 0.sp else 2.sp, fontFamily = fam)
+            Spacer(Modifier.weight(1f))
+            Text(r, color = ColorMuted, fontSize = 10.sp, letterSpacing = 1.sp, fontFamily = fam)
+        }
+        Canvas(Modifier.fillMaxWidth().height(12.dp)) { stripLine(fx, c, coin, ink) }
     }
 }
 
 /** v261: what is drawn over every card (the quest board) for each Fx2 theme. Small and static; the card's shape, colours and border stay. */
 private fun DrawScope.cardDeco(fx: Fx2, c: Color, coin: Color, ink: Color) {
-    val w = size.width; val h = size.height; val m = 8.dp.toPx()
+    val w = size.width; val h = size.height; val m = 12.dp.toPx()
     when (fx) {
         Fx2.SUNSET -> {
             drawRect(Brush.verticalGradient(listOf(Color.Transparent, coin.copy(alpha = 0.10f)), startY = h * 0.5f, endY = h), Offset(0f, h * 0.5f), Size(w, h * 0.5f))
@@ -339,7 +342,7 @@ private fun DrawScope.cardDeco(fx: Fx2, c: Color, coin: Color, ink: Color) {
             val fold = Path().apply { moveTo(w, h - 14.dp.toPx()); lineTo(w - 14.dp.toPx(), h); lineTo(w, h); close() }
             drawPath(fold, ink.copy(alpha = 0.12f))
         }
-        Fx2.LINEN -> drawRoundRect(c.copy(alpha = 0.45f), Offset(5.dp.toPx(), 5.dp.toPx()), Size(w - 10.dp.toPx(), h - 10.dp.toPx()), CornerRadius(8.dp.toPx()),
+        Fx2.LINEN -> drawRoundRect(c.copy(alpha = 0.45f), Offset(5.dp.toPx(), 5.dp.toPx()), Size(w - 10.dp.toPx(), h - 10.dp.toPx()), CornerRadius(6.dp.toPx()),
             style = Stroke(1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()), 0f)))
         Fx2.SAGE -> {
             val b = Offset(w - m, 24.dp.toPx())
@@ -372,12 +375,112 @@ private fun DrawScope.cardDeco(fx: Fx2, c: Color, coin: Color, ink: Color) {
     }
 }
 
-/** v261: the quest board look of the Fx2 themes: every Card (Glass.kt) gets its decoration while the theme's effects are on. */
+/** v262: card shape of each Fx2 theme (the quest box), like the style themes have. */
+internal fun fx2Shape(): Shape = when (Fx2Now) {
+    Fx2.SUNSET -> RoundedCornerShape(20.dp)
+    Fx2.OCEAN -> RoundedCornerShape(16.dp)
+    Fx2.FOREST -> RoundedCornerShape(topStart = 20.dp, topEnd = 6.dp, bottomEnd = 20.dp, bottomStart = 6.dp)
+    Fx2.NEON -> RoundedCornerShape(10.dp)
+    Fx2.SCIFI -> CutCornerShape(topStart = 0.dp, topEnd = 12.dp, bottomEnd = 0.dp, bottomStart = 12.dp)
+    Fx2.AMOLED -> RoundedCornerShape(6.dp)
+    Fx2.TERMINAL -> RectangleShape
+    Fx2.PAPER -> RoundedCornerShape(2.dp)
+    Fx2.LINEN -> RoundedCornerShape(10.dp)
+    Fx2.SAGE -> RoundedCornerShape(20.dp)
+    Fx2.SKY -> RoundedCornerShape(22.dp)
+    Fx2.LILAC -> RoundedCornerShape(22.dp)
+    Fx2.CHALK -> RoundedCornerShape(3.dp)
+    Fx2.CLAY -> RoundedCornerShape(22.dp)
+    Fx2.ROSE -> RoundedCornerShape(22.dp)
+    Fx2.INDIGO -> RoundedCornerShape(12.dp)
+    Fx2.NONE -> RoundedCornerShape(12.dp)
+}
+
+/** v262: card outline of each Fx2 theme. */
+@Composable
+internal fun fx2Border(): BorderStroke? {
+    val c = ColorPrimary; val ink = ColorText
+    return when (Fx2Now) {
+        Fx2.SUNSET -> BorderStroke(1.dp, c.copy(alpha = 0.35f))
+        Fx2.OCEAN -> BorderStroke(1.dp, c.copy(alpha = 0.45f))
+        Fx2.FOREST -> BorderStroke(1.5.dp, c.copy(alpha = 0.5f))
+        Fx2.NEON -> BorderStroke(1.5.dp, c.copy(alpha = 0.9f))
+        Fx2.SCIFI -> BorderStroke(1.dp, c.copy(alpha = 0.7f))
+        Fx2.AMOLED -> BorderStroke(1.dp, ink.copy(alpha = 0.22f))
+        Fx2.TERMINAL -> BorderStroke(1.dp, c.copy(alpha = 0.8f))
+        Fx2.PAPER -> BorderStroke(1.5.dp, ink.copy(alpha = 0.5f))
+        Fx2.LINEN -> BorderStroke(1.dp, c.copy(alpha = 0.25f))
+        Fx2.SAGE -> BorderStroke(1.dp, c.copy(alpha = 0.45f))
+        Fx2.SKY -> BorderStroke(1.dp, c.copy(alpha = 0.4f))
+        Fx2.LILAC -> BorderStroke(1.dp, c.copy(alpha = 0.45f))
+        Fx2.CHALK -> BorderStroke(1.5.dp, ink.copy(alpha = 0.6f))
+        Fx2.CLAY -> null
+        Fx2.ROSE -> BorderStroke(1.dp, c.copy(alpha = 0.5f))
+        Fx2.INDIGO -> BorderStroke(1.dp, c.copy(alpha = 0.5f))
+        Fx2.NONE -> null
+    }
+}
+
+/** v261: the quest board look of the Fx2 themes: every Card (Glass.kt) gets its shadow or glow and its decoration while the theme's effects are on. v262: plus a shape and outline (fx2Shape, fx2Border). */
 @Composable
 internal fun Modifier.fx2Frame(): Modifier {
     if (!Fx2X.on) return this
     val fx = Fx2Now; val c = ColorPrimary; val coin = ColorCoin; val ink = ColorText
-    return this.drawWithContent { drawContent(); cardDeco(fx, c, coin, ink) }
+    val shape = fx2Shape()
+    val base: Modifier = when (fx) {
+        Fx2.SUNSET -> this.shadow(6.dp, shape, ambientColor = coin.copy(alpha = 0.35f), spotColor = coin.copy(alpha = 0.35f))
+        Fx2.OCEAN -> this.shadow(4.dp, shape, ambientColor = c.copy(alpha = 0.3f), spotColor = c.copy(alpha = 0.3f))
+        Fx2.NEON -> this.shadow(9.dp, shape, ambientColor = c.copy(alpha = 0.8f), spotColor = c.copy(alpha = 0.8f))
+        Fx2.SCIFI -> this.shadow(5.dp, shape, ambientColor = c.copy(alpha = 0.45f), spotColor = c.copy(alpha = 0.45f))
+        Fx2.PAPER -> this.shadow(3.dp, shape, ambientColor = Color(0x66000000), spotColor = Color(0x66000000))
+        Fx2.SKY, Fx2.LILAC -> this.shadow(4.dp, shape, ambientColor = c.copy(alpha = 0.25f), spotColor = c.copy(alpha = 0.25f))
+        Fx2.CLAY -> this.shadow(8.dp, shape, ambientColor = Color(0x40000000), spotColor = Color(0x40000000))
+        Fx2.ROSE -> this.shadow(5.dp, shape, ambientColor = c.copy(alpha = 0.3f), spotColor = c.copy(alpha = 0.3f))
+        Fx2.INDIGO -> this.shadow(6.dp, shape, ambientColor = c.copy(alpha = 0.3f), spotColor = c.copy(alpha = 0.3f))
+        else -> this
+    }
+    return base.drawWithContent { drawContent(); cardDeco(fx, c, coin, ink) }
+}
+
+/** v262: button shape of each Fx2 theme. */
+internal fun fx2ButtonShape(): Shape = when (Fx2Now) {
+    Fx2.SUNSET, Fx2.SKY, Fx2.LILAC, Fx2.ROSE, Fx2.SAGE, Fx2.CLAY, Fx2.AMOLED -> RoundedCornerShape(50)
+    Fx2.OCEAN -> RoundedCornerShape(12.dp)
+    Fx2.FOREST -> RoundedCornerShape(topStart = 14.dp, topEnd = 4.dp, bottomEnd = 14.dp, bottomStart = 4.dp)
+    Fx2.NEON -> RoundedCornerShape(8.dp)
+    Fx2.SCIFI -> CutCornerShape(topStart = 0.dp, topEnd = 8.dp, bottomEnd = 0.dp, bottomStart = 8.dp)
+    Fx2.TERMINAL -> RectangleShape
+    Fx2.PAPER -> RoundedCornerShape(2.dp)
+    Fx2.LINEN -> RoundedCornerShape(8.dp)
+    Fx2.CHALK -> RoundedCornerShape(3.dp)
+    Fx2.INDIGO -> RoundedCornerShape(10.dp)
+    Fx2.NONE -> RoundedCornerShape(6.dp)
+}
+
+private fun outlinedFx2(): Boolean = when (Fx2Now) { Fx2.NEON, Fx2.SCIFI, Fx2.AMOLED, Fx2.TERMINAL, Fx2.CHALK -> true; else -> false }
+
+/** v262: see-through outlined buttons for Neon, Sci-Fi, AMOLED, Terminal and Chalk, the normal solid ones for the rest. */
+@Composable
+internal fun fx2ButtonColors(base: ButtonColors): ButtonColors {
+    if (!outlinedFx2()) return base
+    val a = if (Fx2Now == Fx2.CHALK) ColorText else ColorPrimary
+    return ButtonDefaults.buttonColors(
+        containerColor = a.copy(alpha = 0.14f), contentColor = a,
+        disabledContainerColor = ColorMuted.copy(alpha = 0.10f), disabledContentColor = ColorMuted.copy(alpha = 0.6f),
+    )
+}
+
+@Composable
+internal fun fx2ButtonBorder(): BorderStroke? {
+    val c = ColorPrimary; val ink = ColorText
+    return when (Fx2Now) {
+        Fx2.NEON -> BorderStroke(1.5.dp, c)
+        Fx2.SCIFI, Fx2.TERMINAL, Fx2.AMOLED -> BorderStroke(1.dp, c.copy(alpha = 0.8f))
+        Fx2.CHALK -> BorderStroke(1.5.dp, ink.copy(alpha = 0.7f))
+        Fx2.PAPER -> BorderStroke(1.dp, ink.copy(alpha = 0.6f))
+        Fx2.INDIGO -> BorderStroke(1.dp, c.copy(alpha = 0.6f))
+        else -> null
+    }
 }
 
 // ── page background ──
@@ -411,6 +514,44 @@ internal fun Modifier.fx2Background(): Modifier {
             Fx2.PAPER -> for (i in 0 until 50) {
                 drawCircle(ink.copy(alpha = 0.05f), (0.8f + (i % 2) * 0.7f).dp.toPx(), Offset(size.width * (((i * 43 + 5) % 100) / 100f), size.height * (((i * 61 + 29) % 100) / 100f)))
             }
+            // v262: a static background for the rest too
+            Fx2.SUNSET -> {
+                drawRect(Brush.verticalGradient(listOf(Color.Transparent, ColorCoin.copy(alpha = 0.08f)), startY = size.height * 0.55f, endY = size.height), Offset(0f, size.height * 0.55f), Size(size.width, size.height * 0.45f))
+                drawCircle(ColorCoin.copy(alpha = 0.07f), 90.dp.toPx(), Offset(size.width * 0.5f, size.height))
+            }
+            Fx2.OCEAN -> for (k in 0 until 6) waveLine(size.height * (0.55f + k * 0.07f), 3.dp.toPx(), 24.dp.toPx(), c.copy(alpha = 0.06f), 1.5.dp.toPx())
+            Fx2.FOREST -> for (i in 0 until 14) leaf(Offset(size.width * (((i * 37 + 11) % 100) / 100f), size.height * (((i * 53 + 7) % 100) / 100f)), ((i * 47) % 360).toFloat(), 22.dp.toPx(), 8.dp.toPx(), c.copy(alpha = 0.07f))
+            Fx2.NEON -> {
+                drawRect(Brush.horizontalGradient(listOf(c.copy(alpha = 0.10f), Color.Transparent), 0f, 40.dp.toPx()), Offset(0f, 0f), Size(40.dp.toPx(), size.height))
+                drawRect(Brush.horizontalGradient(listOf(Color.Transparent, c.copy(alpha = 0.10f)), size.width - 40.dp.toPx(), size.width), Offset(size.width - 40.dp.toPx(), 0f), Size(40.dp.toPx(), size.height))
+            }
+            Fx2.LINEN -> {
+                val st = 6.dp.toPx()
+                var x = 0f
+                while (x < size.width) { drawLine(c.copy(alpha = 0.035f), Offset(x, 0f), Offset(x, size.height), 1f); x += st }
+                var y = 0f
+                while (y < size.height) { drawLine(c.copy(alpha = 0.035f), Offset(0f, y), Offset(size.width, y), 1f); y += st }
+            }
+            Fx2.SAGE -> {
+                val st = 22.dp.toPx()
+                var y = st / 2
+                while (y < size.height) { var x = st / 2; while (x < size.width) { drawCircle(c.copy(alpha = 0.08f), 1.dp.toPx(), Offset(x, y)); x += st }; y += st }
+            }
+            Fx2.SKY -> for (i in 0 until 3) {
+                val cx = size.width * (0.2f + 0.3f * i); val cy = size.height * (0.18f + 0.3f * i)
+                val cc = c.copy(alpha = 0.06f)
+                drawCircle(cc, 22.dp.toPx(), Offset(cx, cy)); drawCircle(cc, 28.dp.toPx(), Offset(cx + 30.dp.toPx(), cy - 8.dp.toPx())); drawCircle(cc, 22.dp.toPx(), Offset(cx + 60.dp.toPx(), cy))
+            }
+            Fx2.LILAC -> for (i in 0 until 8) {
+                val ctr = Offset(size.width * (((i * 41 + 13) % 100) / 100f), size.height * (((i * 59 + 31) % 100) / 100f))
+                for (k in 0 until 5) drawCircle(c.copy(alpha = 0.07f), 5.dp.toPx(), polar(ctr, 7.dp.toPx(), k * 72f - 90f))
+            }
+            Fx2.CLAY -> {
+                drawCircle(c.copy(alpha = 0.06f), 110.dp.toPx(), Offset(size.width * 0.1f, size.height * 0.2f))
+                drawCircle(c.copy(alpha = 0.05f), 90.dp.toPx(), Offset(size.width * 0.9f, size.height * 0.55f))
+                drawCircle(c.copy(alpha = 0.06f), 120.dp.toPx(), Offset(size.width * 0.3f, size.height * 0.95f))
+            }
+            Fx2.ROSE -> for (i in 0 until 10) heart(Offset(size.width * (((i * 43 + 9) % 100) / 100f), size.height * (((i * 61 + 23) % 100) / 100f)), (6 + i % 3 * 2).dp.toPx(), c.copy(alpha = 0.07f))
             else -> Unit
         }
     }
@@ -986,8 +1127,8 @@ fun Fx2Host() {
     val fx = Fx2Now
     val startQ = remember { SystemEvents.questDoneStamp }
     val startL = remember { SystemEvents.levelUpStamp }
-    var pop by remember { mutableStateOf(false) }
-    var lvl by remember { mutableStateOf(false) }
+    var pop by remember(SystemEvents.cutStamp) { mutableStateOf(false) }
+    var lvl by remember(SystemEvents.cutStamp) { mutableStateOf(false) }
     LaunchedEffect(SystemEvents.questDoneStamp) {
         if (SystemEvents.questDoneStamp != startQ) { pop = true; delay(1500); pop = false }
     }

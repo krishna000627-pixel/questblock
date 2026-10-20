@@ -3,6 +3,15 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("262.0.0", "Better header strips, quest boxes, buttons and backgrounds for the 16 newer themes",
+        listOf(
+            "Header strip fix: the words and the drawing were on top of each other (the Lilac flowers ran through IN BLOOM and the date). The words now have their own row and the drawing a band under it, so nothing overlaps. Applies to all 16 strips (Sunset to Indigo)",
+            "Quest boxes: the 16 themes now change the card itself like the style themes do, not only a corner decoration. Each has its own shape (Forest leaf corners, Sci-Fi cut corners, Terminal square, Paper and Chalk nearly square, Sunset, Sage, Sky, Lilac, Clay and Rose very round), its own outline, and a glow or shadow (Neon glow, Sunset warm, Sci-Fi blue, Clay soft drop, Paper note shadow). Corner decorations moved a little inwards so the round corners do not cut them",
+            "Buttons: own shapes (pill, leaf, cut corner, square) and see-through outlined buttons for Neon, Sci-Fi, AMOLED, Terminal and Chalk, outlined Paper and Indigo. Code: fx2ButtonShape, fx2ButtonColors, fx2ButtonBorder in ui/ThemeFx2.kt, Button in ui/ClayStyle.kt",
+            "Page backgrounds (static): Sunset warm glow and a low sun, Ocean wave lines, Forest scattered leaves, Neon side glow, Linen weave, Sage dot grid, Sky clouds, Lilac flowers, Clay soft blobs, Rose hearts (Sci-Fi, Terminal, Indigo, Chalk and Paper already had one, AMOLED stays plain)",
+            "Back from a theme's Try page: everything the page touched is now put back. The saved theme is read again from storage, the penalty look, the Shadow Army counter (also the saved one, which a quick Back used to leave one too high), the last level and reward numbers, and a quest done pop or level up still on screen is dropped instead of showing in the wrong theme. Code: ThemeFxTryPage in ui/ThemeFxPage.kt, SystemEvents.cutStamp read by Fx2Host, ThemeExtrasHost, LevelUpHost and LevelUpOverlay",
+            "Code: fx2Shape, fx2Border and fx2Frame in ui/ThemeFx2.kt, the Fx2X.on branch of Card in ui/Glass.kt",
+        )),
     VersionEntry("261.0.0", "One theme per page, header strips and quest cards for the 16 newer themes",
         listOf(
             "Flags > Theme effects: the Preview effects button and the word preview are gone. A theme page opens only by tapping a theme row and then Try it, and it shows that one theme only (no theme chips); its title is the theme name. It still plays the real XP bar, Focus ring, Level up, Quest done, Penalty (System, Pixel) and lock emblem, and now also a sample quest card. Nothing is awarded and the equipped theme comes back when you leave. Code: ThemeFxTryPage in ui/ThemeFxPage.kt (was ThemeFxPreviewPage)",

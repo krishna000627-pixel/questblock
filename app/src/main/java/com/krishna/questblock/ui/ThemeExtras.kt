@@ -105,8 +105,8 @@ fun ThemeExtrasHost() {
     val ctx = LocalContext.current
     val startQ = remember { SystemEvents.questDoneStamp }
     val startP = remember { SystemEvents.penaltyStamp }
-    var show by remember { mutableStateOf(false) }
-    var gameOver by remember { mutableStateOf(false) }
+    var show by remember(SystemEvents.cutStamp) { mutableStateOf(false) }
+    var gameOver by remember(SystemEvents.cutStamp) { mutableStateOf(false) }
     var boot by remember { mutableStateOf(fx == Fx.HANDHELD && !ThemeExtras.booted) }
     LaunchedEffect(fx) {
         if (fx == Fx.MONARCH) SystemEvents.armyCount = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getInt("shadow_army", 0)
@@ -213,7 +213,7 @@ private fun PopText(modifier: Modifier, word: String, reward: String, wordColor:
 private fun LevelUpHost(fx: Fx) {
     if (fx == Fx.NONE || fx == Fx.SYSTEM) return
     val start = remember { SystemEvents.levelUpStamp }
-    var show by remember { mutableStateOf(false) }
+    var show by remember(SystemEvents.cutStamp) { mutableStateOf(false) }
     LaunchedEffect(SystemEvents.levelUpStamp) {
         if (SystemEvents.levelUpStamp != start) { show = true; delay(2400); show = false }
     }

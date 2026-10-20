@@ -263,7 +263,23 @@ fun ThemeFxTryPage(themeId: String, onBack: () -> Unit) {
     var emblemKey by remember { mutableIntStateOf(0) }
     SideEffect { if (ShopTheme != "theme_" + sel) ShopTheme = "theme_" + sel }
     val penaltyBefore = remember { SystemEvents.penaltyOn }
-    DisposableEffect(Unit) { onDispose { ShopTheme = original; SystemEvents.penaltyOn = penaltyBefore } }
+    // v262: everything the page touches is put back when it closes: the saved theme, the penalty look, the Shadow Army counter, the last level and reward numbers, and any pop or level up still showing
+    val armyBefore = remember { SystemEvents.armyCount }
+    val armySavedBefore = remember { ctx.getSharedPreferences("questblock", android.content.Context.MODE_PRIVATE).getInt("shadow_army", 0) }
+    val lastLevelBefore = remember { SystemEvents.lastLevel }
+    val lastCoinsBefore = remember { SystemEvents.lastCoins }
+    val lastXpBefore = remember { SystemEvents.lastXp }
+    DisposableEffect(Unit) {
+        onDispose {
+            val sp = ctx.getSharedPreferences("questblock", android.content.Context.MODE_PRIVATE)
+            ShopTheme = sp.getString("shop_theme", null) ?: original
+            SystemEvents.penaltyOn = penaltyBefore
+            SystemEvents.armyCount = armyBefore
+            sp.edit().putInt("shadow_army", armySavedBefore).apply()
+            SystemEvents.lastLevel = lastLevelBefore; SystemEvents.lastCoins = lastCoinsBefore; SystemEvents.lastXp = lastXpBefore
+            SystemEvents.cutStamp++
+        }
+    }
 
     val theme = FX_THEMES.first { it.id == sel }
     val fxOn = AnyFx.on

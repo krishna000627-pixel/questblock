@@ -52,5 +52,7 @@ fun Button(
     if (ClayOn) androidx.compose.material3.Button(onClick, modifier.clay(CLAY_BUTTON, 6), enabled, CLAY_BUTTON, colors, ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp), null, contentPadding, interactionSource, content)
     else if (FxOn) androidx.compose.material3.Button(onClick, modifier.fxButtonFx(), enabled, fxButtonShape(), fxButtonColors(colors),
         ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp), fxButtonBorder(), contentPadding, interactionSource, content)
+    else if (Fx2X.on) androidx.compose.material3.Button(onClick, modifier, enabled, fx2ButtonShape(), fx2ButtonColors(colors),
+        ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp), fx2ButtonBorder(), contentPadding, interactionSource, content)
     else androidx.compose.material3.Button(onClick, modifier, enabled, shape, colors, elevation, border, contentPadding, interactionSource, content)
 }

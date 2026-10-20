@@ -61,7 +61,7 @@ fun Card(
         modifier = modifier.fxFrame(), shape = fxShape(), colors = colors,
         elevation = CardDefaults.cardElevation(0.dp), border = fxBorder(), content = content,
     ) else if (Fx2X.on) androidx.compose.material3.Card(
-        modifier = modifier.fx2Frame(), shape = shape, colors = colors, elevation = elevation, border = border, content = content,
+        modifier = modifier.fx2Frame(), shape = fx2Shape(), colors = colors, elevation = CardDefaults.cardElevation(0.dp), border = fx2Border(), content = content,
     ) else androidx.compose.material3.Card(
         modifier = modifier, shape = shape, colors = colors, elevation = elevation, border = border, content = content,
     )
@@ -85,8 +85,8 @@ fun Card(
         onClick = onClick, modifier = modifier.fxFrame(), enabled = enabled, shape = fxShape(), colors = colors,
         elevation = CardDefaults.cardElevation(0.dp), border = fxBorder(), content = content,
     ) else if (Fx2X.on) androidx.compose.material3.Card(
-        onClick = onClick, modifier = modifier.fx2Frame(), enabled = enabled, shape = shape, colors = colors, elevation = elevation,
-        border = border, content = content,
+        onClick = onClick, modifier = modifier.fx2Frame(), enabled = enabled, shape = fx2Shape(), colors = colors, elevation = CardDefaults.cardElevation(0.dp),
+        border = fx2Border(), content = content,
     ) else androidx.compose.material3.Card(
         onClick = onClick, modifier = modifier, enabled = enabled, shape = shape, colors = colors, elevation = elevation,
         border = border, content = content,
