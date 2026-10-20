@@ -63,7 +63,17 @@ internal object ThemeSounds {
         "clay" to v(TRI, 392.0, 110, 4.5, a(0, 7), a(0, 4, 7, 11, 12), a(0, 5), a(0, 3, 0, 3)),
         "rose" to v(BELL, 440.0, 140, 3.0, a(0, 4), a(0, 4, 7, 12, 16), a(0, 7), a(0, -2, 0, -2)),
         "indigo" to v(SINE, 277.0, 160, 3.0, a(0, 7), a(0, 5, 7, 12, 17), a(0, 12), a(0, -5, 0, -5)),
+        // v277: minimalist and maximalist themes (Zen has no voice on purpose: it is silent, see SILENT)
+        "mono" to v(SINE, 880.0, 90, 6.0, a(0, 7), a(0, 7, 12), a(0), a(0, 0)),
+        "whitespace" to v(SINE, 523.0, 140, 4.0, a(0, 7), a(0, 12), a(0), a(0, 0)),
+        "carnival" to v(PULSE, 523.0, 80, 4.5, a(0, 4, 7), a(0, 4, 7, 12, 16, 19, 24), a(0, 7, 12), a(0, 12, 0, 12)),
+        "baroque" to v(PLUCK, 392.0, 110, 4.0, a(0, 4), a(0, 4, 7, 12, 16), a(0, 7, 12), a(0, -5, 0, -5)),
+        "vaporwave" to v(SINE, 330.0, 160, 3.0, a(0, 7, 11), a(0, 4, 7, 11, 14, 19), a(0, 7, 11), a(0, -7, 0, -7)),
     )
+
+    /** v277: themes that make no sound at all (Zen). play() reports them as handled so the normal recorded sounds do not play either. */
+    val SILENT: Set<String> = setOf("zen")
+    fun isSilent(shopTheme: String): Boolean = shopTheme.removePrefix("theme_") in SILENT
 
     private val cache = HashMap<String, ShortArray>()
     private val main = Handler(Looper.getMainLooper())
@@ -73,6 +83,7 @@ internal object ThemeSounds {
     /** [kind] is coin, level, chime or alarm. */
     fun play(shopTheme: String, kind: String): Boolean {
         val key = shopTheme.removePrefix("theme_")
+        if (key in SILENT) return true
         val voice = VOICES[key] ?: return false
         return runCatching {
             val pcm = synchronized(cache) { cache.getOrPut("$key/$kind") { render(voice, kind) } }

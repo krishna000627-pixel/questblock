@@ -25,6 +25,12 @@ object Haptics {
         runCatching {
             val s = sp() ?: return
             val theme = if (s.getBoolean("termux_theme", false)) "default" else (s.getString("shop_theme", "default") ?: "default")
+            if (ThemeSounds.isSilent(theme)) {
+                // v277: Zen gives one single soft haptic for every event
+                val vz = app?.getSystemService(Vibrator::class.java) ?: return
+                if (vz.hasVibrator()) vz.vibrate(VibrationEffect.createOneShot(35, 60))
+                return
+            }
             val v = ThemeSounds.voiceFor(theme)
             val n = if (v != null) when (kind) { "coin" -> v.coin.size; "level" -> v.level.size; "chime" -> v.chime.size; else -> v.alarm.size }
                 else when (kind) { "coin" -> 2; "level" -> 4; "chime" -> 1; else -> 3 }

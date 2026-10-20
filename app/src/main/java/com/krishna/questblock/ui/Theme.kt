@@ -53,6 +53,9 @@ private val SHOP_THEME_LIGHT = mapOf(
     "theme_linen" to true, "theme_sage" to true, "theme_sky" to true, "theme_lilac" to true, "theme_chalk" to true,
     "theme_clay" to true, "theme_system" to false, "theme_ninja" to true, "theme_hashira" to false, "theme_monarch" to false, "theme_gothic" to false,
     "theme_guild" to true, "theme_pixel" to false, "theme_handheld" to true, "theme_blueprint" to false,
+    // v277: Whitespace is always white; Carnival, Baroque and Vaporwave are always dark. Mono and Zen are NOT listed on purpose:
+    // they follow Dark / Light / System (pure black or white, dark or light stone).
+    "theme_whitespace" to true, "theme_carnival" to false, "theme_baroque" to false, "theme_vaporwave" to false,
 )
 fun themeForcedLight(id: String = ShopTheme): Boolean? = SHOP_THEME_LIGHT[id]
 
@@ -237,6 +240,37 @@ private val SHOP_PALETTES = mapOf(
         longArrayOf(0xFFEEF0FF, 0xFFFFFFFF, 0xFFDDE0FF, 0xFFFFFFFF, 0xFFC9CEF5),
         longArrayOf(0xFFE8EAFF, 0xFF7479B0, 0xFF9BE7FF, 0xFFC7B9FF, 0xFFFF7BD5),
         longArrayOf(0xFF12143A, 0xFF5F649A, 0xFF2A6FD6, 0xFF5A4FCF, 0xFFC23FA0)),
+    // v277: three minimalist themes (Mono, Whitespace, Zen) and three maximalist ones (Carnival, Baroque, Vaporwave)
+    "theme_mono" to ShopPalette(0xFFFF3B30,
+        longArrayOf(0xFF000000, 0xFF050505, 0xFF111111, 0xFF000000, 0xFF262626),
+        longArrayOf(0xFFFFFFFF, 0xFFFFFFFF, 0xFFF2F2F2, 0xFFFFFFFF, 0xFFE0E0E0),
+        longArrayOf(0xFFFFFFFF, 0xFF8A8A8A, 0xFFFF3B30, 0xFFE6E6E6, 0xFFFF6B5E),
+        longArrayOf(0xFF000000, 0xFF6B6B6B, 0xFFD62B1F, 0xFF1A1A1A, 0xFFD62B1F)),
+    "theme_whitespace" to ShopPalette(0xFF1A1A1A,
+        longArrayOf(0xFF0B0B0B, 0xFF111111, 0xFF1A1A1A, 0xFF0B0B0B, 0xFF262626),
+        longArrayOf(0xFFFFFFFF, 0xFFFFFFFF, 0xFFF7F7F5, 0xFFFFFFFF, 0xFFEAEAE6),
+        longArrayOf(0xFFF2F2F2, 0xFF8C8C8C, 0xFFE0A15A, 0xFFD9B26A, 0xFFBDBDBD),
+        longArrayOf(0xFF1A1A1A, 0xFF9A9A96, 0xFFB5651D, 0xFF6B6B6B, 0xFF444444)),
+    "theme_zen" to ShopPalette(0xFF8C8A82,
+        longArrayOf(0xFF1B1B1A, 0xFF232322, 0xFF2C2C2A, 0xFF252524, 0xFF353533),
+        longArrayOf(0xFFE6E4DF, 0xFFEFEDE8, 0xFFDAD8D2, 0xFFEFEDE8, 0xFFCFCDC6),
+        longArrayOf(0xFFE4E2DC, 0xFF8E8C85, 0xFFC9A27A, 0xFFCDBF9A, 0xFF9DA89A),
+        longArrayOf(0xFF2A2927, 0xFF7C7A73, 0xFF9A6A3A, 0xFF8A7A52, 0xFF6F7C6A)),
+    "theme_carnival" to ShopPalette(0xFFFF2D95,
+        longArrayOf(0xFF14052E, 0xFF1E0A42, 0xFF2A1058, 0xFF220B4A, 0xFF3C1A7A),
+        longArrayOf(0xFFFFF0F8, 0xFFFFFFFF, 0xFFFFD9EE, 0xFFFFFFFF, 0xFFF5BFE0),
+        longArrayOf(0xFFFFFFFF, 0xFFB89AE0, 0xFFFFE600, 0xFFFFE600, 0xFF00E5FF),
+        longArrayOf(0xFF2A0A3A, 0xFF8A5AA8, 0xFFC47A00, 0xFFB8800A, 0xFF0A8FB0)),
+    "theme_baroque" to ShopPalette(0xFFD4AF37,
+        longArrayOf(0xFF16070A, 0xFF20090E, 0xFF2E0E15, 0xFF260B11, 0xFF4A1A24),
+        longArrayOf(0xFFF6EBD7, 0xFFFFF8E8, 0xFFEAD9B5, 0xFFFFF8E8, 0xFFD9C08A),
+        longArrayOf(0xFFF3E6C8, 0xFFA58E6A, 0xFFE07A5F, 0xFFF0CF65, 0xFFB5324A),
+        longArrayOf(0xFF2B1810, 0xFF7A6540, 0xFFA8561B, 0xFF8A6A12, 0xFF8E1F36)),
+    "theme_vaporwave" to ShopPalette(0xFFFF71CE,
+        longArrayOf(0xFF140A2B, 0xFF1D0F3D, 0xFF2A1659, 0xFF22124A, 0xFF3D2380),
+        longArrayOf(0xFFFFEFFA, 0xFFFFFFFF, 0xFFFFD6F0, 0xFFFFFFFF, 0xFFF2BDE0),
+        longArrayOf(0xFFF4E9FF, 0xFF9F86C9, 0xFFFFFB96, 0xFFFFFB96, 0xFF01CDFE),
+        longArrayOf(0xFF2A0F46, 0xFF8A62B0, 0xFFC47A00, 0xFFB8800A, 0xFF0A8FB8)),
 )
 private fun tone(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (LightMode) it.lTone[i] else it.dTone[i]) }
 private fun themed(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (LightMode) it.light[i] else it.dark[i]) }

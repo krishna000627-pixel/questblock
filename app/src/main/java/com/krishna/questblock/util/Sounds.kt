@@ -58,7 +58,14 @@ object Sounds {
         get() = sp()?.getBoolean("snd_theme", true) ?: false
         set(v) { sp()?.edit()?.putBoolean("snd_theme", v)?.apply() }
 
+    /** v277: the Zen theme is silent, also with Theme sounds off (then the recorded sounds would play). */
+    private fun zenSilent(): Boolean {
+        val s = sp() ?: return false
+        return !s.getBoolean("termux_theme", false) && ThemeSounds.isSilent(s.getString("shop_theme", "default") ?: "default")
+    }
+
     private fun themed(kind: String): Boolean {
+        if (zenSilent()) return true
         if (!sfxOn || !themeOn) return false
         val s = sp() ?: return false
         if (s.getBoolean("termux_theme", false)) return false

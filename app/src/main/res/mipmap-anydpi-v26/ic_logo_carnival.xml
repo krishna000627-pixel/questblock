@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v277: launcher icon of the carnival theme -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_logo_carnival_bg" />
+    <foreground android:drawable="@drawable/ic_logo_carnival_fg" />
+    <monochrome android:drawable="@drawable/ic_logo_carnival_fg" />
+</adaptive-icon>

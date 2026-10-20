@@ -44,8 +44,13 @@ object AppName {
     private const val ALIAS_QB = "com.krishna.questblock.ui.AliasQuestBlock"
     private const val ALIAS_TERM = "com.krishna.questblock.ui.AliasTerminal"
     private const val PKG = "com.krishna.questblock.ui."
-    /** v250: shield logo in the Ninja, System, Paper and Gothic colours; every other theme keeps the gold one (AliasQuestBlock). */
-    private val THEME_ALIASES = mapOf("theme_ninja" to "AliasNinja", "theme_system" to "AliasSystem", "theme_paper" to "AliasPaper", "theme_gothic" to "AliasGothic")
+    /** v250: shield logo in the Ninja, System, Paper and Gothic colours; v277: Mono, Whitespace, Zen, Carnival, Baroque and Vaporwave have their own logos; every other theme keeps the gold one (AliasQuestBlock). */
+    private val THEME_ALIASES = mapOf(
+        "theme_ninja" to "AliasNinja", "theme_system" to "AliasSystem", "theme_paper" to "AliasPaper", "theme_gothic" to "AliasGothic",
+        // v277: the six minimalist and maximalist themes have their own logos (not the shield)
+        "theme_mono" to "AliasMono", "theme_whitespace" to "AliasWhitespace", "theme_zen" to "AliasZen",
+        "theme_carnival" to "AliasCarnival", "theme_baroque" to "AliasBaroque", "theme_vaporwave" to "AliasVaporwave",
+    )
     val MODES = listOf("follow", "questblock", "terminal")
 
     /** v276: the icons you can pick yourself (Flags > Theme app icon > Choose, terminal: appicon). */
@@ -56,6 +61,12 @@ object AppName {
         IconChoice("system", "System", "Shield in the System Window colours", "AliasSystem", com.krishna.questblock.R.mipmap.ic_shield_system),
         IconChoice("paper", "Paper", "Shield in the Paper colours", "AliasPaper", com.krishna.questblock.R.mipmap.ic_shield_paper),
         IconChoice("gothic", "Gothic", "Shield in the Gothic Halo colours", "AliasGothic", com.krishna.questblock.R.mipmap.ic_shield_gothic),
+        IconChoice("mono", "Mono", "A hairline ring with one red dot", "AliasMono", com.krishna.questblock.R.mipmap.ic_logo_mono),
+        IconChoice("whitespace", "Whitespace", "A single dot and a rule on white", "AliasWhitespace", com.krishna.questblock.R.mipmap.ic_logo_whitespace),
+        IconChoice("zen", "Zen", "An ens\u014D brush circle on stone", "AliasZen", com.krishna.questblock.R.mipmap.ic_logo_zen),
+        IconChoice("carnival", "Carnival", "A striped circus tent, clashing colours", "AliasCarnival", com.krishna.questblock.R.mipmap.ic_logo_carnival),
+        IconChoice("baroque", "Baroque", "A gold-leaf frame with a diamond on velvet red", "AliasBaroque", com.krishna.questblock.R.mipmap.ic_logo_baroque),
+        IconChoice("vaporwave", "Vaporwave", "A striped sun over a cyan grid", "AliasVaporwave", com.krishna.questblock.R.mipmap.ic_logo_vaporwave),
     )
     fun findChoice(id: String?): IconChoice? = CHOICES.firstOrNull { it.id == id?.lowercase() }
 

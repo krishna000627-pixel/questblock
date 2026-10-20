@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v277: background colours of the logos of the minimalist and maximalist themes (launcher icon follows the equipped theme, see AppName.applyAll) -->
+<resources>
+    <color name="ic_logo_mono_bg">#FFFFFF</color>
+    <color name="ic_logo_whitespace_bg">#FBFBF9</color>
+    <color name="ic_logo_zen_bg">#D8D5CD</color>
+    <color name="ic_logo_carnival_bg">#2A0B5E</color>
+    <color name="ic_logo_baroque_bg">#4A0B17</color>
+    <color name="ic_logo_vaporwave_bg">#1B0A3A</color>
+</resources>

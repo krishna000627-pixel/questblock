@@ -52,6 +52,12 @@ object ShopCatalog {
         ShopItem("theme_pixel",     "Pixel Arcade",     "\uD83D\uDC7E", "Dark: chunky corners, hard shadows, mono text, INSERT COIN strip", 5, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_handheld",  "Handheld",         "\uD83D\uDD79", "Light: green LCD screen, dot matrix, thick borders, mono text", 4, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_blueprint", "Blueprint",        "\uD83D\uDCD0", "Dark: white lines on blueprint blue, grid sheet, corner marks", 5, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_mono",       "Mono",             "\u26AB", "Minimal: pure white or black, one hairline accent, a 2 px XP rule, a quiet Done.", 4, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_whitespace", "Whitespace",       "\u2B1C", "Minimal: light, huge margins, no card borders, only dividers, the lock page shows the time", 4, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_zen",        "Zen",              "\u2B55", "Minimal: stone grey, an ens\u014D brush circle for Focus, no sounds, one soft haptic", 4, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_carnival",   "Carnival",         "\uD83C\uDFAA", "Maximal: clashing neon, striped cards, confetti, fireworks level up, marquee lights", 6, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_baroque",    "Baroque",          "\uD83D\uDD6F", "Maximal: gold-leaf frames, ornate dividers, a wax-seal level up, velvet red", 6, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_vaporwave",  "Vaporwave Arcade", "\uD83C\uDF34", "Maximal: pink and cyan, a sun grid, chrome text, a glitchy XP bar, INSERT COIN", 6, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_rose",   "Rose Quartz",       "🌸", "Soft pink and plum",              5, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_indigo", "Midnight Indigo",   "🌌", "Deep indigo night sky",           6, "cosmetic_theme", isConsumable = false),
         // ─── Badges ───────────────────────────────────────────────────────

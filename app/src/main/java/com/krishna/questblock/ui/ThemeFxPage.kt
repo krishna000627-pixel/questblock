@@ -100,6 +100,12 @@ private val FX_THEMES: List<FxTheme> = listOf(
     FxTheme("clay", "Clay", false, FxCoral, "puffy arc", "puffy pill", "BOING!", "Squish", "soft pill strip", "glossy highlight"),
     FxTheme("rose", "Rose", false, FxPink, "heart at the end", "thin bar, heart", "LOVELY", "Lovely", "with love strip, hearts", "heart corner"),
     FxTheme("indigo", "Indigo", false, FxPurple, "stars, crescent", "star trail", "STARGAZER", "Shooting star", "night sky strip with stars", "star corner"),
+    FxTheme("mono", "Mono", false, FxGray, "thin line", "2 px rule", "number fades in", "Done.", "hairline strip", "hairline border, one accent tick"),
+    FxTheme("whitespace", "Whitespace", false, FxGray, "hairline", "hairline rule", "two quiet lines", "Done", "no strip", "no borders, dividers only; lock page shows the time"),
+    FxTheme("zen", "Zen", false, FxGray, "ens\u014D brush circle", "brush stroke", "number in a brush circle", "Done", "ens\u014D strip", "soft pebble cards, small ens\u014D"),
+    FxTheme("carnival", "Carnival", false, FxPink, "marquee bulbs", "candy stripe bar", "fireworks, light border", "TA-DA! confetti", "bunting strip", "striped top, confetti dots"),
+    FxTheme("baroque", "Baroque", false, FxAmber, "gold double ring", "gold frame bar", "wax seal", "Gilded", "gold double rule, diamond", "gold inner frame, corner diamonds"),
+    FxTheme("vaporwave", "Vaporwave Arcade", false, FxPurple, "gradient ring, sun", "glitch bar", "sun rises over a grid", "C O M B O", "INSERT COIN strip", "gradient line, small sun"),
 )
 
 /** v257: how many theme switches are on, for the entry card on the flags page. */

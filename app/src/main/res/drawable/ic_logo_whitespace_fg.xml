@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v277: Whitespace logo: one dot and one rule, nothing else -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#111111" android:pathData="M50.8,48 a3.2,3.2 0 1,0 6.4,0 a3.2,3.2 0 1,0 -6.4,0 z" />
+    <path android:pathData="M40,63 L68,63" android:strokeColor="#111111" android:strokeWidth="1.6" android:strokeLineCap="round" />
+</vector>

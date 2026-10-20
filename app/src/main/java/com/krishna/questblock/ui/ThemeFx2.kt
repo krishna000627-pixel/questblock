@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CutCornerShape
@@ -68,7 +69,7 @@ import kotlin.math.roundToInt
  * Behind the master flag themefx and the theme's own flag fx_<theme> (Flags.EXTRA). #svg-logo  New theme with effects: add it to Fx2,
  * Fx2Now, Fx2X.WORDS, Flags.EXTRA and every `when (fx)` below, plus stripLine and cardDeco (strip and cards) and the words in Fx2Bar.
  */
-enum class Fx2 { NONE, SUNSET, OCEAN, FOREST, NEON, SCIFI, AMOLED, TERMINAL, PAPER, LINEN, SAGE, SKY, LILAC, CHALK, CLAY, ROSE, INDIGO }
+enum class Fx2 { NONE, SUNSET, OCEAN, FOREST, NEON, SCIFI, AMOLED, TERMINAL, PAPER, LINEN, SAGE, SKY, LILAC, CHALK, CLAY, ROSE, INDIGO, MONO, WHITESPACE, ZEN, CARNIVAL, BAROQUE, VAPORWAVE }
 
 val Fx2Now: Fx2 get() = if (TermuxOn) Fx2.NONE else when (ShopTheme) {
     "theme_sunset" -> Fx2.SUNSET
@@ -87,6 +88,12 @@ val Fx2Now: Fx2 get() = if (TermuxOn) Fx2.NONE else when (ShopTheme) {
     "theme_clay" -> Fx2.CLAY
     "theme_rose" -> Fx2.ROSE
     "theme_indigo" -> Fx2.INDIGO
+    "theme_mono" -> Fx2.MONO
+    "theme_whitespace" -> Fx2.WHITESPACE
+    "theme_zen" -> Fx2.ZEN
+    "theme_carnival" -> Fx2.CARNIVAL
+    "theme_baroque" -> Fx2.BAROQUE
+    "theme_vaporwave" -> Fx2.VAPORWAVE
     else -> Fx2.NONE
 }
 
@@ -111,6 +118,13 @@ object Fx2X {
         Fx2.CLAY to mapOf("locked" to "Squished shut", "done" to "Squish", "level" to "BOING!", "ring" to "left"),
         Fx2.ROSE to mapOf("locked" to "Heart closed", "done" to "\u2665 Lovely", "level" to "LOVELY", "ring" to "with love"),
         Fx2.INDIGO to mapOf("locked" to "The night is closed", "done" to "\u2726 Shooting star", "level" to "STARGAZER", "ring" to "until dawn"),
+        // v277: the minimalist and maximalist themes
+        Fx2.MONO to mapOf("locked" to "Locked", "done" to "Done.", "level" to "", "ring" to "left"),
+        Fx2.WHITESPACE to mapOf("locked" to "Closed", "done" to "Done", "level" to "Level up", "ring" to "left"),
+        Fx2.ZEN to mapOf("locked" to "Rest", "done" to "Done", "level" to "Rise", "ring" to "of stillness"),
+        Fx2.CARNIVAL to mapOf("locked" to "The show is over", "done" to "TA-DA!", "level" to "LEVEL UP!", "ring" to "until showtime"),
+        Fx2.BAROQUE to mapOf("locked" to "Sealed", "done" to "Gilded", "level" to "ASCENDED", "ring" to "until the final act"),
+        Fx2.VAPORWAVE to mapOf("locked" to "INSERT COIN", "done" to "C O M B O", "level" to "LEVEL UP", "ring" to "T I M E"),
     )
 
     fun word(key: String, default: String): String = if (!on) default else WORDS[Fx2Now]?.get(key) ?: default
@@ -167,9 +181,27 @@ private fun DrawScope.padlock(c: Color) {
     drawCircle(ColorBg, w * 0.05f, Offset(w * 0.5f, h * 0.62f))
 }
 
+/** v277: the clashing colour set of Carnival (and the cyan of Vaporwave comes from ColorAccent). */
+private fun carnivalSet(c: Color, coin: Color): List<Color> = listOf(c, coin, ColorAccent, Color(0xFF7CFF3B))
+
+private fun DrawScope.diamond(at: Offset, s: Float, col: Color) {
+    val p = Path().apply { moveTo(at.x, at.y - s); lineTo(at.x + s * 0.7f, at.y); lineTo(at.x, at.y + s); lineTo(at.x - s * 0.7f, at.y); close() }
+    drawPath(p, col)
+}
+
+/** v277: a one-line grid floor with a half sun on the horizon (Vaporwave page background and level up). [y0] is the horizon. */
+private fun DrawScope.sunGrid(y0: Float, pink: Color, cyan: Color, yellow: Color, a: Float = 1f) {
+    val w = size.width; val h = size.height
+    val r = 70.dp.toPx()
+    drawArc(Brush.verticalGradient(listOf(yellow.copy(alpha = 0.26f * a), pink.copy(alpha = 0.26f * a)), startY = y0 - r, endY = y0), 180f, 180f, true, Offset(w / 2 - r, y0 - r), Size(r * 2, r * 2))
+    for (k in 1..7) { val yy = y0 + (h - y0) * (k / 7f) * (k / 7f); drawLine(cyan.copy(alpha = 0.20f * a), Offset(0f, yy), Offset(w, yy), 1f) }
+    for (i in 0..8) drawLine(cyan.copy(alpha = 0.16f * a), Offset(w / 2, y0), Offset(w / 2 + (i - 4) * w / 4f, h), 1f)
+    drawLine(cyan.copy(alpha = 0.35f * a), Offset(0f, y0), Offset(w, y0), 1f)
+}
+
 private fun fontOf(fx: Fx2): FontFamily = when (fx) {
-    Fx2.TERMINAL, Fx2.SCIFI -> FontFamily.Monospace
-    Fx2.PAPER, Fx2.ROSE -> FontFamily.Serif
+    Fx2.TERMINAL, Fx2.SCIFI, Fx2.MONO, Fx2.VAPORWAVE -> FontFamily.Monospace
+    Fx2.PAPER, Fx2.ROSE, Fx2.ZEN, Fx2.BAROQUE -> FontFamily.Serif
     Fx2.CHALK -> FontFamily.Cursive
     else -> FontFamily.Default
 }
@@ -255,6 +287,35 @@ private fun DrawScope.stripLine(fx: Fx2, c: Color, coin: Color, ink: Color) {
             drawLine(c.copy(alpha = 0.35f), Offset(0f, y), Offset(w, y), 1f)
             for (i in 0 until 14) star4(Offset(w * (((i * 37 + 9) % 100) / 100f), h * (0.2f + 0.5f * (((i * 53 + 17) % 100) / 100f))), (1f + (i % 3) * 0.6f).dp.toPx(), coin.copy(alpha = 0.6f))
         }
+        // v277: minimalist and maximalist strips
+        Fx2.MONO -> {
+            drawLine(ink.copy(alpha = 0.22f), Offset(0f, y), Offset(w, y), 1f)
+            drawLine(c, Offset(0f, y), Offset(w * 0.12f, y), 1f)
+        }
+        Fx2.WHITESPACE -> drawLine(ink.copy(alpha = 0.10f), Offset(0f, y), Offset(w, y), 1f)
+        Fx2.ZEN -> {
+            val r = 4.dp.toPx(); val ctr = Offset(w / 2, h - 7.dp.toPx())
+            drawArc(ink.copy(alpha = 0.55f), 30f, 300f, false, Offset(ctr.x - r, ctr.y - r), Size(r * 2, r * 2), style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
+        }
+        Fx2.CARNIVAL -> {
+            val set = carnivalSet(c, coin)
+            drawLine(ink.copy(alpha = 0.45f), Offset(0f, 1.dp.toPx()), Offset(w, 1.dp.toPx()), 1f)
+            val pw = 16.dp.toPx(); var x = 0f; var i = 0
+            while (x < w) {
+                val p = Path().apply { moveTo(x, 1.dp.toPx()); lineTo(x + pw, 1.dp.toPx()); lineTo(x + pw / 2, h - 1.dp.toPx()); close() }
+                drawPath(p, set[i % set.size].copy(alpha = 0.9f)); x += pw; i++
+            }
+        }
+        Fx2.BAROQUE -> {
+            drawLine(c.copy(alpha = 0.8f), Offset(0f, y), Offset(w, y), 1.dp.toPx())
+            drawLine(c.copy(alpha = 0.4f), Offset(0f, y - 4.dp.toPx()), Offset(w, y - 4.dp.toPx()), 1f)
+            diamond(Offset(w / 2, y - 2.dp.toPx()), 5.dp.toPx(), coin)
+            diamond(Offset(w / 2 - 20.dp.toPx(), y - 2.dp.toPx()), 2.5.dp.toPx(), c.copy(alpha = 0.7f)); diamond(Offset(w / 2 + 20.dp.toPx(), y - 2.dp.toPx()), 2.5.dp.toPx(), c.copy(alpha = 0.7f))
+        }
+        Fx2.VAPORWAVE -> {
+            drawLine(Brush.horizontalGradient(listOf(c, ColorAccent)), Offset(0f, y - 1.dp.toPx()), Offset(w, y - 1.dp.toPx()), 2.dp.toPx())
+            val r = 6.dp.toPx(); drawArc(Brush.verticalGradient(listOf(coin, c), startY = h - r, endY = h), 180f, 180f, true, Offset(w / 2 - r, h - r), Size(r * 2, r * 2))
+        }
         else -> Unit
     }
 }
@@ -288,13 +349,19 @@ fun Fx2Bar() {
         Fx2.CLAY -> { l = "SOFT AND SQUISHY"; r = date }
         Fx2.ROSE -> { l = "WITH LOVE"; r = date }
         Fx2.INDIGO -> { l = "NIGHT SKY"; r = "STARGAZING" }
+        Fx2.MONO -> { l = "mono"; r = date }
+        Fx2.WHITESPACE -> { l = ""; r = "" }
+        Fx2.ZEN -> { l = "STILL"; r = "BREATHE" }
+        Fx2.CARNIVAL -> { l = "STEP RIGHT UP"; r = "ADMIT ONE" }
+        Fx2.BAROQUE -> { l = "THE GRAND SALON"; r = date }
+        Fx2.VAPORWAVE -> { l = "INSERT COIN"; r = "CREDIT 00" }
         else -> {
             Spacer(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding())
             return
         }
     }
     val fam = fontOf(fx)
-    val lc = if (fx == Fx2.NEON) lerp(c, Color.White, 0.5f) else c
+    val lc = if (fx == Fx2.NEON || fx == Fx2.CARNIVAL || fx == Fx2.VAPORWAVE) lerp(c, Color.White, 0.5f) else c
     // v262: the words sit in their own row and the drawing in a band under them, so nothing is drawn over the words
     Column(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().height(20.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -378,6 +445,29 @@ private fun DrawScope.cardDeco(fx: Fx2, c: Color, coin: Color, ink: Color) {
             star4(Offset(w - m - 16.dp.toPx(), m + 8.dp.toPx()), 2.5.dp.toPx(), coin.copy(alpha = 0.5f))
             star4(Offset(w - m - 10.dp.toPx(), m + 16.dp.toPx()), 2.dp.toPx(), c.copy(alpha = 0.5f))
         }
+        // v277: minimalist and maximalist cards
+        Fx2.MONO -> drawLine(c, Offset(m, 0.5f), Offset(m + 26.dp.toPx(), 0.5f), 1.dp.toPx())
+        Fx2.WHITESPACE -> drawLine(ink.copy(alpha = 0.10f), Offset(0f, h - 0.5f), Offset(w, h - 0.5f), 1f)
+        Fx2.ZEN -> {
+            val r = 6.dp.toPx()
+            drawArc(ink.copy(alpha = 0.35f), 30f, 300f, false, Offset(w - m - r * 2, m - 2.dp.toPx()), Size(r * 2, r * 2), style = Stroke(1.3.dp.toPx(), cap = StrokeCap.Round))
+        }
+        Fx2.CARNIVAL -> {
+            val set = carnivalSet(c, coin)
+            var x = m; var i = 0
+            while (x + 10.dp.toPx() <= w - m) { drawRect(set[i % 2].copy(alpha = 0.95f), Offset(x, 0f), Size(10.dp.toPx(), 5.dp.toPx())); x += 10.dp.toPx(); i++ }
+            for (k in 0 until 7) drawCircle(set[(k + 1) % set.size].copy(alpha = 0.7f), (1.6f + (k % 3) * 0.7f).dp.toPx(), Offset(w - m - k * 9.dp.toPx(), h - 9.dp.toPx() - (k * 7 % 14).dp.toPx()))
+        }
+        Fx2.BAROQUE -> {
+            drawRoundRect(c.copy(alpha = 0.55f), Offset(5.dp.toPx(), 5.dp.toPx()), Size(w - 10.dp.toPx(), h - 10.dp.toPx()), CornerRadius(2.dp.toPx()), style = Stroke(1.dp.toPx()))
+            val q = 5.dp.toPx()
+            for (at in listOf(Offset(q, q), Offset(w - q, q), Offset(q, h - q), Offset(w - q, h - q))) diamond(at, 3.5.dp.toPx(), coin)
+        }
+        Fx2.VAPORWAVE -> {
+            drawLine(Brush.horizontalGradient(listOf(c, ColorAccent), m, w - m), Offset(m, h - 1.dp.toPx()), Offset(w - m, h - 1.dp.toPx()), 2.dp.toPx())
+            val r = 6.dp.toPx()
+            drawArc(Brush.verticalGradient(listOf(coin, c), startY = m, endY = m + r), 180f, 180f, true, Offset(w - m - r * 2, m), Size(r * 2, r * 2))
+        }
         else -> Unit
     }
 }
@@ -400,6 +490,12 @@ internal fun fx2Shape(): Shape = when (Fx2Now) {
     Fx2.CLAY -> RoundedCornerShape(22.dp)
     Fx2.ROSE -> RoundedCornerShape(22.dp)
     Fx2.INDIGO -> RoundedCornerShape(12.dp)
+    Fx2.MONO -> RoundedCornerShape(2.dp)
+    Fx2.WHITESPACE -> RectangleShape
+    Fx2.ZEN -> RoundedCornerShape(26.dp)
+    Fx2.CARNIVAL -> RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomEnd = 4.dp, bottomStart = 18.dp)
+    Fx2.BAROQUE -> CutCornerShape(10.dp)
+    Fx2.VAPORWAVE -> RoundedCornerShape(14.dp)
     Fx2.NONE -> RoundedCornerShape(12.dp)
 }
 
@@ -424,6 +520,12 @@ internal fun fx2Border(): BorderStroke? {
         Fx2.CLAY -> null
         Fx2.ROSE -> BorderStroke(1.dp, c.copy(alpha = 0.5f))
         Fx2.INDIGO -> BorderStroke(1.dp, c.copy(alpha = 0.5f))
+        Fx2.MONO -> BorderStroke(1.dp, ink.copy(alpha = 0.2f))
+        Fx2.WHITESPACE -> null
+        Fx2.ZEN -> BorderStroke(1.dp, ink.copy(alpha = 0.12f))
+        Fx2.CARNIVAL -> BorderStroke(2.dp, ColorCoin)
+        Fx2.BAROQUE -> BorderStroke(2.dp, c)
+        Fx2.VAPORWAVE -> BorderStroke(1.5.dp, Brush.horizontalGradient(listOf(c, ColorAccent)))
         Fx2.NONE -> null
     }
 }
@@ -444,6 +546,9 @@ internal fun Modifier.fx2Frame(): Modifier {
         Fx2.CLAY -> this.shadow(8.dp, shape, ambientColor = Color(0x40000000), spotColor = Color(0x40000000))
         Fx2.ROSE -> this.shadow(5.dp, shape, ambientColor = c.copy(alpha = 0.3f), spotColor = c.copy(alpha = 0.3f))
         Fx2.INDIGO -> this.shadow(6.dp, shape, ambientColor = c.copy(alpha = 0.3f), spotColor = c.copy(alpha = 0.3f))
+        Fx2.CARNIVAL -> this.shadow(8.dp, shape, ambientColor = c.copy(alpha = 0.6f), spotColor = ColorAccent.copy(alpha = 0.6f))
+        Fx2.BAROQUE -> this.shadow(8.dp, shape, ambientColor = c.copy(alpha = 0.4f), spotColor = c.copy(alpha = 0.4f))
+        Fx2.VAPORWAVE -> this.shadow(8.dp, shape, ambientColor = c.copy(alpha = 0.5f), spotColor = ColorAccent.copy(alpha = 0.5f))
         else -> this
     }
     return base.drawWithContent { drawContent(); cardDeco(fx, c, coin, ink) }
@@ -461,16 +566,21 @@ internal fun fx2ButtonShape(): Shape = when (Fx2Now) {
     Fx2.LINEN -> RoundedCornerShape(8.dp)
     Fx2.CHALK -> RoundedCornerShape(3.dp)
     Fx2.INDIGO -> RoundedCornerShape(10.dp)
+    Fx2.MONO -> RoundedCornerShape(2.dp)
+    Fx2.WHITESPACE, Fx2.ZEN -> RoundedCornerShape(50)
+    Fx2.CARNIVAL -> RoundedCornerShape(12.dp)
+    Fx2.BAROQUE -> CutCornerShape(8.dp)
+    Fx2.VAPORWAVE -> CutCornerShape(topStart = 0.dp, topEnd = 10.dp, bottomEnd = 0.dp, bottomStart = 10.dp)
     Fx2.NONE -> RoundedCornerShape(6.dp)
 }
 
-private fun outlinedFx2(): Boolean = when (Fx2Now) { Fx2.NEON, Fx2.SCIFI, Fx2.AMOLED, Fx2.TERMINAL, Fx2.CHALK -> true; else -> false }
+private fun outlinedFx2(): Boolean = when (Fx2Now) { Fx2.NEON, Fx2.SCIFI, Fx2.AMOLED, Fx2.TERMINAL, Fx2.CHALK, Fx2.MONO, Fx2.WHITESPACE, Fx2.ZEN -> true; else -> false }
 
 /** v262: see-through outlined buttons for Neon, Sci-Fi, AMOLED, Terminal and Chalk, the normal solid ones for the rest. */
 @Composable
 internal fun fx2ButtonColors(base: ButtonColors): ButtonColors {
     if (!outlinedFx2()) return base
-    val a = if (Fx2Now == Fx2.CHALK) ColorText else ColorPrimary
+    val a = if (Fx2Now == Fx2.CHALK || Fx2Now == Fx2.MONO || Fx2Now == Fx2.WHITESPACE || Fx2Now == Fx2.ZEN) ColorText else ColorPrimary
     return ButtonDefaults.buttonColors(
         containerColor = a.copy(alpha = 0.14f), contentColor = a,
         disabledContainerColor = ColorMuted.copy(alpha = 0.10f), disabledContentColor = ColorMuted.copy(alpha = 0.6f),
@@ -486,6 +596,12 @@ internal fun fx2ButtonBorder(): BorderStroke? {
         Fx2.CHALK -> BorderStroke(1.5.dp, ink.copy(alpha = 0.7f))
         Fx2.PAPER -> BorderStroke(1.dp, ink.copy(alpha = 0.6f))
         Fx2.INDIGO -> BorderStroke(1.dp, c.copy(alpha = 0.6f))
+        Fx2.MONO -> BorderStroke(1.dp, ink)
+        Fx2.WHITESPACE -> BorderStroke(1.dp, ink.copy(alpha = 0.5f))
+        Fx2.ZEN -> BorderStroke(1.dp, ink.copy(alpha = 0.4f))
+        Fx2.CARNIVAL -> BorderStroke(2.dp, ColorCoin)
+        Fx2.BAROQUE -> BorderStroke(1.dp, lerp(c, Color.White, 0.4f))
+        Fx2.VAPORWAVE -> BorderStroke(1.dp, ColorAccent)
         else -> null
     }
 }
@@ -559,6 +675,18 @@ internal fun Modifier.fx2Background(): Modifier {
                 drawCircle(c.copy(alpha = 0.06f), 120.dp.toPx(), Offset(size.width * 0.3f, size.height * 0.95f))
             }
             Fx2.ROSE -> for (i in 0 until 10) heart(Offset(size.width * (((i * 43 + 9) % 100) / 100f), size.height * (((i * 61 + 23) % 100) / 100f)), (6 + i % 3 * 2).dp.toPx(), c.copy(alpha = 0.07f))
+            // v277: Mono and Whitespace keep the page plain on purpose
+            Fx2.ZEN -> {
+                for (i in 0 until 40) drawCircle(ink.copy(alpha = 0.04f), (0.8f + (i % 3) * 0.6f).dp.toPx(), Offset(size.width * (((i * 41 + 7) % 100) / 100f), size.height * (((i * 59 + 23) % 100) / 100f)))
+                val r = 120.dp.toPx()
+                drawArc(ink.copy(alpha = 0.05f), 30f, 300f, false, Offset(size.width * 0.85f - r, size.height * 0.9f - r), Size(r * 2, r * 2), style = Stroke(16.dp.toPx(), cap = StrokeCap.Round))
+            }
+            Fx2.CARNIVAL -> {
+                val set = carnivalSet(c, ColorCoin)
+                for (i in 0 until 34) drawCircle(set[i % set.size].copy(alpha = 0.13f), (2f + (i % 3)).dp.toPx(), Offset(size.width * (((i * 37 + 11) % 100) / 100f), size.height * (((i * 53 + 7) % 100) / 100f)))
+            }
+            Fx2.BAROQUE -> drawCircle(Brush.radialGradient(listOf(c.copy(alpha = 0.12f), Color.Transparent), Offset(size.width / 2, 0f), 280.dp.toPx()), 280.dp.toPx(), Offset(size.width / 2, 0f))
+            Fx2.VAPORWAVE -> sunGrid(size.height * 0.78f, c, ColorAccent, ColorCoin)
             else -> Unit
         }
     }
@@ -721,6 +849,50 @@ internal fun Fx2FocusRing(frac: Float, left: String) {
                     drawCircle(coin, 11.dp.toPx(), e)
                     drawCircle(ColorBg, 9.dp.toPx(), Offset(e.x + 5.dp.toPx(), e.y - 4.dp.toPx()))
                 }
+                // v277: minimalist and maximalist Focus rings
+                Fx2.MONO -> {
+                    arc(ink.copy(alpha = 0.15f), 360f, 1.dp.toPx())
+                    arc(ink, sweep, 1.5.dp.toPx())
+                    drawCircle(c, 3.dp.toPx(), polar(ctr, r, end))
+                }
+                Fx2.WHITESPACE -> {
+                    arc(ink.copy(alpha = 0.10f), 360f, 1.dp.toPx())
+                    arc(ink, sweep, 2.dp.toPx(), StrokeCap.Round)
+                }
+                Fx2.ZEN -> {
+                    // an ensō: a brush circle of three overlapping strokes that closes as time passes
+                    arc(ink.copy(alpha = 0.06f), 360f, 2.dp.toPx())
+                    arc(ink.copy(alpha = 0.85f), sweep, 10.dp.toPx(), StrokeCap.Round)
+                    arc(ink.copy(alpha = 0.45f), sweep * 0.97f, 5.dp.toPx(), StrokeCap.Round, rr = r + 3.dp.toPx())
+                    arc(ink.copy(alpha = 0.30f), sweep * 0.90f, 3.dp.toPx(), StrokeCap.Round, rr = r - 4.dp.toPx())
+                    drawCircle(ink, 5.dp.toPx(), polar(ctr, r, end))
+                }
+                Fx2.CARNIVAL -> {
+                    val set = carnivalSet(c, coin)
+                    arc(c.copy(alpha = 0.18f), 360f, 4.dp.toPx())
+                    arc(c, sweep, 4.dp.toPx())
+                    for (i in 0 until 40) {
+                        val lit = i / 40f <= f
+                        drawCircle(set[i % set.size].copy(alpha = if (lit) 1f else 0.2f), if (lit) 4.5.dp.toPx() else 3.dp.toPx(), polar(ctr, r + 14.dp.toPx(), -90f + i * 9f))
+                    }
+                }
+                Fx2.BAROQUE -> {
+                    arc(c.copy(alpha = 0.18f), 360f, 3.dp.toPx())
+                    arc(c, sweep, 5.dp.toPx(), StrokeCap.Round)
+                    arc(c.copy(alpha = 0.40f), 360f, 1.dp.toPx(), rr = r + 9.dp.toPx())
+                    for (i in 0 until 24) diamond(polar(ctr, r + 9.dp.toPx(), -90f + i * 15f), 3.dp.toPx(), if (i / 24f <= f) coin else c.copy(alpha = 0.25f))
+                    val e = polar(ctr, r, end)
+                    drawPath(hexPath(e, 9.dp.toPx()), coin)
+                    drawPath(hexPath(e, 5.dp.toPx()), ColorBg)
+                }
+                Fx2.VAPORWAVE -> {
+                    val sweepBrush = Brush.sweepGradient(listOf(c, ColorAccent, c), ctr)
+                    arc(c.copy(alpha = 0.15f), 360f, 10.dp.toPx())
+                    drawArc(sweepBrush, -90f, sweep, false, tl, sz, style = Stroke(10.dp.toPx(), cap = StrokeCap.Round))
+                    drawCircle(ColorAccent.copy(alpha = 0.35f), r - 24.dp.toPx(), ctr, style = Stroke(1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()), 0f)))
+                    val e = polar(ctr, r, end)
+                    drawCircle(coin.copy(alpha = 0.3f), 16.dp.toPx(), e); drawCircle(Brush.verticalGradient(listOf(coin, c), e.y - 9.dp.toPx(), e.y + 9.dp.toPx()), 9.dp.toPx(), e)
+                }
                 else -> Unit
             }
         }
@@ -728,10 +900,11 @@ internal fun Fx2FocusRing(frac: Float, left: String) {
             val txt = if (fx == Fx2.TERMINAL) "> $left" else left
             val fs = when (fx) {
                 Fx2.TERMINAL, Fx2.SCIFI -> 40.sp
-                Fx2.PAPER, Fx2.ROSE, Fx2.CHALK -> 50.sp
+                Fx2.MONO, Fx2.VAPORWAVE -> 44.sp
+                Fx2.PAPER, Fx2.ROSE, Fx2.CHALK, Fx2.ZEN, Fx2.BAROQUE -> 50.sp
                 else -> 54.sp
             }
-            Text(txt, fontSize = fs, fontWeight = if (fx == Fx2.AMOLED) FontWeight.ExtraLight else FontWeight.Black, fontFamily = fontOf(fx), color = ink)
+            Text(txt, fontSize = fs, fontWeight = if (fx == Fx2.AMOLED || fx == Fx2.MONO || fx == Fx2.WHITESPACE || fx == Fx2.ZEN) FontWeight.ExtraLight else FontWeight.Black, fontFamily = fontOf(fx), color = ink)
             Text(Fx2X.word("ring", "remaining"), color = ColorMuted, fontSize = 12.sp, letterSpacing = 1.sp, fontFamily = fontOf(fx))
         }
     }
@@ -754,6 +927,10 @@ internal fun Fx2XpBar(fraction: Float, xp: Int) {
     }
     val h = when (fx) {
         Fx2.CLAY -> 22.dp
+        Fx2.MONO, Fx2.WHITESPACE -> 12.dp
+        Fx2.CARNIVAL -> 28.dp
+        Fx2.VAPORWAVE -> 22.dp
+        Fx2.ZEN, Fx2.BAROQUE -> 24.dp
         Fx2.SAGE -> 30.dp
         Fx2.FOREST, Fx2.LINEN, Fx2.LILAC, Fx2.SKY, Fx2.ROSE, Fx2.INDIGO, Fx2.CHALK, Fx2.PAPER -> 24.dp
         else -> 20.dp
@@ -852,6 +1029,62 @@ internal fun Fx2XpBar(fraction: Float, xp: Int) {
                 while (x < fw - 8.dp.toPx()) { star4(Offset(x, mid), 4.dp.toPx(), coin); x += 36.dp.toPx() }
                 star4(Offset(fw.coerceIn(8.dp.toPx(), w - 8.dp.toPx()), mid), 8.dp.toPx(), coin)
             }
+            // v277: minimalist and maximalist XP bars
+            Fx2.MONO -> {
+                // a 2 px rule with one accent tick at the end
+                drawLine(ink.copy(alpha = 0.15f), Offset(0f, mid), Offset(w, mid), 1f)
+                drawLine(ink, Offset(0f, mid), Offset(fw, mid), 2f)
+                drawLine(c, Offset(fw.coerceIn(1f, w - 1f), mid - 5.dp.toPx()), Offset(fw.coerceIn(1f, w - 1f), mid + 5.dp.toPx()), 1.5.dp.toPx())
+            }
+            Fx2.WHITESPACE -> {
+                drawLine(ink.copy(alpha = 0.10f), Offset(0f, mid), Offset(w, mid), 1.dp.toPx())
+                drawLine(ink, Offset(0f, mid), Offset(fw, mid), 2.dp.toPx())
+            }
+            Fx2.ZEN -> {
+                // one brush stroke that grows: a heavy line, a lighter dry-brush line above and a faint one below
+                drawLine(ink.copy(alpha = 0.08f), Offset(0f, mid), Offset(w, mid), 2.dp.toPx(), StrokeCap.Round)
+                if (f > 0f) {
+                    drawLine(ink.copy(alpha = 0.8f), Offset(0f, mid), Offset(fw, mid), 6.dp.toPx(), StrokeCap.Round)
+                    drawLine(ink.copy(alpha = 0.4f), Offset(0f, mid - 2.dp.toPx()), Offset(fw * 0.97f, mid - 2.dp.toPx()), 2.5.dp.toPx(), StrokeCap.Round)
+                    drawLine(ink.copy(alpha = 0.3f), Offset(fw * 0.1f, mid + 2.5.dp.toPx()), Offset(fw * 0.9f, mid + 2.5.dp.toPx()), 2.dp.toPx(), StrokeCap.Round)
+                    drawCircle(ink, 3.5.dp.toPx(), Offset(fw.coerceIn(4.dp.toPx(), w - 4.dp.toPx()), mid))
+                }
+            }
+            Fx2.CARNIVAL -> {
+                // a candy-striped bar with marquee bulbs along the top that light up as you pass them
+                val set = carnivalSet(c, coin)
+                val bh = 12.dp.toPx(); val y = mid - bh / 2 + 3.dp.toPx()
+                drawRoundRect(c.copy(alpha = 0.2f), Offset(0f, y), Size(w, bh), CornerRadius(bh / 2))
+                if (f > 0f) {
+                    val cw = maxOf(fw, bh)
+                    val bar = Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, y, cw, y + bh, CornerRadius(bh / 2))) }
+                    clipPath(bar) {
+                        drawRect(Brush.horizontalGradient(listOf(c, coin, ColorAccent), 0f, maxOf(cw, 1f)), Offset(0f, y), Size(cw, bh))
+                        var x = -bh
+                        while (x < cw) { drawLine(Color.White.copy(alpha = 0.28f), Offset(x, y + bh), Offset(x + bh, y), 3.dp.toPx()); x += 11.dp.toPx() }
+                    }
+                }
+                var x = 6.dp.toPx(); var i = 0
+                while (x < w) { drawCircle(set[i % set.size].copy(alpha = if (x <= fw) 1f else 0.25f), 2.dp.toPx(), Offset(x, 3.dp.toPx())); x += 12.dp.toPx(); i++ }
+            }
+            Fx2.BAROQUE -> {
+                val bh = 12.dp.toPx(); val y = mid - bh / 2
+                drawRoundRect(c.copy(alpha = 0.55f), Offset(0f, y), Size(w, bh), CornerRadius(2.dp.toPx()), style = Stroke(1.dp.toPx()))
+                if (f > 0f) drawRoundRect(Brush.horizontalGradient(listOf(lerp(c, Color.Black, 0.35f), c, lerp(c, Color.White, 0.5f)), 0f, maxOf(fw, 1f)), Offset(2.dp.toPx(), y + 2.dp.toPx()), Size(maxOf(fw - 4.dp.toPx(), 0f), bh - 4.dp.toPx()), CornerRadius(1.dp.toPx()))
+                for (k in 1..3) diamond(Offset(w * k / 4f, mid), 3.dp.toPx(), if (f >= k / 4f) ColorBg.copy(alpha = 0.8f) else c.copy(alpha = 0.6f))
+                diamond(Offset(fw.coerceIn(8.dp.toPx(), w - 8.dp.toPx()), mid), 8.dp.toPx(), coin)
+            }
+            Fx2.VAPORWAVE -> {
+                val bh = 10.dp.toPx(); val y = mid - bh / 2
+                drawRoundRect(c.copy(alpha = 0.15f), Offset(0f, y), Size(w, bh), CornerRadius(2.dp.toPx()))
+                if (f > 0f) {
+                    drawRoundRect(Brush.horizontalGradient(listOf(c, ColorAccent), 0f, maxOf(fw, 1f)), Offset(0f, y), Size(maxOf(fw, 4.dp.toPx()), bh), CornerRadius(2.dp.toPx()))
+                    // glitch: two slices of the fill drawn shifted, in the other colour
+                    drawRect(ColorAccent.copy(alpha = 0.7f), Offset(fw * 0.30f + 3.dp.toPx(), y - 2.dp.toPx()), Size(fw * 0.12f, 3.dp.toPx()))
+                    drawRect(c.copy(alpha = 0.7f), Offset(fw * 0.62f - 3.dp.toPx(), y + bh - 1.dp.toPx()), Size(fw * 0.10f, 3.dp.toPx()))
+                    drawCircle(coin, 4.dp.toPx(), Offset(fw.coerceIn(5.dp.toPx(), w - 5.dp.toPx()), mid))
+                }
+            }
             else -> Unit
         }
     }
@@ -940,10 +1173,40 @@ internal fun Fx2LockEmblem(content: @Composable () -> Unit) {
                     val m = Offset(ctr.x, ctr.y - full + 18.dp.toPx())
                     drawCircle(coin, 10.dp.toPx(), m); drawCircle(ColorBg, 8.dp.toPx(), Offset(m.x + 4.dp.toPx(), m.y - 3.dp.toPx()))
                 }
+                // v277: minimalist and maximalist emblems
+                Fx2.MONO -> {
+                    drawCircle(ink.copy(alpha = 0.6f), full - 4.dp.toPx(), ctr, style = Stroke(1.dp.toPx()))
+                    drawCircle(c, 3.dp.toPx(), polar(ctr, full - 4.dp.toPx(), -45f))
+                }
+                Fx2.WHITESPACE -> drawCircle(ink.copy(alpha = 0.15f), full - 4.dp.toPx(), ctr, style = Stroke(1.dp.toPx()))
+                Fx2.ZEN -> {
+                    val rr = full - 8.dp.toPx()
+                    drawArc(ink.copy(alpha = 0.8f), -60f, 320f, false, Offset(ctr.x - rr, ctr.y - rr), Size(rr * 2, rr * 2), style = Stroke(6.dp.toPx(), cap = StrokeCap.Round))
+                    drawArc(ink.copy(alpha = 0.35f), -50f, 290f, false, Offset(ctr.x - rr + 4.dp.toPx(), ctr.y - rr + 4.dp.toPx()), Size((rr - 4.dp.toPx()) * 2, (rr - 4.dp.toPx()) * 2), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+                }
+                Fx2.CARNIVAL -> {
+                    val set = carnivalSet(c, coin)
+                    drawCircle(c.copy(alpha = 0.4f), full - 8.dp.toPx(), ctr, style = Stroke(2.dp.toPx()))
+                    for (i in 0 until 16) drawCircle(set[i % set.size], 5.dp.toPx(), polar(ctr, full - 8.dp.toPx(), -90f + i * 22.5f))
+                }
+                Fx2.BAROQUE -> {
+                    drawCircle(c, full - 6.dp.toPx(), ctr, style = Stroke(3.dp.toPx()))
+                    drawCircle(c.copy(alpha = 0.5f), full - 13.dp.toPx(), ctr, style = Stroke(1.dp.toPx()))
+                    for (i in 0 until 8) diamond(polar(ctr, full - 6.dp.toPx(), -90f + i * 45f), 6.dp.toPx(), coin)
+                }
+                Fx2.VAPORWAVE -> {
+                    drawCircle(Brush.sweepGradient(listOf(c, ColorAccent, c), ctr), full - 6.dp.toPx(), ctr, style = Stroke(3.dp.toPx()))
+                    val rr = 10.dp.toPx()
+                    drawArc(Brush.verticalGradient(listOf(coin, c), ctr.y + full - 34.dp.toPx(), ctr.y + full - 24.dp.toPx()), 180f, 180f, true, Offset(ctr.x - rr, ctr.y + full - 34.dp.toPx()), Size(rr * 2, rr * 2))
+                }
                 else -> Unit
             }
         }
-        content()
+        if (fx == Fx2.WHITESPACE) {
+            // the lock page of Whitespace shows the time instead of the app picture
+            val now = remember { java.time.LocalTime.now() }
+            Text("%02d:%02d".format(now.hour, now.minute), color = ink, fontSize = 30.sp, fontWeight = FontWeight.ExtraLight, letterSpacing = 2.sp)
+        } else content()
         Canvas(Modifier.size(28.dp).align(Alignment.BottomEnd)) { padlock(c) }
     }
 }
@@ -978,6 +1241,12 @@ private fun Fx2QuestPop(fx: Fx2, coins: Int, xp: Int) {
         Fx2.CLAY -> PopLook(RoundedCornerShape(24.dp), 0.dp, c, c.copy(alpha = 0.2f), ink, c)
         Fx2.ROSE -> PopLook(RoundedCornerShape(50), 1.dp, c, c.copy(alpha = 0.18f), ink, c)
         Fx2.INDIGO -> PopLook(RoundedCornerShape(12.dp), 1.dp, c, ColorSurface, ink, c)
+        Fx2.MONO -> PopLook(RoundedCornerShape(2.dp), 1.dp, ink, bg, ink, ColorMuted, mono = true)
+        Fx2.WHITESPACE -> PopLook(RectangleShape, 0.dp, Color.Transparent, bg, ink, ColorMuted)
+        Fx2.ZEN -> PopLook(RoundedCornerShape(30.dp), 1.dp, ink.copy(alpha = 0.3f), card, ink, ColorMuted)
+        Fx2.CARNIVAL -> PopLook(RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomEnd = 4.dp, bottomStart = 18.dp), 3.dp, ColorCoin, c, Color.White, ColorCoin, rot = -3f)
+        Fx2.BAROQUE -> PopLook(CutCornerShape(8.dp), 2.dp, c, bg, c, ink)
+        Fx2.VAPORWAVE -> PopLook(CutCornerShape(topStart = 0.dp, topEnd = 10.dp, bottomEnd = 0.dp, bottomStart = 10.dp), 1.5.dp, ColorAccent, bg, lerp(c, Color.White, 0.4f), ColorAccent, mono = true)
         Fx2.NONE -> return
     }
     val word = Fx2X.word("done", "Quest done")
@@ -985,6 +1254,14 @@ private fun Fx2QuestPop(fx: Fx2, coins: Int, xp: Int) {
     var m = Modifier.graphicsLayer { scaleX = pop; scaleY = pop; alpha = a; rotationZ = look.rot }
     if (look.dashed) m = m.drawBehind { drawRoundRect(look.bc, Offset.Zero, size, CornerRadius(8.dp.toPx()), style = Stroke(2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10.dp.toPx(), 6.dp.toPx()), 0f))) }
     if (fx == Fx2.CLAY) m = m.drawBehind { drawRoundRect(Color.Black.copy(alpha = 0.12f), Offset(0f, 4.dp.toPx()), size, CornerRadius(24.dp.toPx())) }
+    // v277: Carnival throws confetti out of the pop
+    if (fx == Fx2.CARNIVAL) m = m.drawBehind {
+        val set = carnivalSet(c, ColorCoin); val out = 34.dp.toPx() + 90.dp.toPx() * minOf(1f, v * 2.5f)
+        for (i in 0 until 18) {
+            val pt = polar(center, out * (0.7f + (i % 3) * 0.2f), i * 20f)
+            if (i % 2 == 0) drawCircle(set[i % set.size], 3.dp.toPx(), pt) else drawRect(set[i % set.size], Offset(pt.x - 3.dp.toPx(), pt.y - 2.dp.toPx()), Size(6.dp.toPx(), 4.dp.toPx()))
+        }
+    }
     if (look.bw > 0.dp) m = m.border(look.bw, look.bc, look.shape)
     Column(m.background(look.bg, look.shape).padding(horizontal = 20.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(if (fx == Fx2.TERMINAL) "> $word" else word, color = look.wc, fontWeight = FontWeight.Bold, fontSize = 15.sp, letterSpacing = 1.sp, fontFamily = fam)
@@ -1055,6 +1332,51 @@ private fun Fx2LevelUp(fx: Fx2) {
                     val m = Offset(ctr.x, ctr.y - 120.dp.toPx())
                     drawCircle(coin.copy(alpha = a), 36.dp.toPx(), m); drawCircle(ColorBg.copy(alpha = a), 30.dp.toPx(), Offset(m.x + 14.dp.toPx(), m.y - 10.dp.toPx()))
                 }
+                // v277: Mono and Whitespace have no drawing, only the number or words fading in
+                Fx2.ZEN -> {
+                    val rr = 96.dp.toPx(); val grow = minOf(1f, v / 0.6f)
+                    drawArc(ink.copy(alpha = 0.85f * a), -90f, 330f * grow, false, Offset(ctr.x - rr, ctr.y - rr), Size(rr * 2, rr * 2), style = Stroke(10.dp.toPx(), cap = StrokeCap.Round))
+                    drawArc(ink.copy(alpha = 0.35f * a), -90f, 300f * grow, false, Offset(ctr.x - rr + 8.dp.toPx(), ctr.y - rr + 8.dp.toPx()), Size((rr - 8.dp.toPx()) * 2, (rr - 8.dp.toPx()) * 2), style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
+                }
+                Fx2.CARNIVAL -> {
+                    // a full-screen fireworks show (five bursts, one after another) inside a border of marquee lights
+                    val set = carnivalSet(c, coin)
+                    val bursts = listOf(Offset(0.25f, 0.28f), Offset(0.75f, 0.22f), Offset(0.5f, 0.15f), Offset(0.2f, 0.7f), Offset(0.8f, 0.68f))
+                    bursts.forEachIndexed { k, b ->
+                        val t = ((v - k * 0.12f) / 0.5f).coerceIn(0f, 1f)
+                        if (t > 0f && t < 1f) {
+                            val dist = 20.dp.toPx() + 100.dp.toPx() * (1f - (1f - t) * (1f - t))
+                            val o = Offset(size.width * b.x, size.height * b.y)
+                            for (i in 0 until 14) {
+                                val col = set[(i + k) % set.size].copy(alpha = (1f - t) * a)
+                                val tip = polar(o, dist, i * (360f / 14))
+                                drawLine(col, polar(o, dist * 0.7f, i * (360f / 14)), tip, 2.dp.toPx(), StrokeCap.Round)
+                                drawCircle(col, 3.dp.toPx(), tip)
+                            }
+                        }
+                    }
+                    val step = 22.dp.toPx(); val ins = 10.dp.toPx(); val ph = (v * 24f).toInt()
+                    var x = ins; var i = 0
+                    while (x <= size.width - ins) { val col = set[(i + ph) % set.size].copy(alpha = a * if ((i + ph) % 2 == 0) 1f else 0.35f); drawCircle(col, 3.5.dp.toPx(), Offset(x, ins)); drawCircle(col, 3.5.dp.toPx(), Offset(x, size.height - ins)); x += step; i++ }
+                    var y = ins + step; i = 0
+                    while (y < size.height - ins) { val col = set[(i + ph + 1) % set.size].copy(alpha = a * if ((i + ph) % 2 == 0) 1f else 0.35f); drawCircle(col, 3.5.dp.toPx(), Offset(ins, y)); drawCircle(col, 3.5.dp.toPx(), Offset(size.width - ins, y)); y += step; i++ }
+                }
+                Fx2.BAROQUE -> {
+                    // a wax seal pressed into the page, with a chandelier glow behind it
+                    val sc = Offset(ctr.x, ctr.y - 130.dp.toPx())
+                    val sealPop = 1f + 0.4f * (1f - minOf(1f, v * 4f))
+                    drawCircle(Brush.radialGradient(listOf(c.copy(alpha = 0.35f * a), Color.Transparent), sc, 170.dp.toPx()), 170.dp.toPx(), sc)
+                    val wax = Color(0xFFA3141F).copy(alpha = a)
+                    for (i in 0 until 16) drawCircle(wax, 10.dp.toPx() * sealPop, polar(sc, 40.dp.toPx() * sealPop, i * 22.5f))
+                    drawCircle(wax, 42.dp.toPx() * sealPop, sc)
+                    drawCircle(c.copy(alpha = a), 28.dp.toPx() * sealPop, sc, style = Stroke(2.dp.toPx()))
+                    diamond(sc, 16.dp.toPx() * sealPop, coin.copy(alpha = a))
+                }
+                Fx2.VAPORWAVE -> {
+                    // the sun rises over the grid floor
+                    val y0 = ctr.y + 40.dp.toPx() - 30.dp.toPx() * minOf(1f, v * 2f)
+                    sunGrid(y0, c, ColorAccent, coin, a)
+                }
                 else -> Unit
             }
         }
@@ -1084,6 +1406,25 @@ private fun Fx2LevelUp(fx: Fx2) {
             ) {
                 Text("CHAPTER $lv", color = ink, fontSize = 28.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif, letterSpacing = 3.sp)
                 Text("COMPLETE", color = c, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif, letterSpacing = 4.sp)
+            }
+            // v277: Mono = only the number fading in with one hairline accent, Whitespace = two quiet lines, Zen = the number in the ring
+            Fx2.MONO -> Column(Modifier.graphicsLayer { alpha = a * minOf(1f, v / 0.35f) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("$lv", color = ink, fontSize = 96.sp, fontWeight = FontWeight.ExtraLight, fontFamily = FontFamily.Monospace)
+                Box(Modifier.width(40.dp).height(1.dp).background(c))
+            }
+            Fx2.WHITESPACE -> Column(Modifier.graphicsLayer { alpha = a * minOf(1f, v / 0.35f) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(word, color = ink, fontSize = 22.sp, fontWeight = FontWeight.ExtraLight, letterSpacing = 6.sp)
+                Text("$lv", color = ColorMuted, fontSize = 14.sp, letterSpacing = 4.sp, modifier = Modifier.padding(top = 10.dp))
+            }
+            Fx2.ZEN -> Column(Modifier.graphicsLayer { alpha = a * minOf(1f, v / 0.5f) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("$lv", color = ink, fontSize = 64.sp, fontWeight = FontWeight.Light, fontFamily = FontFamily.Serif)
+            }
+            Fx2.VAPORWAVE -> Column(Modifier.graphicsLayer { scaleX = pop; scaleY = pop; alpha = a }, horizontalAlignment = Alignment.CenterHorizontally) {
+                // chrome lettering: a white to pink to violet vertical gradient
+                Text(word, style = androidx.compose.ui.text.TextStyle(
+                    brush = Brush.verticalGradient(listOf(Color.White, c, ColorAccent)),
+                    fontSize = 42.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 6.sp, fontFamily = FontFamily.Monospace))
+                Text(sub, color = ColorAccent, fontSize = 14.sp, letterSpacing = 3.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(top = 8.dp))
             }
             Fx2.CHALK -> Column(Modifier.graphicsLayer { scaleX = pop; scaleY = pop; alpha = a }, horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(word, color = ink, fontSize = 72.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Cursive)

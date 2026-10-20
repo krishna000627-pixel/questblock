@@ -67,13 +67,13 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "icons" to listOf("list", "on", "off", "reset"),
     "icons on" to SvgIcons.EMOJI_ICONS.toList(),
     "icons off" to SvgIcons.EMOJI_ICONS.toList(),
-    "theme set" to listOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint", "termux"),
+    "theme set" to listOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint", "mono", "whitespace", "zen", "carnival", "baroque", "vaporwave", "termux"),
     "flags" to listOf("ls", "on", "off"),
     "font" to listOf("ls", "list", "set", "on", "off", "reset"),
     "appicon" to listOf("ls", "list", "set", "reset"),
     "font set" to listOf("default") + APP_FONTS.map { it.id },
-    "flags on" to listOf("phone", "termux", "homework", "icons", "sounds", "themesounds", "haptics", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint", "fx_sunset", "fx_ocean", "fx_forest", "fx_neon", "fx_scifi", "fx_amoled", "fx_terminal", "fx_paper", "fx_linen", "fx_sage", "fx_sky", "fx_lilac", "fx_chalk", "fx_clay", "fx_rose", "fx_indigo"),
-    "flags off" to listOf("phone", "termux", "homework", "icons", "sounds", "themesounds", "haptics", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint", "fx_sunset", "fx_ocean", "fx_forest", "fx_neon", "fx_scifi", "fx_amoled", "fx_terminal", "fx_paper", "fx_linen", "fx_sage", "fx_sky", "fx_lilac", "fx_chalk", "fx_clay", "fx_rose", "fx_indigo"),
+    "flags on" to listOf("phone", "termux", "homework", "icons", "sounds", "themesounds", "haptics", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint", "fx_sunset", "fx_ocean", "fx_forest", "fx_neon", "fx_scifi", "fx_amoled", "fx_terminal", "fx_paper", "fx_linen", "fx_sage", "fx_sky", "fx_lilac", "fx_chalk", "fx_clay", "fx_rose", "fx_indigo", "fx_mono", "fx_whitespace", "fx_zen", "fx_carnival", "fx_baroque", "fx_vaporwave"),
+    "flags off" to listOf("phone", "termux", "homework", "icons", "sounds", "themesounds", "haptics", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint", "fx_sunset", "fx_ocean", "fx_forest", "fx_neon", "fx_scifi", "fx_amoled", "fx_terminal", "fx_paper", "fx_linen", "fx_sage", "fx_sky", "fx_lilac", "fx_chalk", "fx_clay", "fx_rose", "fx_indigo", "fx_mono", "fx_whitespace", "fx_zen", "fx_carnival", "fx_baroque", "fx_vaporwave"),
     "quests" to listOf("--today", "--done", "--overdue", "--focus"),
     "quest" to listOf("add", "show", "edit", "done", "rm", "focus", "link", "step", "skip", "steps"),
     "focus" to listOf("start", "status", "stop", "apps", "last", "log"),
@@ -128,10 +128,10 @@ private val MAN: Map<String, String> = mapOf(
     "whoami" to "whoami              hero name, goal, birthday, level",
     "alias" to "alias [name=cmd]    list or make a shortcut, e.g. alias qt=quests --today",
     "unalias" to "unalias <name>     remove a shortcut",
-    "theme" to "theme [ls] | [set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux]   default/phone = the normal look (Quest Phone), paper, linen, sage, sky, lilac, chalk = the plain light shop themes, clay = the soft puffy Claymorphism one, system = the dark blue RPG System-window look (cut corners, mono text, HUD grid; both: you must own it, shop buy <name>), ninja, hashira, monarch, gothic, guild, pixel, handheld, blueprint = more style shop themes with their own shapes, fonts, strips and backgrounds (you must own them too: shop buy <name>). theme ls lists the app themes that are on (flags hides the ones turned off) and the one in use. A theme turned off in flags is refused. refused during Focus (theme ls still works)",
-    "appicon" to "appicon [ls] | list | set <icon|theme> | reset   the home screen icon: gold, ninja, system, paper, gothic, or theme (follows the theme, the Theme app icon flag). The icon changes when you leave the app. refused during Focus (read-only forms still work)",
+    "theme" to "theme [ls] | [set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|mono|whitespace|zen|carnival|baroque|vaporwave|termux]   default/phone = the normal look (Quest Phone), paper, linen, sage, sky, lilac, chalk = the plain light shop themes, clay = the soft puffy Claymorphism one, system = the dark blue RPG System-window look (cut corners, mono text, HUD grid; both: you must own it, shop buy <name>), ninja, hashira, monarch, gothic, guild, pixel, handheld, blueprint = more style shop themes with their own shapes, fonts, strips and backgrounds (you must own them too: shop buy <name>). mono, whitespace, zen = the three minimalist themes (zen is silent with one soft haptic; mono and zen follow dark/light), carnival, baroque, vaporwave = the three maximalist themes. theme ls lists the app themes that are on (flags hides the ones turned off) and the one in use. A theme turned off in flags is refused. refused during Focus (theme ls still works)",
+    "appicon" to "appicon [ls] | list | set <icon|theme> | reset   the home screen icon: gold, ninja, system, paper, gothic, mono, whitespace, zen, carnival, baroque, vaporwave, or theme (follows the theme, the Theme app icon flag). The icon changes when you leave the app. refused during Focus (read-only forms still work)",
     "font" to "font [ls] | list | on | off | set <font|default> | reset   one font for the whole app (29 fonts: font list). on/off is the Fonts flag; off or default = the normal font. refused during Focus (read-only forms still work)",
-    "flags" to "flags [ls] | on <name> | off <name>   names: phone termux (app themes, the one left on can't be turned off), homework, icons, sounds, themesounds, haptics, mood, leaderboard, experiments, themeicon (app icon follows the theme), themefx (master for the extras of all style themes), fx_system fx_ninja fx_hashira fx_monarch fx_gothic fx_guild fx_pixel fx_handheld fx_blueprint fx_sunset fx_ocean fx_forest fx_neon fx_scifi fx_amoled fx_terminal fx_paper fx_linen fx_sage fx_sky fx_lilac fx_chalk fx_clay fx_rose fx_indigo (extras of one theme). flags ls shows every flag. refused during Focus (flags ls still works)",
+    "flags" to "flags [ls] | on <name> | off <name>   names: phone termux (app themes, the one left on can't be turned off), homework, icons, sounds, themesounds, haptics, mood, leaderboard, experiments, themeicon (app icon follows the theme), themefx (master for the extras of all style themes), fx_system fx_ninja fx_hashira fx_monarch fx_gothic fx_guild fx_pixel fx_handheld fx_blueprint fx_sunset fx_ocean fx_forest fx_neon fx_scifi fx_amoled fx_terminal fx_paper fx_linen fx_sage fx_sky fx_lilac fx_chalk fx_clay fx_rose fx_indigo fx_mono fx_whitespace fx_zen fx_carnival fx_baroque fx_vaporwave (extras of one theme). flags ls shows every flag. refused during Focus (flags ls still works)",
     "icons" to "icons [list] | on|off [name] | reset   emoji drawn as SVG icons on the normal pages (the terminal stays plain text). on|off alone is the master switch, on|off <name> switches one icon (flags page > SVG icons > Choose). reset turns every icon on. list shows each icon, its emoji and its state. on, off and reset are refused during Focus (icons and icons list still work)",
     "logo" to "logo                 the app logo in ASCII (a shield with a check)",
     "home" to "home                go to the phone home screen",
@@ -718,7 +718,7 @@ class TermuxViewModel @Inject constructor(
             "perms" -> sub == "grant"
             "shop" -> sub in setOf("buy", "reward")
             "inv" -> sub in setOf("use", "equip", "unequip")
-            "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint")
+            "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint", "mono", "whitespace", "zen", "carnival", "baroque", "vaporwave")
             "flags" -> sub in setOf("on", "off")
             "font" -> sub in setOf("set", "on", "off", "reset")
             "appicon" -> sub in setOf("set", "reset")
@@ -976,7 +976,7 @@ class TermuxViewModel @Inject constructor(
         val sub = a.pos.getOrNull(1)?.lowercase()
         if (sub == null) {
             s.out("theme: {c}termux{/}   shop look: ${repo.player.first().equippedTheme}")
-            s.dim("theme set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux  \u00b7 flags: turn themes on or off")
+            s.dim("theme set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|mono|whitespace|zen|carnival|baroque|vaporwave|termux  \u00b7 flags: turn themes on or off")
             return
         }
         if (sub == "ls") {
@@ -987,7 +987,7 @@ class TermuxViewModel @Inject constructor(
             s.dim("themes turned off in flags are not listed. switch: theme set <name> or inv equip <n>")
             return
         }
-        if (sub != "set") { s.err("usage: theme [ls] | set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux"); return }
+        if (sub != "set") { s.err("usage: theme [ls] | set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|mono|whitespace|zen|carnival|baroque|vaporwave|termux"); return }
         when (a.pos.getOrNull(2)?.lowercase()) {
             "termux" -> s.ok("theme is already termux")
             "default", "phone" -> {
@@ -997,7 +997,7 @@ class TermuxViewModel @Inject constructor(
                 delay(400L)
                 AppThemes.apply(ctx, "phone")
             }
-            "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint" -> {
+            "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint", "mono", "whitespace", "zen", "carnival", "baroque", "vaporwave" -> {
                 val word = a.pos.getOrNull(2)!!.lowercase()
                 val title = ShopCatalog.items.firstOrNull { it.id == "theme_$word" }?.name ?: word
                 if (TermuxMode.strictNow(ctx)) { s.err("refused: a strict Focus session is running"); return }
@@ -1009,7 +1009,7 @@ class TermuxViewModel @Inject constructor(
                 delay(400L)
                 TermuxMode.set(ctx, false)
             }
-            else -> s.err("usage: theme set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux")
+            else -> s.err("usage: theme set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|mono|whitespace|zen|carnival|baroque|vaporwave|termux")
         }
     }
 

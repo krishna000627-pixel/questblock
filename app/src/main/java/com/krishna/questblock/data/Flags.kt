@@ -11,7 +11,7 @@ object Flags {
         Def("mood", "Mood check-in", "The Mood section on the Attendance page, terminal mood"),
         Def("leaderboard", "Daily leaderboard", "The leaderboard card on Stats, terminal leaderboard"),
         Def("experiments", "Experiments card", "The Experiments card in the Hub"),
-        Def("themeicon", "Theme app icon", "The shield app icon on the home screen takes the colours of the equipped theme (Ninja, System, Paper, Gothic). Off = always the gold one. Choose picks one icon yourself"),
+        Def("themeicon", "Theme app icon", "The app icon on the home screen follows the equipped theme (Ninja, System, Paper, Gothic shields; Mono, Whitespace, Zen, Carnival, Baroque, Vaporwave have their own logos). Off = always the gold one. Choose picks one icon yourself"),
         Def("themefx", "Theme extras (all)", "Master switch for the own words and effects of the style themes. Each theme also has its own switch below"),
         Def("fx_system", "System extras", "System Window: HUD Focus ring, XP blocks, bracket level up, [SYSTEM] words and quest done pop, lock screen"),
         Def("fx_ninja", "Ninja Scroll extras", "Ninja Scroll: ink brush Focus ring and XP bar, red seal level up, DONE pop, lock screen"),
@@ -38,6 +38,12 @@ object Flags {
         Def("fx_clay", "Clay extras", "Clay: puffy Focus ring and XP bar, bouncing blobs level up, Squish pop, header strip, quest cards, lock screen"),
         Def("fx_rose", "Rose extras", "Rose: heart Focus ring and XP bar, floating hearts level up, Lovely pop, header strip, quest cards, lock screen"),
         Def("fx_indigo", "Indigo extras", "Indigo: star Focus ring and XP bar, twinkling stars level up, Shooting star pop, star background, header strip, quest cards, lock screen"),
+        Def("fx_mono", "Mono extras", "Mono: thin line Focus ring, 2 px XP rule, the level number fading in, a small Done. pop, hairline strip and cards, lock screen"),
+        Def("fx_whitespace", "Whitespace extras", "Whitespace: hairline Focus ring and XP rule, two quiet lines level up, divider-only cards, no header strip, lock page with the time"),
+        Def("fx_zen", "Zen extras", "Zen: ens\u014D brush Focus ring and XP stroke, the number in a brush circle level up, stone specks background, lock screen"),
+        Def("fx_carnival", "Carnival extras", "Carnival: marquee bulb Focus ring, candy stripe XP bar, fireworks level up with a light border, confetti pop, striped cards, bunting strip, lock screen"),
+        Def("fx_baroque", "Baroque extras", "Baroque: gold double ring Focus ring, gold frame XP bar, wax seal level up, Gilded pop, ornate frames and dividers, lock screen"),
+        Def("fx_vaporwave", "Vaporwave extras", "Vaporwave: gradient Focus ring, glitch XP bar, sun grid level up and background, chrome text, INSERT COIN words, lock screen"),
     )
 
     var HOMEWORK_ENABLED: Boolean = false

@@ -145,6 +145,91 @@
             </intent-filter>
         </activity-alias>
 
+        <!-- v277: launcher entries with the own logos of the minimalist and maximalist themes (Mono, Whitespace, Zen, Carnival, Baroque, Vaporwave). AppName.applyAll switches the one that matches. -->
+        <activity-alias
+            android:name=".ui.AliasMono"
+            android:targetActivity=".ui.MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_logo_mono"
+            android:roundIcon="@mipmap/ic_logo_mono"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".ui.AliasWhitespace"
+            android:targetActivity=".ui.MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_logo_whitespace"
+            android:roundIcon="@mipmap/ic_logo_whitespace"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".ui.AliasZen"
+            android:targetActivity=".ui.MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_logo_zen"
+            android:roundIcon="@mipmap/ic_logo_zen"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".ui.AliasCarnival"
+            android:targetActivity=".ui.MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_logo_carnival"
+            android:roundIcon="@mipmap/ic_logo_carnival"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".ui.AliasBaroque"
+            android:targetActivity=".ui.MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_logo_baroque"
+            android:roundIcon="@mipmap/ic_logo_baroque"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".ui.AliasVaporwave"
+            android:targetActivity=".ui.MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_logo_vaporwave"
+            android:roundIcon="@mipmap/ic_logo_vaporwave"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
         <activity
             android:name=".ui.BlockActivity"
             android:exported="false"

@@ -71,7 +71,7 @@ fun AppIconPage(onBack: () -> Unit) {
             val follow = AppName.followChoice()
             IconRow(
                 res = follow.res, name = "Follow the theme",
-                note = if (flagOn) "Now: ${follow.label}. Ninja, System, Paper and Gothic have their own colours"
+                note = if (flagOn) "Now: ${follow.label}. Ninja, System, Paper, Gothic, Mono, Whitespace, Zen, Carnival, Baroque and Vaporwave have their own icons"
                 else "Theme app icon is off in Flags, so this shows the gold icon",
                 selected = pick == null,
             ) { choose(null) }

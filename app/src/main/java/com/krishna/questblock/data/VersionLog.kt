@@ -3,6 +3,14 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("277.0.0", "Six new themes: three minimalist, three maximalist",
+        listOf(
+            "Minimalist: Mono (pure white or black by your Dark/Light/System setting, one hairline red accent, thin Focus line, 2 px XP rule, level number fading in, small Done. pop), Whitespace (always white, huge margins, no card borders, dividers only, no header strip, lock page shows the time), Zen (stone grey, ens\u014D brush Focus ring and XP stroke, number in a brush circle for level up, silent with one soft haptic)",
+            "Maximalist: Carnival (clashing neon, candy stripe cards, bunting strip, marquee bulb Focus ring, confetti pop, fireworks level up with a light border), Baroque (gold-leaf frames, gold double rules with diamonds, wax-seal level up, velvet red), Vaporwave Arcade (pink and cyan, sun grid background and level up, chrome level text, glitch XP bar, INSERT COIN)",
+            "Each has its own app logo (not the shield): ring and dot, dot and rule, ens\u014D, circus tent, gold frame, sun over a grid. They show in Flags > Theme app icon > Choose and follow the theme when Theme app icon is on",
+            "Each is in the shop (Mono, Whitespace, Zen 4 coins a day; Carnival, Baroque, Vaporwave 6), has its own switch fx_<theme> and a page under Flags > Theme effects with Try it (the in-app preview), its own sounds (Zen none), and terminal words theme set mono|whitespace|zen|carnival|baroque|vaporwave",
+            "Code: Fx2 enum and every branch in ui/ThemeFx2.kt, SHOP_PALETTES in ui/Theme.kt, ShopCatalog.kt, SvgIcons.kt (four new icons), Flags.kt, ThemeFxPage.kt, util/ThemeSounds.kt (SILENT), Sounds.kt, Haptics.kt, AppName in ui/TermuxCore.kt, six launcher aliases in the manifest, res/mipmap-anydpi-v26/ic_logo_*.xml. Not yet compiled in CI",
+        )),
     VersionEntry("276.0.0", "App icon selector",
         listOf(
             "Flags > Theme app icon now has a Choose button (like Fonts). It opens an App icon page that shows the real icons: Follow the theme, Gold, Ninja, System, Paper and Gothic. Tap one to use it on the home screen; the swap happens when you leave the app. The Termux theme still shows the Terminal icon. Refused during a strict Focus session",
