@@ -233,7 +233,8 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
             composable("reliability") { ReliabilityScreen(onBack = { navController.popBackStack() }) }
             composable("coins")        { CoinLogScreen(onBack = { navController.popBackStack() }) }
             composable("about")        { AboutMeScreen(onBack = { navController.popBackStack() }, onOpenIdeas = { navController.openPage("ideas") },
-                onOpenVersions = { navController.openPage("versions") }) }
+                onOpenVersions = { navController.openPage("versions") }, onOpenFeatures = { navController.openPage("features") }) }
+            composable("features")     { FeaturesScreen(onBack = { navController.popBackStack() }) }
             composable("shop")         { InventoryScreen(onBack = { navController.popBackStack() }) }
             composable("hub")          { PlayerHubScreen(
                 onBack = { navController.popBackStack() },

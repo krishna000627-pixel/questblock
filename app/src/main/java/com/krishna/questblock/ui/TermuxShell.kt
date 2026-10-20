@@ -95,7 +95,7 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "ideas tag" to listOf("ui", "launcher", "bug", "theme", "other", "none"),
     "ideas status" to listOf("idea", "next", "doing", "done"),
     "ideas copy" to listOf("all", "ui", "launcher", "bug", "theme", "other"),
-    "about" to listOf("open"),
+    "about" to listOf("features", "open"),
     "theme set" to listOf("default", "paper", "termux", "questhome"),
     "qhome" to listOf("status", "themes", "theme", "icons", "icon", "pack", "awidget", "widget", "pages", "add", "rm", "dock", "folder", "hide", "unhide", "hidden", "apps", "set", "wall", "grid", "block", "focushome", "export", "import", "default", "reset"),
     "qhome set" to listOf("ls", "wall", "dim", "blur", "wallcolor", "cols", "dock", "iconsize", "labels", "lines", "tile", "az", "searchhidden", "hiddenbadge", "focushome", "lockedhide", "block", "g.double", "g.long", "g.up", "g.down",
@@ -191,7 +191,7 @@ private val MAN: Map<String, String> = mapOf(
     "selftest" to "selftest            runs the app's checks",
     "debuglog" to "debuglog [clear]",
     "versions" to "versions [number]   change log, or one version in full",
-    "about" to "about [open <n>]",
+    "about" to "about [features | open <n>]",
     "ideas" to "ideas | add [bug|feature|ui|termux|idea] <text> | done <n> | rm <n> | clear | copy <n> | copy all [--log] [--plain]   (copy all = the update prompt, ticks them off; --plain leaves out the Termux rule)",
     "cd" to "cd [dir]            change the prompt folder: ~ quests focus vault shop stats settings ideas (it also follows the commands you run)",
     "pwd" to "pwd                 show the prompt folder",
@@ -2571,6 +2571,16 @@ class TermuxViewModel @Inject constructor(
     }
 
     private fun cmdAbout(s: TermuxSession, a: TermuxArgs) {
+        if (a.pos.getOrNull(1)?.lowercase() == "features") {
+            s.head("what the app does")
+            s.out(com.krishna.questblock.data.AppFeatures.INTRO.tm())
+            com.krishna.questblock.data.AppFeatures.GROUPS.forEach { g ->
+                s.out("")
+                s.out("{b}${g.title.uppercase().tm()}{/}")
+                g.items.forEach { s.out("{c}-{/} ${it.tm()}") }
+            }
+            return
+        }
         if (a.pos.getOrNull(1)?.lowercase() == "open") {
             val n = a.pos.getOrNull(2)?.toIntOrNull()
             val l = if (n == null) null else AboutMe.LINKS.getOrNull(n - 1)
@@ -2591,7 +2601,7 @@ class TermuxViewModel @Inject constructor(
         s.out(AboutMe.OTHER_PROJECTS.tm())
         s.out("{b}TOOLS{/} ${AboutMe.TOOLS.tm()}")
         AboutMe.LINKS.forEachIndexed { i, l -> s.out("{c}${i + 1}{/} ${l.label.tm()}  {d}${l.shown.tm()}{/}") }
-        s.dim("about open <n>")
+        s.dim("about features  \u00b7  about open <n>")
     }
 
     private fun cmdIdeas(s: TermuxSession, a: TermuxArgs) {

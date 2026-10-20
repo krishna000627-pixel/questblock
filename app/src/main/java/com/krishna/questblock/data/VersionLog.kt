@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("260.0.0", "What the app does: a features page",
+        listOf(
+            "The Why I built QuestBlock card on About me can be tapped (it shows See everything the app does) and opens a new page that lists every feature of the app in seven groups: Quests and rewards, Locking and coins, Focus, School, Player, Looks and Tools",
+            "Termux theme: about features prints the same list. Code: ui/FeaturesScreen.kt, data/AppFeatures.kt (the text, edit it to change the list), route features in MainScreen, TermuxShell cmdAbout",
+        )),
     VersionEntry("259.0.0", "Penalty effect in the effect preview",
         listOf(
             "The effect preview page has a Penalty (focus broken) button for the two themes that have one: System (red look and PENALTY ZONE, 4 s in the preview instead of 90 s) and Pixel (GAME OVER). It only plays the effect, nothing is penalised, and the penalty look is put back when you leave the page. Code: ThemeFxPreviewPage in ui/ThemeFxPage.kt",

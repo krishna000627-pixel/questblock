@@ -23,7 +23,7 @@ import com.krishna.questblock.data.AboutMe
 
 /** The developer's page. Text lives in data/AboutMe.kt. Works offline; only the link rows open other apps. */
 @Composable
-fun AboutMeScreen(onBack: () -> Unit, onOpenIdeas: () -> Unit = {}, onOpenVersions: () -> Unit = {}) {
+fun AboutMeScreen(onBack: () -> Unit, onOpenIdeas: () -> Unit = {}, onOpenVersions: () -> Unit = {}, onOpenFeatures: () -> Unit = {}) {
     val ctx = LocalContext.current
     val version = remember {
         runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
@@ -54,10 +54,15 @@ fun AboutMeScreen(onBack: () -> Unit, onOpenIdeas: () -> Unit = {}, onOpenVersio
         }
 
         // ── Why ─────────────────────────────────────────────────────────
-        AboutCard {
+        AboutCard(onClick = onOpenFeatures) {
             Text("💡 Why I built QuestBlock", style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold, color = ColorText)
             Text(AboutMe.WHY, style = MaterialTheme.typography.bodyMedium, color = ColorText)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("See everything the app does", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold, color = ColorPrimary)
+                Text("›", color = ColorMuted, fontSize = 20.sp)
+            }
         }
 
         // ── Update prompts & ideas widget ───────────────────────────────
@@ -122,9 +127,9 @@ fun AboutMeScreen(onBack: () -> Unit, onOpenIdeas: () -> Unit = {}, onOpenVersio
 }
 
 @Composable
-private fun AboutCard(content: @Composable ColumnScope.() -> Unit) {
+private fun AboutCard(onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = ColorSurface), shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth()) {
+        modifier = if (onClick != null) Modifier.fillMaxWidth().clickable(onClick = onClick) else Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
     }
 }
