@@ -111,7 +111,10 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
             FxBar()
             if (SystemOn) SystemHost(strict) { navController.goTab("quests") }
             if (ThemeExtras.on) ThemeExtrasHost()
-        } else if (Fx2X.on) Fx2Host() },
+        } else if (Fx2X.on) androidx.compose.foundation.layout.Column {
+            Fx2Bar()
+            Fx2Host()
+        } },
         snackbarHost = { SnackbarHost(snack) },
         bottomBar = {
             if (!strict) NavigationBar(

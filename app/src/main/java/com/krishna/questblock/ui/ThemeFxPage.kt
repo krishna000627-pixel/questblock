@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -62,6 +61,7 @@ import kotlinx.coroutines.launch
 private class FxTheme(
     val id: String, val name: String, val style: Boolean, val color: Color,
     val ring: String, val bar: String, val level: String, val pop: String,
+    val strip: String = "", val board: String = "",
 )
 
 private val FxPurple = Color(0xFF7F77DD)
@@ -75,31 +75,31 @@ private val FxAmber = Color(0xFFBA7517)
 private val FxRed = Color(0xFFE24B4A)
 
 private val FX_THEMES: List<FxTheme> = listOf(
-    FxTheme("system", "System", true, FxTeal, "HUD ring", "XP blocks", "bracket level up", "[SYSTEM] words"),
-    FxTheme("ninja", "Ninja Scroll", true, FxRed, "ink brush ring", "ink brush bar", "red seal", "DONE"),
-    FxTheme("hashira", "Hashira Mist", true, FxBlue, "breathing mist ring", "pill bar", "mist", "Form 1 to 3"),
-    FxTheme("monarch", "Shadow Monarch", true, FxPurple, "violet ring with motes", "glow bar", "ARISE", "shadow army counter"),
-    FxTheme("gothic", "Gothic Halo", true, FxRed, "double ring, diamond", "line bar", "red halo", "rite words"),
-    FxTheme("guild", "Guild Board", true, FxAmber, "brass stud ring", "plank bar", "wax seal", "Copper Silver Gold"),
-    FxTheme("pixel", "Pixel Arcade", true, FxGreen, "pixel ring", "block bar", "confetti", "STAGE words"),
-    FxTheme("handheld", "Handheld", true, FxGreen, "dot matrix ring", "LCD bar", "LEVEL UP box", "SAVING box"),
-    FxTheme("blueprint", "Blueprint", true, FxBlue, "drafting ring", "dimension line", "REVISION ACCEPTED", "TYPE words"),
-    FxTheme("sunset", "Sunset", false, FxCoral, "sun rays", "sun bar", "NEW DAY", "Golden hour"),
-    FxTheme("ocean", "Ocean", false, FxBlue, "ripple rings", "wave bar", "DEEPER", "Tide is in"),
-    FxTheme("forest", "Forest", false, FxGreen, "leaves on the arc", "vine bar", "GROWTH", "Grown"),
-    FxTheme("neon", "Neon", false, FxPink, "glow tube", "glow tube", "LEVEL UP sign", "NICE"),
-    FxTheme("scifi", "Sci-Fi", false, FxTeal, "36 segments", "16 slanted cells", "UPGRADE COMPLETE", "SYNC COMPLETE"),
-    FxTheme("amoled", "AMOLED", false, FxGray, "hairline", "hairline", "thin ring", "Done"),
-    FxTheme("terminal", "Terminal", false, FxGreen, "60 ticks, cursor", "text bar", "level_up typed", "exit 0"),
-    FxTheme("paper", "Paper", false, FxGray, "pencil sketch", "pencil line", "NEW CHAPTER", "Noted"),
-    FxTheme("linen", "Linen", false, FxAmber, "stitched arc", "stitches", "WELL DONE", "Stitched"),
-    FxTheme("sage", "Sage", false, FxGreen, "dotted, sprout", "sprout line", "BLOOM", "Sprouted"),
-    FxTheme("sky", "Sky", false, FxBlue, "sun and cloud", "sun and cloud", "SOAR", "Clear skies"),
-    FxTheme("lilac", "Lilac", false, FxPurple, "12 petals", "14 flower beads", "BLOOM", "In bloom"),
-    FxTheme("chalk", "Chalk", false, FxGray, "chalk lines", "chalk, tally ticks", "A+", "Marked"),
-    FxTheme("clay", "Clay", false, FxCoral, "puffy arc", "puffy pill", "BOING!", "Squish"),
-    FxTheme("rose", "Rose", false, FxPink, "heart at the end", "thin bar, heart", "LOVELY", "Lovely"),
-    FxTheme("indigo", "Indigo", false, FxPurple, "stars, crescent", "star trail", "STARGAZER", "Shooting star"),
+    FxTheme("system", "System", true, FxTeal, "HUD ring", "XP blocks", "bracket level up", "[SYSTEM] words", "[ SYSTEM ] strip, PLAYER STATUS", "cut corners, brackets, scan line"),
+    FxTheme("ninja", "Ninja Scroll", true, FxRed, "ink brush ring", "ink brush bar", "red seal", "DONE", "no strip, seal before titles", "square paper cards"),
+    FxTheme("hashira", "Hashira Mist", true, FxBlue, "breathing mist ring", "pill bar", "mist", "Form 1 to 3", "no strip", "round frosted cards"),
+    FxTheme("monarch", "Shadow Monarch", true, FxPurple, "violet ring with motes", "glow bar", "ARISE", "shadow army counter", "ARISE strip, shadow army", "glowing edge line"),
+    FxTheme("gothic", "Gothic Halo", true, FxRed, "double ring, diamond", "line bar", "red halo", "rite words", "MEMENTO strip, days left", "inner frame"),
+    FxTheme("guild", "Guild Board", true, FxAmber, "brass stud ring", "plank bar", "wax seal", "Copper Silver Gold", "GUILD BOARD strip", "brass studs, tilted notices"),
+    FxTheme("pixel", "Pixel Arcade", true, FxGreen, "pixel ring", "block bar", "confetti", "STAGE words", "PLAYER 1 strip", "hard shadow"),
+    FxTheme("handheld", "Handheld", true, FxGreen, "dot matrix ring", "LCD bar", "LEVEL UP box", "SAVING box", "QUESTBOY strip", "LCD inner frame"),
+    FxTheme("blueprint", "Blueprint", true, FxBlue, "drafting ring", "dimension line", "REVISION ACCEPTED", "TYPE words", "SHEET 01 strip", "corner marks, dimension line"),
+    FxTheme("sunset", "Sunset", false, FxCoral, "sun rays", "sun bar", "NEW DAY", "Golden hour", "golden hour strip with a sun", "warm glow and a sun corner"),
+    FxTheme("ocean", "Ocean", false, FxBlue, "ripple rings", "wave bar", "DEEPER", "Tide is in", "tide strip with a wave line", "wave line on every card"),
+    FxTheme("forest", "Forest", false, FxGreen, "leaves on the arc", "vine bar", "GROWTH", "Grown", "trail strip with leaves", "leaf corner and a vine"),
+    FxTheme("neon", "Neon", false, FxPink, "glow tube", "glow tube", "LEVEL UP sign", "NICE", "ON AIR strip, glow line", "glowing top and bottom lines"),
+    FxTheme("scifi", "Sci-Fi", false, FxTeal, "36 segments", "16 slanted cells", "UPGRADE COMPLETE", "SYNC COMPLETE", "SYS strip with slanted cells", "corner ticks"),
+    FxTheme("amoled", "AMOLED", false, FxGray, "hairline", "hairline", "thin ring", "Done", "hairline strip", "one dot, hairline"),
+    FxTheme("terminal", "Terminal", false, FxGreen, "60 ticks, cursor", "text bar", "level_up typed", "exit 0", "prompt strip user@questblock", "block cursor corner"),
+    FxTheme("paper", "Paper", false, FxGray, "pencil sketch", "pencil line", "NEW CHAPTER", "Noted", "daily notes strip, pencil line", "tape and a folded corner"),
+    FxTheme("linen", "Linen", false, FxAmber, "stitched arc", "stitches", "WELL DONE", "Stitched", "stitched strip", "stitched border"),
+    FxTheme("sage", "Sage", false, FxGreen, "dotted, sprout", "sprout line", "BLOOM", "Sprouted", "sprout strip, dotted line", "sprout corner"),
+    FxTheme("sky", "Sky", false, FxBlue, "sun and cloud", "sun and cloud", "SOAR", "Clear skies", "clear skies strip with a cloud", "cloud corner"),
+    FxTheme("lilac", "Lilac", false, FxPurple, "12 petals", "14 flower beads", "BLOOM", "In bloom", "in bloom strip with petals", "flower corner"),
+    FxTheme("chalk", "Chalk", false, FxGray, "chalk lines", "chalk, tally ticks", "A+", "Marked", "class strip, chalk line", "chalk underline and dust"),
+    FxTheme("clay", "Clay", false, FxCoral, "puffy arc", "puffy pill", "BOING!", "Squish", "soft pill strip", "glossy highlight"),
+    FxTheme("rose", "Rose", false, FxPink, "heart at the end", "thin bar, heart", "LOVELY", "Lovely", "with love strip, hearts", "heart corner"),
+    FxTheme("indigo", "Indigo", false, FxPurple, "stars, crescent", "star trail", "STARGAZER", "Shooting star", "night sky strip with stars", "star corner"),
 )
 
 /** v257: how many theme switches are on, for the entry card on the flags page. */
@@ -115,7 +115,7 @@ fun ThemeFxFlagsPage(onBack: () -> Unit) {
     var open by remember { mutableStateOf<String?>(null) }
     var previewId by remember { mutableStateOf<String?>(null) }
     val pv = previewId
-    if (pv != null) { ThemeFxPreviewPage(initial = pv, onBack = { previewId = null }); return }
+    if (pv != null) { ThemeFxTryPage(themeId = pv, onBack = { previewId = null }); return }
     val master = FxFlags.get("themefx")
     val onCount = FX_THEMES.count { FxFlags.get("fx_" + it.id) }
     fun guarded(block: () -> Unit) {
@@ -155,13 +155,6 @@ fun ThemeFxFlagsPage(onBack: () -> Unit) {
                     }
                 }
             }
-        }
-        item {
-            Button(
-                onClick = { previewId = "" },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
-            ) { Text("Preview effects", fontWeight = FontWeight.Bold) }
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -228,6 +221,8 @@ fun ThemeFxFlagsPage(onBack: () -> Unit) {
                             FxLine("XP bar", t.bar)
                             FxLine("Level up", t.level)
                             FxLine("Quest done pop", t.pop)
+                            if (t.strip.isNotEmpty()) FxLine("Header strip", t.strip)
+                            if (t.board.isNotEmpty()) FxLine("Quest cards", t.board)
                             FxLine("Lock screen", "emblem with padlock")
                             TextButton(onClick = { previewId = t.id }) { Text("Try it") }
                         }
@@ -252,22 +247,17 @@ private fun FxLine(label: String, value: String) {
 }
 
 /**
- * v258: plays the effects of a theme without any XP, coins or level up. While this page is open the app is put in the chosen theme
+ * v258: plays the effects of a theme without any XP, coins or level up. v261: one theme per page (no theme chips), opened only by
+ * tapping a theme row and then Try it; the word "preview" is gone from the page. While this page is open the app is put in the chosen theme
  * (in memory only: ShopTheme is never saved here and is put back when the page closes), so the real XP bar, Focus ring, level up,
- * quest done pop and lock emblem of that theme are drawn by the same code the app uses. [initial] is a theme id or "" for the equipped one.
+ * quest done pop and lock emblem of that theme are drawn by the same code the app uses. [themeId] is the theme to show.
  */
 @Composable
-fun ThemeFxPreviewPage(initial: String, onBack: () -> Unit) {
+fun ThemeFxTryPage(themeId: String, onBack: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val original = remember { ShopTheme }
-    var sel by remember {
-        mutableStateOf(
-            FX_THEMES.firstOrNull { it.id == initial }?.id
-                ?: FX_THEMES.firstOrNull { "theme_" + it.id == original }?.id
-                ?: FX_THEMES[0].id
-        )
-    }
+    val sel = remember { FX_THEMES.firstOrNull { it.id == themeId }?.id ?: FX_THEMES[0].id }
     var xp by remember { mutableFloatStateOf(0.64f) }
     var ring by remember { mutableFloatStateOf(0.7f) }
     var emblemKey by remember { mutableIntStateOf(0) }
@@ -285,40 +275,17 @@ fun ThemeFxPreviewPage(initial: String, onBack: () -> Unit) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
             Column {
                 Text("Theme effects", style = MaterialTheme.typography.labelMedium, color = ColorMuted)
-                Text("Effect preview", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
+                Text(theme.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
             }
         }
         Text(
             "Nothing here gives XP or coins. The app only wears the chosen theme while this page is open.",
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp), style = MaterialTheme.typography.bodySmall, color = ColorMuted,
         )
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FX_THEMES.forEach { t ->
-                item(key = t.id) {
-                    val on = t.id == sel
-                    Box(
-                        Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (on) t.color.copy(alpha = 0.25f) else ColorSurface)
-                            .border(1.dp, if (on) t.color else ColorDivider, RoundedCornerShape(20.dp))
-                            .clickable { sel = t.id }
-                            .padding(horizontal = 14.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(t.name, color = if (on) t.color else ColorMuted,
-                            fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
-                            style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-            }
-        }
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (blocked) item {
                 Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
-                    Text("The Termux look or a picture background is on, so theme effects are not drawn. Turn it off to preview.",
+                    Text("The Termux look or a picture background is on, so theme effects are not drawn. Turn it off to see them.",
                         modifier = Modifier.padding(12.dp), color = ColorMuted, style = MaterialTheme.typography.bodySmall)
                 }
             } else if (!fxOn) item {
@@ -332,6 +299,16 @@ fun ThemeFxPreviewPage(initial: String, onBack: () -> Unit) {
                     }
                 }
             } else {
+                item {
+                    Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text("Quest card", fontWeight = FontWeight.SemiBold, color = ColorText)
+                            Text("Read chapter 5 and solve 10 questions", color = ColorText, modifier = Modifier.padding(top = 6.dp))
+                            Text("+25 XP  +10 coins", color = ColorMuted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
+                            Text("The strip at the top of the page and the cards of this page wear the theme too.", color = ColorMuted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
+                        }
+                    }
+                }
                 item {
                     Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp)) {

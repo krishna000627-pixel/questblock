@@ -8,6 +8,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -55,8 +59,9 @@ import kotlin.math.roundToInt
  * Sage, Sky, Lilac, Chalk, Clay, Rose, Indigo). The look of their cards, buttons and fonts is untouched; they get the same five things
  * as the style themes: Focus ring, XP level bar, level up, quest done pop and lock screens, each with its own motif, plus a page
  * background for a few. Everything is static; the only motion is the one-shot level up, quest done and lock emblem pop.
+ * v261: they also get a header strip (Fx2Bar) and decoration on every card, the quest board (fx2Frame, called by Card in Glass.kt).
  * Behind the master flag themefx and the theme's own flag fx_<theme> (Flags.EXTRA). #svg-logo  New theme with effects: add it to Fx2,
- * Fx2Now, Fx2X.WORDS, Flags.EXTRA and every `when (fx)` below.
+ * Fx2Now, Fx2X.WORDS, Flags.EXTRA and every `when (fx)` below, plus stripLine and cardDeco (strip and cards) and the words in Fx2Bar.
  */
 enum class Fx2 { NONE, SUNSET, OCEAN, FOREST, NEON, SCIFI, AMOLED, TERMINAL, PAPER, LINEN, SAGE, SKY, LILAC, CHALK, CLAY, ROSE, INDIGO }
 
@@ -164,7 +169,218 @@ private fun fontOf(fx: Fx2): FontFamily = when (fx) {
     else -> FontFamily.Default
 }
 
-// ── page background ──────────────────────────────────────────────────────────────────────────────────────
+// ── header strip and quest cards (v261) ──────────────────────────────────────────────────────────────────
+
+private fun DrawScope.waveLine(y: Float, amp: Float, len: Float, col: Color, sw: Float, x0: Float = 0f, x1: Float = size.width) {
+    val p = Path(); p.moveTo(x0, y)
+    var x = x0
+    while (x <= x1) { p.lineTo(x, y + Math.sin(((x - x0) / len).toDouble()).toFloat() * amp); x += 3.dp.toPx() }
+    drawPath(p, col, style = Stroke(sw))
+}
+
+/** v261: what is drawn along the bottom edge of the header strip of each Fx2 theme. Static. */
+private fun DrawScope.stripLine(fx: Fx2, c: Color, coin: Color, ink: Color) {
+    val w = size.width; val h = size.height; val y = h - 1f
+    when (fx) {
+        Fx2.SUNSET -> {
+            drawRect(Brush.horizontalGradient(listOf(coin.copy(alpha = 0.22f), c.copy(alpha = 0.08f), Color.Transparent)), size = size)
+            drawLine(Brush.horizontalGradient(listOf(coin, c, Color.Transparent)), Offset(0f, y), Offset(w, y), 2f)
+            val r = 7.dp.toPx(); val cx = w * 0.5f
+            drawArc(coin, 180f, 180f, true, Offset(cx - r, h - r), Size(r * 2, r * 2))
+        }
+        Fx2.OCEAN -> waveLine(h - 4.dp.toPx(), 2.5.dp.toPx(), 14.dp.toPx(), c.copy(alpha = 0.7f), 1.5.dp.toPx())
+        Fx2.FOREST -> {
+            drawLine(c.copy(alpha = 0.5f), Offset(0f, y), Offset(w, y), 2f)
+            var x = 20.dp.toPx(); var i = 0
+            while (x < w) { leaf(Offset(x, y), if (i % 2 == 0) -55f else -125f, 9.dp.toPx(), 3.5.dp.toPx(), c.copy(alpha = 0.7f)); x += 40.dp.toPx(); i++ }
+        }
+        Fx2.NEON -> for ((wd, al) in listOf(8f to 0.10f, 4f to 0.30f, 1.5f to 1f)) drawLine(c.copy(alpha = al), Offset(0f, h - 2.dp.toPx()), Offset(w, h - 2.dp.toPx()), wd.dp.toPx())
+        Fx2.SCIFI -> {
+            val st = 12.dp.toPx(); var x = 0f; var i = 0
+            while (x < w) { drawLine(c.copy(alpha = if (i % 3 == 0) 0.9f else 0.35f), Offset(x, y), Offset(x + 4.dp.toPx(), h - 7.dp.toPx()), 2.dp.toPx()); x += st; i++ }
+            drawLine(c.copy(alpha = 0.5f), Offset(0f, y), Offset(w, y), 1f)
+        }
+        Fx2.AMOLED -> {
+            drawLine(ink.copy(alpha = 0.25f), Offset(0f, y), Offset(w, y), 1f)
+            drawCircle(c, 2.dp.toPx(), Offset(14.dp.toPx(), y))
+        }
+        Fx2.TERMINAL -> drawLine(c.copy(alpha = 0.6f), Offset(0f, y), Offset(w, y), 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 3.dp.toPx()), 0f))
+        Fx2.PAPER -> {
+            val p = Path(); p.moveTo(0f, y - 2.dp.toPx())
+            var x = 0f; var i = 0
+            while (x <= w) { p.lineTo(x, y - 2.dp.toPx() + (((i * 7) % 3) - 1) * 0.9.dp.toPx()); x += 5.dp.toPx(); i++ }
+            drawPath(p, ink.copy(alpha = 0.5f), style = Stroke(1.2.dp.toPx()))
+        }
+        Fx2.LINEN -> drawLine(c.copy(alpha = 0.85f), Offset(0f, y - 2.dp.toPx()), Offset(w, y - 2.dp.toPx()), 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()), 0f))
+        Fx2.SAGE -> {
+            var x = 4.dp.toPx()
+            while (x < w) { drawCircle(c.copy(alpha = 0.6f), 1.2.dp.toPx(), Offset(x, y - 1.dp.toPx())); x += 8.dp.toPx() }
+            val b = Offset(w * 0.5f, y); leaf(b, -65f, 9.dp.toPx(), 3.dp.toPx(), c); leaf(b, -115f, 9.dp.toPx(), 3.dp.toPx(), c)
+        }
+        Fx2.SKY -> {
+            drawLine(c.copy(alpha = 0.4f), Offset(0f, y), Offset(w, y), 1.5.dp.toPx())
+            val x = w * 0.5f; val cc = c.copy(alpha = 0.4f)
+            drawCircle(cc, 4.dp.toPx(), Offset(x, h - 5.dp.toPx())); drawCircle(cc, 5.dp.toPx(), Offset(x + 7.dp.toPx(), h - 8.dp.toPx())); drawCircle(cc, 4.dp.toPx(), Offset(x + 14.dp.toPx(), h - 5.dp.toPx()))
+        }
+        Fx2.LILAC -> {
+            drawLine(c.copy(alpha = 0.35f), Offset(0f, y), Offset(w, y), 1f)
+            var x = 14.dp.toPx()
+            while (x < w) {
+                val ctr = Offset(x, h - 6.dp.toPx())
+                for (k in 0 until 5) drawCircle(c.copy(alpha = 0.55f), 1.8.dp.toPx(), polar(ctr, 3.dp.toPx(), k * 72f - 90f))
+                drawCircle(coin, 1.3.dp.toPx(), ctr); x += 30.dp.toPx()
+            }
+        }
+        Fx2.CHALK -> {
+            var x = 0f; var i = 0
+            while (x < w) { drawLine(ink.copy(alpha = 0.5f), Offset(x, y - (i % 2)), Offset(x + 6.dp.toPx(), y), 1.6.dp.toPx(), StrokeCap.Round); x += 9.dp.toPx(); i++ }
+        }
+        Fx2.CLAY -> {
+            drawRoundRect(c.copy(alpha = 0.25f), Offset(10.dp.toPx(), h - 7.dp.toPx()), Size(w - 20.dp.toPx(), 5.dp.toPx()), CornerRadius(3.dp.toPx()))
+            drawRoundRect(Color.White.copy(alpha = 0.35f), Offset(16.dp.toPx(), h - 6.dp.toPx()), Size(w * 0.3f, 1.5.dp.toPx()), CornerRadius(1.dp.toPx()))
+        }
+        Fx2.ROSE -> {
+            drawLine(c.copy(alpha = 0.4f), Offset(0f, y), Offset(w, y), 1f)
+            var x = 16.dp.toPx()
+            while (x < w) { heart(Offset(x, h - 7.dp.toPx()), 2.8.dp.toPx(), c.copy(alpha = 0.7f)); x += 44.dp.toPx() }
+        }
+        Fx2.INDIGO -> {
+            drawLine(c.copy(alpha = 0.35f), Offset(0f, y), Offset(w, y), 1f)
+            for (i in 0 until 14) star4(Offset(w * (((i * 37 + 9) % 100) / 100f), h * (0.2f + 0.5f * (((i * 53 + 17) % 100) / 100f))), (1f + (i % 3) * 0.6f).dp.toPx(), coin.copy(alpha = 0.6f))
+        }
+        else -> Unit
+    }
+}
+
+private fun todayShort(): String {
+    val d = java.time.LocalDate.now()
+    return d.dayOfWeek.name.take(3) + " " + d.dayOfMonth + " " + d.month.name.take(3)
+}
+
+/** v261: the strip at the top of every page for the Fx2 themes (the style themes have FxBar). Keeps the page below the status bar. */
+@Composable
+fun Fx2Bar() {
+    val fx = Fx2Now
+    val c = ColorPrimary; val coin = ColorCoin; val ink = ColorText
+    val date = remember { todayShort() }
+    val l: String; val r: String
+    when (fx) {
+        Fx2.SUNSET -> { l = "GOLDEN HOUR"; r = date }
+        Fx2.OCEAN -> { l = "HIGH TIDE"; r = date }
+        Fx2.FOREST -> { l = "THE TRAIL"; r = "GROWING" }
+        Fx2.NEON -> { l = "ON AIR"; r = "OPEN 24H" }
+        Fx2.SCIFI -> { l = "SYS.ONLINE"; r = "SECTOR 01" }
+        Fx2.AMOLED -> { l = "QUESTBLOCK"; r = date }
+        Fx2.TERMINAL -> { l = "user@questblock:~$"; r = "bash" }
+        Fx2.PAPER -> { l = "DAILY NOTES"; r = date }
+        Fx2.LINEN -> { l = "STITCHED"; r = "HAND SEWN" }
+        Fx2.SAGE -> { l = "SPROUTING"; r = "SLOW AND STEADY" }
+        Fx2.SKY -> { l = "CLEAR SKIES"; r = date }
+        Fx2.LILAC -> { l = "IN BLOOM"; r = date }
+        Fx2.CHALK -> { l = "CLASS IN SESSION"; r = date }
+        Fx2.CLAY -> { l = "SOFT AND SQUISHY"; r = date }
+        Fx2.ROSE -> { l = "WITH LOVE"; r = date }
+        Fx2.INDIGO -> { l = "NIGHT SKY"; r = "STARGAZING" }
+        else -> {
+            Spacer(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding())
+            return
+        }
+    }
+    val fam = fontOf(fx)
+    val lc = if (fx == Fx2.NEON) lerp(c, Color.White, 0.5f) else c
+    Row(
+        Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding().height(24.dp)
+            .drawBehind { stripLine(fx, c, coin, ink) }
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(l, color = lc, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = if (fx == Fx2.TERMINAL) 0.sp else 2.sp, fontFamily = fam)
+        Spacer(Modifier.weight(1f))
+        Text(r, color = ColorMuted, fontSize = 10.sp, letterSpacing = 1.sp, fontFamily = fam)
+    }
+}
+
+/** v261: what is drawn over every card (the quest board) for each Fx2 theme. Small and static; the card's shape, colours and border stay. */
+private fun DrawScope.cardDeco(fx: Fx2, c: Color, coin: Color, ink: Color) {
+    val w = size.width; val h = size.height; val m = 8.dp.toPx()
+    when (fx) {
+        Fx2.SUNSET -> {
+            drawRect(Brush.verticalGradient(listOf(Color.Transparent, coin.copy(alpha = 0.10f)), startY = h * 0.5f, endY = h), Offset(0f, h * 0.5f), Size(w, h * 0.5f))
+            val r = 7.dp.toPx()
+            drawArc(coin.copy(alpha = 0.8f), 180f, 180f, true, Offset(w - 24.dp.toPx() - r, h - r), Size(r * 2, r * 2))
+        }
+        Fx2.OCEAN -> waveLine(h - 4.dp.toPx(), 2.dp.toPx(), 12.dp.toPx(), c.copy(alpha = 0.35f), 1.5.dp.toPx(), m, w - m)
+        Fx2.FOREST -> {
+            leaf(Offset(w - m, 14.dp.toPx()), 150f, 12.dp.toPx(), 4.dp.toPx(), c.copy(alpha = 0.45f))
+            leaf(Offset(w - m, 14.dp.toPx()), 190f, 12.dp.toPx(), 4.dp.toPx(), c.copy(alpha = 0.35f))
+            drawLine(c.copy(alpha = 0.3f), Offset(m, h - 6.dp.toPx()), Offset(m + 44.dp.toPx(), h - 6.dp.toPx()), 1.5.dp.toPx())
+            leaf(Offset(m + 22.dp.toPx(), h - 6.dp.toPx()), -60f, 8.dp.toPx(), 3.dp.toPx(), c.copy(alpha = 0.4f))
+        }
+        Fx2.NEON -> for ((wd, al) in listOf(5f to 0.10f, 2.5f to 0.35f, 1f to 0.9f)) {
+            drawLine(c.copy(alpha = al), Offset(m, 0.5f), Offset(w - m, 0.5f), wd.dp.toPx())
+            drawLine(c.copy(alpha = al), Offset(m, h - 0.5f), Offset(w - m, h - 0.5f), wd.dp.toPx())
+        }
+        Fx2.SCIFI -> {
+            val l = 10.dp.toPx(); val sw = 1.5.dp.toPx()
+            drawLine(c, Offset(0f, 0f), Offset(l, 0f), sw); drawLine(c, Offset(0f, 0f), Offset(0f, l), sw)
+            drawLine(c, Offset(w, h), Offset(w - l, h), sw); drawLine(c, Offset(w, h), Offset(w, h - l), sw)
+        }
+        Fx2.AMOLED -> drawCircle(c.copy(alpha = 0.8f), 2.dp.toPx(), Offset(w - m, m))
+        Fx2.TERMINAL -> {
+            drawRect(c.copy(alpha = 0.5f), Offset(0f, 0f), Size(2.dp.toPx(), h))
+            drawRect(c.copy(alpha = 0.7f), Offset(w - m - 6.dp.toPx(), h - m - 10.dp.toPx()), Size(6.dp.toPx(), 10.dp.toPx()))
+        }
+        Fx2.PAPER -> {
+            val tape = Path().apply {
+                moveTo(w / 2 - 20.dp.toPx(), 2.dp.toPx()); lineTo(w / 2 + 18.dp.toPx(), 0f)
+                lineTo(w / 2 + 20.dp.toPx(), 9.dp.toPx()); lineTo(w / 2 - 18.dp.toPx(), 11.dp.toPx()); close()
+            }
+            drawPath(tape, coin.copy(alpha = 0.45f))
+            val fold = Path().apply { moveTo(w, h - 14.dp.toPx()); lineTo(w - 14.dp.toPx(), h); lineTo(w, h); close() }
+            drawPath(fold, ink.copy(alpha = 0.12f))
+        }
+        Fx2.LINEN -> drawRoundRect(c.copy(alpha = 0.45f), Offset(5.dp.toPx(), 5.dp.toPx()), Size(w - 10.dp.toPx(), h - 10.dp.toPx()), CornerRadius(8.dp.toPx()),
+            style = Stroke(1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()), 0f)))
+        Fx2.SAGE -> {
+            val b = Offset(w - m, 24.dp.toPx())
+            drawLine(c.copy(alpha = 0.5f), b, Offset(b.x, b.y - 11.dp.toPx()), 1.5.dp.toPx())
+            leaf(Offset(b.x, b.y - 11.dp.toPx()), 215f, 9.dp.toPx(), 3.dp.toPx(), c.copy(alpha = 0.55f))
+            leaf(Offset(b.x, b.y - 11.dp.toPx()), 325f, 9.dp.toPx(), 3.dp.toPx(), c.copy(alpha = 0.55f))
+        }
+        Fx2.SKY -> {
+            val cc = c.copy(alpha = 0.22f); val x = w - m - 20.dp.toPx()
+            drawCircle(cc, 5.dp.toPx(), Offset(x, 14.dp.toPx())); drawCircle(cc, 6.dp.toPx(), Offset(x + 8.dp.toPx(), 11.dp.toPx())); drawCircle(cc, 4.5.dp.toPx(), Offset(x + 16.dp.toPx(), 14.dp.toPx()))
+        }
+        Fx2.LILAC -> {
+            val ctr = Offset(w - m - 6.dp.toPx(), m + 5.dp.toPx())
+            for (k in 0 until 5) drawCircle(c.copy(alpha = 0.4f), 3.dp.toPx(), polar(ctr, 4.dp.toPx(), k * 72f - 90f))
+            drawCircle(coin.copy(alpha = 0.8f), 2.dp.toPx(), ctr)
+        }
+        Fx2.CHALK -> {
+            var x = m; var i = 0
+            while (x < w * 0.4f) { drawLine(ink.copy(alpha = 0.35f), Offset(x, h - 5.dp.toPx() - (i % 2)), Offset(x + 6.dp.toPx(), h - 5.dp.toPx()), 1.6.dp.toPx(), StrokeCap.Round); x += 9.dp.toPx(); i++ }
+            for (k in 0 until 6) drawCircle(ink.copy(alpha = 0.10f), (0.8f + (k % 3) * 0.5f).dp.toPx(), Offset(w - m - k * 7.dp.toPx(), m + (k * 5 % 12).dp.toPx()))
+        }
+        Fx2.CLAY -> drawLine(Color.White.copy(alpha = 0.22f), Offset(16.dp.toPx(), 5.dp.toPx()), Offset(w * 0.35f, 5.dp.toPx()), 3.dp.toPx(), StrokeCap.Round)
+        Fx2.ROSE -> heart(Offset(w - m - 4.dp.toPx(), m + 3.dp.toPx()), 4.dp.toPx(), c.copy(alpha = 0.45f))
+        Fx2.INDIGO -> {
+            star4(Offset(w - m - 4.dp.toPx(), m + 2.dp.toPx()), 4.dp.toPx(), coin.copy(alpha = 0.7f))
+            star4(Offset(w - m - 16.dp.toPx(), m + 8.dp.toPx()), 2.5.dp.toPx(), coin.copy(alpha = 0.5f))
+            star4(Offset(w - m - 10.dp.toPx(), m + 16.dp.toPx()), 2.dp.toPx(), c.copy(alpha = 0.5f))
+        }
+        else -> Unit
+    }
+}
+
+/** v261: the quest board look of the Fx2 themes: every Card (Glass.kt) gets its decoration while the theme's effects are on. */
+@Composable
+internal fun Modifier.fx2Frame(): Modifier {
+    if (!Fx2X.on) return this
+    val fx = Fx2Now; val c = ColorPrimary; val coin = ColorCoin; val ink = ColorText
+    return this.drawWithContent { drawContent(); cardDeco(fx, c, coin, ink) }
+}
+
+// ── page background ──
 
 /** v254: a static page background for Sci-Fi (grid), Terminal (scan lines), Indigo (stars), Chalk (dust) and Paper (specks). */
 @Composable

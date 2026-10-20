@@ -3,6 +3,15 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("261.0.0", "One theme per page, header strips and quest cards for the 16 newer themes",
+        listOf(
+            "Flags > Theme effects: the Preview effects button and the word preview are gone. A theme page opens only by tapping a theme row and then Try it, and it shows that one theme only (no theme chips); its title is the theme name. It still plays the real XP bar, Focus ring, Level up, Quest done, Penalty (System, Pixel) and lock emblem, and now also a sample quest card. Nothing is awarded and the equipped theme comes back when you leave. Code: ThemeFxTryPage in ui/ThemeFxPage.kt (was ThemeFxPreviewPage)",
+            "The theme rows now also list Header strip and Quest cards for all 25 themes",
+            "New for the 16 themes added in v254 (Sunset, Ocean, Forest, Neon, Sci-Fi, AMOLED, Terminal, Paper, Linen, Sage, Sky, Lilac, Chalk, Clay, Rose, Indigo): a header strip at the top of every page (words on the left, today's date or a short phrase on the right, and a drawing along its bottom edge) and a decoration on every card, which is the quest board look. Cards keep their shape, colours and border. Everything is static",
+            "Strips: Sunset GOLDEN HOUR (gradient, half sun); Ocean HIGH TIDE (wave line); Forest THE TRAIL (leaves along the line); Neon ON AIR (glow tube); Sci-Fi SYS.ONLINE (slanted cells); AMOLED QUESTBLOCK (hairline and dot); Terminal user@questblock:~$ (dashed line, mono); Paper DAILY NOTES (pencil line); Linen STITCHED (stitched line); Sage SPROUTING (dotted line, sprout); Sky CLEAR SKIES (cloud); Lilac IN BLOOM (small flowers); Chalk CLASS IN SESSION (chalk line); Clay SOFT AND SQUISHY (puffy pill); Rose WITH LOVE (hearts); Indigo NIGHT SKY (stars)",
+            "Cards: Sunset warm glow and a half sun; Ocean wave line; Forest leaf corner and a vine; Neon glowing top and bottom lines; Sci-Fi corner ticks; AMOLED one dot; Terminal left bar and a block cursor; Paper tape and a folded corner; Linen stitched border; Sage sprout; Sky cloud; Lilac flower; Chalk underline and dust; Clay glossy streak; Rose heart; Indigo stars",
+            "Both follow the existing switches themefx and fx_<theme>; with a switch off the old look comes back. With the Termux look or a picture background on they are not drawn. Code: Fx2Bar, stripLine, cardDeco and fx2Frame in ui/ThemeFx2.kt, Card in ui/Glass.kt, topBar in ui/MainScreen.kt. The nine style themes are unchanged",
+        )),
     VersionEntry("260.0.0", "What the app does: a features page",
         listOf(
             "The Why I built QuestBlock card on About me can be tapped (it shows See everything the app does) and opens a new page that lists every feature of the app in seven groups: Quests and rewards, Locking and coins, Focus, School, Player, Looks and Tools",
