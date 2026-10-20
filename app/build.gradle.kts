@@ -31,8 +31,8 @@ android {
         applicationId = "com.krishna.questblock"
         minSdk = 26
         targetSdk = 35
-        versionCode = 279
-        versionName = "279.0.0"
+        versionCode = 280
+        versionName = "280.0.0"
     }
 
     signingConfigs {
@@ -49,6 +49,8 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            // v280: standard R8 rules file (keeps what Android needs, adds optimisation) so release builds are tighter and faster
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = if (hasReleaseKey) signingConfigs.getByName("release")
             else signingConfigs.getByName("debug")
         }

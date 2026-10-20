@@ -1,0 +1,13 @@
+# v280: hand-written baseline profile. Android pre-compiles these methods at install time, so the app opens faster and the first scrolls do not stutter.
+HSPLandroidx/compose/**->**(**)**
+HSPLandroidx/lifecycle/**->**(**)**
+HSPLandroidx/navigation/**->**(**)**
+HSPLandroidx/activity/**->**(**)**
+HSPLandroidx/room/**->**(**)**
+HSPLcom/krishna/questblock/ui/**->**(**)**
+HSPLcom/krishna/questblock/data/**->**(**)**
+HSPLcom/krishna/questblock/engine/**->**(**)**
+Landroidx/compose/**;
+Landroidx/lifecycle/**;
+Landroidx/navigation/**;
+Lcom/krishna/questblock/**;

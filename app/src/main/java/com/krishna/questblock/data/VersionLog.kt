@@ -3,6 +3,14 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("280.0.0", "Faster app, Whitespace strip back, Zen without the half circle",
+        listOf(
+            "Whitespace: the header strip is back, in a very light tone (quiet lowercase words, the date and one hairline). Header pad stays",
+            "Zen: the half circle (ens\u014D arc) is gone from the header strip and from every quest card; a very light line sits there instead. Focus ring, XP stroke, level up and lock screen are unchanged",
+            "Speed: a hand-written baseline profile (app/src/main/baseline-prof.txt) so Android pre-compiles the app, Compose and the lists at install (faster open, smoother first scrolls); release build now uses the standard R8 rules file; the theme-effects check that runs on every card and button no longer builds a text key each time",
+            "No look or feel was removed: same themes, same animations, same pages",
+            "Code: stripLine, cardDeco, Fx2Bar and Fx2X.on in ui/ThemeFx2.kt, build.gradle.kts, baseline-prof.txt. Not yet compiled in CI",
+        )),
     VersionEntry("279.0.0", "Theme decorations no longer sit on the UI",
         listOf(
             "Quest cards: the sparkles, hearts, leaves, clouds, bubbles and so on in the top right corner (Midnight Indigo, Rose Quartz, Ocean, Forest, Sage, Sky, Lilac, Chalk, Zen, AMOLED, Vaporwave) moved onto the very edge of the card, smaller, so they never touch the Complete, Edit or Delete buttons or the title. Bottom decorations (Sunset, Terminal, Paper, Carnival, Chalk, Forest) hug the bottom edge too",

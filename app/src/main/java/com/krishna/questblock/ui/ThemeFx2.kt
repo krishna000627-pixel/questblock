@@ -99,7 +99,9 @@ val Fx2Now: Fx2 get() = if (TermuxOn) Fx2.NONE else when (ShopTheme) {
 
 object Fx2X {
     /** The effects of the theme in use are on: master flag themefx and the theme's own fx_<theme>. */
-    val on: Boolean get() = Fx2Now != Fx2.NONE && Flags.get("themefx") && Flags.get("fx_" + Fx2Now.name.lowercase())
+    // v280: the "fx_<theme>" key is built once per theme instead of on every card and button draw
+    private val FLAG_KEY: Map<Fx2, String> = Fx2.values().associateWith { "fx_" + it.name.lowercase() }
+    val on: Boolean get() { val fx = Fx2Now; return fx != Fx2.NONE && Flags.get("themefx") && Flags.get(FLAG_KEY.getValue(fx)) }
 
     private val WORDS: Map<Fx2, Map<String, String>> = mapOf(
         Fx2.SUNSET to mapOf("locked" to "The sun has set", "done" to "\u2600 Golden hour", "level" to "NEW DAY", "ring" to "until sunset"),
@@ -293,10 +295,8 @@ private fun DrawScope.stripLine(fx: Fx2, c: Color, coin: Color, ink: Color) {
             drawLine(c, Offset(0f, y), Offset(w * 0.12f, y), 1f)
         }
         Fx2.WHITESPACE -> drawLine(ink.copy(alpha = 0.10f), Offset(0f, y), Offset(w, y), 1f)
-        Fx2.ZEN -> {
-            val r = 4.dp.toPx(); val ctr = Offset(w / 2, h - 7.dp.toPx())
-            drawArc(ink.copy(alpha = 0.55f), 30f, 300f, false, Offset(ctr.x - r, ctr.y - r), Size(r * 2, r * 2), style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
-        }
+        // v280: Zen strip has no half circle any more, only a very light line
+        Fx2.ZEN -> drawLine(ink.copy(alpha = 0.12f), Offset(0f, y), Offset(w, y), 1f)
         Fx2.CARNIVAL -> {
             val set = carnivalSet(c, coin)
             drawLine(ink.copy(alpha = 0.45f), Offset(0f, 1.dp.toPx()), Offset(w, 1.dp.toPx()), 1f)
@@ -350,7 +350,7 @@ fun Fx2Bar() {
         Fx2.ROSE -> { l = "WITH LOVE"; r = date }
         Fx2.INDIGO -> { l = "NIGHT SKY"; r = "STARGAZING" }
         Fx2.MONO -> { l = "mono"; r = date }
-        Fx2.WHITESPACE -> { l = ""; r = "" }
+        Fx2.WHITESPACE -> { l = "whitespace"; r = date }
         Fx2.ZEN -> { l = "STILL"; r = "BREATHE" }
         Fx2.CARNIVAL -> { l = "STEP RIGHT UP"; r = "ADMIT ONE" }
         Fx2.BAROQUE -> { l = "THE GRAND SALON"; r = date }
@@ -360,19 +360,19 @@ fun Fx2Bar() {
             return
         }
     }
-    // v278: Whitespace has no strip at all, only a header pad (like the themes without strips) with a little extra air
-    if (fx == Fx2.WHITESPACE) {
-        Spacer(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding().height(12.dp))
-        return
-    }
+    // v280: Whitespace has its strip back, in a very light tone: quiet words and one hairline
     val fam = fontOf(fx)
-    val lc = if (fx == Fx2.NEON || fx == Fx2.CARNIVAL || fx == Fx2.VAPORWAVE) lerp(c, Color.White, 0.5f) else c
+    val lc = when (fx) {
+        Fx2.NEON, Fx2.CARNIVAL, Fx2.VAPORWAVE -> lerp(c, Color.White, 0.5f)
+        Fx2.WHITESPACE -> ink.copy(alpha = 0.45f)
+        else -> c
+    }
     // v262: the words sit in their own row and the drawing in a band under them, so nothing is drawn over the words
     Column(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().height(20.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(l, color = lc, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = if (fx == Fx2.TERMINAL) 0.sp else 2.sp, fontFamily = fam)
+            Text(l, color = lc, fontSize = 11.sp, fontWeight = if (fx == Fx2.WHITESPACE) FontWeight.Light else FontWeight.Bold, letterSpacing = if (fx == Fx2.TERMINAL) 0.sp else 2.sp, fontFamily = fam)
             Spacer(Modifier.weight(1f))
-            Text(r, color = ColorMuted, fontSize = 10.sp, letterSpacing = 1.sp, fontFamily = fam)
+            Text(r, color = if (fx == Fx2.WHITESPACE) ColorMuted.copy(alpha = 0.7f) else ColorMuted, fontSize = 10.sp, letterSpacing = 1.sp, fontFamily = fam)
         }
         Canvas(Modifier.fillMaxWidth().height(12.dp)) { stripLine(fx, c, coin, ink) }
     }
@@ -452,10 +452,8 @@ private fun DrawScope.cardDeco(fx: Fx2, c: Color, coin: Color, ink: Color) {
         // v277: minimalist and maximalist cards
         Fx2.MONO -> drawLine(c, Offset(m, 0.5f), Offset(m + 26.dp.toPx(), 0.5f), 1.dp.toPx())
         Fx2.WHITESPACE -> drawLine(ink.copy(alpha = 0.10f), Offset(0f, h - 0.5f), Offset(w, h - 0.5f), 1f)
-        Fx2.ZEN -> {
-            val r = 4.dp.toPx()
-            drawArc(ink.copy(alpha = 0.35f), 30f, 300f, false, Offset(w - 8.dp.toPx() - r * 2, 2.dp.toPx()), Size(r * 2, r * 2), style = Stroke(1.2.dp.toPx(), cap = StrokeCap.Round))
-        }
+        // v280: no half circle on Zen cards, a very light line along the bottom edge
+        Fx2.ZEN -> drawLine(ink.copy(alpha = 0.10f), Offset(m, h - 0.5f), Offset(w - m, h - 0.5f), 1f)
         Fx2.CARNIVAL -> {
             val set = carnivalSet(c, coin)
             var x = m; var i = 0
