@@ -138,7 +138,7 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
         }
     ) { innerPadding ->
         NavHost(navController = navController, startDestination = startDest,
-            modifier = Modifier.fillMaxSize().padding(innerPadding).fxBackground().handheldWipe(route)) {
+            modifier = Modifier.fillMaxSize().padding(innerPadding).fxBackground()) {
             composable("home") {
                 HomeScreen(
                     onAddQuest = { navController.openPage("quest_types") },

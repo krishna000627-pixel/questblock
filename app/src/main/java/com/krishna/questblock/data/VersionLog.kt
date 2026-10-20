@@ -3,6 +3,10 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("275.0.0", "Handheld page wipe removed",
+        listOf(
+            "The Handheld page wipe (ten dark bars closing over the page on every page change) is gone, and so is its tick. Other Handheld effects (boot screen, SAVING popup, XP bar) are unchanged. ui/HandheldWipe.kt is an empty file on purpose, the update command never deletes",
+        )),
     VersionEntry("274.0.0", "Haptics for every theme",
         listOf(
             "New flag Haptics (Flags > More flags, terminal: flags on|off haptics, on by default). Coin, level up, Focus end (chime) and unlock end (alarm) now buzz as well as sound, and the Handheld page wipe gives one short tick",

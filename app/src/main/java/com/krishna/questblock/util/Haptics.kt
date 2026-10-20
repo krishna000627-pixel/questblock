@@ -7,7 +7,7 @@ import android.os.Vibrator
 /**
  * v274: haptics that go with the sounds. Every theme feels like its sound set (ThemeSounds.kt): the number of buzzes follows the notes,
  * sharp square/pulse sounds give short hard buzzes, saw sounds long strong ones, bell and sine sounds soft ones. Default and Termux get a plain pattern.
- * Events: coin, level (level up), chime (Focus ended), alarm (unlock ran out), plus [tick] for the Handheld page wipe.
+ * Events: coin, level (level up), chime (Focus ended), alarm (unlock ran out).
  * Switch: flag "haptics" (Flags > More flags, terminal: flags on|off haptics). Needs only the VIBRATE permission the app already has.
  */
 object Haptics {
