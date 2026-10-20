@@ -24,6 +24,7 @@ object Sounds {
 
     fun init(ctx: Context) {
         app = ctx.applicationContext
+        Haptics.init(ctx)
         runCatching {
             val p = SoundPool.Builder().setMaxStreams(3)
                 .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
@@ -52,10 +53,22 @@ object Sounds {
         }
     }
 
-    fun coin() = play(R.raw.sfx_coin)
-    fun levelUp() = play(R.raw.sfx_levelup)
-    fun chime() = play(R.raw.sfx_chime)
-    fun alarm() = play(R.raw.sfx_alarm)
+    /** v273: each theme has its own sound set (ThemeSounds.kt). Default and Termux keep the recorded sounds. */
+    var themeOn: Boolean
+        get() = sp()?.getBoolean("snd_theme", true) ?: false
+        set(v) { sp()?.edit()?.putBoolean("snd_theme", v)?.apply() }
+
+    private fun themed(kind: String): Boolean {
+        if (!sfxOn || !themeOn) return false
+        val s = sp() ?: return false
+        if (s.getBoolean("termux_theme", false)) return false
+        return ThemeSounds.play(s.getString("shop_theme", "default") ?: "default", kind)
+    }
+
+    fun coin() { Haptics.event("coin"); if (!themed("coin")) play(R.raw.sfx_coin) }
+    fun levelUp() { Haptics.event("level"); if (!themed("level")) play(R.raw.sfx_levelup) }
+    fun chime() { Haptics.event("chime"); if (!themed("chime")) play(R.raw.sfx_chime) }
+    fun alarm() { Haptics.event("alarm"); if (!themed("alarm")) play(R.raw.sfx_alarm) }
 
     /** A quest paid out: level-up wins over the coin sound. */
     fun questDone(coins: Boolean, levelUp: Boolean) { if (levelUp) levelUp() else if (coins) coin() }

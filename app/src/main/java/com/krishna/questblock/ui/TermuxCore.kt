@@ -26,29 +26,12 @@ object TermuxMode {
     fun set(ctx: Context, on: Boolean) {
         ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).edit().putBoolean(KEY, on).apply()
         TermuxOn = on
-        if (on && QuestHomeOn) QuestHomeMode.set(ctx, false)    // one theme of the two at a time
         AppName.applyAll(ctx)                                    // the launcher name follows the theme
     }
     /** A strict Focus session is running right now (same test MainScreen uses). */
     fun strictNow(ctx: Context): Boolean {
         val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
         return sp.getBoolean("focus_strict", false) && sp.getLong("focus_until_cache", 0L) > System.currentTimeMillis()
-    }
-}
-
-/** v212: Quest Home, the launcher theme (QuestHomeActivity). Mutually exclusive with the Termux theme. */
-var QuestHomeOn by mutableStateOf(false)
-
-object QuestHomeMode {
-    private const val KEY = "questhome_theme"
-    fun load(ctx: Context) {
-        QuestHomeOn = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getBoolean(KEY, false)
-    }
-    fun set(ctx: Context, on: Boolean) {
-        ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).edit().putBoolean(KEY, on).apply()
-        QuestHomeOn = on
-        if (on && TermuxOn) TermuxMode.set(ctx, false)
-        AppName.applyAll(ctx)
     }
 }
 
@@ -63,7 +46,6 @@ object AppName {
     private const val PKG = "com.krishna.questblock.ui."
     /** v250: shield logo in the Ninja, System, Paper and Gothic colours; every other theme keeps the gold one (AliasQuestBlock). */
     private val THEME_ALIASES = mapOf("theme_ninja" to "AliasNinja", "theme_system" to "AliasSystem", "theme_paper" to "AliasPaper", "theme_gothic" to "AliasGothic")
-    private const val HOME_ACTIVITY = "com.krishna.questblock.ui.QuestHomeActivity"
     val MODES = listOf("follow", "questblock", "terminal")
 
     fun mode(ctx: Context): String =
@@ -87,9 +69,8 @@ object AppName {
      */
     @Volatile var inForeground = false
 
-    /** Switches the Quest Home activity now and the launcher entries to match the theme (the entries wait while the app is open). Safe to call any time. */
+    /** Switches the launcher entries to match the theme (the entries wait while the app is open). Safe to call any time. */
     fun applyAll(ctx: Context) {
-        setEnabled(ctx, ctx.packageManager, HOME_ACTIVITY, QuestHomeOn)
         if (!inForeground) applyLauncher(ctx)
     }
 

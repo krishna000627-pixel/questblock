@@ -93,6 +93,13 @@ fun loadThemeMode(ctx: Context) {
         java.io.File(ctx.filesDir, "poster_user.jpg").delete()
         ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).edit().remove("poster_on").remove("poster_tint").remove("poster_dim").apply()
     }
+    // v273: Quest Home was removed: delete its leftover pictures and settings
+    runCatching {
+        java.io.File(ctx.filesDir, "qh_wall.jpg").delete()
+        java.io.File(ctx.filesDir, "qh_icons").deleteRecursively()
+        ctx.getSharedPreferences("qb_launcher", Context.MODE_PRIVATE).edit().clear().apply()
+        ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).edit().remove("questhome_theme").remove("flag_theme_home").apply()
+    }
     // paint the chosen background before the first frame so the XML window colour never shows
     (ctx as? Activity)?.window?.setBackgroundDrawable(windowBackgroundFor(ctx))
 }

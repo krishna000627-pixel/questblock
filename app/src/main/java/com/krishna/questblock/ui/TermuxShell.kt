@@ -57,7 +57,7 @@ private val TOP_COMMANDS = listOf(
     "stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub",
     "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas",
     "suggest", "timers", "fun", "fg", "last", "mood", "achievements", "leaderboard",
-    "cd", "pwd", "qhome", "flags", "icons", "logo", "font",
+    "cd", "pwd", "flags", "icons", "logo", "font",
 )
 
 private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
@@ -67,12 +67,12 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "icons" to listOf("list", "on", "off", "reset"),
     "icons on" to SvgIcons.EMOJI_ICONS.toList(),
     "icons off" to SvgIcons.EMOJI_ICONS.toList(),
-    "theme set" to listOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint", "termux", "questhome"),
+    "theme set" to listOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint", "termux"),
     "flags" to listOf("ls", "on", "off"),
     "font" to listOf("ls", "list", "set", "on", "off", "reset"),
     "font set" to listOf("default") + APP_FONTS.map { it.id },
-    "flags on" to listOf("phone", "termux", "home", "homework", "icons", "sounds", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint", "fx_sunset", "fx_ocean", "fx_forest", "fx_neon", "fx_scifi", "fx_amoled", "fx_terminal", "fx_paper", "fx_linen", "fx_sage", "fx_sky", "fx_lilac", "fx_chalk", "fx_clay", "fx_rose", "fx_indigo"),
-    "flags off" to listOf("phone", "termux", "home", "homework", "icons", "sounds", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint", "fx_sunset", "fx_ocean", "fx_forest", "fx_neon", "fx_scifi", "fx_amoled", "fx_terminal", "fx_paper", "fx_linen", "fx_sage", "fx_sky", "fx_lilac", "fx_chalk", "fx_clay", "fx_rose", "fx_indigo"),
+    "flags on" to listOf("phone", "termux", "homework", "icons", "sounds", "themesounds", "haptics", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint", "fx_sunset", "fx_ocean", "fx_forest", "fx_neon", "fx_scifi", "fx_amoled", "fx_terminal", "fx_paper", "fx_linen", "fx_sage", "fx_sky", "fx_lilac", "fx_chalk", "fx_clay", "fx_rose", "fx_indigo"),
+    "flags off" to listOf("phone", "termux", "homework", "icons", "sounds", "themesounds", "haptics", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint", "fx_sunset", "fx_ocean", "fx_forest", "fx_neon", "fx_scifi", "fx_amoled", "fx_terminal", "fx_paper", "fx_linen", "fx_sage", "fx_sky", "fx_lilac", "fx_chalk", "fx_clay", "fx_rose", "fx_indigo"),
     "quests" to listOf("--today", "--done", "--overdue", "--focus"),
     "quest" to listOf("add", "show", "edit", "done", "rm", "focus", "link", "step", "skip", "steps"),
     "focus" to listOf("start", "status", "stop", "apps", "last", "log"),
@@ -98,25 +98,7 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "ideas status" to listOf("idea", "next", "doing", "done"),
     "ideas copy" to listOf("all", "ui", "launcher", "bug", "theme", "other"),
     "about" to listOf("features", "open"),
-    "theme set" to listOf("default", "paper", "termux", "questhome"),
-    "qhome" to listOf("status", "themes", "theme", "icons", "icon", "pack", "awidget", "widget", "pages", "add", "rm", "dock", "folder", "hide", "unhide", "hidden", "apps", "set", "wall", "grid", "block", "focushome", "export", "import", "default", "reset"),
-    "qhome set" to listOf("ls", "wall", "dim", "blur", "wallcolor", "cols", "dock", "iconsize", "labels", "lines", "tile", "az", "searchhidden", "hiddenbadge", "focushome", "lockedhide", "block", "g.double", "g.long", "g.up", "g.down",
-        "g2.up", "g2.down", "pages", "rows", "transition", "parallax", "animate", "iconsrc", "list", "sort", "recentrow", "mostrow",
-        "revealword", "revealcost", "revealgesture", "watcher", "sheet", "clockscale", "questscount", "hwcount", "focuspreset",
-        "nighttheme", "nightfrom", "nightto", "dots", "folderstyle", "dockstyle", "usagebadge", "studyfirst", "notifdots", "searchextra", "searchcontacts"),
-    "qhome theme" to listOf("new", "path", "del", "material"),
-    "qhome hide" to listOf("rules"),
-    "qhome pack" to listOf("1", "2"),
-    "qhome awidget" to listOf("ls", "rm"),
-    "qhome wall" to listOf("svg", "phone", "phonesvg", "color", "picture", "pick", "dim", "blur"),
-    "qhome grid" to listOf("4", "5", "6"),
-    "qhome block" to listOf("accessibility", "launcher", "both"),
-    "qhome focushome" to listOf("on", "off"),
-    "qhome icons" to listOf("circle", "squircle", "square", "leaf", "hexagon", "diamond", "theme"),
-    "qhome widget" to listOf("clock", "status", "focus", "quests", "homework"),
-    "qhome dock" to listOf("add", "rm"),
-    "qhome folder" to listOf("new", "rm", "add", "take", "rename"),
-    "qhome theme" to listOf("niagara", "smart", "lawn"),
+    "theme set" to listOf("default", "paper", "termux"),
     "suggest" to listOf("add", "physics", "chemistry", "maths", "boards"),
     "cd" to listOf("~", "quests", "hw", "focus", "vault", "shop", "stats", "settings", "ideas"),
     "hw" to listOf("add", "ls", "board", "done", "undo", "rm", "edit", "focus", "week", "copy", "bed"),
@@ -133,7 +115,7 @@ private val GROUPS: Map<String, List<String>> = linkedMapOf(
     "blocking" to listOf("vault", "unlock", "sites", "limits", "categories", "timers"),
     "economy" to listOf("coins", "shop", "inv", "fun"),
     "progress" to listOf("stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub", "mood", "achievements", "leaderboard"),
-    "settings" to listOf("qhome", "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas", "flags", "icons", "logo", "font"),
+    "settings" to listOf("set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas", "flags", "icons", "logo", "font"),
 )
 
 private val MAN: Map<String, String> = mapOf(
@@ -145,9 +127,9 @@ private val MAN: Map<String, String> = mapOf(
     "whoami" to "whoami              hero name, goal, birthday, level",
     "alias" to "alias [name=cmd]    list or make a shortcut, e.g. alias qt=quests --today",
     "unalias" to "unalias <name>     remove a shortcut",
-    "theme" to "theme [ls] | [set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux|questhome]   default/phone = the normal look (Quest Phone), paper, linen, sage, sky, lilac, chalk = the plain light shop themes, clay = the soft puffy Claymorphism one, system = the dark blue RPG System-window look (cut corners, mono text, HUD grid; both: you must own it, shop buy <name>), ninja, hashira, monarch, gothic, guild, pixel, handheld, blueprint = more style shop themes with their own shapes, fonts, strips and backgrounds (you must own them too: shop buy <name>), questhome = the launcher. theme ls lists the app themes that are on (flags hides the ones turned off) and the one in use. A theme turned off in flags is refused. refused during Focus (theme ls still works)",
+    "theme" to "theme [ls] | [set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux]   default/phone = the normal look (Quest Phone), paper, linen, sage, sky, lilac, chalk = the plain light shop themes, clay = the soft puffy Claymorphism one, system = the dark blue RPG System-window look (cut corners, mono text, HUD grid; both: you must own it, shop buy <name>), ninja, hashira, monarch, gothic, guild, pixel, handheld, blueprint = more style shop themes with their own shapes, fonts, strips and backgrounds (you must own them too: shop buy <name>). theme ls lists the app themes that are on (flags hides the ones turned off) and the one in use. A theme turned off in flags is refused. refused during Focus (theme ls still works)",
     "font" to "font [ls] | list | on | off | set <font|default> | reset   one font for the whole app (29 fonts: font list). on/off is the Fonts flag; off or default = the normal font. refused during Focus (read-only forms still work)",
-    "flags" to "flags [ls] | on <name> | off <name>   names: phone termux home (app themes, the one left on can't be turned off), homework, icons, sounds, mood, leaderboard, experiments, themeicon (app icon follows the theme), themefx (master for the extras of all style themes), fx_system fx_ninja fx_hashira fx_monarch fx_gothic fx_guild fx_pixel fx_handheld fx_blueprint fx_sunset fx_ocean fx_forest fx_neon fx_scifi fx_amoled fx_terminal fx_paper fx_linen fx_sage fx_sky fx_lilac fx_chalk fx_clay fx_rose fx_indigo (extras of one theme). flags ls shows every flag. refused during Focus (flags ls still works)",
+    "flags" to "flags [ls] | on <name> | off <name>   names: phone termux (app themes, the one left on can't be turned off), homework, icons, sounds, themesounds, haptics, mood, leaderboard, experiments, themeicon (app icon follows the theme), themefx (master for the extras of all style themes), fx_system fx_ninja fx_hashira fx_monarch fx_gothic fx_guild fx_pixel fx_handheld fx_blueprint fx_sunset fx_ocean fx_forest fx_neon fx_scifi fx_amoled fx_terminal fx_paper fx_linen fx_sage fx_sky fx_lilac fx_chalk fx_clay fx_rose fx_indigo (extras of one theme). flags ls shows every flag. refused during Focus (flags ls still works)",
     "icons" to "icons [list] | on|off [name] | reset   emoji drawn as SVG icons on the normal pages (the terminal stays plain text). on|off alone is the master switch, on|off <name> switches one icon (flags page > SVG icons > Choose). reset turns every icon on. list shows each icon, its emoji and its state. on, off and reset are refused during Focus (icons and icons list still work)",
     "logo" to "logo                 the app logo in ASCII (a shield with a check)",
     "home" to "home                go to the phone home screen",
@@ -173,7 +155,7 @@ private val MAN: Map<String, String> = mapOf(
     "categories" to "categories ls [text] | set <app> study|coding|neutral|fun|auto | safe <app> on|off\ncategories lock <app> study|coding|neutral|fun|auto [now|midnight|HH:MM]   weekly lock: one change per app per week\ncategories pending   locks and changes that are waiting",
     "coins" to "coins [log [n]]     balance, today's total, coin history",
     "shop" to "shop ls [powerups|frames|themes|badges] | buy <item> | rewards | reward add \"name\" <price> | reward rm <n>",
-    "inv" to "inv [ls] | equip <n> | unequip <n> | use <n>   the app themes (Quest Phone, Termux, Quest Home) are free and listed last: inv equip <n> switches to one",
+    "inv" to "inv [ls] | equip <n> | unequip <n> | use <n>   the app themes (Quest Phone, Termux) are free and listed last: inv equip <n> switches to one",
     "stats" to "stats               14 days of study/coding/neutral/fun time, quests and focus",
     "usage" to "usage [--week]      time per app and per category",
     "weekly" to "weekly              the weekly report",
@@ -205,22 +187,6 @@ private val MAN: Map<String, String> = mapOf(
     "leaderboard" to "leaderboard         top 10 of 80 simulated players and where you are",
     "mood" to "mood | mood 1-5 [days ago] | mood clear [days ago]   one tap a day",
     "fun" to "fun | fun buy         buy +5 fun minutes for 25 coins",
-    "qhome" to "qhome | qhome status        Quest Home (the launcher theme): theme, layout, dock, folders, widgets. switch it on: theme set questhome\n" +
-        "qhome themes | theme <n|name>   10 themes (dungeon forest cyber terminal paper ocean sakura desert space steel)   qhome icons <shape|theme>\n" +
-        "qhome pages | apps [text]       what is where   qhome add|rm <app>   qhome dock add|rm <app> (4 apps)   qhome hide|unhide <app>   qhome hidden\n" +
-        "qhome folder [new <name> <app>...|rm|add|take|rename]   qhome widget <clock|status|focus|quests|homework> on|off\n" +
-        "qhome wall [svg|phone|phonesvg|color|picture|dim <0-80>|blur <0-100>|color <#hex>]   qhome grid <4-6>   qhome icon <app> label <text>|reset\n" +
-        "qhome set ls | set <key> <value>   every launcher setting (grid, dock 4-6, icon size, labels, drawer, gestures, hiding)   qhome export | import <text>\n" +
-        "qhome block [accessibility|launcher|both]   what blocks an app: accessibility is strong; launcher only guards taps inside Quest Home (notifications, recents, other launchers and links stay open)\n" +
-        "qhome focushome on|off   during Focus hide every app that was not picked (instead of dimming it)\n" +
-        "qhome icon <app> label <text>|image|emoji <e>|letters <ab>|pack|system|shape <s>|color <#hex>|reset   per-app look (image opens Android's picture picker)\n" +
-        "qhome pack [n|name]   icon packs (ADW / Nova style); qhome set iconsrc system|glyph|pack|none\n" +
-        "qhome grid <4-6>[x<rows>]   qhome wall pick   opens Android's picker for the own wall picture\n" +
-        "qhome theme new <name> <#top> <#bottom> <#accent> [dark|light] [shape] | path <name> <svg path>|none | del <name> | material   own themes (up to 10), Material You on Android 12+\n" +
-        "qhome hide rules <fun-study|fun-quiet|fun-exam> on|off   hide Fun apps by rule; unhiding a Fun app waits until midnight while a fun rule is on\n" +
-        "qhome hidden   the hidden space (the launcher opens it by a search word, a long-press or coins; set with qhome set revealword|revealcost|revealgesture)\n" +
-        "qhome awidget ls|rm <n>   real Android widgets on the first page (adding is Android's own bind screen in the launcher settings)\n" +
-        "qhome default (Android's own Home app page)   qhome reset. the launcher needs Android's Home app set to QuestBlock; not while a strict Focus session runs",
     "hw" to "hw add <subject> \"text\" [--due fri|\"fri 18:00\"] [--ch 3] [--copy] [-t 30m]   subject: p c m h e. no --due = tomorrow 08:00; --ch links a chapter\n" +
         "hw | hw board              the five subjects, due in 24 hours, clean-day streak\n" +
         "hw ls [subject] [--due|--overdue|--done]   hw done|undo|rm <id>   hw edit <id> [--text] [--subj] [--due] [--ch n|0] [--copy|--study] [-t]\n" +
@@ -237,7 +203,7 @@ private val DIR_OF: Map<String, String> = mapOf(
     "coins" to "shop", "shop" to "shop", "inv" to "shop", "fun" to "shop",
     "stats" to "stats", "usage" to "stats", "weekly" to "stats", "attendance" to "stats", "marks" to "stats", "chapters" to "stats",
     "badges" to "stats", "goals" to "stats", "hub" to "stats", "mood" to "stats", "achievements" to "stats", "leaderboard" to "stats",
-    "qhome" to "settings", "set" to "settings", "strict" to "settings", "dnd" to "settings", "perms" to "settings", "backup" to "settings", "restore" to "settings",
+    "set" to "settings", "strict" to "settings", "dnd" to "settings", "perms" to "settings", "backup" to "settings", "restore" to "settings",
     "reliability" to "settings", "selftest" to "settings", "debuglog" to "settings", "versions" to "settings", "about" to "settings",
     "theme" to "settings", "flags" to "settings", "font" to "settings", "icons" to "settings", "logo" to "settings",
     "ideas" to "ideas",
@@ -288,27 +254,6 @@ class TermuxViewModel @Inject constructor(
         { s, q, y -> confirm(s, q, y) },
         { pkg -> labelOfPkg(pkg) },
     )
-    private val qhCmd = TermuxQuestHome(
-        ctx,
-        { s, q -> pickApp(s, q) },
-        { s, q, y -> confirm(s, q, y) },
-        { kind -> qhPick = kind },
-    )
-    /** v214: "wall" or "icon:<pkg>"; the shell opens Android's picture picker when this is set. */
-    var qhPick by mutableStateOf<String?>(null)
-    fun onQhPicked(kind: String, uri: Uri?) {
-        if (uri == null) return
-        viewModelScope.launch {
-            val s = sessionList.getOrNull(activeIndex) ?: sessionList.first()
-            val ok = withContext(Dispatchers.IO) {
-                if (kind == "wall") com.krishna.questblock.data.QhWallFile.import(ctx, uri)
-                else com.krishna.questblock.data.QhIcons.importImage(ctx, kind.removePrefix("icon:"), uri)
-            }
-            if (!ok) { s.err("could not read that picture"); return@launch }
-            if (kind == "wall") { com.krishna.questblock.data.QhStore.update(ctx) { it.copy(wall = "picture") }; s.ok("own wall picture set and used") }
-            else { com.krishna.questblock.data.QhStore.update(ctx) { it.copy(appIcons = it.appIcons + (kind.removePrefix("icon:") to "image")) }; qhIconsChanged(); s.ok("icon picture set") }
-        }
-    }
     private var hwSoonAt = 0L
     private var hwSoon: List<HwItem> = emptyList()
 
@@ -522,11 +467,7 @@ class TermuxViewModel @Inject constructor(
         val appSubs = mapOf(
             "vault" to setOf("add", "rm", "info", "study", "unstudy", "opt"),
             "categories" to setOf("set", "safe", "lock"),
-            "qhome" to setOf("add", "rm", "hide", "unhide"),
         )
-        if (cmd == "qhome" && sub == "dock" && done.size == 3 && done[2].lowercase() in setOf("add", "rm")) {
-            return fuzzy(cur, appWords()).take(8).map { TermuxChip(it, "$prefix$it ") }
-        }
         if (cmd == "unlock" && done.size == 1) return fuzzy(cur, appWords()).take(8).map { TermuxChip(it, "$prefix$it ") }
         if (sub != null && appSubs[cmd]?.contains(sub) == true && done.size == 2) {
             return fuzzy(cur, appWords()).take(8).map { TermuxChip(it, "$prefix$it ") }
@@ -743,7 +684,6 @@ class TermuxViewModel @Inject constructor(
             "about" -> cmdAbout(s, a)
             "ideas" -> cmdIdeas(s, a)
             "hw" -> if (com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) hwCmd.run(s, a) else s.warn("homework tracker is disconnected for now")
-            "qhome" -> qhCmd.run(s, a)
             "suggest" -> extras.suggest(s, a)
             "timers" -> extras.timers(s)
             "fun" -> extras.funBuy(s, a)
@@ -775,7 +715,7 @@ class TermuxViewModel @Inject constructor(
             "perms" -> sub == "grant"
             "shop" -> sub in setOf("buy", "reward")
             "inv" -> sub in setOf("use", "equip", "unequip")
-            "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint", "questhome")
+            "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint")
             "flags" -> sub in setOf("on", "off")
             "font" -> sub in setOf("set", "on", "off", "reset")
             "icons" -> sub in setOf("on", "off", "reset")
@@ -1032,7 +972,7 @@ class TermuxViewModel @Inject constructor(
         val sub = a.pos.getOrNull(1)?.lowercase()
         if (sub == null) {
             s.out("theme: {c}termux{/}   shop look: ${repo.player.first().equippedTheme}")
-            s.dim("theme set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux|questhome  \u00b7 flags: turn themes on or off")
+            s.dim("theme set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux  \u00b7 flags: turn themes on or off")
             return
         }
         if (sub == "ls") {
@@ -1043,7 +983,7 @@ class TermuxViewModel @Inject constructor(
             s.dim("themes turned off in flags are not listed. switch: theme set <name> or inv equip <n>")
             return
         }
-        if (sub != "set") { s.err("usage: theme [ls] | set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux|questhome"); return }
+        if (sub != "set") { s.err("usage: theme [ls] | set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux"); return }
         when (a.pos.getOrNull(2)?.lowercase()) {
             "termux" -> s.ok("theme is already termux")
             "default", "phone" -> {
@@ -1065,15 +1005,7 @@ class TermuxViewModel @Inject constructor(
                 delay(400L)
                 TermuxMode.set(ctx, false)
             }
-            "questhome" -> {
-                if (!AppThemes.enabled(ctx, "home")) { s.err("Quest Home is turned off in flags"); return }
-                if (TermuxMode.strictNow(ctx)) { s.err("refused: a strict Focus session is running"); return }
-                s.ok("Quest Home is on. switching\u2026")
-                s.dim("make it your Home app: qhome default (Android's own page, you come back here)")
-                delay(400L)
-                AppThemes.apply(ctx, "home")
-            }
-            else -> s.err("usage: theme set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux|questhome")
+            else -> s.err("usage: theme set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux")
         }
     }
 
@@ -1089,7 +1021,7 @@ class TermuxViewModel @Inject constructor(
             }
             s.out("${"Homework".padEnd(12)} " + (if (com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) "{g}on{/}" else "{r}off{/}"))
             FlagRows.ALL.forEach { r -> s.out("${r.label.padEnd(18)} " + (if (r.get(ctx)) "{g}on{/}" else "{r}off{/}") + " {d}${r.id}{/}") }
-            s.dim("flags on|off <phone|termux|home|homework|icons|sounds|mood|leaderboard|experiments|themeicon|themefx|fx_<theme>>")
+            s.dim("flags on|off <phone|termux|homework|icons|sounds|themesounds|haptics|mood|leaderboard|experiments|themeicon|themefx|fx_<theme>>")
             return
         }
         if (sub != "on" && sub != "off") { s.err("usage: flags [ls] | on <theme> | off <theme>"); return }
@@ -1100,7 +1032,7 @@ class TermuxViewModel @Inject constructor(
         }
         FlagRows.find(a.pos.getOrNull(2))?.let { r -> r.set(ctx, sub == "on"); s.ok("${r.label}: $sub"); return }
         val id = AppThemes.parse(a.pos.getOrNull(2))
-        if (id == null) { s.err("usage: flags $sub <phone|termux|home|homework|icons|sounds|mood|leaderboard|experiments|themeicon|themefx|fx_<theme>>"); return }
+        if (id == null) { s.err("usage: flags $sub <phone|termux|homework|icons|sounds|themesounds|haptics|mood|leaderboard|experiments|themeicon|themefx|fx_<theme>>"); return }
         val err = AppThemes.setEnabled(ctx, id, sub == "on")
         if (err != null) s.err(err) else s.ok("${AppThemes.label(id)}: $sub")
     }
@@ -2781,12 +2713,6 @@ fun TermuxShell(
     ) { uri -> vm.onRestorePicked(uri) }
     LaunchedEffect2(vm.restorePick) {
         if (vm.restorePick) { vm.restorePick = false; picker.launch(arrayOf("*/*")) }
-    }
-    val qhPicker = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.GetContent(),
-    ) { uri -> vm.qhPick?.let { k -> vm.onQhPicked(k, uri); vm.qhPick = null } }
-    LaunchedEffect2(vm.qhPick) {
-        if (vm.qhPick != null) qhPicker.launch("image/*")
     }
     var strict by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(TermuxMode.strictNow(ctx)) }
     LaunchedEffect2(Unit) {

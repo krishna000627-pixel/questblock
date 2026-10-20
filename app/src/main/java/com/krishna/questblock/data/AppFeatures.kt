@@ -44,7 +44,7 @@ object AppFeatures {
             "Themes recolour the whole app. Nine style themes (System, Ninja Scroll, Hashira Mist, Shadow Monarch, Gothic Halo, Guild Board, Pixel Arcade, Handheld and Blueprint) also change shapes, fonts and borders",
             "Theme effects: Focus ring, XP bar, level up, quest done pop and lock screens for every theme, with a switch per theme and a try-it page for each theme under Flags. The newer themes (Sunset to Indigo) also get a header strip and their own look on the quest cards",
             "Claymorphism, grayscale look, SVG icons and a picture from your gallery as the background",
-            "Termux theme: the whole app as one terminal. Quest Home: QuestBlock as your launcher",
+            "Termux theme: the whole app as one terminal",
         )),
         FeatureGroup("Tools", listOf(
             "Encrypted backup and a safe restore",

@@ -3,6 +3,19 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("274.0.0", "Haptics for every theme",
+        listOf(
+            "New flag Haptics (Flags > More flags, terminal: flags on|off haptics, on by default). Coin, level up, Focus end (chime) and unlock end (alarm) now buzz as well as sound, and the Handheld page wipe gives one short tick",
+            "Each theme feels like its sound set: the number of buzzes follows the notes, square and pulse themes (System, Pixel, Handheld, Terminal) give short hard buzzes, saw themes (Monarch, Neon) long strong ones, bell and sine themes (Hashira, Gothic, Blueprint, Ocean, Rose and more) soft ones, the rest medium. Level up gets stronger with every buzz, the alarm gets long ones. Default and Termux get a plain pattern",
+            "Code: util/Haptics.kt (event, tick), called from Sounds.coin, levelUp, chime and alarm in util/Sounds.kt and from ui/HandheldWipe.kt. No new permission (VIBRATE was already there). It works even when Sound effects are off; the Haptics flag is its own switch",
+        )),
+    VersionEntry("273.0.0", "Quest Home removed, sounds for every theme, Handheld page wipe",
+        listOf(
+            "Quest Home (the launcher) is gone: the launcher activity and its manifest entry, the settings page, its themes, the light watcher in the keep-alive service, the qhome terminal command (help, man, chips, settings group), the Quest Home flag, the questhome theme word and the Quest Home block in Settings. App themes are now Quest Phone and Termux. Its leftover pictures and settings (qh_wall.jpg, qh_icons, qb_launcher, questhome_theme) are deleted when the app starts. If QuestBlock was your Home app, Android asks you to pick one again\u002e Files ui/QuestHome*.kt, ui/TermuxQuestHome.kt, data/LauncherStore.kt and data/QhIcons.kt are empty files on purpose, because the update command never deletes",
+            "Theme sounds: all 25 themes (9 style + 16 newer) have their own coin, level up, chime and alarm sounds, made on the phone from a few notes (no audio files added). Default and Termux keep the recorded sounds. Flag themesounds (Flags > More flags, terminal: flags on|off themesounds); the normal Sound effects switch still turns every sound off. Code: util/ThemeSounds.kt (VOICES, one line per theme), Sounds.kt",
+            "Handheld page wipe: changing page in the Handheld theme closes ten dark bars over the page from the left and opens them to the right (about 0.3 s, one shot, taps still work). Behind fx_handheld and themefx. Code: ui/HandheldWipe.kt, used on the NavHost in ui/MainScreen.kt",
+            "Checked: the Pixel block XP bar, Hashira breathing Focus ring and Blueprint FIG. label were already added in v248 (the old v239 note saying they were not included is out of date)",
+        )),
     VersionEntry("272.0.0", "Fonts: on/off flag and one normal font picker",
         listOf(
             "Flags > Fonts now has an on/off switch and a Choose button. Off = the normal font of your theme, exactly as before fonts existed",

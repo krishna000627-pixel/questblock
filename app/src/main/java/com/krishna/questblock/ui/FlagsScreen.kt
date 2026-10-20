@@ -34,6 +34,8 @@ object FlagRows {
     val ALL: List<FlagRow> = listOf(
         FlagRow("icons", "SVG icons", "Emoji drawn as SVG icons on the normal pages", { SvgIconsOn }, { c, v -> SvgIconsMode.set(c, v) }),
         FlagRow("sounds", "Sound effects", "Coin, level up and chime sounds", { com.krishna.questblock.util.Sounds.sfxOn }, { _, v -> com.krishna.questblock.util.Sounds.sfxOn = v }),
+        FlagRow("haptics", "Haptics", "Each theme buzzes like its sounds on coin, level up, Focus end and unlock end, and a tick on the Handheld page wipe", { com.krishna.questblock.util.Haptics.on }, { _, v -> com.krishna.questblock.util.Haptics.on = v }),
+        FlagRow("themesounds", "Theme sounds", "Every theme has its own coin, level up, chime and alarm sounds. Off = the normal sounds", { com.krishna.questblock.util.Sounds.themeOn }, { _, v -> com.krishna.questblock.util.Sounds.themeOn = v }),
     ) + com.krishna.questblock.data.Flags.EXTRA.map { d ->
         FlagRow(d.id, d.label, d.desc, { com.krishna.questblock.data.Flags.get(d.id) }, { c, v -> com.krishna.questblock.data.Flags.set(c, d.id, v) })
     }
@@ -56,7 +58,6 @@ fun FlagsScreen(onBack: () -> Unit) {
     val desc = mapOf(
         "phone" to "The normal pages with the bottom bar",
         "termux" to "The whole app as one terminal",
-        "home" to "The launcher (home screen and drawer)",
     )
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {

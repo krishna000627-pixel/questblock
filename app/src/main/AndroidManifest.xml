@@ -145,24 +145,6 @@
             </intent-filter>
         </activity-alias>
 
-        <!-- v212: Quest Home, the launcher theme. Off until the theme is on (AppName.applyAll switches it). -->
-        <activity
-            android:name=".ui.QuestHomeActivity"
-            android:enabled="false"
-            android:exported="true"
-            android:launchMode="singleTask"
-            android:taskAffinity=""
-            android:clearTaskOnLaunch="true"
-            android:stateNotNeeded="true"
-            android:theme="@style/Theme.QuestBlock.Home"
-            android:label="Quest Home">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.HOME" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-
         <activity
             android:name=".ui.BlockActivity"
             android:exported="false"

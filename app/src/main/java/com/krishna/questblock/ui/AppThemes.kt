@@ -4,26 +4,25 @@ import android.content.Context
 import android.content.Intent
 
 /**
- * v219: the three app themes (Quest Phone = the normal pages, Termux, Quest Home) as free inventory items,
+ * v219: the two app themes (Quest Phone = the normal pages, Termux) as free inventory items,
  * and the flags that turn each one on or off (flags page: 7 taps on the newest entry in Version info; terminal: flags).
  */
 object AppThemes {
-    val IDS = listOf("phone", "termux", "home")
+    val IDS = listOf("phone", "termux")
 
-    fun label(id: String) = when (id) { "phone" -> "Quest Phone"; "termux" -> "Termux"; else -> "Quest Home" }
+    fun label(id: String) = when (id) { "phone" -> "Quest Phone"; else -> "Termux" }
     fun itemId(id: String) = "app_$id"
     /** phone | termux | home from a word typed in the terminal (also questphone, questhome, default) */
     fun parse(w: String?): String? = when (w?.lowercase()) {
         "phone", "questphone", "default", "normal" -> "phone"
         "termux", "terminal" -> "termux"
-        "home", "questhome" -> "home"
         else -> null
     }
 
     private fun sp(ctx: Context) = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
     fun enabled(ctx: Context, id: String) = sp(ctx).getBoolean("flag_theme_$id", true)
     fun enabledList(ctx: Context) = IDS.filter { enabled(ctx, it) }
-    fun active(): String = if (TermuxOn) "termux" else if (QuestHomeOn) "home" else "phone"
+    fun active(): String = if (TermuxOn) "termux" else "phone"
 
     /** Turn a theme on or off. Returns an error text, or null when done. The one theme left on cannot be turned off. */
     fun setEnabled(ctx: Context, id: String, on: Boolean): String? {
@@ -45,11 +44,7 @@ object AppThemes {
     private fun switchTo(ctx: Context, id: String) {
         when (id) {
             "termux" -> TermuxMode.set(ctx, true)
-            "home" -> {
-                QuestHomeMode.set(ctx, true)
-                runCatching { ctx.startActivity(Intent(ctx, QuestHomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-            }
-            else -> { TermuxMode.set(ctx, false); QuestHomeMode.set(ctx, false) }
+            else -> TermuxMode.set(ctx, false)
         }
     }
 
