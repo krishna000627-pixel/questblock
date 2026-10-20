@@ -3,6 +3,15 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("259.0.0", "Penalty effect in the effect preview",
+        listOf(
+            "The effect preview page has a Penalty (focus broken) button for the two themes that have one: System (red look and PENALTY ZONE, 4 s in the preview instead of 90 s) and Pixel (GAME OVER). It only plays the effect, nothing is penalised, and the penalty look is put back when you leave the page. Code: ThemeFxPreviewPage in ui/ThemeFxPage.kt",
+        )),
+    VersionEntry("258.0.0", "Effect preview page",
+        listOf(
+            "New page Flags > Theme effects > Preview effects (or Try it on a theme row). Pick any of the 25 themes and see its XP bar (slider), Focus ring (slider), lock emblem with theme word, and play its Level up and Quest done effects, all drawn by the real code. Nothing is awarded: no XP, no coins, no level change, and the Shadow Monarch army counter is put back after the quest done pop",
+            "While the page is open the app wears the chosen theme (in memory only, never saved); the equipped theme comes back when you leave the page. If the theme's effects are off the page shows a button to turn them on. With the Termux look or a picture background on, effects are not drawn. Code: ThemeFxPreviewPage in ui/ThemeFxPage.kt",
+        )),
     VersionEntry("257.0.0", "Theme effects subpage in Flags",
         listOf(
             "Flags has a new Theme effects card that opens a subpage: the master switch Theme extras (all), All on and All off, filter chips (All 25, Style 9, Shop 16) and one row per theme with its own switch. Tap a row to see its Focus ring, XP bar, level up, quest done pop and lock screen, with a static mini preview in the theme colour. The 26 theme switches are gone from the More flags list. They are the same flags as before (themefx and fx_<theme>), so the terminal flags command still lists and sets them. Code: ui/ThemeFxPage.kt, FlagsScreen (the Theme effects card)",

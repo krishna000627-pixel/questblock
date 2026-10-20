@@ -17,15 +17,24 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +54,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.krishna.questblock.data.Flags as FxFlags
+import com.krishna.questblock.util.SystemEvents
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** v257: one theme of the Theme effects page. [id] is the flag name without the fx_ prefix. */
 private class FxTheme(
@@ -101,6 +113,9 @@ fun ThemeFxFlagsPage(onBack: () -> Unit) {
     var msg by remember { mutableStateOf("") }
     var filter by remember { mutableIntStateOf(0) }
     var open by remember { mutableStateOf<String?>(null) }
+    var previewId by remember { mutableStateOf<String?>(null) }
+    val pv = previewId
+    if (pv != null) { ThemeFxPreviewPage(initial = pv, onBack = { previewId = null }); return }
     val master = FxFlags.get("themefx")
     val onCount = FX_THEMES.count { FxFlags.get("fx_" + it.id) }
     fun guarded(block: () -> Unit) {
@@ -140,6 +155,13 @@ fun ThemeFxFlagsPage(onBack: () -> Unit) {
                     }
                 }
             }
+        }
+        item {
+            Button(
+                onClick = { previewId = "" },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
+            ) { Text("Preview effects", fontWeight = FontWeight.Bold) }
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -207,6 +229,7 @@ fun ThemeFxFlagsPage(onBack: () -> Unit) {
                             FxLine("Level up", t.level)
                             FxLine("Quest done pop", t.pop)
                             FxLine("Lock screen", "emblem with padlock")
+                            TextButton(onClick = { previewId = t.id }) { Text("Try it") }
                         }
                     }
                 }
@@ -225,5 +248,168 @@ private fun FxLine(label: String, value: String) {
     Row(Modifier.padding(top = 2.dp)) {
         Text(label, modifier = Modifier.width(112.dp), color = ColorText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
         Text(value, color = ColorMuted, fontSize = 13.sp)
+    }
+}
+
+/**
+ * v258: plays the effects of a theme without any XP, coins or level up. While this page is open the app is put in the chosen theme
+ * (in memory only: ShopTheme is never saved here and is put back when the page closes), so the real XP bar, Focus ring, level up,
+ * quest done pop and lock emblem of that theme are drawn by the same code the app uses. [initial] is a theme id or "" for the equipped one.
+ */
+@Composable
+fun ThemeFxPreviewPage(initial: String, onBack: () -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val original = remember { ShopTheme }
+    var sel by remember {
+        mutableStateOf(
+            FX_THEMES.firstOrNull { it.id == initial }?.id
+                ?: FX_THEMES.firstOrNull { "theme_" + it.id == original }?.id
+                ?: FX_THEMES[0].id
+        )
+    }
+    var xp by remember { mutableFloatStateOf(0.64f) }
+    var ring by remember { mutableFloatStateOf(0.7f) }
+    var emblemKey by remember { mutableIntStateOf(0) }
+    SideEffect { if (ShopTheme != "theme_" + sel) ShopTheme = "theme_" + sel }
+    val penaltyBefore = remember { SystemEvents.penaltyOn }
+    DisposableEffect(Unit) { onDispose { ShopTheme = original; SystemEvents.penaltyOn = penaltyBefore } }
+
+    val theme = FX_THEMES.first { it.id == sel }
+    val fxOn = AnyFx.on
+    val blocked = TermuxOn || PosterOn
+    val sliderColors = SliderDefaults.colors(thumbColor = ColorPrimary, activeTrackColor = ColorPrimary)
+
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
+            Column {
+                Text("Theme effects", style = MaterialTheme.typography.labelMedium, color = ColorMuted)
+                Text("Effect preview", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = ColorText)
+            }
+        }
+        Text(
+            "Nothing here gives XP or coins. The app only wears the chosen theme while this page is open.",
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp), style = MaterialTheme.typography.bodySmall, color = ColorMuted,
+        )
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FX_THEMES.forEach { t ->
+                item(key = t.id) {
+                    val on = t.id == sel
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (on) t.color.copy(alpha = 0.25f) else ColorSurface)
+                            .border(1.dp, if (on) t.color else ColorDivider, RoundedCornerShape(20.dp))
+                            .clickable { sel = t.id }
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(t.name, color = if (on) t.color else ColorMuted,
+                            fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
+                            style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+        }
+        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (blocked) item {
+                Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                    Text("The Termux look or a picture background is on, so theme effects are not drawn. Turn it off to preview.",
+                        modifier = Modifier.padding(12.dp), color = ColorMuted, style = MaterialTheme.typography.bodySmall)
+                }
+            } else if (!fxOn) item {
+                Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(theme.name + " effects are off, so the normal bar and ring show.", color = ColorText, fontWeight = FontWeight.SemiBold)
+                        Button(
+                            onClick = { FxFlags.set(ctx, "themefx", true); FxFlags.set(ctx, "fx_" + sel, true) },
+                            colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
+                        ) { Text("Turn on " + theme.name + " effects") }
+                    }
+                }
+            } else {
+                item {
+                    Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text("XP bar", fontWeight = FontWeight.SemiBold, color = ColorText)
+                            Slider(value = xp, onValueChange = { xp = it }, colors = sliderColors)
+                            FxXpBar(xp, (xp * 100).toInt())
+                        }
+                    }
+                }
+                item {
+                    Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text("Focus ring (time left)", fontWeight = FontWeight.SemiBold, color = ColorText)
+                            Slider(value = ring, onValueChange = { ring = it }, colors = sliderColors)
+                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                FxFocusRing(ring, com.krishna.questblock.data.fmtLeft((ring * 25 * 60_000L).toLong()))
+                            }
+                        }
+                    }
+                }
+                item {
+                    Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Level up, quest done and penalty", fontWeight = FontWeight.SemiBold, color = ColorText)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = { SystemEvents.levelUp(5) },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
+                                ) { Text("Level up") }
+                                Button(
+                                    onClick = {
+                                        val army = SystemEvents.armyCount
+                                        val sp = ctx.getSharedPreferences("questblock", android.content.Context.MODE_PRIVATE)
+                                        val savedArmy = sp.getInt("shadow_army", 0)
+                                        SystemEvents.questDone(25, 10)
+                                        if (sel == "monarch") scope.launch {
+                                            delay(400)
+                                            SystemEvents.armyCount = army
+                                            sp.edit().putInt("shadow_army", savedArmy).apply()
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
+                                ) { Text("Quest done") }
+                            }
+                            if (sel == "system" || sel == "pixel") {
+                                Button(
+                                    onClick = {
+                                        val was = SystemEvents.penaltyOn
+                                        SystemEvents.penalty()
+                                        scope.launch { delay(4000); SystemEvents.penaltyOn = was }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
+                                ) { Text("Penalty (focus broken)") }
+                                Text(
+                                    if (sel == "system") "System turns red with PENALTY ZONE for 4 s here (90 s in a real penalty)." else "Pixel shows GAME OVER.",
+                                    color = ColorMuted, style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
+                    }
+                }
+                item {
+                    Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Lock screen", fontWeight = FontWeight.SemiBold, color = ColorText, modifier = Modifier.fillMaxWidth())
+                            Spacer(Modifier.height(10.dp))
+                            key(emblemKey) {
+                                FxLockEmblem { Text("QB", fontSize = 34.sp, fontWeight = FontWeight.Bold, color = ColorText) }
+                            }
+                            FxLockWord()
+                            TextButton(onClick = { emblemKey++ }) { Text("Replay") }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
