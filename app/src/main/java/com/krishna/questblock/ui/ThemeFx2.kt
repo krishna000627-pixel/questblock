@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -218,8 +219,10 @@ private fun DrawScope.stripLine(fx: Fx2, c: Color, coin: Color, ink: Color) {
         Fx2.LINEN -> drawLine(c.copy(alpha = 0.85f), Offset(0f, y - 2.dp.toPx()), Offset(w, y - 2.dp.toPx()), 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()), 0f))
         Fx2.SAGE -> {
             var x = 4.dp.toPx()
-            while (x < w) { drawCircle(c.copy(alpha = 0.6f), 1.2.dp.toPx(), Offset(x, y - 1.dp.toPx())); x += 8.dp.toPx() }
-            val b = Offset(w * 0.5f, y); leaf(b, -65f, 9.dp.toPx(), 3.dp.toPx(), c); leaf(b, -115f, 9.dp.toPx(), 3.dp.toPx(), c)
+            while (x < w) { if (Math.abs(x - w * 0.5f) > 12.dp.toPx()) drawCircle(c.copy(alpha = 0.6f), 1.2.dp.toPx(), Offset(x, y - 1.dp.toPx())); x += 8.dp.toPx() }
+            val b = Offset(w * 0.5f, y - 1.dp.toPx())
+            drawLine(c, b, Offset(b.x, b.y - 4.dp.toPx()), 1.5.dp.toPx(), StrokeCap.Round)
+            leaf(Offset(b.x, b.y - 3.dp.toPx()), -50f, 10.dp.toPx(), 3.5.dp.toPx(), c); leaf(Offset(b.x, b.y - 3.dp.toPx()), -130f, 10.dp.toPx(), 3.5.dp.toPx(), c)
         }
         Fx2.SKY -> {
             drawLine(c.copy(alpha = 0.4f), Offset(0f, y), Offset(w, y), 1.5.dp.toPx())
@@ -312,7 +315,11 @@ private fun DrawScope.cardDeco(fx: Fx2, c: Color, coin: Color, ink: Color) {
             val r = 7.dp.toPx()
             drawArc(coin.copy(alpha = 0.8f), 180f, 180f, true, Offset(w - 24.dp.toPx() - r, h - r), Size(r * 2, r * 2))
         }
-        Fx2.OCEAN -> waveLine(h - 4.dp.toPx(), 2.dp.toPx(), 12.dp.toPx(), c.copy(alpha = 0.35f), 1.5.dp.toPx(), m, w - m)
+        Fx2.OCEAN -> {
+            drawCircle(c.copy(alpha = 0.40f), 4.dp.toPx(), Offset(w - m, m + 2.dp.toPx()), style = Stroke(1.2.dp.toPx()))
+            drawCircle(c.copy(alpha = 0.30f), 2.5.dp.toPx(), Offset(w - m - 10.dp.toPx(), m + 9.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawCircle(c.copy(alpha = 0.22f), 1.5.dp.toPx(), Offset(w - m - 4.dp.toPx(), m + 15.dp.toPx()), style = Stroke(1.dp.toPx()))
+        }
         Fx2.FOREST -> {
             leaf(Offset(w - m, 14.dp.toPx()), 150f, 12.dp.toPx(), 4.dp.toPx(), c.copy(alpha = 0.45f))
             leaf(Offset(w - m, 14.dp.toPx()), 190f, 12.dp.toPx(), 4.dp.toPx(), c.copy(alpha = 0.35f))
@@ -346,9 +353,9 @@ private fun DrawScope.cardDeco(fx: Fx2, c: Color, coin: Color, ink: Color) {
             style = Stroke(1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()), 0f)))
         Fx2.SAGE -> {
             val b = Offset(w - m, 24.dp.toPx())
-            drawLine(c.copy(alpha = 0.5f), b, Offset(b.x, b.y - 11.dp.toPx()), 1.5.dp.toPx())
-            leaf(Offset(b.x, b.y - 11.dp.toPx()), 215f, 9.dp.toPx(), 3.dp.toPx(), c.copy(alpha = 0.55f))
-            leaf(Offset(b.x, b.y - 11.dp.toPx()), 325f, 9.dp.toPx(), 3.dp.toPx(), c.copy(alpha = 0.55f))
+            drawLine(c.copy(alpha = 0.7f), b, Offset(b.x, b.y - 12.dp.toPx()), 2.dp.toPx(), StrokeCap.Round)
+            leaf(Offset(b.x, b.y - 11.dp.toPx()), 205f, 12.dp.toPx(), 4.5.dp.toPx(), c.copy(alpha = 0.7f))
+            leaf(Offset(b.x, b.y - 11.dp.toPx()), 335f, 12.dp.toPx(), 4.5.dp.toPx(), c.copy(alpha = 0.7f))
         }
         Fx2.SKY -> {
             val cc = c.copy(alpha = 0.22f); val x = w - m - 20.dp.toPx()
@@ -519,7 +526,7 @@ internal fun Modifier.fx2Background(): Modifier {
                 drawRect(Brush.verticalGradient(listOf(Color.Transparent, ColorCoin.copy(alpha = 0.08f)), startY = size.height * 0.55f, endY = size.height), Offset(0f, size.height * 0.55f), Size(size.width, size.height * 0.45f))
                 drawCircle(ColorCoin.copy(alpha = 0.07f), 90.dp.toPx(), Offset(size.width * 0.5f, size.height))
             }
-            Fx2.OCEAN -> for (k in 0 until 6) waveLine(size.height * (0.55f + k * 0.07f), 3.dp.toPx(), 24.dp.toPx(), c.copy(alpha = 0.06f), 1.5.dp.toPx())
+            Fx2.OCEAN -> drawRect(Brush.verticalGradient(listOf(Color.Transparent, c.copy(alpha = 0.10f)), startY = size.height * 0.4f, endY = size.height), Offset(0f, size.height * 0.4f), Size(size.width, size.height * 0.6f))
             Fx2.FOREST -> for (i in 0 until 14) leaf(Offset(size.width * (((i * 37 + 11) % 100) / 100f), size.height * (((i * 53 + 7) % 100) / 100f)), ((i * 47) % 360).toFloat(), 22.dp.toPx(), 8.dp.toPx(), c.copy(alpha = 0.07f))
             Fx2.NEON -> {
                 drawRect(Brush.horizontalGradient(listOf(c.copy(alpha = 0.10f), Color.Transparent), 0f, 40.dp.toPx()), Offset(0f, 0f), Size(40.dp.toPx(), size.height))
@@ -668,11 +675,16 @@ internal fun Fx2FocusRing(frac: Float, left: String) {
                     drawCircle(cl, 11.dp.toPx(), Offset(cc.x + 32.dp.toPx(), cc.y))
                 }
                 Fx2.LILAC -> {
-                    for (i in 0 until 12) {
-                        val a = -90f + i * 30f
-                        leaf(polar(ctr, r - 6.dp.toPx(), a), a, 30.dp.toPx(), 9.dp.toPx(), if (i / 12f <= f) c.copy(alpha = 0.85f) else c.copy(alpha = 0.15f))
+                    // v263: a clear track and progress arc, 24 petals around the outside (lit as time passes), a flower at the end of the arc
+                    arc(c.copy(alpha = 0.16f), 360f, 7.dp.toPx())
+                    arc(c, sweep, 7.dp.toPx(), StrokeCap.Round)
+                    for (i in 0 until 24) {
+                        val a = -90f + i * 15f
+                        leaf(polar(ctr, r + 10.dp.toPx(), a), a, (if (i % 2 == 0) 20 else 14).dp.toPx(), 5.dp.toPx(), if (i / 24f <= f) c.copy(alpha = 0.8f) else c.copy(alpha = 0.2f))
                     }
-                    arc(c.copy(alpha = 0.5f), sweep, 2.dp.toPx(), rr = r - 12.dp.toPx())
+                    val e = polar(ctr, r, end)
+                    for (k in 0 until 5) drawCircle(c, 4.dp.toPx(), polar(e, 6.dp.toPx(), k * 72f - 90f))
+                    drawCircle(coin, 3.dp.toPx(), e)
                 }
                 Fx2.CHALK -> {
                     arc(ink.copy(alpha = 0.12f), 360f, 2.dp.toPx(), pe = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 6.dp.toPx()), 0f))
@@ -742,7 +754,8 @@ internal fun Fx2XpBar(fraction: Float, xp: Int) {
     }
     val h = when (fx) {
         Fx2.CLAY -> 22.dp
-        Fx2.FOREST, Fx2.SAGE, Fx2.LINEN, Fx2.LILAC, Fx2.SKY, Fx2.ROSE, Fx2.INDIGO, Fx2.CHALK, Fx2.PAPER -> 24.dp
+        Fx2.SAGE -> 30.dp
+        Fx2.FOREST, Fx2.LINEN, Fx2.LILAC, Fx2.SKY, Fx2.ROSE, Fx2.INDIGO, Fx2.CHALK, Fx2.PAPER -> 24.dp
         else -> 20.dp
     }
     Canvas(Modifier.fillMaxWidth().height(h)) {
@@ -757,78 +770,41 @@ internal fun Fx2XpBar(fraction: Float, xp: Int) {
                 drawCircle(coin.copy(alpha = 0.3f), 9.dp.toPx(), e); drawCircle(coin, 6.dp.toPx(), e)
             }
             Fx2.OCEAN -> {
-                val half = 7.dp.toPx()
-                drawRoundRect(c.copy(alpha = 0.15f), Offset(0f, mid - half), Size(w, half * 2), CornerRadius(half))
-                if (fw > 2f) {
-                    val top = mid - half
-                    val path = Path().apply {
-                        moveTo(0f, mid + half); lineTo(0f, top)
-                        var x = 0f
-                        while (x < fw) { x += 2.dp.toPx(); val xx = minOf(x, fw); lineTo(xx, top + Math.sin(xx / 14.dp.toPx() * 2 * Math.PI).toFloat() * 2.dp.toPx()) }
-                        lineTo(fw, mid + half); close()
+                // v264: a clean pill of water: the fill is clipped to the pill, its leading edge is a gentle wave, with two light ripples and a few bubbles inside
+                val half = 8.dp.toPx()
+                val track = Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, mid - half, w, mid + half, CornerRadius(half))) }
+                drawPath(track, c.copy(alpha = 0.14f))
+                if (fw > 2f) clipPath(track) {
+                    val edge = Path().apply {
+                        moveTo(0f, mid - half); lineTo(fw, mid - half)
+                        var y = mid - half
+                        while (y < mid + half) { y += 2.dp.toPx(); lineTo(fw + Math.sin(((y - mid) / 5.dp.toPx()).toDouble()).toFloat() * 2.5.dp.toPx(), minOf(y, mid + half)) }
+                        lineTo(0f, mid + half); close()
                     }
-                    drawPath(path, c)
-                    for (i in 0..2) {
-                        val bx = fw * (0.2f + 0.3f * i)
-                        if (bx < fw - 4.dp.toPx()) drawCircle(Color.White.copy(alpha = 0.5f), 2.dp.toPx(), Offset(bx, mid + (i % 2 * 3 - 1) * 2.dp.toPx()), style = Stroke(1.dp.toPx()))
+                    drawPath(edge, Brush.horizontalGradient(listOf(lerp(c, Color.White, 0.25f), c), 0f, maxOf(fw, 1f)))
+                    waveLine(mid - 2.dp.toPx(), 1.5.dp.toPx(), 10.dp.toPx(), Color.White.copy(alpha = 0.30f), 1.dp.toPx(), 0f, fw)
+                    waveLine(mid + 3.dp.toPx(), 1.5.dp.toPx(), 12.dp.toPx(), Color.White.copy(alpha = 0.18f), 1.dp.toPx(), 0f, fw)
+                    for (k in 0..2) {
+                        val bx = fw * (0.25f + 0.25f * k)
+                        if (bx < fw - 8.dp.toPx()) drawCircle(Color.White.copy(alpha = 0.55f), 1.8.dp.toPx(), Offset(bx, mid + (k % 2 * 4 - 2).dp.toPx()), style = Stroke(1.dp.toPx()))
                     }
                 }
-            }
-            Fx2.FOREST -> {
-                drawLine(c.copy(alpha = 0.2f), Offset(0f, mid), Offset(w, mid), 3.dp.toPx(), StrokeCap.Round)
-                drawLine(c, Offset(0f, mid), Offset(fw, mid), 3.dp.toPx(), StrokeCap.Round)
-                var x = 12.dp.toPx(); var k = 0
-                while (x < fw - 6.dp.toPx()) { leaf(Offset(x, mid), if (k % 2 == 0) -50f else 50f, 11.dp.toPx(), 4.dp.toPx(), c); x += 26.dp.toPx(); k++ }
-                drawCircle(c, 5.dp.toPx(), Offset(fw.coerceIn(5.dp.toPx(), w - 5.dp.toPx()), mid))
-            }
-            Fx2.NEON -> {
-                val cap = StrokeCap.Round; val a = Offset(4.dp.toPx(), mid); val b = Offset(maxOf(fw, 4.dp.toPx()), mid)
-                drawLine(c.copy(alpha = 0.15f), a, Offset(w - 4.dp.toPx(), mid), 6.dp.toPx(), cap)
-                if (f > 0f) {
-                    drawLine(c.copy(alpha = 0.12f), a, b, 16.dp.toPx(), cap)
-                    drawLine(c.copy(alpha = 0.28f), a, b, 11.dp.toPx(), cap)
-                    drawLine(c, a, b, 5.dp.toPx(), cap)
-                    drawLine(lerp(c, Color.White, 0.75f), a, b, 1.5.dp.toPx(), cap)
-                }
-            }
-            Fx2.SCIFI -> {
-                val n = 16; val g = 3.dp.toPx(); val sk = 4.dp.toPx(); val bw = (w - sk - g * (n - 1)) / n
-                val lit = (f * n).roundToInt()
-                for (i in 0 until n) {
-                    val x0 = i * (bw + g)
-                    val p = Path().apply { moveTo(x0 + sk, 0f); lineTo(x0 + bw + sk, 0f); lineTo(x0 + bw, hh); lineTo(x0, hh); close() }
-                    drawPath(p, if (i < lit) c else c.copy(alpha = 0.15f))
-                }
-            }
-            Fx2.AMOLED -> {
-                drawLine(ink.copy(alpha = 0.25f), Offset(0f, mid), Offset(w, mid), 1.dp.toPx())
-                drawLine(c, Offset(0f, mid), Offset(fw, mid), 2.dp.toPx(), StrokeCap.Round)
-                drawCircle(ink, 4.dp.toPx(), Offset(fw.coerceIn(4.dp.toPx(), w - 4.dp.toPx()), mid))
-            }
-            Fx2.PAPER -> {
-                drawLine(ink.copy(alpha = 0.3f), Offset(0f, mid), Offset(w, mid), 1.5.dp.toPx(), StrokeCap.Round, PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 6.dp.toPx()), 0f))
-                val path = Path().apply {
-                    moveTo(0f, mid)
-                    var x = 0f
-                    while (x < fw) { x += 5.dp.toPx(); lineTo(minOf(x, fw), mid + Math.sin(x / 9.dp.toPx().toDouble()).toFloat() * 1.8.dp.toPx()) }
-                }
-                if (fw > 1f) drawPath(path, ink, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
-                drawCircle(ink, 3.dp.toPx(), Offset(fw.coerceIn(3.dp.toPx(), w - 3.dp.toPx()), mid))
-            }
-            Fx2.LINEN -> {
-                val d = PathEffect.dashPathEffect(floatArrayOf(10.dp.toPx(), 6.dp.toPx()), 0f)
-                drawLine(c.copy(alpha = 0.25f), Offset(0f, mid + 3.dp.toPx()), Offset(w, mid + 3.dp.toPx()), 3.dp.toPx(), StrokeCap.Round, d)
-                drawLine(c, Offset(0f, mid + 3.dp.toPx()), Offset(fw, mid + 3.dp.toPx()), 4.dp.toPx(), StrokeCap.Round, d)
-                val e = Offset(fw.coerceIn(2.dp.toPx(), w - 10.dp.toPx()), mid + 3.dp.toPx())
-                drawLine(c, e, Offset(e.x + 8.dp.toPx(), e.y - 9.dp.toPx()), 2.dp.toPx(), StrokeCap.Round)
-                drawCircle(c, 2.5.dp.toPx(), Offset(e.x + 8.dp.toPx(), e.y - 9.dp.toPx()), style = Stroke(1.dp.toPx()))
             }
             Fx2.SAGE -> {
-                val d = PathEffect.dashPathEffect(floatArrayOf(0.1f, 9.dp.toPx()), 0f)
-                drawLine(c.copy(alpha = 0.2f), Offset(3.dp.toPx(), mid + 3.dp.toPx()), Offset(w, mid + 3.dp.toPx()), 6.dp.toPx(), StrokeCap.Round, d)
-                drawLine(c, Offset(3.dp.toPx(), mid + 3.dp.toPx()), Offset(maxOf(fw, 3.dp.toPx()), mid + 3.dp.toPx()), 6.dp.toPx(), StrokeCap.Round, d)
-                val e = Offset(fw.coerceIn(8.dp.toPx(), w - 14.dp.toPx()), mid + 3.dp.toPx())
-                leaf(e, -50f, 13.dp.toPx(), 5.dp.toPx(), c); leaf(e, -130f, 13.dp.toPx(), 5.dp.toPx(), c)
+                // v264: a soft pill that fills up, three seeds on it that open into leaves once passed, and a sprout growing from the end of the fill
+                val bh = 12.dp.toPx(); val y = hh - 4.dp.toPx() - bh
+                drawRoundRect(c.copy(alpha = 0.16f), Offset(0f, y), Size(w, bh), CornerRadius(bh / 2))
+                if (f > 0f) drawRoundRect(Brush.horizontalGradient(listOf(lerp(c, Color.White, 0.2f), c), 0f, maxOf(fw, bh)), Offset(0f, y), Size(maxOf(fw, bh), bh), CornerRadius(bh / 2))
+                for (k in 1..3) {
+                    val sx = w * k / 4f
+                    if (f >= k / 4f) leaf(Offset(sx, y + bh / 2), -90f, 9.dp.toPx(), 3.5.dp.toPx(), lerp(c, Color.White, 0.55f))
+                    else drawCircle(c.copy(alpha = 0.45f), 1.8.dp.toPx(), Offset(sx, y + bh / 2))
+                }
+                val ex = fw.coerceIn(bh, w - 8.dp.toPx())
+                val base = Offset(ex, y + 1.dp.toPx())
+                drawLine(c, base, Offset(base.x, base.y - 6.dp.toPx()), 2.dp.toPx(), StrokeCap.Round)
+                leaf(Offset(base.x, base.y - 5.dp.toPx()), -40f, 11.dp.toPx(), 4.dp.toPx(), c)
+                leaf(Offset(base.x, base.y - 5.dp.toPx()), -140f, 11.dp.toPx(), 4.dp.toPx(), c)
             }
             Fx2.SKY -> {
                 val bh = 10.dp.toPx()

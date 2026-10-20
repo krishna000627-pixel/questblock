@@ -3,6 +3,19 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("264.0.0", "Ocean and Sage XP bars redone, Ocean quest card wave removed",
+        listOf(
+            "Ocean XP bar: a clean pill of water instead of the jagged top edge. The fill is clipped to the pill, its leading edge is a gentle wave, with two light ripples and a few bubbles inside",
+            "Sage XP bar: a soft pill that fills up, three seeds on it (25, 50, 75 percent) that open into leaves once passed, and a sprout growing from the end of the fill. The dotted line is gone",
+            "Ocean quest cards: the wave along the bottom is gone (it doubled the card border), replaced by three small bubbles in the top right corner",
+        )),
+    VersionEntry("263.0.0", "Ocean, Sage and Lilac polish",
+        listOf(
+            "Theme page sliders (XP bar and Focus ring) now follow the theme: the empty part of the track was muddy purple in Ocean and lavender in Sage and Lilac, it is now a pale tint of the theme colour",
+            "Ocean: the faint wave lines on the page background looked like stray marks at the screen edge, they are replaced by a soft depth tint towards the bottom; the wave on each card moved inside the card padding and is softer, so it no longer doubles the card border",
+            "Sage: the sprout in the header strip is bigger with a gap in the dotted line around it, and the sprout in the card corner is larger and clearer",
+            "Lilac: the Focus ring has a clear full track and a thicker progress arc, 24 petals (two sizes) around it that light up as time passes, and a small flower at the end of the arc. The flowers of the header strip no longer run through the words (fixed in v262)",
+        )),
     VersionEntry("262.0.0", "Better header strips, quest boxes, buttons and backgrounds for the 16 newer themes",
         listOf(
             "Header strip fix: the words and the drawing were on top of each other (the Lilac flowers ran through IN BLOOM and the date). The words now have their own row and the drawing a band under it, so nothing overlaps. Applies to all 16 strips (Sunset to Indigo)",

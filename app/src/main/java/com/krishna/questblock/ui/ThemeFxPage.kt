@@ -284,7 +284,11 @@ fun ThemeFxTryPage(themeId: String, onBack: () -> Unit) {
     val theme = FX_THEMES.first { it.id == sel }
     val fxOn = AnyFx.on
     val blocked = TermuxOn || PosterOn
-    val sliderColors = SliderDefaults.colors(thumbColor = ColorPrimary, activeTrackColor = ColorPrimary)
+    // v263: the track follows the theme (the default one stayed lavender or muddy purple in every theme)
+    val sliderColors = SliderDefaults.colors(
+        thumbColor = ColorPrimary, activeTrackColor = ColorPrimary, inactiveTrackColor = ColorPrimary.copy(alpha = 0.22f),
+        activeTickColor = ColorPrimary, inactiveTickColor = ColorPrimary.copy(alpha = 0.4f),
+    )
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
