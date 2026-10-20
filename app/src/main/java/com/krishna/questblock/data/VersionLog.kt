@@ -3,6 +3,17 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("271.0.0", "Build fix: leftover poster file",
+        listOf(
+            "ui/PosterSettings.kt is now an empty file. The update command only copies files over the project and never deletes, so the old file from before v268 was still there and failed to compile",
+        )),
+    VersionEntry("270.0.0", "29 fonts and a font for every theme",
+        listOf(
+            "New Fonts page (Version info > 7 taps > Flags > Fonts): 29 fonts, 25 of them bundled (Lora, Crimson Pro, IBM Plex Serif, Libre Baskerville, Instrument Serif, Instrument Sans, Outfit, Poppins, Bricolage Grotesque, National Park, Jura, Gloock, Italiana, Poiret One, Big Shoulders, Arsenal SC, Erica One, Boldonse, Pixelify Sans, Nothing You Could Do, JetBrains Mono, IBM Plex Mono, DM Mono, Geist Mono, Red Hat Mono) plus 4 system ones. All free under the SIL Open Font License; the texts are in assets/font_licenses. About 3.5 MB added to the app",
+            "Every theme has its own font. Until you pick one, 15 themes get a suggested font (System: Jura, Ninja: Italiana, Hashira: Outfit, Monarch: Big Shoulders, Gothic: Gloock, Guild: Libre Baskerville, Pixel: Pixelify Sans, Handheld: DM Mono, Blueprint: IBM Plex Mono, Neon: Bricolage, Sci-Fi: Geist Mono, Terminal: JetBrains Mono, Paper: Lora, Rose: Instrument Serif, Clay: Poppins); the other themes keep the system font. Pick System font to get the plain one back on any theme",
+            "The font of the theme in use changes the whole app (all text, including the theme preview page). Code: ui/ThemeFonts.kt (the font list, APP_FONTS, and per-theme choice), ui/ThemeFontsPage.kt, QuestTheme in ui/Theme.kt, FxFont in ui/ThemeFx.kt. To add a font: copy the .ttf into res/font and add one line to APP_FONTS",
+            "Terminal: font [ls] | list | set <theme> <font|auto> | reset [theme] (in help, man, chips, settings group; set and reset are refused during Focus like flags)",
+        )),
     VersionEntry("269.0.0", "No theme flash when leaving Try it",
         listOf(
             "Back from a theme's Try it page no longer shows the previewed theme for a moment on the Theme effects list: your real theme is put back in the same step, and a plain cover page in your real theme's background shows for about 0.14 seconds while the list comes back",

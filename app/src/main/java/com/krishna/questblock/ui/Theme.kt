@@ -87,6 +87,7 @@ fun loadThemeMode(ctx: Context) {
     val sysDark = (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
     applyThemeMode(mode, sysDark)
     GrayMode = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getBoolean("gray_mode", false)
+    ThemeFonts.load(ctx)
     // v268: the poster background was removed: delete its leftover picture and settings
     runCatching {
         java.io.File(ctx.filesDir, "poster_user.jpg").delete()
@@ -335,5 +336,14 @@ fun QuestTheme(content: @Composable () -> Unit) {
             }
         }
     }
-    MaterialTheme(colorScheme = scheme, content = content)
+    // v270: the font of the theme in use (ThemeFonts.kt). Typography covers styled text; LocalTextStyle covers Text with no style
+    val appFont = AppFontNow
+    val typo = remember(appFont) { androidx.compose.material3.Typography().withFamily(appFont) }
+    MaterialTheme(colorScheme = scheme, typography = typo) {
+        if (appFont != null) {
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.merge(androidx.compose.ui.text.TextStyle(fontFamily = appFont)),
+            ) { content() }
+        } else content()
+    }
 }

@@ -48,9 +48,11 @@ fun FlagsScreen(onBack: () -> Unit) {
     var msg by remember { mutableStateOf("") }
     var showIcons by remember { mutableStateOf(false) }
     var showFx by remember { mutableStateOf(false) }
+    var showFonts by remember { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(enabled = true) { onBack() }
     if (showIcons) { SvgIconsPage(onBack = { showIcons = false }); return }
     if (showFx) { ThemeFxFlagsPage(onBack = { showFx = false }); return }
+    if (showFonts) { ThemeFontsPage(onBack = { showFonts = false }); return }
     val desc = mapOf(
         "phone" to "The normal pages with the bottom bar",
         "termux" to "The whole app as one terminal",
@@ -106,6 +108,17 @@ fun FlagsScreen(onBack: () -> Unit) {
                         Text("Focus ring, XP bar, level up, done pop and lock screens of every theme. " + themeFxOnCount() + " of " + themeFxTotal() + " on", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
                     }
                     androidx.compose.material3.TextButton(onClick = { showFx = true }) { Text("Open") }
+                }
+            }
+        }
+        item(key = "theme_fonts") {
+            Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Fonts", fontWeight = FontWeight.SemiBold, color = ColorText)
+                        Text(APP_FONTS.size.toString() + " fonts. Every theme has its own font; pick one for each theme", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                    }
+                    androidx.compose.material3.TextButton(onClick = { showFonts = true }) { Text("Open") }
                 }
             }
         }

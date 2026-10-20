@@ -57,7 +57,7 @@ private val TOP_COMMANDS = listOf(
     "stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub",
     "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas",
     "suggest", "timers", "fun", "fg", "last", "mood", "achievements", "leaderboard",
-    "cd", "pwd", "qhome", "flags", "icons", "logo",
+    "cd", "pwd", "qhome", "flags", "icons", "logo", "font",
 )
 
 private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
@@ -69,6 +69,8 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "icons off" to SvgIcons.EMOJI_ICONS.toList(),
     "theme set" to listOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint", "termux", "questhome"),
     "flags" to listOf("ls", "on", "off"),
+    "font" to listOf("ls", "list", "set", "reset"),
+    "font set" to ThemeFonts.THEMES.map { it.first },
     "flags on" to listOf("phone", "termux", "home", "homework", "icons", "sounds", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint", "fx_sunset", "fx_ocean", "fx_forest", "fx_neon", "fx_scifi", "fx_amoled", "fx_terminal", "fx_paper", "fx_linen", "fx_sage", "fx_sky", "fx_lilac", "fx_chalk", "fx_clay", "fx_rose", "fx_indigo"),
     "flags off" to listOf("phone", "termux", "home", "homework", "icons", "sounds", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint", "fx_sunset", "fx_ocean", "fx_forest", "fx_neon", "fx_scifi", "fx_amoled", "fx_terminal", "fx_paper", "fx_linen", "fx_sage", "fx_sky", "fx_lilac", "fx_chalk", "fx_clay", "fx_rose", "fx_indigo"),
     "quests" to listOf("--today", "--done", "--overdue", "--focus"),
@@ -131,7 +133,7 @@ private val GROUPS: Map<String, List<String>> = linkedMapOf(
     "blocking" to listOf("vault", "unlock", "sites", "limits", "categories", "timers"),
     "economy" to listOf("coins", "shop", "inv", "fun"),
     "progress" to listOf("stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub", "mood", "achievements", "leaderboard"),
-    "settings" to listOf("qhome", "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas", "flags", "icons", "logo"),
+    "settings" to listOf("qhome", "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas", "flags", "icons", "logo", "font"),
 )
 
 private val MAN: Map<String, String> = mapOf(
@@ -144,6 +146,7 @@ private val MAN: Map<String, String> = mapOf(
     "alias" to "alias [name=cmd]    list or make a shortcut, e.g. alias qt=quests --today",
     "unalias" to "unalias <name>     remove a shortcut",
     "theme" to "theme [ls] | [set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux|questhome]   default/phone = the normal look (Quest Phone), paper, linen, sage, sky, lilac, chalk = the plain light shop themes, clay = the soft puffy Claymorphism one, system = the dark blue RPG System-window look (cut corners, mono text, HUD grid; both: you must own it, shop buy <name>), ninja, hashira, monarch, gothic, guild, pixel, handheld, blueprint = more style shop themes with their own shapes, fonts, strips and backgrounds (you must own them too: shop buy <name>), questhome = the launcher. theme ls lists the app themes that are on (flags hides the ones turned off) and the one in use. A theme turned off in flags is refused. refused during Focus (theme ls still works)",
+    "font" to "font [ls] | list | set <theme> <font|auto> | reset [theme]   a font for each theme (29 fonts: font list). auto = the theme's suggested font. ls shows every theme with its font. refused during Focus (read-only forms still work)",
     "flags" to "flags [ls] | on <name> | off <name>   names: phone termux home (app themes, the one left on can't be turned off), homework, icons, sounds, mood, leaderboard, experiments, themeicon (app icon follows the theme), themefx (master for the extras of all style themes), fx_system fx_ninja fx_hashira fx_monarch fx_gothic fx_guild fx_pixel fx_handheld fx_blueprint fx_sunset fx_ocean fx_forest fx_neon fx_scifi fx_amoled fx_terminal fx_paper fx_linen fx_sage fx_sky fx_lilac fx_chalk fx_clay fx_rose fx_indigo (extras of one theme). flags ls shows every flag. refused during Focus (flags ls still works)",
     "icons" to "icons [list] | on|off [name] | reset   emoji drawn as SVG icons on the normal pages (the terminal stays plain text). on|off alone is the master switch, on|off <name> switches one icon (flags page > SVG icons > Choose). reset turns every icon on. list shows each icon, its emoji and its state. on, off and reset are refused during Focus (icons and icons list still work)",
     "logo" to "logo                 the app logo in ASCII (a shield with a check)",
@@ -236,14 +239,14 @@ private val DIR_OF: Map<String, String> = mapOf(
     "badges" to "stats", "goals" to "stats", "hub" to "stats", "mood" to "stats", "achievements" to "stats", "leaderboard" to "stats",
     "qhome" to "settings", "set" to "settings", "strict" to "settings", "dnd" to "settings", "perms" to "settings", "backup" to "settings", "restore" to "settings",
     "reliability" to "settings", "selftest" to "settings", "debuglog" to "settings", "versions" to "settings", "about" to "settings",
-    "theme" to "settings", "flags" to "settings", "icons" to "settings", "logo" to "settings",
+    "theme" to "settings", "flags" to "settings", "font" to "settings", "icons" to "settings", "logo" to "settings",
     "ideas" to "ideas",
     "hw" to "hw",
 )
 private val DIRS = listOf("quests", "hw", "focus", "vault", "shop", "stats", "settings", "ideas")
 
 /** Commands that still work while a strict Focus session runs. */
-private val STRICT_OK = setOf("help", "man", "clear", "history", "status", "whoami", "focus", "play", "stop", "home", "theme", "flags", "icons", "logo", "versions", "about", "alias", "unalias", "ideas", "hw", "fg", "last", "cd", "pwd")
+private val STRICT_OK = setOf("help", "man", "clear", "history", "status", "whoami", "focus", "play", "stop", "home", "theme", "flags", "font", "icons", "logo", "versions", "about", "alias", "unalias", "ideas", "hw", "fg", "last", "cd", "pwd")
 
 /** Commands on a lock page. */
 private val BLOCK_OK = setOf("help", "man", "clear", "history", "status", "quests", "coins", "unlock", "open", "home", "main", "focus")
@@ -697,6 +700,7 @@ class TermuxViewModel @Inject constructor(
             "unalias" -> cmdUnalias(s, a)
             "theme" -> cmdTheme(s, a)
             "flags" -> cmdFlags(s, a)
+            "font" -> cmdFont(s, a)
             "icons" -> cmdIcons(s, a)
             "logo" -> cmdLogo(s)
             "home" -> cmdHome(s)
@@ -773,6 +777,7 @@ class TermuxViewModel @Inject constructor(
             "inv" -> sub in setOf("use", "equip", "unequip")
             "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint", "questhome")
             "flags" -> sub in setOf("on", "off")
+            "font" -> sub in setOf("set", "reset")
             "icons" -> sub in setOf("on", "off", "reset")
             "set" -> sub != null && sub != "ls"
             else -> false
@@ -1098,6 +1103,45 @@ class TermuxViewModel @Inject constructor(
         if (id == null) { s.err("usage: flags $sub <phone|termux|home|homework|icons|sounds|mood|leaderboard|experiments|themeicon|themefx|fx_<theme>>"); return }
         val err = AppThemes.setEnabled(ctx, id, sub == "on")
         if (err != null) s.err(err) else s.ok("${AppThemes.label(id)}: $sub")
+    }
+
+    /** v270: a font for each theme (ui/ThemeFonts.kt). The terminal itself stays monospace. */
+    private fun cmdFont(s: TermuxSession, a: TermuxArgs) {
+        when (a.pos.getOrNull(1)?.lowercase()) {
+            null, "ls" -> {
+                s.head("fonts")
+                ThemeFonts.THEMES.forEach { (key, name) ->
+                    val id = ThemeFonts.resolvedId(key)
+                    val own = ThemeFonts.chosen(key) != null
+                    s.out("{c}${key.padEnd(10)}{/} ${(ThemeFonts.find(id)?.label ?: id).padEnd(22)} " + if (own) "{g}yours{/}" else "{d}default{/}")
+                }
+                s.dim("font set <theme> <font|auto> | reset [theme] | list")
+            }
+            "list" -> {
+                s.head("fonts")
+                APP_FONTS.forEach { f -> s.out("{c}${f.id.padEnd(16)}{/} ${f.label.padEnd(22)} {d}${f.kind}{/}") }
+                s.dim("font set <theme> <font|auto>")
+            }
+            "set" -> {
+                val key = ThemeFonts.keyFor(a.pos.getOrNull(2))
+                val word = a.pos.getOrNull(3)?.lowercase()
+                if (key == null || word == null) { s.err("usage: font set <theme> <font|auto>   (font list shows the fonts)"); return }
+                if (word == "auto") { ThemeFonts.set(ctx, key, null); s.ok("$key: theme default"); return }
+                val f = ThemeFonts.find(word)
+                if (f == null) { s.err("no font '${word.tm()}': font list"); return }
+                ThemeFonts.set(ctx, key, f.id)
+                s.ok("$key: ${f.label}")
+            }
+            "reset" -> {
+                val w = a.pos.getOrNull(2)
+                if (w == null) { ThemeFonts.resetAll(ctx); s.ok("every theme is back to its default font"); return }
+                val key = ThemeFonts.keyFor(w)
+                if (key == null) { s.err("no theme '${w.tm()}': font ls"); return }
+                ThemeFonts.set(ctx, key, null)
+                s.ok("$key: theme default")
+            }
+            else -> s.err("usage: font [ls] | list | set <theme> <font|auto> | reset [theme]")
+        }
     }
 
     /** v224: emoji as SVG icons. The terminal itself stays plain text. */
