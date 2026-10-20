@@ -3,6 +3,14 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("279.0.0", "Theme decorations no longer sit on the UI",
+        listOf(
+            "Quest cards: the sparkles, hearts, leaves, clouds, bubbles and so on in the top right corner (Midnight Indigo, Rose Quartz, Ocean, Forest, Sage, Sky, Lilac, Chalk, Zen, AMOLED, Vaporwave) moved onto the very edge of the card, smaller, so they never touch the Complete, Edit or Delete buttons or the title. Bottom decorations (Sunset, Terminal, Paper, Carnival, Chalk, Forest) hug the bottom edge too",
+            "Fixed a faint Delete icon showing through finished (faded) quest cards in every theme: the swipe background now draws its icon only while you are swiping",
+            "Zen: page background is plain now (the big ring and dust are gone). Vaporwave: no sun grid behind pages or half sun on cards, only a soft pink glow at the bottom edge; the sun grid stays on level up",
+            "Whitespace: no strip at all, only a header pad with a little extra air, like the themes without strips",
+            "Code: cardDeco, fx2Background and Fx2Bar in ui/ThemeFx2.kt, backgroundContent in ui/QuestsScreen.kt. Not yet compiled in CI",
+        )),
     VersionEntry("278.0.0", "Build fix",
         listOf(
             "Fixed the CI compile errors: the private diamond helper in ui/ThemeFx2.kt clashed with the internal one in ui/ThemeFx.kt, so it is now fx2Diamond. No behaviour change",

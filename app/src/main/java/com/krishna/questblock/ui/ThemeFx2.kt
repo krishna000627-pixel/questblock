@@ -360,6 +360,11 @@ fun Fx2Bar() {
             return
         }
     }
+    // v278: Whitespace has no strip at all, only a header pad (like the themes without strips) with a little extra air
+    if (fx == Fx2.WHITESPACE) {
+        Spacer(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding().height(12.dp))
+        return
+    }
     val fam = fontOf(fx)
     val lc = if (fx == Fx2.NEON || fx == Fx2.CARNIVAL || fx == Fx2.VAPORWAVE) lerp(c, Color.White, 0.5f) else c
     // v262: the words sit in their own row and the drawing in a band under them, so nothing is drawn over the words
@@ -374,24 +379,24 @@ fun Fx2Bar() {
 }
 
 /** v261: what is drawn over every card (the quest board) for each Fx2 theme. Small and static; the card's shape, colours and border stay. */
+/** v278: every card decoration now hugs the card edge (the outer ~8 dp) so it never sits on the title, tags or the Complete/Edit/Delete buttons. */
 private fun DrawScope.cardDeco(fx: Fx2, c: Color, coin: Color, ink: Color) {
     val w = size.width; val h = size.height; val m = 12.dp.toPx()
     when (fx) {
         Fx2.SUNSET -> {
-            drawRect(Brush.verticalGradient(listOf(Color.Transparent, coin.copy(alpha = 0.10f)), startY = h * 0.5f, endY = h), Offset(0f, h * 0.5f), Size(w, h * 0.5f))
-            val r = 7.dp.toPx()
-            drawArc(coin.copy(alpha = 0.8f), 180f, 180f, true, Offset(w - 24.dp.toPx() - r, h - r), Size(r * 2, r * 2))
+            drawRect(Brush.verticalGradient(listOf(Color.Transparent, coin.copy(alpha = 0.12f)), startY = h - 8.dp.toPx(), endY = h), Offset(0f, h - 8.dp.toPx()), Size(w, 8.dp.toPx()))
+            val r = 4.dp.toPx()
+            drawArc(coin.copy(alpha = 0.8f), 180f, 180f, true, Offset(w - 20.dp.toPx() - r, h - r), Size(r * 2, r * 2))
         }
         Fx2.OCEAN -> {
-            drawCircle(c.copy(alpha = 0.40f), 4.dp.toPx(), Offset(w - m, m + 2.dp.toPx()), style = Stroke(1.2.dp.toPx()))
-            drawCircle(c.copy(alpha = 0.30f), 2.5.dp.toPx(), Offset(w - m - 10.dp.toPx(), m + 9.dp.toPx()), style = Stroke(1.dp.toPx()))
-            drawCircle(c.copy(alpha = 0.22f), 1.5.dp.toPx(), Offset(w - m - 4.dp.toPx(), m + 15.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawCircle(c.copy(alpha = 0.40f), 2.5.dp.toPx(), Offset(w - 8.dp.toPx(), 5.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawCircle(c.copy(alpha = 0.30f), 1.8.dp.toPx(), Offset(w - 17.dp.toPx(), 4.dp.toPx()), style = Stroke(1.dp.toPx()))
+            drawCircle(c.copy(alpha = 0.22f), 1.2.dp.toPx(), Offset(w - 24.dp.toPx(), 5.dp.toPx()), style = Stroke(1.dp.toPx()))
         }
         Fx2.FOREST -> {
-            leaf(Offset(w - m, 14.dp.toPx()), 150f, 12.dp.toPx(), 4.dp.toPx(), c.copy(alpha = 0.45f))
-            leaf(Offset(w - m, 14.dp.toPx()), 190f, 12.dp.toPx(), 4.dp.toPx(), c.copy(alpha = 0.35f))
-            drawLine(c.copy(alpha = 0.3f), Offset(m, h - 6.dp.toPx()), Offset(m + 44.dp.toPx(), h - 6.dp.toPx()), 1.5.dp.toPx())
-            leaf(Offset(m + 22.dp.toPx(), h - 6.dp.toPx()), -60f, 8.dp.toPx(), 3.dp.toPx(), c.copy(alpha = 0.4f))
+            leaf(Offset(w - 5.dp.toPx(), 2.dp.toPx()), 150f, 8.dp.toPx(), 3.dp.toPx(), c.copy(alpha = 0.45f))
+            leaf(Offset(w - 5.dp.toPx(), 2.dp.toPx()), 190f, 8.dp.toPx(), 3.dp.toPx(), c.copy(alpha = 0.35f))
+            drawLine(c.copy(alpha = 0.3f), Offset(m, h - 2.dp.toPx()), Offset(m + 44.dp.toPx(), h - 2.dp.toPx()), 1.5.dp.toPx())
         }
         Fx2.NEON -> for ((wd, al) in listOf(5f to 0.10f, 2.5f to 0.35f, 1f to 0.9f)) {
             drawLine(c.copy(alpha = al), Offset(m, 0.5f), Offset(w - m, 0.5f), wd.dp.toPx())
@@ -402,72 +407,68 @@ private fun DrawScope.cardDeco(fx: Fx2, c: Color, coin: Color, ink: Color) {
             drawLine(c, Offset(0f, 0f), Offset(l, 0f), sw); drawLine(c, Offset(0f, 0f), Offset(0f, l), sw)
             drawLine(c, Offset(w, h), Offset(w - l, h), sw); drawLine(c, Offset(w, h), Offset(w, h - l), sw)
         }
-        Fx2.AMOLED -> drawCircle(c.copy(alpha = 0.8f), 2.dp.toPx(), Offset(w - m, m))
+        Fx2.AMOLED -> drawCircle(c.copy(alpha = 0.8f), 2.dp.toPx(), Offset(w - 6.dp.toPx(), 6.dp.toPx()))
         Fx2.TERMINAL -> {
             drawRect(c.copy(alpha = 0.5f), Offset(0f, 0f), Size(2.dp.toPx(), h))
-            drawRect(c.copy(alpha = 0.7f), Offset(w - m - 6.dp.toPx(), h - m - 10.dp.toPx()), Size(6.dp.toPx(), 10.dp.toPx()))
+            drawRect(c.copy(alpha = 0.7f), Offset(w - m - 8.dp.toPx(), h - 4.dp.toPx()), Size(8.dp.toPx(), 2.dp.toPx()))
         }
         Fx2.PAPER -> {
             val tape = Path().apply {
-                moveTo(w / 2 - 20.dp.toPx(), 2.dp.toPx()); lineTo(w / 2 + 18.dp.toPx(), 0f)
-                lineTo(w / 2 + 20.dp.toPx(), 9.dp.toPx()); lineTo(w / 2 - 18.dp.toPx(), 11.dp.toPx()); close()
+                moveTo(w / 2 - 20.dp.toPx(), 1.dp.toPx()); lineTo(w / 2 + 18.dp.toPx(), 0f)
+                lineTo(w / 2 + 20.dp.toPx(), 5.dp.toPx()); lineTo(w / 2 - 18.dp.toPx(), 6.dp.toPx()); close()
             }
             drawPath(tape, coin.copy(alpha = 0.45f))
-            val fold = Path().apply { moveTo(w, h - 14.dp.toPx()); lineTo(w - 14.dp.toPx(), h); lineTo(w, h); close() }
+            val fold = Path().apply { moveTo(w, h - 8.dp.toPx()); lineTo(w - 8.dp.toPx(), h); lineTo(w, h); close() }
             drawPath(fold, ink.copy(alpha = 0.12f))
         }
-        Fx2.LINEN -> drawRoundRect(c.copy(alpha = 0.45f), Offset(5.dp.toPx(), 5.dp.toPx()), Size(w - 10.dp.toPx(), h - 10.dp.toPx()), CornerRadius(6.dp.toPx()),
-            style = Stroke(1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()), 0f)))
+        Fx2.LINEN -> drawRoundRect(c.copy(alpha = 0.45f), Offset(3.dp.toPx(), 3.dp.toPx()), Size(w - 6.dp.toPx(), h - 6.dp.toPx()), CornerRadius(6.dp.toPx()),
+            style = Stroke(1.2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()), 0f)))
         Fx2.SAGE -> {
-            val b = Offset(w - m, 24.dp.toPx())
-            drawLine(c.copy(alpha = 0.7f), b, Offset(b.x, b.y - 12.dp.toPx()), 2.dp.toPx(), StrokeCap.Round)
-            leaf(Offset(b.x, b.y - 11.dp.toPx()), 205f, 12.dp.toPx(), 4.5.dp.toPx(), c.copy(alpha = 0.7f))
-            leaf(Offset(b.x, b.y - 11.dp.toPx()), 335f, 12.dp.toPx(), 4.5.dp.toPx(), c.copy(alpha = 0.7f))
+            val b = Offset(w - 8.dp.toPx(), 9.dp.toPx())
+            drawLine(c.copy(alpha = 0.7f), b, Offset(b.x, b.y - 6.dp.toPx()), 1.5.dp.toPx(), StrokeCap.Round)
+            leaf(Offset(b.x, b.y - 5.dp.toPx()), 205f, 7.dp.toPx(), 3.dp.toPx(), c.copy(alpha = 0.7f))
+            leaf(Offset(b.x, b.y - 5.dp.toPx()), 335f, 7.dp.toPx(), 3.dp.toPx(), c.copy(alpha = 0.7f))
         }
         Fx2.SKY -> {
-            val cc = c.copy(alpha = 0.22f); val x = w - m - 20.dp.toPx()
-            drawCircle(cc, 5.dp.toPx(), Offset(x, 14.dp.toPx())); drawCircle(cc, 6.dp.toPx(), Offset(x + 8.dp.toPx(), 11.dp.toPx())); drawCircle(cc, 4.5.dp.toPx(), Offset(x + 16.dp.toPx(), 14.dp.toPx()))
+            val cc = c.copy(alpha = 0.22f); val x = w - 32.dp.toPx()
+            drawCircle(cc, 3.dp.toPx(), Offset(x, 6.dp.toPx())); drawCircle(cc, 4.dp.toPx(), Offset(x + 6.dp.toPx(), 4.dp.toPx())); drawCircle(cc, 3.dp.toPx(), Offset(x + 12.dp.toPx(), 6.dp.toPx()))
         }
         Fx2.LILAC -> {
-            val ctr = Offset(w - m - 6.dp.toPx(), m + 5.dp.toPx())
-            for (k in 0 until 5) drawCircle(c.copy(alpha = 0.4f), 3.dp.toPx(), polar(ctr, 4.dp.toPx(), k * 72f - 90f))
-            drawCircle(coin.copy(alpha = 0.8f), 2.dp.toPx(), ctr)
+            val ctr = Offset(w - 9.dp.toPx(), 8.dp.toPx())
+            for (k in 0 until 5) drawCircle(c.copy(alpha = 0.4f), 2.dp.toPx(), polar(ctr, 3.dp.toPx(), k * 72f - 90f))
+            drawCircle(coin.copy(alpha = 0.8f), 1.5.dp.toPx(), ctr)
         }
         Fx2.CHALK -> {
             var x = m; var i = 0
-            while (x < w * 0.4f) { drawLine(ink.copy(alpha = 0.35f), Offset(x, h - 5.dp.toPx() - (i % 2)), Offset(x + 6.dp.toPx(), h - 5.dp.toPx()), 1.6.dp.toPx(), StrokeCap.Round); x += 9.dp.toPx(); i++ }
-            for (k in 0 until 6) drawCircle(ink.copy(alpha = 0.10f), (0.8f + (k % 3) * 0.5f).dp.toPx(), Offset(w - m - k * 7.dp.toPx(), m + (k * 5 % 12).dp.toPx()))
+            while (x < w * 0.4f) { drawLine(ink.copy(alpha = 0.35f), Offset(x, h - 3.dp.toPx() - (i % 2)), Offset(x + 6.dp.toPx(), h - 3.dp.toPx()), 1.4.dp.toPx(), StrokeCap.Round); x += 9.dp.toPx(); i++ }
+            for (k in 0 until 6) drawCircle(ink.copy(alpha = 0.10f), (0.8f + (k % 3) * 0.5f).dp.toPx(), Offset(w - 6.dp.toPx() - k * 7.dp.toPx(), 2.dp.toPx() + (k * 5 % 5).dp.toPx()))
         }
-        Fx2.CLAY -> drawLine(Color.White.copy(alpha = 0.22f), Offset(16.dp.toPx(), 5.dp.toPx()), Offset(w * 0.35f, 5.dp.toPx()), 3.dp.toPx(), StrokeCap.Round)
-        Fx2.ROSE -> heart(Offset(w - m - 4.dp.toPx(), m + 3.dp.toPx()), 4.dp.toPx(), c.copy(alpha = 0.45f))
+        Fx2.CLAY -> drawLine(Color.White.copy(alpha = 0.22f), Offset(16.dp.toPx(), 4.dp.toPx()), Offset(w * 0.35f, 4.dp.toPx()), 3.dp.toPx(), StrokeCap.Round)
+        Fx2.ROSE -> heart(Offset(w - 9.dp.toPx(), 8.dp.toPx()), 3.dp.toPx(), c.copy(alpha = 0.45f))
         Fx2.INDIGO -> {
-            star4(Offset(w - m - 4.dp.toPx(), m + 2.dp.toPx()), 4.dp.toPx(), coin.copy(alpha = 0.7f))
-            star4(Offset(w - m - 16.dp.toPx(), m + 8.dp.toPx()), 2.5.dp.toPx(), coin.copy(alpha = 0.5f))
-            star4(Offset(w - m - 10.dp.toPx(), m + 16.dp.toPx()), 2.dp.toPx(), c.copy(alpha = 0.5f))
+            star4(Offset(w - 9.dp.toPx(), 7.dp.toPx()), 3.dp.toPx(), coin.copy(alpha = 0.7f))
+            star4(Offset(w - 19.dp.toPx(), 4.dp.toPx()), 1.8.dp.toPx(), coin.copy(alpha = 0.5f))
         }
         // v277: minimalist and maximalist cards
         Fx2.MONO -> drawLine(c, Offset(m, 0.5f), Offset(m + 26.dp.toPx(), 0.5f), 1.dp.toPx())
         Fx2.WHITESPACE -> drawLine(ink.copy(alpha = 0.10f), Offset(0f, h - 0.5f), Offset(w, h - 0.5f), 1f)
         Fx2.ZEN -> {
-            val r = 6.dp.toPx()
-            drawArc(ink.copy(alpha = 0.35f), 30f, 300f, false, Offset(w - m - r * 2, m - 2.dp.toPx()), Size(r * 2, r * 2), style = Stroke(1.3.dp.toPx(), cap = StrokeCap.Round))
+            val r = 4.dp.toPx()
+            drawArc(ink.copy(alpha = 0.35f), 30f, 300f, false, Offset(w - 8.dp.toPx() - r * 2, 2.dp.toPx()), Size(r * 2, r * 2), style = Stroke(1.2.dp.toPx(), cap = StrokeCap.Round))
         }
         Fx2.CARNIVAL -> {
             val set = carnivalSet(c, coin)
             var x = m; var i = 0
             while (x + 10.dp.toPx() <= w - m) { drawRect(set[i % 2].copy(alpha = 0.95f), Offset(x, 0f), Size(10.dp.toPx(), 5.dp.toPx())); x += 10.dp.toPx(); i++ }
-            for (k in 0 until 7) drawCircle(set[(k + 1) % set.size].copy(alpha = 0.7f), (1.6f + (k % 3) * 0.7f).dp.toPx(), Offset(w - m - k * 9.dp.toPx(), h - 9.dp.toPx() - (k * 7 % 14).dp.toPx()))
+            for (k in 0 until 7) drawCircle(set[(k + 1) % set.size].copy(alpha = 0.7f), (1.4f + (k % 3) * 0.5f).dp.toPx(), Offset(w - m - k * 9.dp.toPx(), h - 3.dp.toPx() - (k * 3 % 5).dp.toPx()))
         }
         Fx2.BAROQUE -> {
-            drawRoundRect(c.copy(alpha = 0.55f), Offset(5.dp.toPx(), 5.dp.toPx()), Size(w - 10.dp.toPx(), h - 10.dp.toPx()), CornerRadius(2.dp.toPx()), style = Stroke(1.dp.toPx()))
-            val q = 5.dp.toPx()
-            for (at in listOf(Offset(q, q), Offset(w - q, q), Offset(q, h - q), Offset(w - q, h - q))) fx2Diamond(at, 3.5.dp.toPx(), coin)
+            drawRoundRect(c.copy(alpha = 0.55f), Offset(4.dp.toPx(), 4.dp.toPx()), Size(w - 8.dp.toPx(), h - 8.dp.toPx()), CornerRadius(2.dp.toPx()), style = Stroke(1.dp.toPx()))
+            val q = 4.dp.toPx()
+            for (at in listOf(Offset(q, q), Offset(w - q, q), Offset(q, h - q), Offset(w - q, h - q))) fx2Diamond(at, 3.dp.toPx(), coin)
         }
-        Fx2.VAPORWAVE -> {
-            drawLine(Brush.horizontalGradient(listOf(c, ColorAccent), m, w - m), Offset(m, h - 1.dp.toPx()), Offset(w - m, h - 1.dp.toPx()), 2.dp.toPx())
-            val r = 6.dp.toPx()
-            drawArc(Brush.verticalGradient(listOf(coin, c), startY = m, endY = m + r), 180f, 180f, true, Offset(w - m - r * 2, m), Size(r * 2, r * 2))
-        }
+        // v278: no half sun on cards any more (it sat on the buttons); just the gradient rule on the bottom edge
+        Fx2.VAPORWAVE -> drawLine(Brush.horizontalGradient(listOf(c, ColorAccent), m, w - m), Offset(m, h - 1.dp.toPx()), Offset(w - m, h - 1.dp.toPx()), 2.dp.toPx())
         else -> Unit
     }
 }
@@ -676,17 +677,15 @@ internal fun Modifier.fx2Background(): Modifier {
             }
             Fx2.ROSE -> for (i in 0 until 10) heart(Offset(size.width * (((i * 43 + 9) % 100) / 100f), size.height * (((i * 61 + 23) % 100) / 100f)), (6 + i % 3 * 2).dp.toPx(), c.copy(alpha = 0.07f))
             // v277: Mono and Whitespace keep the page plain on purpose
-            Fx2.ZEN -> {
-                for (i in 0 until 40) drawCircle(ink.copy(alpha = 0.04f), (0.8f + (i % 3) * 0.6f).dp.toPx(), Offset(size.width * (((i * 41 + 7) % 100) / 100f), size.height * (((i * 59 + 23) % 100) / 100f)))
-                val r = 120.dp.toPx()
-                drawArc(ink.copy(alpha = 0.05f), 30f, 300f, false, Offset(size.width * 0.85f - r, size.height * 0.9f - r), Size(r * 2, r * 2), style = Stroke(16.dp.toPx(), cap = StrokeCap.Round))
-            }
+            // v278: Zen page is plain now (the big ring and dust got in the way of the content)
+            Fx2.ZEN -> Unit
             Fx2.CARNIVAL -> {
                 val set = carnivalSet(c, ColorCoin)
                 for (i in 0 until 34) drawCircle(set[i % set.size].copy(alpha = 0.13f), (2f + (i % 3)).dp.toPx(), Offset(size.width * (((i * 37 + 11) % 100) / 100f), size.height * (((i * 53 + 7) % 100) / 100f)))
             }
             Fx2.BAROQUE -> drawCircle(Brush.radialGradient(listOf(c.copy(alpha = 0.12f), Color.Transparent), Offset(size.width / 2, 0f), 280.dp.toPx()), 280.dp.toPx(), Offset(size.width / 2, 0f))
-            Fx2.VAPORWAVE -> sunGrid(size.height * 0.78f, c, ColorAccent, ColorCoin)
+            // v278: no sun grid behind pages (it fought the content); a soft pink glow at the very bottom only. The sun grid stays on level up and the lock page
+            Fx2.VAPORWAVE -> drawRect(Brush.verticalGradient(listOf(Color.Transparent, c.copy(alpha = 0.10f)), startY = size.height * 0.88f, endY = size.height), Offset(0f, size.height * 0.88f), Size(size.width, size.height * 0.12f))
             else -> Unit
         }
     }

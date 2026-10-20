@@ -298,7 +298,8 @@ private fun SwipeableQuestCard(
             Box(Modifier.fillMaxSize()
                 .clip(RoundedCornerShape(14.dp)).background(color),
                 contentAlignment = if (dir == StartToEnd) Alignment.CenterStart else Alignment.CenterEnd) {
-                Icon(
+                // v278: only while swiping (before, a faint Delete icon showed through the 50% faded done cards)
+                if (dir == StartToEnd || dir == EndToStart) Icon(
                     if (dir == StartToEnd) Icons.Default.Check else Icons.Default.Delete,
                     contentDescription = null,
                     tint   = ColorText,
