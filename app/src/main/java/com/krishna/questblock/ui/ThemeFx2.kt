@@ -70,7 +70,7 @@ import kotlin.math.roundToInt
  */
 enum class Fx2 { NONE, SUNSET, OCEAN, FOREST, NEON, SCIFI, AMOLED, TERMINAL, PAPER, LINEN, SAGE, SKY, LILAC, CHALK, CLAY, ROSE, INDIGO }
 
-val Fx2Now: Fx2 get() = if (PosterOn || TermuxOn) Fx2.NONE else when (ShopTheme) {
+val Fx2Now: Fx2 get() = if (TermuxOn) Fx2.NONE else when (ShopTheme) {
     "theme_sunset" -> Fx2.SUNSET
     "theme_ocean" -> Fx2.OCEAN
     "theme_forest" -> Fx2.FOREST

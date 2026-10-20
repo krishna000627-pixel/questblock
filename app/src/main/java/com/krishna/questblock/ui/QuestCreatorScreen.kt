@@ -118,6 +118,7 @@ private data class Choice(val label: String, val sub: String?, val value: Int, v
 @Composable
 fun QuestCreatorScreen(
     onBack: () -> Unit,
+    onSaved: () -> Unit = onBack,   // v267: after Save (Back goes to the type picker, Save leaves the whole add flow)
     vm: QuestCreatorViewModel = hiltViewModel(),
 ) {
     val ctx = LocalContext.current
@@ -249,7 +250,7 @@ fun QuestCreatorScreen(
                 if (needsDays) Text("Pick at least one day.", color = ColorWarning, style = MaterialTheme.typography.labelSmall)
                 if (routineNeedsSteps) Text("Add at least one step.", color = ColorWarning, style = MaterialTheme.typography.labelSmall)
                 Button(
-                    onClick = { if (canSave) vm.save(buildDraft(), onBack) },
+                    onClick = { if (canSave) vm.save(buildDraft(), onSaved) },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     colors   = ButtonDefaults.buttonColors(containerColor = ColorPrimary, contentColor = ColorOnPrimary),
                     shape    = RoundedCornerShape(14.dp),

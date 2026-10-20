@@ -308,7 +308,7 @@ fun termuxCommandForRoute(route: String): String = when (route) {
     "hub_rules" -> "limits"
     "hub_sites" -> "sites ls"
     "unlock_timers" -> "timers"
-    "hub_experiments" -> "poster"
+    "hub_experiments" -> "flags ls"
     "reliability" -> "reliability"
     "categories" -> "categories ls"
     "homework" -> "hw"

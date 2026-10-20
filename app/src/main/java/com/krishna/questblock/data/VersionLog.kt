@@ -3,6 +3,29 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("269.0.0", "No theme flash when leaving Try it",
+        listOf(
+            "Back from a theme's Try it page no longer shows the previewed theme for a moment on the Theme effects list: your real theme is put back in the same step, and a plain cover page in your real theme's background shows for about 0.14 seconds while the list comes back",
+            "The cover follows whatever theme you really use, so it fits every theme. Code: ui/ThemeFxCover.kt (ThemeSwitchCover, restoreRealTheme), used in ThemeFxFlagsPage (ui/ThemeFxPage.kt)",
+        )),
+    VersionEntry("268.0.0", "Poster background removed",
+        listOf(
+            "The whole poster feature is gone: the Poster background card on Experiments (Change picture, Show the poster, Tint with the accent colour, Darkness), the see-through look and forced dark look it caused, the picture behind every screen, and the terminal command poster (also removed from help, man, completion and the settings group)",
+            "The saved picture (poster_user.jpg) and its three settings are deleted the first time the app starts, so no space is left used",
+            "Code removed: ui/PosterSettings.kt, PosterOn and PosterStamp in ui/Theme.kt, posterOn, posterTint and posterDim in data/Prefs.kt, poster in ui/TermuxExtras.kt and ui/TermuxShell.kt. The Experiments page keeps its switches",
+        )),
+    VersionEntry("267.0.0", "Add quest: Back from a quest form returns to the type picker",
+        listOf(
+            "Add quest: after picking a type, Back (arrow or phone) now goes to the type picker, and Back again goes to where you started. Before, the picker was replaced, so Back went straight to Home",
+            "Save still leaves the whole add flow in one step (back to where you started, not to the picker). Code: MainScreen routes quest_types and create_quest, onSaved in ui/QuestCreatorScreen.kt",
+        )),
+    VersionEntry("266.0.0", "Back button fixed on every inner page",
+        listOf(
+            "Audited every screen: pages that open another page inside themselves (not through the app navigation) now handle the phone back button one step at a time",
+            "Flags page: back from SVG icons, Theme effects and Try it goes to the page before, not out to Version info / About me (ui/FlagsScreen.kt, ThemeFxPage.kt)",
+            "Ideas page: back while editing a scroll cancels the edit first (ui/IdeasScreen.kt)",
+            "Checked and fine already: all pages opened through MainScreen routes, dialogs and sheets (Android closes them on back), Quest Home drawer and settings, Termux drawer and settings",
+        )),
     VersionEntry("265.0.0", "Back button on Theme effects pages stays inside them",
         listOf(
             "Phone back button on a theme page (Try it) now goes back to the Theme effects list, then to Flags, instead of jumping out to the About me / Version info page. Code: BackHandler in ThemeFxFlagsPage, ThemeFxTryPage (ui/ThemeFxPage.kt) and FlagsScreen",

@@ -81,6 +81,8 @@ fun IdeasScreen(onBack: () -> Unit) {
         focus.requestFocus()
     }
     var editing by remember { mutableIntStateOf(-1) }
+    // v266: phone back cancels an edit in progress instead of leaving the page
+    androidx.activity.compose.BackHandler(enabled = editing >= 0) { setDraft(""); editing = -1 }
     var withLog by remember { mutableStateOf(false) }
     var withTermux by remember { mutableStateOf(true) }
     val version = remember {

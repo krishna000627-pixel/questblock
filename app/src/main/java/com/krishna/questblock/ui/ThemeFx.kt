@@ -69,7 +69,7 @@ import kotlin.math.roundToInt
  */
 enum class Fx { NONE, SYSTEM, NINJA, HASHIRA, MONARCH, GOTHIC, GUILD, PIXEL, HANDHELD, BLUEPRINT }
 
-val FxNow: Fx get() = if (PosterOn || TermuxOn) Fx.NONE else when (ShopTheme) {
+val FxNow: Fx get() = if (TermuxOn) Fx.NONE else when (ShopTheme) {
     "theme_system" -> Fx.SYSTEM
     "theme_ninja" -> Fx.NINJA
     "theme_hashira" -> Fx.HASHIRA

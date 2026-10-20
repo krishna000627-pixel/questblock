@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
  * Card (in Glass.kt) and Button (which shadow the material3 ones in the ui package, like Text does) get a big radius, a soft coloured
  * drop shadow and a light rim on the top left. Every other time they call straight through to material3.
  */
-val ClayOn: Boolean get() = ShopTheme == "theme_clay" && !PosterOn && !TermuxOn
+val ClayOn: Boolean get() = ShopTheme == "theme_clay" && !TermuxOn
 
 internal val CLAY_CARD = RoundedCornerShape(28.dp)
 private val CLAY_BUTTON = RoundedCornerShape(22.dp)

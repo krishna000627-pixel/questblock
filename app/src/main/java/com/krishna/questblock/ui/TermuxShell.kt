@@ -56,7 +56,7 @@ private val TOP_COMMANDS = listOf(
     "coins", "shop", "inv",
     "stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub",
     "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas",
-    "suggest", "timers", "fun", "fg", "last", "poster", "mood", "achievements", "leaderboard",
+    "suggest", "timers", "fun", "fg", "last", "mood", "achievements", "leaderboard",
     "cd", "pwd", "qhome", "flags", "icons", "logo",
 )
 
@@ -115,7 +115,6 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "qhome dock" to listOf("add", "rm"),
     "qhome folder" to listOf("new", "rm", "add", "take", "rename"),
     "qhome theme" to listOf("niagara", "smart", "lawn"),
-    "poster" to listOf("pick", "on", "off", "tint", "dim"),
     "suggest" to listOf("add", "physics", "chemistry", "maths", "boards"),
     "cd" to listOf("~", "quests", "hw", "focus", "vault", "shop", "stats", "settings", "ideas"),
     "hw" to listOf("add", "ls", "board", "done", "undo", "rm", "edit", "focus", "week", "copy", "bed"),
@@ -132,7 +131,7 @@ private val GROUPS: Map<String, List<String>> = linkedMapOf(
     "blocking" to listOf("vault", "unlock", "sites", "limits", "categories", "timers"),
     "economy" to listOf("coins", "shop", "inv", "fun"),
     "progress" to listOf("stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub", "mood", "achievements", "leaderboard"),
-    "settings" to listOf("qhome", "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas", "poster", "flags", "icons", "logo"),
+    "settings" to listOf("qhome", "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas", "flags", "icons", "logo"),
 )
 
 private val MAN: Map<String, String> = mapOf(
@@ -198,7 +197,6 @@ private val MAN: Map<String, String> = mapOf(
     "fg" to "fg                  jump back to the session you were in before (like cd -)",
     "last" to "last                same as fg. !! runs your last command again, !word runs the last one that starts with word",
     "timers" to "timers              apps, sites and clips that are unlocked, and saved time",
-    "poster" to "poster [pick|on|off|tint on|off|dim 20-90]   the picture behind the normal look",
     "suggest" to "suggest [subject] | suggest add <n> [--tomorrow]   ready-made study quests",
     "achievements" to "achievements        the 12 achievements, unlocked or not",
     "leaderboard" to "leaderboard         top 10 of 80 simulated players and where you are",
@@ -238,7 +236,7 @@ private val DIR_OF: Map<String, String> = mapOf(
     "badges" to "stats", "goals" to "stats", "hub" to "stats", "mood" to "stats", "achievements" to "stats", "leaderboard" to "stats",
     "qhome" to "settings", "set" to "settings", "strict" to "settings", "dnd" to "settings", "perms" to "settings", "backup" to "settings", "restore" to "settings",
     "reliability" to "settings", "selftest" to "settings", "debuglog" to "settings", "versions" to "settings", "about" to "settings",
-    "poster" to "settings", "theme" to "settings", "flags" to "settings", "icons" to "settings", "logo" to "settings",
+    "theme" to "settings", "flags" to "settings", "icons" to "settings", "logo" to "settings",
     "ideas" to "ideas",
     "hw" to "hw",
 )
@@ -276,8 +274,6 @@ class TermuxViewModel @Inject constructor(
     private var focusClosed = false
     override var activeIndex by mutableIntStateOf(0)
     override var focusStrip by mutableStateOf("")
-    /** The shell watches this: when it turns true it opens the gallery picker for the poster. */
-    var posterPick by mutableStateOf(false)
     private val extras = TermuxExtras(
         ctx, repo, prefs,
         { s, q -> pickApp(s, q, includeBlocked = false) },
@@ -750,7 +746,6 @@ class TermuxViewModel @Inject constructor(
             "fg", "last" -> switchLast()
             "cd" -> cmdCd(s, a)
             "pwd" -> s.out(s.prompt.removeSuffix(" $"))
-            "poster" -> { if (extras.poster(s, a)) posterPick = true }
             "mood" -> if (!com.krishna.questblock.data.Flags.get("mood")) s.err("Mood check-in is turned off in flags") else extras.mood(s, a)
             "achievements" -> extras.achievements(s)
             "leaderboard" -> if (!com.krishna.questblock.data.Flags.get("leaderboard")) s.err("Daily leaderboard is turned off in flags") else extras.leaderboard(s)
@@ -2413,20 +2408,6 @@ class TermuxViewModel @Inject constructor(
         return k.set(v)
     }
 
-    fun onPosterPicked(uri: Uri?) {
-        if (uri == null) return
-        viewModelScope.launch {
-            val ok = withContext(Dispatchers.IO) { savePoster(ctx, uri) }
-            val s = sessionList.getOrNull(activeIndex) ?: sessionList.first()
-            if (ok) {
-                prefs.posterOn = true; PosterOn = true; PosterStamp++
-                s.ok("poster picture set and turned on")
-            } else {
-                s.err("could not read that picture")
-            }
-        }
-    }
-
     private suspend fun cmdStrict(s: TermuxSession, a: TermuxArgs) {
         val on = a.pos.getOrNull(1)?.let { parseBool(it) }
         if (on == null) { s.out("strict mode: ${onOff(prefs.strictMode)}   (strict on|off)"); return }
@@ -2765,12 +2746,6 @@ fun TermuxShell(
     ) { uri -> vm.onRestorePicked(uri) }
     LaunchedEffect2(vm.restorePick) {
         if (vm.restorePick) { vm.restorePick = false; picker.launch(arrayOf("*/*")) }
-    }
-    val posterPicker = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.GetContent(),
-    ) { uri -> vm.onPosterPicked(uri) }
-    LaunchedEffect2(vm.posterPick) {
-        if (vm.posterPick) { vm.posterPick = false; posterPicker.launch("image/*") }
     }
     val qhPicker = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.GetContent(),

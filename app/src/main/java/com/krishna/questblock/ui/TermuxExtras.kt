@@ -13,7 +13,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * v208: the pages that had no command in v207, as terminal commands: unlock timers, poster, suggested quests,
+ * v208: the pages that had no command in v207, as terminal commands: unlock timers, suggested quests,
  * achievements, leaderboard, mood, attendance month and past days, buy fun minutes, weekly category lock,
  * copying ideas, and the home notices (login bonus, theme rent, cultivation realm).
  */
@@ -53,46 +53,6 @@ class TermuxExtras(
             }
         }
         if (n == 0) s.dim("nothing is unlocked and no time is saved")
-    }
-
-    // ── poster ───────────────────────────────────────────────────────────
-    /** Returns true when the caller must open the system gallery picker. */
-    fun poster(s: TermuxSession, a: TermuxArgs): Boolean {
-        val has = java.io.File(ctx.filesDir, "poster_user.jpg").exists()
-        val sub = a.pos.getOrNull(1)?.lowercase()
-        fun onOff(b: Boolean) = if (b) "{g}on{/}" else "{d}off{/}"
-        when (sub) {
-            null, "ls" -> {
-                s.head("poster background")
-                s.out("picture   ${if (has) "{g}set{/}" else "{d}none{/}"}")
-                s.out("show      ${onOff(prefs.posterOn)}")
-                s.out("tint      ${onOff(prefs.posterTint)}")
-                s.out("darkness  {c}${prefs.posterDim}{/}%")
-                s.dim("poster pick | on | off | tint on|off | dim 20-90")
-                s.dim("it is drawn behind the normal look. the terminal look is plain black, so it shows after: theme set default")
-            }
-            "pick" -> { s.step("opening Android's gallery picker. come back here when done"); return true }
-            "on", "off" -> {
-                if (!has) { s.err("no picture yet: poster pick"); return false }
-                val on = sub == "on"
-                prefs.posterOn = on; PosterOn = on; PosterStamp++
-                s.ok("poster ${if (on) "on" else "off"}")
-            }
-            "tint" -> {
-                val on = a.pos.getOrNull(2)?.lowercase()
-                if (on != "on" && on != "off") { s.err("usage: poster tint on|off"); return false }
-                prefs.posterTint = on == "on"; PosterStamp++
-                s.ok("tint $on")
-            }
-            "dim" -> {
-                val n = a.pos.getOrNull(2)?.toIntOrNull()
-                if (n == null || n !in 20..90) { s.err("usage: poster dim 20-90"); return false }
-                prefs.posterDim = n; PosterStamp++
-                s.ok("darkness $n%")
-            }
-            else -> s.err("usage: poster | pick | on | off | tint on|off | dim 20-90")
-        }
-        return false
     }
 
     // ── suggested quests ─────────────────────────────────────────────────

@@ -42,7 +42,6 @@ fun ExperimentsScreen(onBack: () -> Unit, vm: ExperimentsViewModel = hiltViewMod
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = ColorText) }
             TitleWithIcon("\uD83E\uDDEA", "Experiments")
         }
-        PosterPicker(vm.prefs)
         OptionalFeaturesSection(vm.prefs, ctx)
         Spacer(Modifier.height(12.dp))
     }

@@ -172,13 +172,8 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
             composable("quest_types") {
                 QuestTypesScreen(
                     onBack = { navController.popBackStack() },
-                    // replace the picker with the form, so Back from the form returns to where you started
-                    onPick = { type ->
-                        navController.navigate("create_quest?taskId=-1&type=$type") {
-                            popUpTo("quest_types") { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    },
+                    // v267: the picker stays under the form, so Back from the form returns to the picker (Save leaves both)
+                    onPick = { type -> navController.openPage("create_quest?taskId=-1&type=$type") },
                 )
             }
             composable(
@@ -187,7 +182,8 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
                     navArgument("taskId") { type = NavType.LongType; defaultValue = -1L },
                     navArgument("type") { type = NavType.StringType; defaultValue = "" },
                 ),
-            ) { QuestCreatorScreen(onBack = { navController.popBackStack() }) }
+            ) { QuestCreatorScreen(onBack = { navController.popBackStack() },
+                onSaved = { if (!navController.popBackStack("quest_types", true)) navController.popBackStack() }) }
             composable("stats")    { StatsScreen(onBack = { navController.popBackStack() }, onOpenUsage = { navController.openPage("usage") }) }
             composable("settings") {
                 SettingsScreen(

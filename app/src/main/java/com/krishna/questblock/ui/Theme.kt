@@ -54,17 +54,11 @@ private val SHOP_THEME_LIGHT = mapOf(
     "theme_clay" to true, "theme_system" to false, "theme_ninja" to true, "theme_hashira" to false, "theme_monarch" to false, "theme_gothic" to false,
     "theme_guild" to true, "theme_pixel" to false, "theme_handheld" to true, "theme_blueprint" to false,
 )
-fun themeForcedLight(id: String = ShopTheme): Boolean? = if (PosterOn) false else SHOP_THEME_LIGHT[id]
+fun themeForcedLight(id: String = ShopTheme): Boolean? = SHOP_THEME_LIGHT[id]
 
 // ── Grayscale look ───────────────────────────────────────────────────────────
 /** Optional (Hub → Experiments). On = the whole window is drawn through a zero-saturation colour filter, like the phone's own grayscale: emojis, icons and images go gray too, at full sharpness. */
 var GrayMode by mutableStateOf(false)
-
-/** A gallery picture is the background (see PosterPicker). While it is on, the look is dark and the screens above it are see-through. */
-var PosterOn by mutableStateOf(false)
-/** Bumped when the picture, its tint or its darkness changes, so the window background is drawn again. */
-var PosterStamp by mutableIntStateOf(0)
-private fun glass(c: Color, a: Float): Color = if (PosterOn) c.copy(alpha = minOf(c.alpha, a)) else c
 
 private val GRAY_PAINT: android.graphics.Paint by lazy {
     android.graphics.Paint().apply {
@@ -93,7 +87,11 @@ fun loadThemeMode(ctx: Context) {
     val sysDark = (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
     applyThemeMode(mode, sysDark)
     GrayMode = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getBoolean("gray_mode", false)
-    PosterOn = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).getBoolean("poster_on", false) && java.io.File(ctx.filesDir, "poster_user.jpg").exists()
+    // v268: the poster background was removed: delete its leftover picture and settings
+    runCatching {
+        java.io.File(ctx.filesDir, "poster_user.jpg").delete()
+        ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).edit().remove("poster_on").remove("poster_tint").remove("poster_dim").apply()
+    }
     // paint the chosen background before the first frame so the XML window colour never shows
     (ctx as? Activity)?.window?.setBackgroundDrawable(windowBackgroundFor(ctx))
 }
@@ -238,10 +236,10 @@ private fun themed(i: Int): Color? = SHOP_PALETTES[ShopTheme]?.let { Color(if (L
 private fun pick(dark: Long, light: Long) = Color(if (LightMode) light else dark)
 
 // ── Palette (same names as before; each one switches between dark and light) ──
-val ColorBg: Color          get() = glass(themed(0) ?: pick(0xFF050E0C, 0xFFEEF2F7), 0.45f)
-val ColorSurface: Color     get() = glass(themed(1) ?: pick(0xFF0A1A15, 0xFFFFFFFF), 0.90f)
-val ColorSurfaceHigh: Color get() = glass(themed(2) ?: pick(0xFF12261F, 0xFFE3E9F1), 0.92f)
-val ColorCard: Color        get() = glass(themed(3) ?: pick(0xFF0B1D17, 0xFFFFFFFF), 0.90f)
+val ColorBg: Color          get() = (themed(0) ?: pick(0xFF050E0C, 0xFFEEF2F7))
+val ColorSurface: Color     get() = (themed(1) ?: pick(0xFF0A1A15, 0xFFFFFFFF))
+val ColorSurfaceHigh: Color get() = (themed(2) ?: pick(0xFF12261F, 0xFFE3E9F1))
+val ColorCard: Color        get() = (themed(3) ?: pick(0xFF0B1D17, 0xFFFFFFFF))
 
 /** Accent colour. A state, so changing it in Settings recolours the app live. Darkened a little on light so it stays readable. */
 private var accentRaw by mutableStateOf(Color(0xFF00E5A0))
@@ -286,45 +284,8 @@ val ACCENTS: List<Pair<String, Long>> = listOf(
     "Coral"  to 0xFFFF7A59,
 )
 
-// ── Gallery picture ──────────────────────────────────────────────────────────
-private var userKey: String? = null
-private var userBmp: Bitmap? = null
-
-/** The gallery picture, cropped to the screen shape, dimmed, and tinted in the accent colour if that is on. Null when there is no picture. */
-private fun userPosterDrawable(ctx: Context): Drawable? {
-    val f = java.io.File(ctx.filesDir, "poster_user.jpg")
-    if (!f.exists()) return null
-    val dm = ctx.resources.displayMetrics
-    val key = "${f.lastModified()} ${dm.widthPixels}x${dm.heightPixels}"
-    if (userKey != key || userBmp == null) {
-        runCatching {
-            val src = BitmapFactory.decodeFile(f.absolutePath) ?: return null
-            val want = dm.widthPixels.toFloat() / dm.heightPixels
-            val have = src.width.toFloat() / src.height
-            val w = if (have > want) (src.height * want).toInt() else src.width
-            val h = if (have > want) src.height else (src.width / want).toInt()
-            userBmp = Bitmap.createBitmap(src, (src.width - w) / 2, (src.height - h) / 2, w, h)
-            userKey = key
-        }
-    }
-    val bmp = userBmp ?: return null
-    val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
-    val dim = sp.getInt("poster_dim", 60).coerceIn(10, 95)
-    val pic = BitmapDrawable(ctx.resources, bmp)
-    if (sp.getBoolean("poster_tint", true)) {
-        val cm = ColorMatrix().apply { setSaturation(0f) }
-        val t = ColorPrimary
-        cm.postConcat(ColorMatrix(floatArrayOf(t.red, 0f, 0f, 0f, 0f, 0f, t.green, 0f, 0f, 0f, 0f, 0f, t.blue, 0f, 0f, 0f, 0f, 0f, 1f, 0f)))
-        pic.colorFilter = ColorMatrixColorFilter(cm)
-    }
-    return LayerDrawable(arrayOf(ColorDrawable(0xFF000000.toInt()), pic, ColorDrawable((dim * 255 / 100) shl 24)))
-}
-
-/** The window background: the gallery picture if one is on, else the plain theme colour. */
-fun windowBackgroundFor(ctx: Context): Drawable {
-    if (PosterOn) userPosterDrawable(ctx)?.let { return it }
-    return ColorDrawable(ColorBg.toArgb())
-}
+/** The window background: the plain theme colour. */
+fun windowBackgroundFor(ctx: Context): Drawable = ColorDrawable(ColorBg.toArgb())
 
 @Composable
 fun QuestTheme(content: @Composable () -> Unit) {
@@ -362,11 +323,9 @@ fun QuestTheme(content: @Composable () -> Unit) {
     // status/nav bar icon colours + window background follow the theme
     val view = LocalView.current
     val gray = GrayMode
-    val posterStamp = PosterStamp
     if (!view.isInEditMode) {
         SideEffect {
             setWindowGray(view, gray)
-            if (posterStamp < 0) return@SideEffect
             val window = (view.context as? Activity)?.window
             if (window != null) {
                 val c = WindowCompat.getInsetsController(window, view)

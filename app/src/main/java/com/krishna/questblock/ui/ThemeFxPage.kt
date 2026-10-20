@@ -116,7 +116,9 @@ fun ThemeFxFlagsPage(onBack: () -> Unit) {
     var previewId by remember { mutableStateOf<String?>(null) }
     val pv = previewId
     androidx.activity.compose.BackHandler(enabled = true) { onBack() }
-    if (pv != null) { ThemeFxTryPage(themeId = pv, onBack = { previewId = null }); return }
+    var covering by remember { mutableStateOf(false) }
+    if (pv != null) { ThemeFxTryPage(themeId = pv, onBack = { restoreRealTheme(ctx); covering = true; previewId = null }); return }
+    if (covering) { ThemeSwitchCover(onDone = { covering = false }); return }
     val master = FxFlags.get("themefx")
     val onCount = FX_THEMES.count { FxFlags.get("fx_" + it.id) }
     fun guarded(block: () -> Unit) {
@@ -285,7 +287,7 @@ fun ThemeFxTryPage(themeId: String, onBack: () -> Unit) {
 
     val theme = FX_THEMES.first { it.id == sel }
     val fxOn = AnyFx.on
-    val blocked = TermuxOn || PosterOn
+    val blocked = TermuxOn
     // v263: the track follows the theme (the default one stayed lavender or muddy purple in every theme)
     val sliderColors = SliderDefaults.colors(
         thumbColor = ColorPrimary, activeTrackColor = ColorPrimary, inactiveTrackColor = ColorPrimary.copy(alpha = 0.22f),
