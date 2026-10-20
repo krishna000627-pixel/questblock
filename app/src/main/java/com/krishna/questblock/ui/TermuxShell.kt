@@ -69,8 +69,8 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "icons off" to SvgIcons.EMOJI_ICONS.toList(),
     "theme set" to listOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint", "termux", "questhome"),
     "flags" to listOf("ls", "on", "off"),
-    "font" to listOf("ls", "list", "set", "reset"),
-    "font set" to ThemeFonts.THEMES.map { it.first },
+    "font" to listOf("ls", "list", "set", "on", "off", "reset"),
+    "font set" to listOf("default") + APP_FONTS.map { it.id },
     "flags on" to listOf("phone", "termux", "home", "homework", "icons", "sounds", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint", "fx_sunset", "fx_ocean", "fx_forest", "fx_neon", "fx_scifi", "fx_amoled", "fx_terminal", "fx_paper", "fx_linen", "fx_sage", "fx_sky", "fx_lilac", "fx_chalk", "fx_clay", "fx_rose", "fx_indigo"),
     "flags off" to listOf("phone", "termux", "home", "homework", "icons", "sounds", "mood", "leaderboard", "experiments", "themeicon", "themefx", "fx_system", "fx_ninja", "fx_hashira", "fx_monarch", "fx_gothic", "fx_guild", "fx_pixel", "fx_handheld", "fx_blueprint", "fx_sunset", "fx_ocean", "fx_forest", "fx_neon", "fx_scifi", "fx_amoled", "fx_terminal", "fx_paper", "fx_linen", "fx_sage", "fx_sky", "fx_lilac", "fx_chalk", "fx_clay", "fx_rose", "fx_indigo"),
     "quests" to listOf("--today", "--done", "--overdue", "--focus"),
@@ -146,7 +146,7 @@ private val MAN: Map<String, String> = mapOf(
     "alias" to "alias [name=cmd]    list or make a shortcut, e.g. alias qt=quests --today",
     "unalias" to "unalias <name>     remove a shortcut",
     "theme" to "theme [ls] | [set default|phone|paper|linen|sage|sky|lilac|chalk|clay|system|ninja|hashira|monarch|gothic|guild|pixel|handheld|blueprint|termux|questhome]   default/phone = the normal look (Quest Phone), paper, linen, sage, sky, lilac, chalk = the plain light shop themes, clay = the soft puffy Claymorphism one, system = the dark blue RPG System-window look (cut corners, mono text, HUD grid; both: you must own it, shop buy <name>), ninja, hashira, monarch, gothic, guild, pixel, handheld, blueprint = more style shop themes with their own shapes, fonts, strips and backgrounds (you must own them too: shop buy <name>), questhome = the launcher. theme ls lists the app themes that are on (flags hides the ones turned off) and the one in use. A theme turned off in flags is refused. refused during Focus (theme ls still works)",
-    "font" to "font [ls] | list | set <theme> <font|auto> | reset [theme]   a font for each theme (29 fonts: font list). auto = the theme's suggested font. ls shows every theme with its font. refused during Focus (read-only forms still work)",
+    "font" to "font [ls] | list | on | off | set <font|default> | reset   one font for the whole app (29 fonts: font list). on/off is the Fonts flag; off or default = the normal font. refused during Focus (read-only forms still work)",
     "flags" to "flags [ls] | on <name> | off <name>   names: phone termux home (app themes, the one left on can't be turned off), homework, icons, sounds, mood, leaderboard, experiments, themeicon (app icon follows the theme), themefx (master for the extras of all style themes), fx_system fx_ninja fx_hashira fx_monarch fx_gothic fx_guild fx_pixel fx_handheld fx_blueprint fx_sunset fx_ocean fx_forest fx_neon fx_scifi fx_amoled fx_terminal fx_paper fx_linen fx_sage fx_sky fx_lilac fx_chalk fx_clay fx_rose fx_indigo (extras of one theme). flags ls shows every flag. refused during Focus (flags ls still works)",
     "icons" to "icons [list] | on|off [name] | reset   emoji drawn as SVG icons on the normal pages (the terminal stays plain text). on|off alone is the master switch, on|off <name> switches one icon (flags page > SVG icons > Choose). reset turns every icon on. list shows each icon, its emoji and its state. on, off and reset are refused during Focus (icons and icons list still work)",
     "logo" to "logo                 the app logo in ASCII (a shield with a check)",
@@ -777,7 +777,7 @@ class TermuxViewModel @Inject constructor(
             "inv" -> sub in setOf("use", "equip", "unequip")
             "theme" -> sub == "set" && a.pos.getOrNull(2)?.lowercase() in setOf("default", "phone", "paper", "linen", "sage", "sky", "lilac", "chalk", "clay", "system", "ninja", "hashira", "monarch", "gothic", "guild", "pixel", "handheld", "blueprint", "questhome")
             "flags" -> sub in setOf("on", "off")
-            "font" -> sub in setOf("set", "reset")
+            "font" -> sub in setOf("set", "on", "off", "reset")
             "icons" -> sub in setOf("on", "off", "reset")
             "set" -> sub != null && sub != "ls"
             else -> false
@@ -1105,42 +1105,33 @@ class TermuxViewModel @Inject constructor(
         if (err != null) s.err(err) else s.ok("${AppThemes.label(id)}: $sub")
     }
 
-    /** v270: a font for each theme (ui/ThemeFonts.kt). The terminal itself stays monospace. */
+    /** v272: one font for the whole app (ui/ThemeFonts.kt). The terminal itself stays monospace. */
     private fun cmdFont(s: TermuxSession, a: TermuxArgs) {
         when (a.pos.getOrNull(1)?.lowercase()) {
             null, "ls" -> {
-                s.head("fonts")
-                ThemeFonts.THEMES.forEach { (key, name) ->
-                    val id = ThemeFonts.resolvedId(key)
-                    val own = ThemeFonts.chosen(key) != null
-                    s.out("{c}${key.padEnd(10)}{/} ${(ThemeFonts.find(id)?.label ?: id).padEnd(22)} " + if (own) "{g}yours{/}" else "{d}default{/}")
-                }
-                s.dim("font set <theme> <font|auto> | reset [theme] | list")
+                s.head("font")
+                s.out("{c}fonts{/}  ${if (ThemeFonts.on) "{g}on{/}" else "{d}off{/}"}")
+                s.out("{c}font{/}   ${ThemeFonts.chosenId?.let { ThemeFonts.find(it)?.label } ?: "Default"}")
+                s.dim("font on | off | set <font|default> | list")
             }
             "list" -> {
                 s.head("fonts")
+                s.out("{c}${"default".padEnd(16)}{/} ${"Default".padEnd(22)} {d}normal font{/}")
                 APP_FONTS.forEach { f -> s.out("{c}${f.id.padEnd(16)}{/} ${f.label.padEnd(22)} {d}${f.kind}{/}") }
-                s.dim("font set <theme> <font|auto>")
+                s.dim("font set <font|default>")
             }
+            "on", "off" -> { val v = a.pos[1].lowercase() == "on"; ThemeFonts.setOn(ctx, v); s.ok("fonts: ${if (v) "on" else "off"}") }
             "set" -> {
-                val key = ThemeFonts.keyFor(a.pos.getOrNull(2))
-                val word = a.pos.getOrNull(3)?.lowercase()
-                if (key == null || word == null) { s.err("usage: font set <theme> <font|auto>   (font list shows the fonts)"); return }
-                if (word == "auto") { ThemeFonts.set(ctx, key, null); s.ok("$key: theme default"); return }
+                val word = a.pos.getOrNull(2)?.lowercase()
+                if (word == null) { s.err("usage: font set <font|default>   (font list shows the fonts)"); return }
+                if (word == "default" || word == "auto") { ThemeFonts.set(ctx, null); s.ok("font: Default"); return }
                 val f = ThemeFonts.find(word)
                 if (f == null) { s.err("no font '${word.tm()}': font list"); return }
-                ThemeFonts.set(ctx, key, f.id)
-                s.ok("$key: ${f.label}")
+                ThemeFonts.set(ctx, f.id)
+                s.ok("font: ${f.label}")
             }
-            "reset" -> {
-                val w = a.pos.getOrNull(2)
-                if (w == null) { ThemeFonts.resetAll(ctx); s.ok("every theme is back to its default font"); return }
-                val key = ThemeFonts.keyFor(w)
-                if (key == null) { s.err("no theme '${w.tm()}': font ls"); return }
-                ThemeFonts.set(ctx, key, null)
-                s.ok("$key: theme default")
-            }
-            else -> s.err("usage: font [ls] | list | set <theme> <font|auto> | reset [theme]")
+            "reset" -> { ThemeFonts.set(ctx, null); ThemeFonts.setOn(ctx, true); s.ok("font: Default") }
+            else -> s.err("usage: font [ls] | list | on | off | set <font|default> | reset")
         }
     }
 

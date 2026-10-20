@@ -11,7 +11,7 @@ import androidx.compose.ui.text.font.FontWeight
 import com.krishna.questblock.R
 
 /**
- * v270: fonts. [kind] is only a label on the picker (System, Serif, Sans, Mono, Display, Hand). The bundled fonts live in res/font and are
+ * v270: fonts (v272: one app-wide font + on/off flag). [kind] is only a label on the picker (System, Serif, Sans, Mono, Display, Hand). The bundled fonts live in res/font and are
  * all free under the SIL Open Font License (texts in assets/font_licenses). A family with one file gets a synthetic bold.
  * New font: copy the .ttf into res/font (lowercase name), add one line here. It shows up in the picker and in the terminal command font.
  */
@@ -52,64 +52,46 @@ val APP_FONTS: List<AppFont> = listOf(
     AppFont("redhatmono", "Red Hat Mono", "Mono", ff(R.font.redhatmono_regular, R.font.redhatmono_bold)),
 )
 
-/** Each theme has its own font. Until you pick one the theme gets its suggested font (DEFAULTS; themes not listed keep the system font). */
+/**
+ * v272: one font for the whole app (not one per theme). [on] is the Flags switch; [chosenId] null = the default (system) font.
+ * Off, or nothing picked, means the theme keeps its normal font exactly as before v270.
+ */
 object ThemeFonts {
-    /** theme key (the shop theme id without "theme_", and "default") to its label. Same order as the pages. */
-    val THEMES: List<Pair<String, String>> = listOf(
-        "default" to "Default", "system" to "System", "ninja" to "Ninja Scroll", "hashira" to "Hashira Mist", "monarch" to "Shadow Monarch",
-        "gothic" to "Gothic Halo", "guild" to "Guild Board", "pixel" to "Pixel Arcade", "handheld" to "Handheld", "blueprint" to "Blueprint",
-        "sunset" to "Sunset", "ocean" to "Ocean", "forest" to "Forest", "neon" to "Neon", "scifi" to "Sci-Fi", "amoled" to "AMOLED",
-        "terminal" to "Terminal", "paper" to "Paper", "linen" to "Linen", "sage" to "Sage", "sky" to "Sky", "lilac" to "Lilac",
-        "chalk" to "Chalk", "clay" to "Clay", "rose" to "Rose", "indigo" to "Indigo",
-    )
+    private var onState by mutableStateOf(true)
+    private var pick by mutableStateOf<String?>(null)
 
-    val DEFAULTS: Map<String, String> = mapOf(
-        "system" to "jura", "ninja" to "italiana", "hashira" to "outfit", "monarch" to "bigshoulders", "gothic" to "gloock",
-        "guild" to "baskerville", "pixel" to "pixelify", "handheld" to "dmmono", "blueprint" to "plexmono", "neon" to "bricolage",
-        "scifi" to "geistmono", "terminal" to "jetbrains", "paper" to "lora", "rose" to "instrumentserif", "clay" to "poppins",
-    )
-
-    private var overrides by mutableStateOf<Map<String, String>>(emptyMap())
-
-    fun keyOf(shopTheme: String): String = shopTheme.removePrefix("theme_")
+    val on: Boolean get() = onState
+    val chosenId: String? get() = pick
     fun find(id: String): AppFont? = APP_FONTS.firstOrNull { it.id == id }
-    fun chosen(key: String): String? = overrides[key]
-    fun defaultId(key: String): String = DEFAULTS[key] ?: "system"
-    fun resolvedId(key: String): String = overrides[key] ?: defaultId(key)
-    fun familyFor(key: String): FontFamily? = find(resolvedId(key))?.family
-    /** True when the theme has a font of its own (picked or suggested), so the old per-theme fallback (Monospace, Serif) is not used. */
-    fun hasChoice(key: String): Boolean = overrides.containsKey(key) || DEFAULTS.containsKey(key)
-    fun keyFor(word: String?): String? {
-        val w = word?.lowercase()?.removePrefix("theme_") ?: return null
-        return THEMES.firstOrNull { it.first == w }?.first
-    }
+    /** The font in use now, or null for the default font (switch off, nothing picked, or the system font picked). */
+    fun activeFamily(): FontFamily? = if (!onState) null else pick?.let { find(it)?.family }
+    fun hasActive(): Boolean = activeFamily() != null
 
     fun load(ctx: Context) {
         val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
-        overrides = sp.all.entries
-            .filter { it.key.startsWith("font_") && it.value is String && find(it.value as String) != null }
-            .associate { it.key.removePrefix("font_") to (it.value as String) }
+        // v272: the old per-theme picks (font_<theme>) are dropped; the app goes back to the default font
+        val old = sp.all.keys.filter { it.startsWith("font_") }
+        if (old.isNotEmpty()) { val ed = sp.edit(); old.forEach { ed.remove(it) }; ed.apply() }
+        onState = sp.getBoolean("fontx_on", true)
+        pick = sp.getString("fontx_pick", null)?.takeIf { find(it) != null }
     }
 
-    /** [id] null = back to the theme's suggested font. */
-    fun set(ctx: Context, key: String, id: String?) {
+    fun setOn(ctx: Context, v: Boolean) {
+        ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).edit().putBoolean("fontx_on", v).apply()
+        onState = v
+    }
+
+    /** [id] null = back to the default font. */
+    fun set(ctx: Context, id: String?) {
         val ed = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE).edit()
-        if (id == null) ed.remove("font_$key") else ed.putString("font_$key", id)
+        if (id == null) ed.remove("fontx_pick") else ed.putString("fontx_pick", id)
         ed.apply()
-        overrides = if (id == null) overrides - key else overrides + (key to id)
-    }
-
-    fun resetAll(ctx: Context) {
-        val sp = ctx.getSharedPreferences("questblock", Context.MODE_PRIVATE)
-        val ed = sp.edit()
-        sp.all.keys.filter { it.startsWith("font_") }.forEach { ed.remove(it) }
-        ed.apply()
-        overrides = emptyMap()
+        pick = id
     }
 }
 
-/** The font of the theme in use now (null = the system font). Reads state, so the app redraws when it changes. */
-val AppFontNow: FontFamily? get() = ThemeFonts.familyFor(ThemeFonts.keyOf(ShopTheme))
+/** The font in use now (null = the default font). Reads state, so the app redraws when it changes. */
+val AppFontNow: FontFamily? get() = ThemeFonts.activeFamily()
 
 internal fun Typography.withFamily(f: FontFamily?): Typography = if (f == null) this else Typography(
     displayLarge = displayLarge.copy(fontFamily = f), displayMedium = displayMedium.copy(fontFamily = f), displaySmall = displaySmall.copy(fontFamily = f),

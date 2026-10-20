@@ -3,6 +3,13 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("272.0.0", "Fonts: on/off flag and one normal font picker",
+        listOf(
+            "Flags > Fonts now has an on/off switch and a Choose button. Off = the normal font of your theme, exactly as before fonts existed",
+            "One font for the whole app instead of one per theme. The picker is a plain list: Default first (the normal font, and the default), then every font, each name written in its own font. The old per-theme picks and suggested theme fonts are gone, so every theme starts on the default font",
+            "Code: ui/ThemeFonts.kt (on, chosenId, activeFamily; saved as fontx_on and fontx_pick), ui/ThemeFontsPage.kt, Fonts card in ui/FlagsScreen.kt, FxFont in ui/ThemeFx.kt",
+            "Terminal: font [ls] | list | on | off | set <font|default> | reset (set, on, off and reset are refused during Focus)",
+        )),
     VersionEntry("271.0.0", "Build fix: leftover poster file",
         listOf(
             "ui/PosterSettings.kt is now an empty file. The update command only copies files over the project and never deletes, so the old file from before v268 was still there and failed to compile",

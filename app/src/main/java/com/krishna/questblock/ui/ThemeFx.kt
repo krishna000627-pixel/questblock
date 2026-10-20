@@ -154,7 +154,7 @@ internal fun Modifier.fxButtonFx(): Modifier {
     return drawBehind { drawRect(ink.copy(alpha = 0.85f), topLeft = Offset(3.dp.toPx(), 3.dp.toPx()), size = size) }
 }
 
-internal val FxFont: FontFamily? get() = if (ThemeFonts.hasChoice(ThemeFonts.keyOf(ShopTheme))) AppFontNow else when (FxNow) {
+internal val FxFont: FontFamily? get() = if (ThemeFonts.hasActive()) AppFontNow else when (FxNow) {
     Fx.SYSTEM, Fx.PIXEL, Fx.HANDHELD, Fx.BLUEPRINT -> FontFamily.Monospace
     Fx.NINJA, Fx.GOTHIC, Fx.GUILD -> FontFamily.Serif
     else -> null

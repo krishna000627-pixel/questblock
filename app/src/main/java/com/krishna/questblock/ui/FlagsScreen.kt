@@ -112,13 +112,18 @@ fun FlagsScreen(onBack: () -> Unit) {
             }
         }
         item(key = "theme_fonts") {
+            var fon by remember { mutableStateOf(ThemeFonts.on) }
             Card(colors = CardDefaults.cardColors(containerColor = ColorCard), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Fonts", fontWeight = FontWeight.SemiBold, color = ColorText)
-                        Text(APP_FONTS.size.toString() + " fonts. Every theme has its own font; pick one for each theme", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
+                        Text("Now: " + (ThemeFonts.chosenId?.let { ThemeFonts.find(it)?.label } ?: "Default") + ". Off = the normal font", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
                     }
-                    androidx.compose.material3.TextButton(onClick = { showFonts = true }) { Text("Open") }
+                    androidx.compose.material3.TextButton(onClick = { showFonts = true }) { Text("Choose") }
+                    Switch(checked = fon, onCheckedChange = { nv ->
+                        if (TermuxMode.strictNow(ctx)) msg = "refused: a strict Focus session is running"
+                        else { ThemeFonts.setOn(ctx, nv); fon = nv; msg = "" }
+                    })
                 }
             }
         }
