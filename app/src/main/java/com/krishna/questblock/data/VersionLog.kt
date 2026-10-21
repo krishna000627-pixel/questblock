@@ -3,6 +3,19 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("284.0.0", "Daily ring and Streak map in all 31 themes",
+        listOf(
+            "The Daily ring now has its own look in every theme, not just the shop ones: System (HUD blocks, red after a broken Focus), Ninja Scroll (ink brush), Hashira Mist (mist glow), Shadow Monarch (violet glow), Gothic Halo (double ring), Guild Board (brass studs), Pixel Arcade (pixels), Handheld (dot matrix), Blueprint (drafting line), and all 22 shop themes from Sunset to Vaporwave. Default stays the plain round ring",
+            "The Streak map squares (Profile card and the Streak map page) follow the theme too: shape (round, square, cut corner, leaf, soft block) and colour (accent, gold, or grey ink in Mono, Whitespace, Zen, Paper, Chalk, Ninja, Handheld). The legend matches",
+            "Code: new ui/ThemeMarks.kt (ringLook, cellLook), used by DailyRing.kt, StreakCalendar.kt, StreakPage.kt. Not yet compiled in CI",
+        )),
+    VersionEntry("283.0.0", "Themed boxes, theme rings, Streak map page",
+        listOf(
+            "Daily ring tile, one-tap empty card, streak calendar and loading placeholder now use the app's themed Card, so they get the same box as every other card in every theme (Whitespace dividers, Zen soft cards, Carnival stripes and so on). Before, they were plain boxes",
+            "Daily ring follows the theme: hairline in Mono and Whitespace, soft brush weight in Zen, glow in Neon, gold in Baroque, gradient in Vaporwave, thin ring in AMOLED, Terminal, Sci-Fi and Chalk, round candy ring in Carnival",
+            "New Streak map page (StreakPage.kt, route streak): tap the calendar card on Profile. Current and best streak, active days, total quests, a 26-week map (month names, scrolls sideways, starts at this week), tap a day to see the quests finished that day, best day. Colours follow the theme (grey ink in Mono, Whitespace and Zen)",
+            "Code: StreakPage.kt, MainScreen.kt (route), ProfileScreen.kt (onOpenStreak), DailyRing.kt, StreakCalendar.kt. Not yet compiled in CI",
+        )),
     VersionEntry("282.0.0", "Flags for the v281 UI additions",
         listOf(
             "Seven new switches in Flags > More flags (terminal: flags on|off <id>), all on by default: ui_swipe_hint, ui_empty_quick, ui_streak_cal, ui_daily_ring (off = the old check tile), ui_skeleton, ui_haptic_ticks, a11y_bits",

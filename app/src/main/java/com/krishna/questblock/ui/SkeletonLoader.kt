@@ -47,7 +47,7 @@ fun SkeletonBox(modifier: Modifier = Modifier, height: Dp = 14.dp) {
 /** A card-shaped placeholder with a title bar and [lines] shorter lines. */
 @Composable
 fun SkeletonCard(modifier: Modifier = Modifier, lines: Int = 2) {
-    androidx.compose.material3.Card(
+    Card(
         colors = CardDefaults.cardColors(containerColor = ColorCard),
         shape = RoundedCornerShape(14.dp),
         modifier = modifier.fillMaxWidth(),

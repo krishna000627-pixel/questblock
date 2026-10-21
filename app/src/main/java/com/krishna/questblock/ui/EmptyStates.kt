@@ -38,7 +38,7 @@ fun EmptyState(
     quickLabel: String? = null,
     onQuick: (() -> Unit)? = null,
 ) {
-    androidx.compose.material3.Card(
+    Card(
         colors = CardDefaults.cardColors(containerColor = ColorCard),
         shape = RoundedCornerShape(14.dp),
         modifier = modifier.fillMaxWidth(),

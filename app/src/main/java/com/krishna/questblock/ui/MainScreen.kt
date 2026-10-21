@@ -167,6 +167,7 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
                     onOpenSettings = { navController.openPage("settings") },
                     onOpenCoins = { navController.openPage("coins") },
                     onOpenAbout = { navController.openPage("about") },
+                    onOpenStreak = { navController.openPage("streak") },
                 )
             }
             composable("quest_types") {
@@ -231,6 +232,7 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
             composable("categories") { CategoriesScreen(onBack = { navController.popBackStack() }) }
             composable("reliability") { ReliabilityScreen(onBack = { navController.popBackStack() }) }
             composable("coins")        { CoinLogScreen(onBack = { navController.popBackStack() }) }
+            composable("streak")       { StreakScreen(onBack = { navController.popBackStack() }) }
             composable("about")        { AboutMeScreen(onBack = { navController.popBackStack() }, onOpenIdeas = { navController.openPage("ideas") },
                 onOpenVersions = { navController.openPage("versions") }, onOpenFeatures = { navController.openPage("features") }) }
             composable("features")     { FeaturesScreen(onBack = { navController.popBackStack() }) }

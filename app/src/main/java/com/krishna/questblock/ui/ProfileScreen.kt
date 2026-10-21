@@ -47,7 +47,7 @@ class ProfileViewModel @Inject constructor(
 }
 
 @Composable
-fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSettings: () -> Unit, onOpenCoins: () -> Unit, onOpenAbout: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
+fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSettings: () -> Unit, onOpenCoins: () -> Unit, onOpenAbout: () -> Unit, onOpenStreak: () -> Unit = {}, vm: ProfileViewModel = hiltViewModel()) {
     val player by vm.player.collectAsStateWithLifecycle()
     val allTasks by vm.tasks.collectAsStateWithLifecycle()
     val dayCounts = remember(allTasks) { questCountsByDay(allTasks.mapNotNull { if (it.done) it.completedAt else null }) }
@@ -112,7 +112,7 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
             }
 
             CultivationStrip(player.xp)
-            if (com.krishna.questblock.data.Flags.get("ui_streak_cal")) StreakCalendar(dayCounts, player.streak)
+            if (com.krishna.questblock.data.Flags.get("ui_streak_cal")) StreakCalendar(dayCounts, player.streak, onOpen = onOpenStreak)
 
             // ── Hero info (read-only; edit it from Settings) ────────────────
             Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),
