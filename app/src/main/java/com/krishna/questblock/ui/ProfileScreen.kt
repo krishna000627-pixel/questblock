@@ -113,6 +113,7 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
 
             CultivationStrip(player.xp)
             if (com.krishna.questblock.data.Flags.get("ui_streak_cal")) StreakCalendar(dayCounts, player.streak, onOpen = onOpenStreak)
+            else TextButton(onClick = onOpenStreak) { Text("\uD83D\uDD25 Streak map \u203A", color = ColorPrimary, fontWeight = FontWeight.Bold) }   // v285: the page stays reachable when the card is off
 
             // ── Hero info (read-only; edit it from Settings) ────────────────
             Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),

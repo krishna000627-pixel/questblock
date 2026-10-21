@@ -3,6 +3,12 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("285.0.0", "New flags default to your settings",
+        listOf(
+            "Defaults of the v281 flags now match how you use them: off for Swipe hint, One-tap suggestion, Streak calendar and Daily ring; on for Loading placeholder, Tap ticks and Accessibility extras. Phones that already saved a choice keep it",
+            "With Streak calendar off, Profile shows a small Streak map link so the page stays reachable",
+            "Code: Flags.EXTRA defaults in data/Flags.kt, ProfileScreen.kt. Not yet compiled in CI",
+        )),
     VersionEntry("284.0.0", "Daily ring and Streak map in all 31 themes",
         listOf(
             "The Daily ring now has its own look in every theme, not just the shop ones: System (HUD blocks, red after a broken Focus), Ninja Scroll (ink brush), Hashira Mist (mist glow), Shadow Monarch (violet glow), Gothic Halo (double ring), Guild Board (brass studs), Pixel Arcade (pixels), Handheld (dot matrix), Blueprint (drafting line), and all 22 shop themes from Sunset to Vaporwave. Default stays the plain round ring",

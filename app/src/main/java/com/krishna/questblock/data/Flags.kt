@@ -9,10 +9,10 @@ object Flags {
     /** v225: flags that hide one feature on the normal pages and in the terminal. */
     val EXTRA: List<Def> = listOf(
         // v282: switches for the v281 UI additions (all on by default)
-        Def("ui_swipe_hint", "Swipe hint", "The one-time line on Quests that explains the swipes"),
-        Def("ui_empty_quick", "One-tap suggestion", "The one-tap button on Home's Nothing planned card"),
-        Def("ui_streak_cal", "Streak calendar", "The 5-week calendar on Profile"),
-        Def("ui_daily_ring", "Daily ring", "The ring in the Quests tile on Home (off = the old check tile)"),
+        Def("ui_swipe_hint", "Swipe hint", "The one-time line on Quests that explains the swipes", false),
+        Def("ui_empty_quick", "One-tap suggestion", "The one-tap button on Home's Nothing planned card", false),
+        Def("ui_streak_cal", "Streak calendar", "The 5-week calendar on Profile (off = a small Streak map link instead)", false),
+        Def("ui_daily_ring", "Daily ring", "The ring in the Quests tile on Home (off = the old check tile)", false),
         Def("ui_skeleton", "Loading placeholder", "The shimmering placeholder on Home during the first load"),
         Def("ui_haptic_ticks", "Tap ticks", "The light tick on filter pills and the Home shortcut pills (also needs the Haptics flag)"),
         Def("a11y_bits", "Accessibility extras", "48 dp plus and minus buttons in the quest creator and spoken labels on icons"),
