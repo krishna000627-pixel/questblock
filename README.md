@@ -1,10 +1,65 @@
 # QuestBlock
 
-RPG-style distraction blocker. Finish quests, earn coins, spend coins to open locked apps.
-Works with any launcher because it is a background enforcer, not a launcher.
+**Screen time you earn.** Finish quests, collect coins, and spend them to open the apps you locked.
 
-Kotlin, Jetpack Compose, Hilt, Room. Enforcement is an AccessibilityService that launches a lock screen
-(`BlockActivity`) when a locked app comes to the foreground and no unlock timer is active.
+QuestBlock is an Android app (Kotlin, Jetpack Compose, Hilt, Room) that turns self-discipline into a small RPG.
+An accessibility service watches for locked apps and shows a lock screen until you pay coins or finish a quest.
+It works with any launcher, and it also ships its own optional launcher (Quest Home) and a full Termux-style terminal theme.
+
+![QuestBlock screens](docs/screenshots/app-core.png)
+
+## What it does
+
+| Area | Highlights |
+| --- | --- |
+| **Quests and rewards** | Six quest types (Daily, Weekly, One-time, Challenge, Routine with steps, Focus timer). Category, difficulty, priority, due dates, repeat on chosen days. XP and coins per quest, one-tap undo. |
+| **Locking and coins** | Lock apps, websites, Shorts and Reels. Hold to unlock, paid in coins per 5 minutes. Free opens for study apps, Focus quests, daily-limit apps and hours outside the lock schedule. Coin log names the reason for every earn and spend. |
+| **YouTube gate** | Study videos pass, fun videos cost coins, Shorts counter, study-first page for chapters you have not studied. |
+| **Focus** | Ring timer, per-session app list, background sound (Rain, Brown, Pink, White). Strict focus locks every app except the Focus tab. |
+| **School** | Attendance (school and coaching), homework tracker, chapter progress, marks feeder (MT 1 to MT 3), weekly review, mood check-in. |
+| **Player** | Level, XP, rank, hero profile, avatars, badges, Stats with a daily leaderboard, Hub with goals, rules and experiments. |
+| **Shop and inventory** | Power-ups, prizes, badges, frames and 30+ themes bought with coins. Make your own rewards with Gift for me. |
+| **Reliability** | Keep-alive service and watchdog, per-brand autostart shortcuts, battery exemption guide, Self test, Debug log. |
+| **Tools** | Encrypted backup and safe restore, home-screen widget, Quest Home launcher, Ideas page (write the next update and copy it into a chat), Flags page, Version info. |
+
+The full in-app feature list is in `data/AppFeatures.kt` (About me > Why I built QuestBlock).
+
+## Themes
+
+Themes recolour the whole app. The newer style themes also change shapes, fonts, borders, the Focus ring, the XP bar, level-up, the lock screen and the quest-done pop. Each theme has a switch and a try-it page under Flags.
+
+![Featured themes](docs/screenshots/themes-hero.png)
+
+Left to right: System Window, Shadow Monarch, Guild Board, Pixel Arcade, Terminal, Vaporwave Arcade.
+
+### Style themes
+
+| System Window | Shadow Monarch | Hashira Mist | Gothic Halo |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/themes/system.png" width="180"> | <img src="docs/themes/shadow-monarch.png" width="180"> | <img src="docs/themes/hashira-mist.png" width="180"> | <img src="docs/themes/gothic-halo.png" width="180"> |
+| Blue RPG system windows, HUD grid | Black and violet, rising shadow motes | Frosted teal glass, drifting mist | Black and white, one red accent |
+
+| Guild Board | Pixel Arcade | Handheld | Blueprint |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/themes/guild-board.png" width="180"> | <img src="docs/themes/pixel-arcade.png" width="180"> | <img src="docs/themes/handheld.png" width="180"> | <img src="docs/themes/blueprint.png" width="180"> |
+| Parchment, brass studs, serif titles | Chunky corners, INSERT COIN strip | Green LCD, dot matrix | White lines on blueprint blue |
+
+Ninja Scroll (washi paper, red hanko seals) is the ninth style theme.
+
+### Minimal and maximal themes
+
+| Zen | Whitespace | Carnival | Baroque | Vaporwave Arcade |
+| :---: | :---: | :---: | :---: | :---: |
+| <img src="docs/themes/zen.png" width="140"> | <img src="docs/themes/whitespace.png" width="140"> | <img src="docs/themes/carnival.png" width="140"> | <img src="docs/themes/baroque.png" width="140"> | <img src="docs/themes/vaporwave-arcade.png" width="140"> |
+| Ensō brush circle, no sounds | Huge margins, no card borders | Neon stripes, fireworks | Gold-leaf frames, wax seal | Sun grid, chrome text, glitchy XP |
+
+Mono is the third minimal theme.
+
+### Colour themes
+
+![All themes](docs/screenshots/themes-all.png)
+
+Also in the shop: Sky Paper, Lilac Paper, Mono and Ninja Scroll. Two app themes are free: **Quest Phone** (the normal pages) and **Termux** (the whole app as one terminal).
 
 ## First-time setup from Termux
 
@@ -14,79 +69,8 @@ unzip QuestBlock.zip -d ~ && cd ~/QuestBlock
 bash termux/setup.sh            # optional arg: repo name (default: questblock)
 ```
 
-`setup.sh` installs git/gh/JDK, generates a keystore in `~/.questblock/`, creates the private GitHub repo,
-uploads the keystore as Actions secrets, pushes, waits for CI, then downloads and opens the signed APK.
-
-## What's new in v18
-
-- **Build fix.** v17 failed to compile: its two new crash-safe unlock-tracking settings (`activeUnlockPkg`, `activeUnlockEnteredAt`) were written after the closing brace of `Prefs`, outside the class. They are now inside it. No other change.
-
-## What's new in v16
-
-- **Profile:** the Hero info box moved to the top, right under the name and level, and has no button at all. It is edited only from Settings (the Settings button on Profile → Hero info).
-
-## What's new in v15
-
-- **Cleaner lock screen.** Time and cost on one line (− 15m · 15 🪙 +); the big button just says **Hold to unlock**; coin balance is a small chip in the corner; the app's real icon replaces the letter box; "per 5 min" only shows when the app has its own rate.
-- With too few coins the unlock button greys out ("Need N more 🪙") and **Do a quest instead** becomes the main button.
-- UI only: hold-to-unlock, the charge guards and the unlock logic are unchanged.
-
-## What's new in v14
-
-- **Hero info is edited only in Settings.** Settings → Hero info now has Name, Goal and Date of birth. The Hero info box on Profile is read-only and has an "Edit in Settings" button.
-
-## What's new in v13
-
-- **Quest add screen** shows only the chosen type (no row of type bubbles). To use another type, go back to the picker.
-- **About me** (Profile → About me): the developer's page with name, bio, why QuestBlock exists, links (GitHub, email) and the app version. Works offline. Its text is in `data/AboutMe.kt`: edit that file and rebuild to change it.
-- No database change (still version 8).
-
-## What's new in v12
-
-- **One quest form per type.** The type now decides repeat, days and due date, so you can't save a contradictory combination.
-  Daily: optional time of day only (always every day). Weekly: pick days (none preselected). One-time: due date. Challenge: length in days.
-  Routine / Focus: steps or focus session plus one **Repeat: Once / Every day / Chosen days** control. Type can be changed at the top.
-  Notes, category (and due date for repeating-less Routine/Focus) sit under a collapsed **More options**. Difficulty and Priority are compact rows.
-- **Editing old quests.** A one-time quest that was recurring opens as Daily/Weekly; a Daily limited to some days opens as Weekly; a recurring Routine/Focus on some days opens as "Chosen days".
-- **Home.** Today's quests sits directly under the hero card. Today's list = due today/overdue + recurring quests, sorted High → Low priority, then due time, then type. Dated and undated quests follow under Coming up / No date. Focus and Stats are one compact row. Empty state is a single line.
-- **Counters fixed.** "x/y done" now counts quests completed today against today's quests (not all quests ever).
-- **Routine on Home** now tells you to tick every step instead of silently doing nothing.
-- **Quests tab.** Completed shows the 10 newest with Show all; no empty "📅" chip on dailies with a time.
-- No database change (still version 8).
-
-## What's new in v11
-
-- **No more paying twice to open an app.** A second purchase for the same app within 5 s is ignored (no charge); the lock screen submits once, closes itself if the app is already unlocked, and the blocker re-checks the unlock right before showing the lock screen.
-
-## What's new in v10
-
-- **Days ≠ recurring.** Days only mean "available on these days"; **Recurring** is its own switch. Days only = one-time on those days. Days + Recurring = comes back on the next selected day. Recurring only works as before (a recurring quest with no due time now comes back the next day / week).
-- **Tabs fixed.** Tapping a tab always opens its main page (Add Quest no longer comes back). Sub-pages highlight the tab you opened them from.
-- **Coins per 5 min** (Settings, optional per-app rate in Vault ⚙) replaces the fixed tiers. Lock screen has a − / + time picker (hold to repeat) with live cost, then hold to buy.
-- **Live tracker.** Vault countdown ticks every second; ongoing notification "Instagram · 12:30 left"; warning at 1 minute; Expired state.
-- **Coin log** (Profile → Coin log): every earn and spend, plus zero-coin "free" opens with the reason (daily limit, study app, Focus Quest, outside lock hours).
-- **Reliability page** (Settings → Reliability): battery, per-brand autostart, lock-in-recents guide, keep-alive switch.
-- **Keep-alive service + watchdog:** small persistent notification; "Blocking is off, tap to fix" if the blocker stops; Settings shows when the blocker was last active.
-- **Quest types:** + opens a type picker (Daily, Weekly, Challenge, Routine, Focus, One-time). Quests are grouped by type, dailies on top with "3/5 dailies done today" and a streak on each daily.
-- DB migrates 7 -> 8 without wiping data.
-
-## What's new in v9
-
-- **Quest days:** pick Mon–Sun (or Weekdays / Weekends). The quest only shows and can only be completed on those days, then comes back on the next one. Quests can now be **edited** (pencil icon).
-- **Settings** (Profile → Settings): profile, accent colour, editable unlock prices / focus bonus / study rate / daily login, lock-screen hold time and quotes, quest reminders, strict mode, live permission status, backup / restore / reset.
-- **Stats** has its own screen (Profile and Home): quests by weekday, focus minutes, study coins, 28-day activity calendar.
-- **Gift for me** lives in the Shop: make, edit and price your own rewards, optionally once per day.
-- **Per-app options** (Vault, tune icon on a locked app): daily time limit, lock only during set hours, unlock price %.
-- **Reminders:** notification before a quest's due time (Settings → Reminders).
-- DB migrates 6 -> 7 without wiping data.
-
-## What's new in v7
-
-- **Focus = Timer Quest.** One flow: pick "Quick focus" or a Focus Quest, start, finish. Finishing pays +15🪙 (and completes the quest + its reward). Linked apps unlock for the session.
-- **Vault** is one page: Study Apps section (never lock, 1🪙 / 5 min), locked apps, all apps. Stats now live on the Profile page.
-- **Unlock time** is bought in 5-minute steps on the lock screen (v10: coins per 5 min).
-- **Daily login** +5🪙. **Shop** reachable from Profile (or tap the coins on Home); custom items under *My Rewards*.
-- DB migrates 5 -> 6 without wiping data.
+`setup.sh` installs git and gh (plus a JDK only if `keytool` is missing), generates a keystore in `~/.questblock/`,
+creates the private GitHub repo, uploads the keystore as Actions secrets, pushes, waits for CI, then downloads and opens the signed APK.
 
 ## Every change after that
 
@@ -94,17 +78,56 @@ uploads the keystore as Actions secrets, pushes, waits for CI, then downloads an
 bash termux/release.sh "message"
 ```
 
+Commits, pushes, waits for the GitHub Actions build and downloads the signed APK. If the build fails, the compile errors are printed and saved to `~/build_errors.txt` so you can paste them back.
+
+Full-zip update (the command the Ideas page generates):
+
+```bash
+cd ~ && unzip -oq ~/storage/downloads/QuestBlock_vN.zip -d ~/qbN && cp -r ~/qbN/QuestBlock_vN/. ~/QuestBlock/ && rm -rf ~/qbN && cd ~/QuestBlock && bash termux/release.sh "vN: short summary"
+```
+
 ## On the phone
 
-1. Install the APK, open QuestBlock, go to the Setup tab.
-2. Enable the accessibility service. If it is greyed out (Android 13+ sideload): App info -> ⋮ -> Allow restricted settings.
-3. Grant overlay, battery exemption, and optionally Device Admin.
-4. On the Apps tab, toggle the apps to lock. Tap the pencil to change coin cost and minutes.
+1. Install the APK, open QuestBlock and follow onboarding.
+2. Enable the accessibility service. If it is greyed out (Android 13+ sideload): App info > ⋮ > **Allow restricted settings**.
+3. Grant overlay, usage access, notifications and the battery exemption. Device Admin is optional.
+4. In the Vault, toggle the apps to lock. Tap the tune icon to set a per-app price, daily limit or lock hours.
 5. Turn on Strict mode to get bounced out of Settings pages that show QuestBlock.
+6. Open Settings > Reliability and follow the autostart shortcuts for your phone brand.
+
+### Permissions
+
+| Permission | Used for |
+| --- | --- |
+| Accessibility service | Detecting a locked app coming to the foreground and showing the lock screen |
+| Draw over other apps | Lock screen and unlock timer overlay |
+| Usage access | Screen-time numbers, daily limits and the Usage page |
+| Notification access | Detecting which music app is playing (Music log and focus sound) |
+| Notifications, foreground service | Unlock countdown, quest reminders, keep-alive |
+| Battery optimisation exemption, boot completed | Keeping the blocker alive after a restart |
+| Device Admin (optional) | Harder to uninstall during Strict mode |
+| Internet | Fetching YouTube video info for the YouTube gate |
+
+## Project layout
+
+```
+app/src/main/java/com/krishna/questblock/
+  data/      Room database, repositories, Prefs, shop catalog, flags, YouTube gate, version log
+  engine/    Progression, XP and coin rules, insights, auto-verifier
+  service/   Accessibility blocker, keep-alive service, widget, reminders, media listener
+  ui/        Compose screens, themes (Theme*.kt, ThemeFx*.kt), Termux terminal (Termux*.kt), Quest Home launcher
+  util/      Backup, haptics, sounds, autostart, debug log
+  di/        Hilt module
+termux/      setup.sh and release.sh
+docs/        README images (screenshots, themes) and the early changelog
+```
+
+Database version 9 (migrates without wiping data). minSdk 26, target and compile SDK 35.
 
 ## Notes
 
 - Back up `~/.questblock/`. The same keystore is needed for every future update of the installed app.
 - Without the keystore secrets CI falls back to debug signing, so builds never fail for that reason.
-- No Gradle wrapper is committed; CI installs Gradle 8.10.2. Run `gradle wrapper` once if you want a local one.
+- No Gradle wrapper is committed. CI installs Gradle 8.10.2. Run `gradle wrapper` once if you want a local one.
+- Release notes for every version are in the app (Profile > Version info) and in `data/VersionLog.kt`. Versions 7 to 18 are in [docs/CHANGELOG-early.md](docs/CHANGELOG-early.md).
 - It is a self-discipline tool: safe mode or ADB can still get around it.
