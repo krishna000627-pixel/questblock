@@ -400,7 +400,7 @@ fun QuestCreatorScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(label, style = MaterialTheme.typography.labelSmall, color = ColorAccent)
-                                    Icon(Icons.Default.Close, contentDescription = null,
+                                    Icon(Icons.Default.Close, contentDescription = a11yText("Remove $label"),
                                         modifier = Modifier.size(12.dp).clickable { linkedApps = linkedApps - pkg },
                                         tint = ColorAccent)
                                 }
@@ -608,12 +608,12 @@ private fun SectionLabel(text: String) {
 @Composable
 private fun NumberPicker(value: Int, range: IntRange, label: String, step: Int = 1, onChange: (Int) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        IconButton(onClick = { if (value - step >= range.first) onChange(value - step) }, modifier = Modifier.size(28.dp)) {
-            Icon(Icons.Default.Remove, contentDescription = null, tint = ColorMuted, modifier = Modifier.size(16.dp))
+        IconButton(onClick = { if (value - step >= range.first) onChange(value - step) }, modifier = Modifier.minTouchTarget()) {
+            Icon(Icons.Default.Remove, contentDescription = a11yText("Decrease"), tint = ColorMuted, modifier = Modifier.size(16.dp))
         }
         Text("$value$label", style = MaterialTheme.typography.titleMedium, color = ColorText, fontWeight = FontWeight.Bold)
-        IconButton(onClick = { if (value + step <= range.last) onChange(value + step) }, modifier = Modifier.size(28.dp)) {
-            Icon(Icons.Default.Add, contentDescription = null, tint = ColorPrimary, modifier = Modifier.size(16.dp))
+        IconButton(onClick = { if (value + step <= range.last) onChange(value + step) }, modifier = Modifier.minTouchTarget()) {
+            Icon(Icons.Default.Add, contentDescription = a11yText("Increase"), tint = ColorPrimary, modifier = Modifier.size(16.dp))
         }
     }
 }

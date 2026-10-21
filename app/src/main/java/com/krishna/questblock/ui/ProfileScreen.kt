@@ -42,11 +42,15 @@ class ProfileViewModel @Inject constructor(
     val prefs: Prefs,
 ) : ViewModel() {
     val player = repo.player.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Player())
+    /** v281: for the streak calendar (days quests were finished). */
+    val tasks = repo.tasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 }
 
 @Composable
 fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSettings: () -> Unit, onOpenCoins: () -> Unit, onOpenAbout: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
     val player by vm.player.collectAsStateWithLifecycle()
+    val allTasks by vm.tasks.collectAsStateWithLifecycle()
+    val dayCounts = remember(allTasks) { questCountsByDay(allTasks.mapNotNull { if (it.done) it.completedAt else null }) }
 
 
     val snack = remember { SnackbarHostState() }
@@ -108,6 +112,7 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
             }
 
             CultivationStrip(player.xp)
+            if (com.krishna.questblock.data.Flags.get("ui_streak_cal")) StreakCalendar(dayCounts, player.streak)
 
             // ── Hero info (read-only; edit it from Settings) ────────────────
             Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),

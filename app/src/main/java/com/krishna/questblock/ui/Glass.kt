@@ -142,6 +142,7 @@ fun IconTile(emoji: String, color: Color, size: Dp = 40.dp, modifier: Modifier =
 /** Row of pill tabs: the picked one is filled with the accent colour. */
 @Composable
 fun PillTabs(labels: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val view = androidx.compose.ui.platform.LocalView.current   // v281: light tick on every pill tap
     Row(
         modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -152,7 +153,7 @@ fun PillTabs(labels: List<String>, selected: Int, onSelect: (Int) -> Unit, modif
                 Modifier.clip(RoundedCornerShape(50))
                     .background(if (sel) ColorPrimary else ColorSurfaceHigh)
                     .border(1.dp, if (sel) ColorPrimary else ColorPrimary.copy(alpha = 0.22f), RoundedCornerShape(50))
-                    .clickable { onSelect(i) }
+                    .clickable { com.krishna.questblock.util.HapticsPolish.tap(view); onSelect(i) }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {

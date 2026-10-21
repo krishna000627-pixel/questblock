@@ -143,6 +143,7 @@ fun QuestsScreen(onAddQuest: () -> Unit, onEditQuest: (Long) -> Unit, onOpenFocu
                         Text("${tasks.count { it.done }}/${tasks.size} done",
                             style = MaterialTheme.typography.labelMedium, color = ColorPrimary)
                     }
+                    if (tasks.isNotEmpty() && com.krishna.questblock.data.Flags.get("ui_swipe_hint")) QuestSwipeHint()
                     // Filter tabs
                     PillTabs(
                         labels = FILTER_TABS.map { if (it == "Suggested") "\uD83D\uDCA1 Suggested" else it },
@@ -301,7 +302,7 @@ private fun SwipeableQuestCard(
                 // v278: only while swiping (before, a faint Delete icon showed through the 50% faded done cards)
                 if (dir == StartToEnd || dir == EndToStart) Icon(
                     if (dir == StartToEnd) Icons.Default.Check else Icons.Default.Delete,
-                    contentDescription = null,
+                    contentDescription = a11yText(if (dir == StartToEnd) "Complete" else "Delete"),
                     tint   = ColorText,
                     modifier = Modifier.padding(16.dp).size(22.dp),
                 )
@@ -407,7 +408,7 @@ private fun QuestCard(
                         Row(Modifier.fillMaxWidth().clickable(enabled = availableNow) { onToggleStep(step) }.padding(vertical = 2.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Icon(if (step.done) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
-                                contentDescription = null, modifier = Modifier.size(18.dp),
+                                contentDescription = a11yText(if (step.done) "Done" else "Not done"), modifier = Modifier.size(18.dp),
                                 tint = if (step.done) ColorPrimary else ColorMuted)
                             Text(step.title, style = MaterialTheme.typography.bodySmall,
                                 color = if (step.done) ColorMuted else ColorText,

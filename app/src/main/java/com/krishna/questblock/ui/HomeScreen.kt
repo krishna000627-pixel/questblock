@@ -162,6 +162,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
         while (true) { value = com.krishna.questblock.data.Hw.fitWarning(hwCtx); kotlinx.coroutines.delay(30_000L) }
     }
 
+    val warm = rememberWarm()   // v281: skeleton instead of a flash of "Nothing planned" while the first load runs
     val recentAch    = achievements.filter { it.unlockedAt != null }.sortedByDescending { it.unlockedAt }.take(3)
 
     LazyColumn(
@@ -222,24 +223,19 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
             }
             item { Text("Routine day: other quests wait until tomorrow", style = MaterialTheme.typography.labelSmall, color = ColorMuted) }
             item { SuggestedQuests(onAdd = { vm.addSuggestion(it, tomorrow = true) }, title = "\uD83D\uDCA1 Suggested (added for tomorrow)") }
+        } else if (todayList.isEmpty() && !warm && tasks.isEmpty() && com.krishna.questblock.data.Flags.get("ui_skeleton")) {
+            item { SkeletonCard(lines = 1) }
         } else if (todayList.isEmpty()) {
             item {
-                Card(colors = CardDefaults.cardColors(containerColor = ColorCard),
-                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
-                    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(if (doneToday > 0) "\uD83C\uDF89" else "\uD83D\uDCDD", fontSize = 22.sp)
-                        Text(if (doneToday > 0) "All done for today" else "Nothing planned for today",
-                            style = MaterialTheme.typography.bodyMedium, color = ColorText,
-                            fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        TextButton(onClick = onAddQuest) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Add", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
+                // v281: EmptyState card with a one-tap button for the top suggestion
+                val top = STARTER_QUESTS.firstOrNull()
+                EmptyState(
+                    emoji = if (doneToday > 0) "\uD83C\uDF89" else "\uD83D\uDCDD",
+                    title = if (doneToday > 0) "All done for today" else "Nothing planned for today",
+                    actionLabel = "Add", onAction = onAddQuest,
+                    quickLabel = if (doneToday == 0 && com.krishna.questblock.data.Flags.get("ui_empty_quick")) top?.title else null,
+                    onQuick = if (top != null) ({ vm.addSuggestion(top); Unit }) else null,
+                )
             }
             item { SuggestedQuests(onAdd = { vm.addSuggestion(it) }, title = "\uD83D\uDCA1 Suggested for today") }
         } else {
@@ -419,7 +415,7 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Bool
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatTile("\uD83E\uDE99", if (hideCoins) "???" else "${player.coins}", "Coins", Modifier.weight(1f).clickable { onCoinsClick() })
                 StatTile("\uD83D\uDD25", "${player.streak}d", "Streak", Modifier.weight(1f))
-                StatTile("\u2705", "$doneToday/$total", "Quests", Modifier.weight(1f))
+                if (com.krishna.questblock.data.Flags.get("ui_daily_ring")) DailyRingTile(doneToday, total, Modifier.weight(1f)) else StatTile("\u2705", "$doneToday/$total", "Quests", Modifier.weight(1f))
             }
 
             CultivationStrip(player.xp, onAddQuest = onAddQuest)
@@ -478,12 +474,13 @@ private fun HealthBanner(p: com.krishna.questblock.util.Health.Problem, count: I
 
 @Composable
 private fun SlimPill(text: String, highlighted: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    val view = androidx.compose.ui.platform.LocalView.current
     Box(
         modifier
             .height(40.dp)
             .clip(RoundedCornerShape(50))
             .background(if (highlighted) ColorPrimary.copy(0.15f) else ColorSurfaceHigh)
-            .clickable { onClick() }
+            .clickable { com.krishna.questblock.util.HapticsPolish.tap(view); onClick() }
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
     ) {

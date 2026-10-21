@@ -3,6 +3,22 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("282.0.0", "Flags for the v281 UI additions",
+        listOf(
+            "Seven new switches in Flags > More flags (terminal: flags on|off <id>), all on by default: ui_swipe_hint, ui_empty_quick, ui_streak_cal, ui_daily_ring (off = the old check tile), ui_skeleton, ui_haptic_ticks, a11y_bits",
+            "Code: Flags.EXTRA in data/Flags.kt, checks in HomeScreen.kt, QuestsScreen.kt, ProfileScreen.kt, util/HapticsPolish.kt, ui/AccessibilityBits.kt (new a11yText). Not yet compiled in CI",
+        )),
+    VersionEntry("281.0.0", "Seven new UI/UX files",
+        listOf(
+            "Swipe hint (QuestSwipeHints.kt): a one-time line on Quests, right = complete, left = delete, with Got it. Never shows again after that",
+            "Empty states (EmptyStates.kt): Home's Nothing planned card now has a one-tap button that adds the top suggestion",
+            "Streak calendar (StreakCalendar.kt): the last 5 weeks as small squares on Profile, darker = more quests finished that day, today outlined",
+            "Daily ring (DailyRing.kt): the 0/0 Quests tile on Home now shows a thin ring that fills as you finish quests, with a check when all are done",
+            "Skeleton loader (SkeletonLoader.kt): a shimmering placeholder card on Home during the first load, so Nothing planned does not flash",
+            "Haptics polish (util/HapticsPolish.kt): one light tick on filter pills and the Shop, Stats, Hub, Chapters, Attendance and Homework pills, following the Haptics flag. Quest done and level up keep their own buzz",
+            "Accessibility (AccessibilityBits.kt): the plus and minus buttons in the quest creator are now 48 dp targets with Increase and Decrease labels, the swipe icons, routine checkboxes and linked-app close icons have spoken labels, the daily ring and calendar are read as one sentence",
+            "Code: new files above, wired in HomeScreen.kt, QuestsScreen.kt, ProfileScreen.kt (ProfileViewModel.tasks), QuestCreatorScreen.kt, Glass.kt (PillTabs). Not yet compiled in CI",
+        )),
     VersionEntry("280.0.0", "Faster app, Whitespace strip back, Zen without the half circle",
         listOf(
             "Whitespace: the header strip is back, in a very light tone (quiet lowercase words, the date and one hairline). Header pad stays",
