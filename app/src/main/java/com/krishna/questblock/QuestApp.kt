@@ -28,21 +28,21 @@ class QuestApp : Application() {
                 if (!mig.getBoolean("reset_v103", false)) {
                     repo.resetAll()
                     sp.edit()
-                        .putInt("fun_limit_min", 60).putInt("weekend_fun_limit", 90)
+                        .putInt("fun_limit_min", 0).putInt("weekend_fun_limit", 0)
                         .putBoolean("strict", false).putBoolean("cultivation_on", false)
-                        .putBoolean("opt_counter", true).putBoolean("opt_undo", true)
-                        .putBoolean("opt_warn80", true).putBoolean("opt_focus_notif", true)
+                        .putBoolean("opt_counter", false).putBoolean("opt_undo", true)
+                        .putBoolean("opt_warn80", false).putBoolean("opt_focus_notif", true)
                         .apply()
                     mig.edit().putBoolean("reset_v103", true).apply()
                 }
-                // v104: YouTube Shorts lock on by default (one time, so you can still turn it off)
+                // v104 (v286: now off): YouTube Shorts lock is not picked by default; turn it on in the Vault
                 if (!mig.getBoolean("yt_shorts_v104", false)) {
-                    sp.edit().putBoolean("short_yt", true).apply()
+                    sp.edit().putBoolean("short_yt", false).apply()
                     mig.edit().putBoolean("yt_shorts_v104", true).apply()
                 }
                 // v106 study first, then coding, far less fun (one time; you can change everything after)
                 if (!mig.getBoolean("study_first_v106", false)) {
-                    sp.edit().putInt("fun_limit_min", 30).putInt("weekend_fun_limit", 45).putInt("study_min", 3).apply()
+                    sp.edit().putInt("fun_limit_min", 0).putInt("weekend_fun_limit", 0).putInt("study_min", 3).apply()
                     mig.edit().putBoolean("study_first_v106", true).apply()
                     studyFirstPending = true
                 }

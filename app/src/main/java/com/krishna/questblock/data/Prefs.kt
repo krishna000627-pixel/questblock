@@ -530,20 +530,18 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     fun isClaimed(key: String): Boolean = sp.getBoolean("claimed_$key", false)
     fun setClaimed(key: String) { sp.edit().putBoolean("claimed_$key", true).apply() }
 
-    // ── v73: optional features. Everything here is a switch you turn on yourself (Shorts block and music counting default to on). ──
+    // ── v73: optional features. Everything here is a switch you turn on yourself (v286: the fun-limit switches are all off by default). ──
     private fun flag(k: String, def: Boolean = false) = sp.getBoolean(k, def)
     private fun setFlag(k: String, v: Boolean) = sp.edit().putBoolean(k, v).apply()
 
     /** Block YouTube Shorts once the fun limit is used up (or fun is locked). YouTube itself is never blocked. A commitment: off waits for midnight. */
-    val shortsBlockOn: Boolean get() { applyDue(); return flag("shorts_block", true) }
+    val shortsBlockOn: Boolean get() { applyDue(); return flag("shorts_block") }
     fun changeShortsBlock(on: Boolean) {
-        if (!sp.contains("shorts_block")) setFlag("shorts_block", true)
         commitFlag("opt:shorts_block", "shorts_block", on)
     }
     /** Music from Fun apps (ghost time) counts toward the fun limit. A commitment: off waits for midnight. */
-    val ghostCountsOn: Boolean get() { applyDue(); return flag("ghost_counts", true) }
+    val ghostCountsOn: Boolean get() { applyDue(); return flag("ghost_counts") }
     fun changeGhostCounts(on: Boolean) {
-        if (!sp.contains("ghost_counts")) setFlag("ghost_counts", true)
         commitFlag("opt:ghost_counts", "ghost_counts", on)
     }
 
@@ -553,19 +551,17 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     /** Lock keys whose coin-unlock time is shown in the notification: websites plus the two Vault clips. */
     fun unlockKeys(): List<String> = blockedSites() + listOf("short:yt", "short:ig", "yt:fun")
     /** v157: YouTube study gate. Videos of a studied chapter are free, an unstudied chapter must be studied first, every other video costs coins. A commitment: off waits for midnight. */
-    val ytGateOn: Boolean get() { applyDue(); return flag("yt_gate", true) }
+    val ytGateOn: Boolean get() { applyDue(); return flag("yt_gate") }
     fun changeYtGate(on: Boolean) {
-        if (!sp.contains("yt_gate")) setFlag("yt_gate", true)
-        commitFlag("opt:yt_gate", "yt_gate", on, def = true)
+        commitFlag("opt:yt_gate", "yt_gate", on)
     }
     /** v177: look the playing video up on YouTube (category, tags, description) for a second opinion. A commitment: off waits for midnight. */
-    val ytInfoOn: Boolean get() { applyDue(); return flag("yt_info", true) }
+    val ytInfoOn: Boolean get() { applyDue(); return flag("yt_info") }
     fun changeYtInfo(on: Boolean) {
-        if (!sp.contains("yt_info")) setFlag("yt_info", true)
-        commitFlag("opt:yt_info", "yt_info", on, def = true)
+        commitFlag("opt:yt_info", "yt_info", on)
     }
-    /** Live Shorts / Reels counter over the app (default on; needs Draw over other apps). */
-    var optCounter: Boolean get() = flag("opt_counter", true); set(v) = setFlag("opt_counter", v)
+    /** Live Shorts / Reels counter over the app (default off since v286; needs Draw over other apps). */
+    var optCounter: Boolean get() = flag("opt_counter"); set(v) = setFlag("opt_counter", v)
 
     var optMusicOnFocus: Boolean get() = flag("opt_music_focus"); set(v) = setFlag("opt_music_focus", v)
     var optMusicWarn: Boolean get() = flag("opt_music_warn"); set(v) = setFlag("opt_music_warn", v)

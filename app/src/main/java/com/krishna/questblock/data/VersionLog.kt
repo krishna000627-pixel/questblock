@@ -3,6 +3,12 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("286.0.0", "Fun limit features off by default",
+        listOf(
+            "Every fun-limit switch now starts off: Fun & Games daily limit (weekday and weekend), Shorts block at the limit, Music counts toward the limit, Shorts and Reels counter, Warn at 80%, YouTube study gate, Check the video online, and the YouTube Shorts lock pick in the Vault. Turn on only what you want in Settings, Rules and the Vault",
+            "Applies to new installs and to phones that never saved a choice for a switch. A choice you already saved is kept",
+            "Code: defaults in data/Prefs.kt (shortsBlockOn, ghostCountsOn, ytGateOn, ytInfoOn, optCounter), first-run seeding in QuestApp.kt. Not yet compiled in CI",
+        )),
     VersionEntry("285.0.0", "New flags default to your settings",
         listOf(
             "Defaults of the v281 flags now match how you use them: off for Swipe hint, One-tap suggestion, Streak calendar and Daily ring; on for Loading placeholder, Tap ticks and Accessibility extras. Phones that already saved a choice keep it",
