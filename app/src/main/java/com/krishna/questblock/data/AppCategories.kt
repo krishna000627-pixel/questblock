@@ -20,7 +20,7 @@ object AppCategorizer {
     private val DEFAULTS: Map<String, String> = mapOf(
         // study
         "xyz.penpencil.physicswala" to "study",
-        "com.whatsapp" to "study",
+        "com.whatsapp" to "neutral",   // v288: was study
         "com.whatsapp.w4b" to "study",
         "com.google.android.youtube" to "study",
         // coding
@@ -69,6 +69,29 @@ object AppCategorizer {
         "com.truecaller" to "neutral",
         "com.krishna.snaptalk" to "neutral",
         "com.habitrpg.android.habitica" to "neutral",
+        // v288: from the phone's app list (Krishna's own words)
+        "arivihan.technologies.doubtbuzzter2" to "study",
+        "com.scholar.krishna" to "study",              // GScholar
+        "syco.panth.krishna" to "study",               // Notally
+        "com.headway.books" to "study",
+        "com.google.android.apps.labs.language.tailwind" to "study",   // Notebook
+        "com.starry.myne" to "fun",                    // Myne, novel reading
+        "hesoft.T2S" to "fun",                         // text to speech for listening to novels
+        "com.bgbrowser" to "fun",                      // the browser for T2S
+        "com.chess" to "fun",
+        "com.vectorunit.purple.googleplay" to "fun",   // BB Racing
+        "com.discord" to "fun",
+        "com.garena.game.ffi" to "fun",                // Free Fire India
+        "io.voodoo.paper2" to "fun",                   // Paper.io 2
+        "com.nearme.gamecenter" to "fun",
+        "com.oplus.games" to "fun",
+        "com.coloros.video" to "fun",
+        "com.android.fmradio" to "fun",
+        "com.aria.reply" to "neutral",                 // AI WhatsApp responder
+        "dev.km.android.chargemeter" to "neutral",     // Charge Meter
+        "com.krishna.apphub" to "neutral",
+        "com.krishna.videowall" to "neutral",
+        "syco.panth.krishna.wanotifier" to "neutral",
     )
 
     /** Category with no manual choice: the list above, then Android's own app category, else Neutral. */

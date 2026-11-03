@@ -3,6 +3,12 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("288.0.0", "App categories from your phone's list",
+        listOf(
+            "Study: Arivihan, GScholar, Notally, Headway, Notebook. Fun: Myne, T2S, BG Browser, Chess, BB Racing, Discord, Free Fire India, Paper.io 2, Game Center, Games, Videos, FM Radio. Neutral: Aria Reply, Charge Meter, App Hub, VideoWall, WaNotifier",
+            "WhatsApp moved from Study to Neutral. A category you already picked by hand for an app is kept",
+            "Code: AppCategorizer.DEFAULTS in data/AppCategories.kt. Not yet compiled in CI",
+        )),
     VersionEntry("287.0.0", "XP bar in every theme, cleaner Profile",
         listOf(
             "XP bar: Forest (leaf pill), Neon (glow line), Sci-Fi (segments), AMOLED (thin line and dot), Paper (highlighter on a ruled line) and Linen (running stitch with a cross stitch) now have their own bar. Before, the bar was empty in these six themes, on Home, in Preview effects and in the level up card",
