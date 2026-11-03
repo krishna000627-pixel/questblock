@@ -1082,6 +1082,60 @@ internal fun Fx2XpBar(fraction: Float, xp: Int) {
                     drawCircle(coin, 4.dp.toPx(), Offset(fw.coerceIn(5.dp.toPx(), w - 5.dp.toPx()), mid))
                 }
             }
+            // v287: XP bars for the six themes that had none (no moving lines)
+            Fx2.FOREST -> {
+                val bh = 12.dp.toPx(); val y = mid - bh / 2
+                drawRoundRect(c.copy(alpha = 0.16f), Offset(0f, y), Size(w, bh), CornerRadius(bh / 2))
+                if (f > 0f) drawRoundRect(Brush.horizontalGradient(listOf(lerp(c, Color.Black, 0.25f), c), 0f, maxOf(fw, bh)), Offset(0f, y), Size(maxOf(fw, bh), bh), CornerRadius(bh / 2))
+                val ex = fw.coerceIn(bh, w - 8.dp.toPx())
+                leaf(Offset(ex, y + 1.dp.toPx()), -50f, 10.dp.toPx(), 4.dp.toPx(), lerp(c, Color.White, 0.35f))
+                leaf(Offset(ex, y + 1.dp.toPx()), -130f, 10.dp.toPx(), 4.dp.toPx(), lerp(c, Color.White, 0.35f))
+            }
+            Fx2.NEON -> {
+                drawLine(c.copy(alpha = 0.18f), Offset(0f, mid), Offset(w, mid), 3.dp.toPx(), StrokeCap.Round)
+                if (f > 0f) {
+                    for ((wd, al) in listOf(10f to 0.10f, 6f to 0.28f, 2.5f to 1f)) drawLine(c.copy(alpha = al), Offset(0f, mid), Offset(maxOf(fw, 1f), mid), wd.dp.toPx(), StrokeCap.Round)
+                    drawCircle(Color.White.copy(alpha = 0.9f), 2.dp.toPx(), Offset(fw.coerceIn(3.dp.toPx(), w - 3.dp.toPx()), mid))
+                }
+            }
+            Fx2.SCIFI -> {
+                val n = 16; val gap = 3.dp.toPx(); val bw = (w - gap * (n - 1)) / n; val bh = 12.dp.toPx(); val y = mid - bh / 2
+                val lit = (f * n).roundToInt()
+                for (i in 0 until n) {
+                    val x = i * (bw + gap)
+                    if (i < lit) drawRect(c, Offset(x, y), Size(bw, bh))
+                    else drawRect(c.copy(alpha = 0.45f), Offset(x + 0.5f, y + 0.5f), Size(bw - 1f, bh - 1f), style = Stroke(1.dp.toPx()))
+                }
+            }
+            Fx2.AMOLED -> {
+                drawLine(ink.copy(alpha = 0.12f), Offset(0f, mid), Offset(w, mid), 2.dp.toPx())
+                if (f > 0f) {
+                    drawLine(c, Offset(0f, mid), Offset(fw, mid), 3.dp.toPx(), StrokeCap.Round)
+                    drawCircle(c, 3.5.dp.toPx(), Offset(fw.coerceIn(4.dp.toPx(), w - 4.dp.toPx()), mid))
+                }
+            }
+            Fx2.PAPER -> {
+                // a highlighter swipe on a ruled line with pencil tick marks under it
+                val bh = 9.dp.toPx(); val y = mid - 7.dp.toPx()
+                drawRect(c.copy(alpha = 0.15f), Offset(0f, y), Size(w, bh))
+                if (f > 0f) {
+                    drawRect(c.copy(alpha = 0.85f), Offset(0f, y), Size(fw, bh))
+                    drawLine(ink.copy(alpha = 0.6f), Offset(fw.coerceIn(1f, w - 1f), y - 2.dp.toPx()), Offset(fw.coerceIn(1f, w - 1f), y + bh + 2.dp.toPx()), 1.5.dp.toPx())
+                }
+                drawLine(ink.copy(alpha = 0.2f), Offset(0f, y + bh + 6.dp.toPx()), Offset(w, y + bh + 6.dp.toPx()), 1.dp.toPx())
+                for (k in 0..10) drawLine(ink.copy(alpha = 0.25f), Offset(w * k / 10f, y + bh + 3.dp.toPx()), Offset(w * k / 10f, y + bh + 6.dp.toPx()), 1.dp.toPx())
+            }
+            Fx2.LINEN -> {
+                // stitches: the filled part is a thicker running stitch, a cross stitch marks the end
+                val dash = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()), 0f)
+                drawLine(c.copy(alpha = 0.25f), Offset(0f, mid), Offset(w, mid), 2.dp.toPx(), pathEffect = dash)
+                if (f > 0f) {
+                    drawLine(c, Offset(0f, mid), Offset(fw, mid), 3.dp.toPx(), pathEffect = dash)
+                    val e = fw.coerceIn(5.dp.toPx(), w - 5.dp.toPx())
+                    drawLine(coin, Offset(e - 4.dp.toPx(), mid - 4.dp.toPx()), Offset(e + 4.dp.toPx(), mid + 4.dp.toPx()), 2.dp.toPx(), StrokeCap.Round)
+                    drawLine(coin, Offset(e - 4.dp.toPx(), mid + 4.dp.toPx()), Offset(e + 4.dp.toPx(), mid - 4.dp.toPx()), 2.dp.toPx(), StrokeCap.Round)
+                }
+            }
             else -> Unit
         }
     }

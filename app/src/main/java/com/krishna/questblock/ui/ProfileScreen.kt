@@ -107,13 +107,11 @@ fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSetting
                         fontWeight = FontWeight.Bold, color = ColorText)
                     Text("Level ${player.level()} · ${player.xpIntoLevel()}/100 XP",
                         style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-                    Text("Tap the badge to change your avatar", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
                 }
             }
 
             CultivationStrip(player.xp)
-            if (com.krishna.questblock.data.Flags.get("ui_streak_cal")) StreakCalendar(dayCounts, player.streak, onOpen = onOpenStreak)
-            else TextButton(onClick = onOpenStreak) { Text("\uD83D\uDD25 Streak map \u203A", color = ColorPrimary, fontWeight = FontWeight.Bold) }   // v285: the page stays reachable when the card is off
+            if (com.krishna.questblock.data.Flags.get("ui_streak_cal")) StreakCalendar(dayCounts, player.streak, onOpen = onOpenStreak)   // v287: with Streak calendar off, no Streak map link either
 
             // ── Hero info (read-only; edit it from Settings) ────────────────
             Card(colors = CardDefaults.cardColors(containerColor = ColorSurface),

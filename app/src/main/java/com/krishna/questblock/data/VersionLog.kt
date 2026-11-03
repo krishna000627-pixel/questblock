@@ -3,6 +3,13 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("287.0.0", "XP bar in every theme, cleaner Profile",
+        listOf(
+            "XP bar: Forest (leaf pill), Neon (glow line), Sci-Fi (segments), AMOLED (thin line and dot), Paper (highlighter on a ruled line) and Linen (running stitch with a cross stitch) now have their own bar. Before, the bar was empty in these six themes, on Home, in Preview effects and in the level up card",
+            "Removed the line \"Tap the badge to change your avatar\" from Profile (tapping the badge still opens the picker)",
+            "With Streak calendar off in Flags, Profile no longer shows the Streak map link either",
+            "Code: Fx2XpBar in ui/ThemeFx2.kt, ProfileScreen.kt. Not yet compiled in CI",
+        )),
     VersionEntry("286.0.0", "Fun limit features off by default",
         listOf(
             "Every fun-limit switch now starts off: Fun & Games daily limit (weekday and weekend), Shorts block at the limit, Music counts toward the limit, Shorts and Reels counter, Warn at 80%, YouTube study gate, Check the video online, and the YouTube Shorts lock pick in the Vault. Turn on only what you want in Settings, Rules and the Vault",
