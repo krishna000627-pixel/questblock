@@ -48,7 +48,6 @@ object AppFeatures {
         )),
         FeatureGroup("Tools", listOf(
             "Encrypted backup and a safe restore",
-            "Ideas page: write what you want in the next update and copy it into a chat",
             "Version info with the notes of every version, Self test, Debug log and the Flags page",
             "About me with the developer's page and links",
         )),

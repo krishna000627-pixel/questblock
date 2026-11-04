@@ -3,6 +3,21 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("290.0.0", "Vault strict mode removed",
+        listOf(
+            "Vault strict mode is gone: the switch in the Vault, the check after every launch, the sealed copy and vault strict in the terminal. The Vault works as it did in v288 again",
+            "Update prompts & ideas stay hidden. Everything else from v289 (the merge of v286 to v288) stays",
+            "Code: removed data/VaultSeal.kt, ui/VaultCheck.kt and the Vault strict code in Prefs, GameRepository, VaultScreen, MainActivity, QuestApp, TermuxShell. Not yet compiled in CI",
+        )),
+    VersionEntry("289.0.0", "Vault strict mode, Prompts and Ideas hidden",
+        listOf(
+            "v286, v287 and v288 merged onto build 285 into one project: fun limits off by default, XP bar in every theme, cleaner Profile, app categories from your phone's list",
+            "Vault strict mode (off by default, switch at the top of the Vault): every launch first asks you to tick each locked app before QuestBlock opens. Locks cannot be removed, turned into study apps or loosened (daily allowance, schedule, lower price or rate). Turning it off waits until midnight",
+            "With it off, nothing in the Vault is held back: changes apply at once",
+            "Sealed copy: while strict is on, the Vault is saved in an encrypted, tamper-checked file in Downloads/QuestBlock. After clear data or a reinstall, strict mode and the locked apps come back from it at the next launch. Terminal: vault strict on|off",
+            "Update prompts & ideas card removed from About me and the ideas command removed from the terminal (the Quest board page stays in the code, just not reachable)",
+            "Code: data/VaultSeal.kt, GameRepository vaultSync, Prefs.vaultStrict, ui/VaultCheck.kt, VaultScreen.kt. Not yet compiled in CI",
+        )),
     VersionEntry("288.0.0", "App categories from your phone's list",
         listOf(
             "Study: Arivihan, GScholar, Notally, Headway, Notebook. Fun: Myne, T2S, BG Browser, Chess, BB Racing, Discord, Free Fire India, Paper.io 2, Game Center, Games, Videos, FM Radio. Neutral: Aria Reply, Charge Meter, App Hub, VideoWall, WaNotifier",

@@ -593,9 +593,10 @@ class GameRepository @Inject constructor(
 
     // ── Apps ──────────────────────────────────────────────────────────────
     suspend fun getBlockedApp(pkg: String) = appDao.get(pkg)
-    suspend fun setBlocked(pkg: String, label: String, blocked: Boolean) {
+    suspend fun setBlocked(pkg: String, label: String, blocked: Boolean): Boolean {
         if (blocked) appDao.upsert((appDao.get(pkg) ?: BlockedApp(packageName = pkg, label = label)).copy(isStudyApp = false))
         else appDao.delete(pkg)
+        return true
     }
     /** One-time starter Vault (v102): locks games and time-sink apps, marks PW as a study app. Skips apps already in the Vault. */
     suspend fun seedStarterVault(labels: Map<String, String>) {
@@ -617,15 +618,17 @@ class GameRepository @Inject constructor(
             appDao.get(pkg)?.let { appDao.upsert(it.copy(priceMult = 200)) }
         }
     }
-    suspend fun setStudyApp(pkg: String, label: String, isStudy: Boolean) {
+    suspend fun setStudyApp(pkg: String, label: String, isStudy: Boolean): Boolean {
         if (isStudy) appDao.upsert((appDao.get(pkg) ?: BlockedApp(packageName = pkg, label = label))
             .copy(isStudyApp = true, unlockedUntil = 0L))
         else appDao.delete(pkg)
+        return true
     }
-    suspend fun setAppOptions(pkg: String, dailyLimitMin: Int, schedStart: Int, schedEnd: Int, priceMult: Int, ratePer5: Int) {
-        val app = appDao.get(pkg) ?: return
+    suspend fun setAppOptions(pkg: String, dailyLimitMin: Int, schedStart: Int, schedEnd: Int, priceMult: Int, ratePer5: Int): Boolean {
+        val app = appDao.get(pkg) ?: return false
         appDao.upsert(app.copy(dailyLimitMin = dailyLimitMin, schedStart = schedStart,
             schedEnd = schedEnd, priceMult = priceMult, ratePer5 = ratePer5.coerceAtLeast(0)))
+        return true
     }
 
     suspend fun addUsage(pkg: String, ms: Long): Boolean = db.withTransaction {

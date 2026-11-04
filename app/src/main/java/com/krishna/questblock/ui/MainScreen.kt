@@ -196,7 +196,6 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
                     onOpenVersions = { navController.openPage("versions") },
                     onOpenWeekly = { navController.openPage("weekly") },
                     onOpenSelfTest = { navController.openPage("selftest") },
-                    onOpenIdeas = { navController.openPage("ideas") },
                     onOpenAbout = { navController.openPage("about") },
                 )
             }
@@ -226,14 +225,13 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
             composable("marks") { MarksScreen(onBack = { navController.popBackStack() }) }
             composable("weekly") { WeeklyReviewScreen(onBack = { navController.popBackStack() }) }
             composable("debuglog") { DebugLogScreen(onBack = { navController.popBackStack() }) }
-            composable("ideas") { IdeasScreen(onBack = { navController.popBackStack() }) }
             composable("unlock_timers") { UnlockTimersScreen(onBack = { navController.popBackStack() }) }
             composable("usage") { UsageScreen(onBack = { navController.popBackStack() }, onOpenCategories = { navController.openPage("categories") }) }
             composable("categories") { CategoriesScreen(onBack = { navController.popBackStack() }) }
             composable("reliability") { ReliabilityScreen(onBack = { navController.popBackStack() }) }
             composable("coins")        { CoinLogScreen(onBack = { navController.popBackStack() }) }
             composable("streak")       { StreakScreen(onBack = { navController.popBackStack() }) }
-            composable("about")        { AboutMeScreen(onBack = { navController.popBackStack() }, onOpenIdeas = { navController.openPage("ideas") },
+            composable("about")        { AboutMeScreen(onBack = { navController.popBackStack() },
                 onOpenVersions = { navController.openPage("versions") }, onOpenFeatures = { navController.openPage("features") }) }
             composable("features")     { FeaturesScreen(onBack = { navController.popBackStack() }) }
             composable("shop")         { InventoryScreen(onBack = { navController.popBackStack() }) }

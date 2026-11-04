@@ -65,29 +65,7 @@ fun AboutMeScreen(onBack: () -> Unit, onOpenIdeas: () -> Unit = {}, onOpenVersio
             }
         }
 
-        // ── Update prompts & ideas widget ───────────────────────────────
-        var ideas by remember { mutableStateOf(com.krishna.questblock.data.IdeaStore.all(ctx)) }
-        AboutCard {
-            Text("💡 Update prompts & ideas", style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold, color = ColorText)
-            val openIdeas = ideas.filter { !it.done }
-            if (openIdeas.isEmpty()) {
-                Text("Write what you want in the next update, then copy it into a chat.", style = MaterialTheme.typography.bodySmall, color = ColorMuted)
-            }
-            openIdeas.take(2).forEach { idea ->
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(idea.text, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = ColorText, maxLines = 3)
-                    TextButton(onClick = {
-                        val cm = ctx.getSystemService(android.content.ClipboardManager::class.java)
-                        cm.setPrimaryClip(android.content.ClipData.newPlainText("QuestBlock idea", idea.text))
-                        Toast.makeText(ctx, "Copied", Toast.LENGTH_SHORT).show()
-                    }) { Text("Copy") }
-                }
-            }
-            OutlinedButton(onClick = onOpenIdeas, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
-                Text(if (ideas.isEmpty()) "Write an idea" else "Open all (${openIdeas.size} open)")
-            }
-        }
+        // v289: the Update prompts & ideas card is hidden (the Quest board page stays in the code)
 
         // ── Links ───────────────────────────────────────────────────────
         AboutCard {

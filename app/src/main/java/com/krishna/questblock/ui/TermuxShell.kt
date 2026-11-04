@@ -55,7 +55,7 @@ private val TOP_COMMANDS = listOf(
     "vault", "unlock", "sites", "limits", "categories",
     "coins", "shop", "inv",
     "stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub",
-    "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas",
+    "set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about",
     "suggest", "timers", "fun", "fg", "last", "mood", "achievements", "leaderboard",
     "cd", "pwd", "flags", "icons", "logo", "font", "appicon",
 )
@@ -93,15 +93,10 @@ private val SUB_COMMANDS: Map<String, List<String>> = mapOf(
     "strict" to listOf("on", "off"),
     "perms" to listOf("grant"),
     "debuglog" to listOf("clear"),
-    "ideas" to listOf("add", "done", "rm", "clear", "copy", "tag", "status", "pin", "prio", "find"),
-    "ideas add" to listOf("ui", "launcher", "bug", "theme", "other", "feature", "termux", "idea"),
-    "ideas tag" to listOf("ui", "launcher", "bug", "theme", "other", "none"),
-    "ideas status" to listOf("idea", "next", "doing", "done"),
-    "ideas copy" to listOf("all", "ui", "launcher", "bug", "theme", "other"),
     "about" to listOf("features", "open"),
     "theme set" to listOf("default", "paper", "termux"),
     "suggest" to listOf("add", "physics", "chemistry", "maths", "boards"),
-    "cd" to listOf("~", "quests", "hw", "focus", "vault", "shop", "stats", "settings", "ideas"),
+    "cd" to listOf("~", "quests", "hw", "focus", "vault", "shop", "stats", "settings"),
     "hw" to listOf("add", "ls", "board", "done", "undo", "rm", "edit", "focus", "week", "copy", "bed"),
     "hw add" to listOf("physics", "chemistry", "maths", "hindi", "english"),
     "hw ls" to listOf("physics", "chemistry", "maths", "hindi", "english", "--due", "--overdue", "--done"),
@@ -116,7 +111,7 @@ private val GROUPS: Map<String, List<String>> = linkedMapOf(
     "blocking" to listOf("vault", "unlock", "sites", "limits", "categories", "timers"),
     "economy" to listOf("coins", "shop", "inv", "fun"),
     "progress" to listOf("stats", "usage", "weekly", "attendance", "marks", "chapters", "badges", "goals", "hub", "mood", "achievements", "leaderboard"),
-    "settings" to listOf("set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "ideas", "flags", "icons", "logo", "font", "appicon"),
+    "settings" to listOf("set", "strict", "dnd", "perms", "backup", "restore", "reliability", "selftest", "debuglog", "versions", "about", "flags", "icons", "logo", "font", "appicon"),
 )
 
 private val MAN: Map<String, String> = mapOf(
@@ -178,8 +173,7 @@ private val MAN: Map<String, String> = mapOf(
     "debuglog" to "debuglog [clear]",
     "versions" to "versions [number]   change log, or one version in full",
     "about" to "about [features | open <n>]",
-    "ideas" to "ideas | add [bug|feature|ui|termux|idea] <text> | done <n> | rm <n> | clear | copy <n> | copy all [--log] [--plain]   (copy all = the update prompt, ticks them off; --plain leaves out the Termux rule)",
-    "cd" to "cd [dir]            change the prompt folder: ~ quests focus vault shop stats settings ideas (it also follows the commands you run)",
+    "cd" to "cd [dir]            change the prompt folder: ~ quests focus vault shop stats settings (it also follows the commands you run)",
     "pwd" to "pwd                 show the prompt folder",
     "fg" to "fg                  jump back to the session you were in before (like cd -)",
     "last" to "last                same as fg. !! runs your last command again, !word runs the last one that starts with word",
@@ -208,13 +202,12 @@ private val DIR_OF: Map<String, String> = mapOf(
     "set" to "settings", "strict" to "settings", "dnd" to "settings", "perms" to "settings", "backup" to "settings", "restore" to "settings",
     "reliability" to "settings", "selftest" to "settings", "debuglog" to "settings", "versions" to "settings", "about" to "settings",
     "theme" to "settings", "flags" to "settings", "font" to "settings", "appicon" to "settings", "icons" to "settings", "logo" to "settings",
-    "ideas" to "ideas",
     "hw" to "hw",
 )
-private val DIRS = listOf("quests", "hw", "focus", "vault", "shop", "stats", "settings", "ideas")
+private val DIRS = listOf("quests", "hw", "focus", "vault", "shop", "stats", "settings")
 
 /** Commands that still work while a strict Focus session runs. */
-private val STRICT_OK = setOf("help", "man", "clear", "history", "status", "whoami", "focus", "play", "stop", "home", "theme", "flags", "font", "appicon", "icons", "logo", "versions", "about", "alias", "unalias", "ideas", "hw", "fg", "last", "cd", "pwd")
+private val STRICT_OK = setOf("help", "man", "clear", "history", "status", "whoami", "focus", "play", "stop", "home", "theme", "flags", "font", "appicon", "icons", "logo", "versions", "about", "alias", "unalias", "hw", "fg", "last", "cd", "pwd")
 
 /** Commands on a lock page. */
 private val BLOCK_OK = setOf("help", "man", "clear", "history", "status", "quests", "coins", "unlock", "open", "home", "main", "focus")
@@ -428,7 +421,7 @@ class TermuxViewModel @Inject constructor(
         if (t.isEmpty()) {
             val recent = hist.asReversed().distinct().take(3)
             val base = if (block != null) listOf("unlock 15", "quests", "coins", "home", "help")
-            else if (strict) listOf("focus status", "play rain", "ideas", "help")
+            else if (strict) listOf("focus status", "play rain", "help")
             else listOf("status", "quests", "focus status", "coins", "help")
             return (recent + base).distinct().take(8).map { TermuxChip(it, it) }
         }
@@ -685,7 +678,6 @@ class TermuxViewModel @Inject constructor(
             "debuglog" -> cmdDebugLog(s, a)
             "versions" -> cmdVersions(s, a)
             "about" -> cmdAbout(s, a)
-            "ideas" -> cmdIdeas(s, a)
             "hw" -> if (com.krishna.questblock.data.Flags.HOMEWORK_ENABLED) hwCmd.run(s, a) else s.warn("homework tracker is disconnected for now")
             "suggest" -> extras.suggest(s, a)
             "timers" -> extras.timers(s)
@@ -2344,7 +2336,7 @@ class TermuxViewModel @Inject constructor(
             setKeys.forEach { s.out("{c}${it.key.padEnd(13)}{/} ${it.get().padEnd(7)} {d}${it.desc.tm()}{/}") }
             val pend = prefs.pendingSummary()
             if (pend.isNotEmpty()) s.warn(pend)
-            s.dim("set <key> <value> \u00b7 more: strict, dnd, perms, backup, restore, reliability, selftest, debuglog, versions, about, ideas")
+            s.dim("set <key> <value> \u00b7 more: strict, dnd, perms, backup, restore, reliability, selftest, debuglog, versions, about")
             return
         }
         val value = a.rest(2).trim()
