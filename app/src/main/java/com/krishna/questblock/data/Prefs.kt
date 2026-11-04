@@ -29,6 +29,11 @@ class Prefs @Inject constructor(@ApplicationContext ctx: Context) {
     }
 
     /** Day number the equipped theme's daily rent was last taken (0 = never). */
+    /** v291: Chalk & Charcoal is the first theme of a new install and costs no daily rent until another theme is equipped. */
+    var starterChalk: Boolean
+        get() = sp.getBoolean("starter_chalk", false)
+        set(v) = sp.edit().putBoolean("starter_chalk", v).apply()
+
     var themeRentDay: Long
         get() = sp.getLong("theme_rent_day", 0L)
         set(value) = sp.edit().putLong("theme_rent_day", value).apply()

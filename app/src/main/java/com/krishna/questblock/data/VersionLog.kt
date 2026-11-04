@@ -3,6 +3,12 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("291.0.0", "Chalk & Charcoal is the first theme",
+        listOf(
+            "A new install starts on the Chalk & Charcoal theme: it is already owned and equipped, and its daily rent is waived until you equip another theme",
+            "Phones that already finished onboarding keep the look they have now",
+            "Code: seedStarterTheme and themeRent in data/GameRepository.kt, Prefs.starterChalk, first-run seeding in QuestApp.kt. Not yet compiled in CI",
+        )),
     VersionEntry("290.0.0", "Vault strict mode removed",
         listOf(
             "Vault strict mode is gone: the switch in the Vault, the check after every launch, the sealed copy and vault strict in the terminal. The Vault works as it did in v288 again",

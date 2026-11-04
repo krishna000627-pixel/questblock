@@ -885,6 +885,7 @@ class GameRepository @Inject constructor(
 
     suspend fun unequipItem(inv: InventoryItem) = db.withTransaction {
         inventoryDao.unequipAll(inv.category)
+        if (inv.category == "cosmetic_theme") prefs.starterChalk = false
         val p = playerDao.get() ?: Player()
         playerDao.upsert(when (inv.category) {
             "cosmetic_frame" -> p.copy(equippedFrame = "")
@@ -912,7 +913,20 @@ class GameRepository @Inject constructor(
     }
 
     /** Daily rent of a theme in coins (the shop price of a theme is per day). 0 for the default theme. */
-    fun themeRent(id: String): Int = ShopCatalog.items.firstOrNull { it.id == id && it.category == "cosmetic_theme" }?.price ?: 0
+    fun themeRent(id: String): Int =
+        if (id == "theme_chalk" && prefs.starterChalk) 0
+        else ShopCatalog.items.firstOrNull { it.id == id && it.category == "cosmetic_theme" }?.price ?: 0
+
+    /** v291: a fresh install starts on Chalk & Charcoal, owned and equipped, with no rent. Existing phones are untouched. */
+    suspend fun seedStarterTheme() = db.withTransaction {
+        val item = ShopCatalog.items.firstOrNull { it.id == "theme_chalk" } ?: return@withTransaction
+        inventoryDao.unequipAll("cosmetic_theme")
+        val inv = inventoryDao.getByItemId(item.id)
+            ?: InventoryItem(itemId = item.id, category = item.category, name = item.name, emoji = item.emoji).let { it.copy(id = inventoryDao.insert(it)) }
+        inventoryDao.equip(inv.id)
+        prefs.starterChalk = true
+        playerDao.upsert((playerDao.get() ?: Player()).copy(equippedTheme = item.id))
+    }
 
     /** Once a day: takes the rent of the equipped theme. If the coins are not enough the theme goes back to default. Returns a short note when something happened. */
     suspend fun chargeThemeRent(): String? = db.withTransaction {
@@ -942,6 +956,7 @@ class GameRepository @Inject constructor(
             return@withTransaction true
         }
         if (inv.category == "cosmetic_theme") {
+            if (inv.itemId != "theme_chalk") prefs.starterChalk = false
             val rent = themeRent(inv.itemId)
             val today = dayNumber(System.currentTimeMillis())
             if (rent > 0 && prefs.themeRentDay < today) {

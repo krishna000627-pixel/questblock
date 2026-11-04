@@ -57,6 +57,14 @@ class QuestApp : Application() {
                     repo.makeFunExpensive()
                     mig.edit().putBoolean("fun_price_v106", true).apply()
                 }
+                // v291: a fresh install starts on Chalk & Charcoal (phones that already finished onboarding keep their look)
+                if (!mig.getBoolean("starter_chalk_v291", false)) {
+                    if (!sp.getBoolean("onboarding_done", false)) {
+                        repo.seedStarterTheme()
+                        sp.edit().putString("shop_theme", "theme_chalk").apply()
+                    }
+                    mig.edit().putBoolean("starter_chalk_v291", true).apply()
+                }
             }
         }
     }
