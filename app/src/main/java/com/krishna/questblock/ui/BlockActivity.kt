@@ -364,14 +364,16 @@ fun BlockScreen(
             repeat(steps) {
                 if (!isHolding) return@repeat
                 delay(100L)
-                holdProgress = (it + 1) / steps.toFloat()
+                val p = (it + 1) / steps.toFloat()
+                holdProgress = p
+                if (it % 2 == 0) com.krishna.questblock.util.Sounds.holdTick(p)
             }
             if (isHolding) {
                 com.krishna.questblock.util.DebugLog.d("hold complete: rule=${rule != null} paying=$paying coins=$coinsNow cost=$costNow blocks=$blocksNow")
                 when {
                     rule == null && !isSite -> status = "\u26A0 $label isn't in your blocked list (Vault)"
                     paying -> status = "Already processing\u2026"
-                    coinsNow < costNow -> status = "Not enough coins: have $coinsNow, need $costNow"
+                    coinsNow < costNow -> { com.krishna.questblock.util.Sounds.denied(); status = "Not enough coins: have $coinsNow, need $costNow" }
                     else -> {
                         paying = true
                         status = "Paying $costNow \uD83E\uDE99\u2026"
@@ -391,6 +393,7 @@ fun BlockScreen(
                         vm.unlock(pkg, blocksNow) { res, err ->
                             com.krishna.questblock.util.DebugLog.d("unlock result: ok=${res.ok} charged=${res.charged} cost=${res.cost} ${res.before}->${res.after} err=$err")
                             if (res.ok) {
+                                com.krishna.questblock.util.Sounds.unlock()
                                 status = if (res.charged) {
                                     val bad = res.after != res.before - res.cost
                                     "\u2705 -${res.cost} \uD83E\uDE99  (${res.before} \u2192 ${res.after})  +${res.minutes} min" +
@@ -454,7 +457,15 @@ fun BlockScreen(
                     }
                 }
             }
-            if (AnyFx.on) FxLockEmblem(iconBox) else iconBox()
+            Box(contentAlignment = Alignment.Center) {
+                HoldUnlockHalo(
+                    progress = animatedHold,
+                    isHolding = isHolding,
+                    accent = ColorPrimary,
+                    modifier = Modifier.size(118.dp),
+                )
+                if (AnyFx.on) FxLockEmblem(iconBox) else iconBox()
+            }
 
             Spacer(Modifier.height(12.dp))
 

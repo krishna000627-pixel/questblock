@@ -1,6 +1,13 @@
 package com.krishna.questblock.ui
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,11 +48,20 @@ fun EmptyState(
     Card(
         colors = CardDefaults.cardColors(containerColor = ColorCard),
         shape = RoundedCornerShape(14.dp),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().staggeredEntrance(0),
     ) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(emoji, fontSize = 22.sp)
+                val floatY = if (AnimConfig.emptyStates) {
+                    androidx.compose.animation.core.rememberInfiniteTransition(label = "empty_float")
+                        .animateFloat(
+                            initialValue = -3f,
+                            targetValue = 3f,
+                            animationSpec = infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                            label = "empty_y",
+                        ).value
+                } else 0f
+                Text(emoji, fontSize = 22.sp, modifier = Modifier.graphicsLayer { translationY = floatY })
                 Text(title, style = MaterialTheme.typography.bodyMedium, color = ColorText,
                     fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 if (actionLabel != null && onAction != null) TextButton(onClick = onAction) {

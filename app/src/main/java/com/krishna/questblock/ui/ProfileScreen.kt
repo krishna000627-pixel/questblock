@@ -47,7 +47,8 @@ class ProfileViewModel @Inject constructor(
 }
 
 @Composable
-fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSettings: () -> Unit, onOpenCoins: () -> Unit, onOpenAbout: () -> Unit, onOpenStreak: () -> Unit = {}, vm: ProfileViewModel = hiltViewModel()) {
+fun ProfileScreen(onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenSettings: () -> Unit, onOpenCoins: () -> Unit, onOpenAbout: () -> Unit, onOpenStreak: () -> Unit = {},
+    onOpenAdopt: () -> Unit = {}, vm: ProfileViewModel = hiltViewModel()) {
     val player by vm.player.collectAsStateWithLifecycle()
     val allTasks by vm.tasks.collectAsStateWithLifecycle()
     val dayCounts = remember(allTasks) { questCountsByDay(allTasks.mapNotNull { if (it.done) it.completedAt else null }) }

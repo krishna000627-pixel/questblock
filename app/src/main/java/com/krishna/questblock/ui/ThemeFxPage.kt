@@ -106,6 +106,7 @@ private val FX_THEMES: List<FxTheme> = listOf(
     FxTheme("carnival", "Carnival", false, FxPink, "marquee bulbs", "candy stripe bar", "fireworks, light border", "TA-DA! confetti", "bunting strip", "striped top, confetti dots"),
     FxTheme("baroque", "Baroque", false, FxAmber, "gold double ring", "gold frame bar", "wax seal", "Gilded", "gold double rule, diamond", "gold inner frame, corner diamonds"),
     FxTheme("vaporwave", "Vaporwave Arcade", false, FxPurple, "gradient ring, sun", "glitch bar", "sun rises over a grid", "C O M B O", "INSERT COIN strip", "gradient line, small sun"),
+    FxTheme("habitica", "Habitica RPG", false, FxPurple, "gold & mana RPG ring", "HP/XP/MP pixel bar", "RPG LEVEL UP!", "+XP +Gold", "Habitica purple HUD strip", "color-coded RPG quest cards"),
 )
 
 /** v257: how many theme switches are on, for the entry card on the flags page. */
@@ -165,6 +166,7 @@ fun ThemeFxFlagsPage(onBack: () -> Unit) {
                 }
             }
         }
+        item(key = "sound_anim_studio") { SoundAndAnimStudioCard() }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 chips.forEachIndexed { i, label ->
@@ -271,6 +273,7 @@ fun ThemeFxTryPage(themeId: String, onBack: () -> Unit) {
     var xp by remember { mutableFloatStateOf(0.64f) }
     var ring by remember { mutableFloatStateOf(0.7f) }
     var emblemKey by remember { mutableIntStateOf(0) }
+    LaunchedEffect(sel) { com.krishna.questblock.util.Sounds.themeSwitch("theme_" + sel) }
     SideEffect { if (ShopTheme != "theme_" + sel) ShopTheme = "theme_" + sel }
     val penaltyBefore = remember { SystemEvents.penaltyOn }
     // v262: everything the page touches is put back when it closes: the saved theme, the penalty look, the Shadow Army counter, the last level and reward numbers, and any pop or level up still showing

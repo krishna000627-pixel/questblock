@@ -56,6 +56,7 @@ private val SHOP_THEME_LIGHT = mapOf(
     // v277: Whitespace is always white; Carnival, Baroque and Vaporwave are always dark. Mono and Zen are NOT listed on purpose:
     // they follow Dark / Light / System (pure black or white, dark or light stone).
     "theme_whitespace" to true, "theme_carnival" to false, "theme_baroque" to false, "theme_vaporwave" to false,
+    "theme_habitica" to true,
 )
 fun themeForcedLight(id: String = ShopTheme): Boolean? = SHOP_THEME_LIGHT[id]
 
@@ -235,7 +236,12 @@ private val SHOP_PALETTES = mapOf(
         longArrayOf(0xFFFFF0F5, 0xFFFFFFFF, 0xFFFFDDE8, 0xFFFFFFFF, 0xFFF2C9D8),
         longArrayOf(0xFFFDEEF4, 0xFFA07A8C, 0xFFFF8FA3, 0xFFFFC2D6, 0xFFC77DFF),
         longArrayOf(0xFF2A1220, 0xFF8C6478, 0xFFC93C65, 0xFFB0486E, 0xFF8E3FD6)),
-    "theme_indigo" to ShopPalette(0xFF7C83FF,
+        "theme_habitica" to ShopPalette(0xFF6133B4,
+        longArrayOf(0xFF161122, 0xFF211A33, 0xFF2E2447, 0xFF261E3B, 0xFF3B3059),
+        longArrayOf(0xFFEDEAF6, 0xFFFFFFFF, 0xFFE1DCF0, 0xFFFFFFFF, 0xFFD2CBE6),
+        longArrayOf(0xFFF5F2FA, 0xFFA99EC2, 0xFFFF6165, 0xFFFFBE5D, 0xFF50B5E9),
+        longArrayOf(0xFF34313A, 0xFF686274, 0xFFFF6165, 0xFFFFA623, 0xFF50B5E9)),
+"theme_indigo" to ShopPalette(0xFF7C83FF,
         longArrayOf(0xFF090A1A, 0xFF11122A, 0xFF1B1D40, 0xFF151736, 0xFF262A5A),
         longArrayOf(0xFFEEF0FF, 0xFFFFFFFF, 0xFFDDE0FF, 0xFFFFFFFF, 0xFFC9CEF5),
         longArrayOf(0xFFE8EAFF, 0xFF7479B0, 0xFF9BE7FF, 0xFFC7B9FF, 0xFFFF7BD5),

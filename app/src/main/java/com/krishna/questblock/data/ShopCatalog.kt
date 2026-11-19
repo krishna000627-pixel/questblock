@@ -60,6 +60,7 @@ object ShopCatalog {
         ShopItem("theme_vaporwave",  "Vaporwave Arcade", "\uD83C\uDF34", "Maximal: pink and cyan, a sun grid, chrome text, a glitchy XP bar, INSERT COIN", 6, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_rose",   "Rose Quartz",       "🌸", "Soft pink and plum",              5, "cosmetic_theme", isConsumable = false),
         ShopItem("theme_indigo", "Midnight Indigo",   "🌌", "Deep indigo night sky",           6, "cosmetic_theme", isConsumable = false),
+        ShopItem("theme_habitica", "Habitica RPG", "RPG", "Open-source RPG style: royal purple, HP/XP/MP bars, pixel borders, gold coins", 4, "cosmetic_theme", isConsumable = false),
         // ─── Badges ───────────────────────────────────────────────────────
         ShopItem("badge_star",   "Star Badge",        "⭐", "Show off your star badge",      150, "cosmetic_badge", isConsumable = false),
         ShopItem("badge_crown",  "Crown Badge",       "👑", "You are royalty",               250, "cosmetic_badge", isConsumable = false),

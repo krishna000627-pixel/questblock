@@ -2,6 +2,9 @@ package com.krishna.questblock.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -69,7 +72,7 @@ import kotlin.math.roundToInt
  * Behind the master flag themefx and the theme's own flag fx_<theme> (Flags.EXTRA). #svg-logo  New theme with effects: add it to Fx2,
  * Fx2Now, Fx2X.WORDS, Flags.EXTRA and every `when (fx)` below, plus stripLine and cardDeco (strip and cards) and the words in Fx2Bar.
  */
-enum class Fx2 { NONE, SUNSET, OCEAN, FOREST, NEON, SCIFI, AMOLED, TERMINAL, PAPER, LINEN, SAGE, SKY, LILAC, CHALK, CLAY, ROSE, INDIGO, MONO, WHITESPACE, ZEN, CARNIVAL, BAROQUE, VAPORWAVE }
+enum class Fx2 { NONE, SUNSET, OCEAN, FOREST, NEON, SCIFI, AMOLED, TERMINAL, PAPER, LINEN, SAGE, SKY, LILAC, CHALK, CLAY, ROSE, INDIGO, MONO, WHITESPACE, ZEN, CARNIVAL, BAROQUE, VAPORWAVE, HABITICA }
 
 val Fx2Now: Fx2 get() = if (TermuxOn) Fx2.NONE else when (ShopTheme) {
     "theme_sunset" -> Fx2.SUNSET
@@ -94,6 +97,7 @@ val Fx2Now: Fx2 get() = if (TermuxOn) Fx2.NONE else when (ShopTheme) {
     "theme_carnival" -> Fx2.CARNIVAL
     "theme_baroque" -> Fx2.BAROQUE
     "theme_vaporwave" -> Fx2.VAPORWAVE
+    "theme_habitica" -> Fx2.HABITICA
     else -> Fx2.NONE
 }
 
@@ -127,6 +131,7 @@ object Fx2X {
         Fx2.CARNIVAL to mapOf("locked" to "The show is over", "done" to "TA-DA!", "level" to "LEVEL UP!", "ring" to "until showtime"),
         Fx2.BAROQUE to mapOf("locked" to "Sealed", "done" to "Gilded", "level" to "ASCENDED", "ring" to "until the final act"),
         Fx2.VAPORWAVE to mapOf("locked" to "INSERT COIN", "done" to "C O M B O", "level" to "LEVEL UP", "ring" to "T I M E"),
+        Fx2.HABITICA to mapOf("locked" to "QUEST LOCKED", "done" to "+XP  +GOLD", "level" to "LEVEL UP!", "ring" to "QUESTING"),
     )
 
     fun word(key: String, default: String): String = if (!on) default else WORDS[Fx2Now]?.get(key) ?: default
@@ -355,6 +360,7 @@ fun Fx2Bar() {
         Fx2.CARNIVAL -> { l = "STEP RIGHT UP"; r = "ADMIT ONE" }
         Fx2.BAROQUE -> { l = "THE GRAND SALON"; r = date }
         Fx2.VAPORWAVE -> { l = "INSERT COIN"; r = "CREDIT 00" }
+        Fx2.HABITICA -> { l = "HP  |  XP  |  MP"; r = "HABITICA RPG" }
         else -> {
             Spacer(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding())
             return
@@ -363,7 +369,7 @@ fun Fx2Bar() {
     // v280: Whitespace has its strip back, in a very light tone: quiet words and one hairline
     val fam = fontOf(fx)
     val lc = when (fx) {
-        Fx2.NEON, Fx2.CARNIVAL, Fx2.VAPORWAVE -> lerp(c, Color.White, 0.5f)
+        Fx2.NEON, Fx2.CARNIVAL, Fx2.VAPORWAVE, Fx2.HABITICA -> lerp(c, Color.White, 0.5f)
         Fx2.WHITESPACE -> ink.copy(alpha = 0.45f)
         else -> c
     }
@@ -467,6 +473,10 @@ private fun DrawScope.cardDeco(fx: Fx2, c: Color, coin: Color, ink: Color) {
         }
         // v278: no half sun on cards any more (it sat on the buttons); just the gradient rule on the bottom edge
         Fx2.VAPORWAVE -> drawLine(Brush.horizontalGradient(listOf(c, ColorAccent), m, w - m), Offset(m, h - 1.dp.toPx()), Offset(w - m, h - 1.dp.toPx()), 2.dp.toPx())
+        Fx2.HABITICA -> {
+            drawRect(ColorCoin, Offset(0f, 0f), Size(5.dp.toPx(), h))
+            drawRect(c.copy(alpha = 0.35f), Offset(5.dp.toPx(), 0f), Size(2.dp.toPx(), h))
+        }
         else -> Unit
     }
 }
@@ -495,6 +505,7 @@ internal fun fx2Shape(): Shape = when (Fx2Now) {
     Fx2.CARNIVAL -> RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomEnd = 4.dp, bottomStart = 18.dp)
     Fx2.BAROQUE -> CutCornerShape(10.dp)
     Fx2.VAPORWAVE -> RoundedCornerShape(14.dp)
+    Fx2.HABITICA -> RoundedCornerShape(6.dp)
     Fx2.NONE -> RoundedCornerShape(12.dp)
 }
 
@@ -525,6 +536,7 @@ internal fun fx2Border(): BorderStroke? {
         Fx2.CARNIVAL -> BorderStroke(2.dp, ColorCoin)
         Fx2.BAROQUE -> BorderStroke(2.dp, c)
         Fx2.VAPORWAVE -> BorderStroke(1.5.dp, Brush.horizontalGradient(listOf(c, ColorAccent)))
+        Fx2.HABITICA -> BorderStroke(1.5.dp, c.copy(alpha = 0.75f))
         Fx2.NONE -> null
     }
 }
@@ -570,6 +582,7 @@ internal fun fx2ButtonShape(): Shape = when (Fx2Now) {
     Fx2.CARNIVAL -> RoundedCornerShape(12.dp)
     Fx2.BAROQUE -> CutCornerShape(8.dp)
     Fx2.VAPORWAVE -> CutCornerShape(topStart = 0.dp, topEnd = 10.dp, bottomEnd = 0.dp, bottomStart = 10.dp)
+    Fx2.HABITICA -> RoundedCornerShape(6.dp)
     Fx2.NONE -> RoundedCornerShape(6.dp)
 }
 
@@ -601,20 +614,34 @@ internal fun fx2ButtonBorder(): BorderStroke? {
         Fx2.CARNIVAL -> BorderStroke(2.dp, ColorCoin)
         Fx2.BAROQUE -> BorderStroke(1.dp, lerp(c, Color.White, 0.4f))
         Fx2.VAPORWAVE -> BorderStroke(1.dp, ColorAccent)
+        Fx2.HABITICA -> BorderStroke(1.5.dp, ColorCoin)
         else -> null
     }
 }
 
 // ── page background ──
 
-/** v254: a static page background for Sci-Fi (grid), Terminal (scan lines), Indigo (stars), Chalk (dust) and Paper (specks). */
+/** v254 -> v292: living animated page backgrounds for all Fx2 themes (falls back to static when anim_ambient_bg is off). */
 @Composable
 internal fun Modifier.fx2Background(): Modifier {
     val fx = Fx2Now
     if (!Fx2X.on) return this
     val c = ColorPrimary
     val ink = ColorText
+    val anim = AnimConfig.ambientBg && fx != Fx2.MONO && fx != Fx2.WHITESPACE && fx != Fx2.ZEN
+    val t = if (anim) rememberInfiniteTransition(label = "fx2bg").animateFloat(
+        0f, 1f,
+        infiniteRepeatable(tween(when (fx) {
+            Fx2.SKY, Fx2.OCEAN, Fx2.SUNSET -> 18000
+            Fx2.FOREST, Fx2.LILAC, Fx2.ROSE -> 14000
+            Fx2.INDIGO, Fx2.NEON, Fx2.BAROQUE -> 10000
+            else -> 8000
+        }, easing = LinearEasing)),
+        label = "fx2bgT",
+    ) else null
     return drawBehind {
+        val p = t?.value ?: 0f
+        val pulse = 0.65f + 0.35f * kotlin.math.sin(p * Math.PI * 2.0).toFloat()
         when (fx) {
             Fx2.SCIFI -> {
                 val st = 28.dp.toPx()
@@ -622,13 +649,22 @@ internal fun Modifier.fx2Background(): Modifier {
                 while (x < size.width) { drawLine(c.copy(alpha = 0.06f), Offset(x, 0f), Offset(x, size.height), 1f); x += st }
                 var y = 0f
                 while (y < size.height) { drawLine(c.copy(alpha = 0.06f), Offset(0f, y), Offset(size.width, y), 1f); y += st }
+                if (anim) {
+                    val sy = size.height * p
+                    drawRect(Brush.verticalGradient(listOf(Color.Transparent, c.copy(alpha = 0.09f), Color.Transparent), sy - 32f, sy + 32f), Offset(0f, sy - 32f), Size(size.width, 64f))
+                }
             }
             Fx2.TERMINAL -> {
                 var y = 0f
                 while (y < size.height) { drawLine(c.copy(alpha = 0.035f), Offset(0f, y), Offset(size.width, y), 1f); y += 4.dp.toPx() }
+                if (anim) {
+                    val sy = size.height * p
+                    drawRect(c.copy(alpha = 0.05f), Offset(0f, sy), Size(size.width, 14.dp.toPx()))
+                }
             }
             Fx2.INDIGO -> for (i in 0 until 40) {
-                drawCircle(c.copy(alpha = 0.25f), (1f + (i % 3) * 0.5f).dp.toPx(), Offset(size.width * (((i * 37) % 100) / 100f), size.height * (((i * 53 + 17) % 100) / 100f)))
+                val tw = if (anim) (0.12f + 0.25f * (0.5f + 0.5f * kotlin.math.sin((p + i * 0.13f) * Math.PI * 2.0).toFloat())) else 0.25f
+                drawCircle(c.copy(alpha = tw), (1f + (i % 3) * 0.5f).dp.toPx(), Offset(size.width * (((i * 37) % 100) / 100f), size.height * (((i * 53 + 17) % 100) / 100f)))
             }
             Fx2.CHALK -> for (i in 0 until 60) {
                 drawCircle(ink.copy(alpha = 0.06f), (0.8f + (i % 3) * 0.6f).dp.toPx(), Offset(size.width * (((i * 41 + 7) % 100) / 100f), size.height * (((i * 59 + 23) % 100) / 100f)))
@@ -638,14 +674,22 @@ internal fun Modifier.fx2Background(): Modifier {
             }
             // v262: a static background for the rest too
             Fx2.SUNSET -> {
-                drawRect(Brush.verticalGradient(listOf(Color.Transparent, ColorCoin.copy(alpha = 0.08f)), startY = size.height * 0.55f, endY = size.height), Offset(0f, size.height * 0.55f), Size(size.width, size.height * 0.45f))
-                drawCircle(ColorCoin.copy(alpha = 0.07f), 90.dp.toPx(), Offset(size.width * 0.5f, size.height))
+                drawRect(Brush.verticalGradient(listOf(Color.Transparent, ColorCoin.copy(alpha = 0.08f * pulse)), startY = size.height * 0.55f, endY = size.height), Offset(0f, size.height * 0.55f), Size(size.width, size.height * 0.45f))
+                drawCircle(ColorCoin.copy(alpha = 0.08f * pulse), (86f + 10f * pulse).dp.toPx(), Offset(size.width * 0.5f, size.height))
             }
-            Fx2.OCEAN -> drawRect(Brush.verticalGradient(listOf(Color.Transparent, c.copy(alpha = 0.10f)), startY = size.height * 0.4f, endY = size.height), Offset(0f, size.height * 0.4f), Size(size.width, size.height * 0.6f))
+            Fx2.OCEAN -> {
+                drawRect(Brush.verticalGradient(listOf(Color.Transparent, c.copy(alpha = 0.10f)), startY = size.height * 0.4f, endY = size.height), Offset(0f, size.height * 0.4f), Size(size.width, size.height * 0.6f))
+                if (anim) for (i in 0 until 10) {
+                    val bx = size.width * (((i * 41 + 9) % 100) / 100f)
+                    val by = size.height * (1f - ((p + i / 10f) % 1f))
+                    drawCircle(c.copy(alpha = 0.14f), (2.5f + i % 3).dp.toPx(), Offset(bx, by), style = Stroke(1.dp.toPx()))
+                }
+            }
             Fx2.FOREST -> for (i in 0 until 14) leaf(Offset(size.width * (((i * 37 + 11) % 100) / 100f), size.height * (((i * 53 + 7) % 100) / 100f)), ((i * 47) % 360).toFloat(), 22.dp.toPx(), 8.dp.toPx(), c.copy(alpha = 0.07f))
             Fx2.NEON -> {
-                drawRect(Brush.horizontalGradient(listOf(c.copy(alpha = 0.10f), Color.Transparent), 0f, 40.dp.toPx()), Offset(0f, 0f), Size(40.dp.toPx(), size.height))
-                drawRect(Brush.horizontalGradient(listOf(Color.Transparent, c.copy(alpha = 0.10f)), size.width - 40.dp.toPx(), size.width), Offset(size.width - 40.dp.toPx(), 0f), Size(40.dp.toPx(), size.height))
+                val na = 0.08f + 0.06f * pulse
+                drawRect(Brush.horizontalGradient(listOf(c.copy(alpha = na), Color.Transparent), 0f, 44.dp.toPx()), Offset(0f, 0f), Size(44.dp.toPx(), size.height))
+                drawRect(Brush.horizontalGradient(listOf(Color.Transparent, c.copy(alpha = na)), size.width - 44.dp.toPx(), size.width), Offset(size.width - 44.dp.toPx(), 0f), Size(44.dp.toPx(), size.height))
             }
             Fx2.LINEN -> {
                 val st = 6.dp.toPx()
@@ -673,17 +717,32 @@ internal fun Modifier.fx2Background(): Modifier {
                 drawCircle(c.copy(alpha = 0.05f), 90.dp.toPx(), Offset(size.width * 0.9f, size.height * 0.55f))
                 drawCircle(c.copy(alpha = 0.06f), 120.dp.toPx(), Offset(size.width * 0.3f, size.height * 0.95f))
             }
-            Fx2.ROSE -> for (i in 0 until 10) heart(Offset(size.width * (((i * 43 + 9) % 100) / 100f), size.height * (((i * 61 + 23) % 100) / 100f)), (6 + i % 3 * 2).dp.toPx(), c.copy(alpha = 0.07f))
+            Fx2.ROSE -> for (i in 0 until 10) {
+                val hy = if (anim) size.height * (1f - ((p + i / 10f) % 1f)) else size.height * (((i * 61 + 23) % 100) / 100f)
+                heart(Offset(size.width * (((i * 43 + 9) % 100) / 100f), hy), (6 + i % 3 * 2).dp.toPx(), c.copy(alpha = 0.08f))
+            }
             // v277: Mono and Whitespace keep the page plain on purpose
             // v278: Zen page is plain now (the big ring and dust got in the way of the content)
             Fx2.ZEN -> Unit
             Fx2.CARNIVAL -> {
                 val set = carnivalSet(c, ColorCoin)
-                for (i in 0 until 34) drawCircle(set[i % set.size].copy(alpha = 0.13f), (2f + (i % 3)).dp.toPx(), Offset(size.width * (((i * 37 + 11) % 100) / 100f), size.height * (((i * 53 + 7) % 100) / 100f)))
+                for (i in 0 until 34) {
+                    val cy = if (anim) size.height * ((p + ((i * 53 + 7) % 100) / 100f) % 1f) else size.height * (((i * 53 + 7) % 100) / 100f)
+                    drawCircle(set[i % set.size].copy(alpha = 0.14f), (2f + (i % 3)).dp.toPx(), Offset(size.width * (((i * 37 + 11) % 100) / 100f), cy))
+                }
             }
             Fx2.BAROQUE -> drawCircle(Brush.radialGradient(listOf(c.copy(alpha = 0.12f), Color.Transparent), Offset(size.width / 2, 0f), 280.dp.toPx()), 280.dp.toPx(), Offset(size.width / 2, 0f))
             // v278: no sun grid behind pages (it fought the content); a soft pink glow at the very bottom only. The sun grid stays on level up and the lock page
             Fx2.VAPORWAVE -> drawRect(Brush.verticalGradient(listOf(Color.Transparent, c.copy(alpha = 0.10f)), startY = size.height * 0.88f, endY = size.height), Offset(0f, size.height * 0.88f), Size(size.width, size.height * 0.12f))
+            Fx2.HABITICA -> {
+                val st = 32.dp.toPx()
+                var y = 0f
+                while (y < size.height) { drawLine(c.copy(alpha = 0.045f), Offset(0f, y), Offset(size.width, y), 1f); y += st }
+                if (anim) for (i in 0 until 8) {
+                    val sy = size.height * (1f - ((p + i / 8f) % 1f))
+                    drawCircle(ColorCoin.copy(alpha = 0.18f), 2.dp.toPx(), Offset(size.width * (((i * 37 + 13) % 100) / 100f), sy))
+                }
+            }
             else -> Unit
         }
     }
@@ -882,6 +941,12 @@ internal fun Fx2FocusRing(frac: Float, left: String) {
                     drawPath(hexPath(e, 9.dp.toPx()), coin)
                     drawPath(hexPath(e, 5.dp.toPx()), ColorBg)
                 }
+                Fx2.HABITICA -> {
+                    arc(Color(0xFFFF6165).copy(alpha = 0.28f), 360f, 3.dp.toPx(), rr = r + 7.dp.toPx())
+                    arc(coin.copy(alpha = 0.18f), 360f, 9.dp.toPx())
+                    arc(coin, sweep, 9.dp.toPx())
+                    arc(Color(0xFF50B5E9), sweep, 3.dp.toPx(), rr = r - 9.dp.toPx())
+                }
                 Fx2.VAPORWAVE -> {
                     val sweepBrush = Brush.sweepGradient(listOf(c, ColorAccent, c), ctr)
                     arc(c.copy(alpha = 0.15f), 360f, 10.dp.toPx())
@@ -897,7 +962,7 @@ internal fun Fx2FocusRing(frac: Float, left: String) {
             val txt = if (fx == Fx2.TERMINAL) "> $left" else left
             val fs = when (fx) {
                 Fx2.TERMINAL, Fx2.SCIFI -> 40.sp
-                Fx2.MONO, Fx2.VAPORWAVE -> 44.sp
+                Fx2.MONO, Fx2.VAPORWAVE, Fx2.HABITICA -> 44.sp
                 Fx2.PAPER, Fx2.ROSE, Fx2.CHALK, Fx2.ZEN, Fx2.BAROQUE -> 50.sp
                 else -> 54.sp
             }
@@ -1070,6 +1135,14 @@ internal fun Fx2XpBar(fraction: Float, xp: Int) {
                 if (f > 0f) drawRoundRect(Brush.horizontalGradient(listOf(lerp(c, Color.Black, 0.35f), c, lerp(c, Color.White, 0.5f)), 0f, maxOf(fw, 1f)), Offset(2.dp.toPx(), y + 2.dp.toPx()), Size(maxOf(fw - 4.dp.toPx(), 0f), bh - 4.dp.toPx()), CornerRadius(1.dp.toPx()))
                 for (k in 1..3) fx2Diamond(Offset(w * k / 4f, mid), 3.dp.toPx(), if (f >= k / 4f) ColorBg.copy(alpha = 0.8f) else c.copy(alpha = 0.6f))
                 fx2Diamond(Offset(fw.coerceIn(8.dp.toPx(), w - 8.dp.toPx()), mid), 8.dp.toPx(), coin)
+            }
+            Fx2.HABITICA -> {
+                val segs = 12; val gap = 2.dp.toPx(); val sw = (w - gap * (segs - 1)) / segs
+                val lit = (f * segs).roundToInt()
+                for (i in 0 until segs) {
+                    val sx = i * (sw + gap)
+                    drawRect(if (i < lit) Color(0xFFFFBE5D) else c.copy(alpha = 0.22f), Offset(sx, 0f), Size(sw, h))
+                }
             }
             Fx2.VAPORWAVE -> {
                 val bh = 10.dp.toPx(); val y = mid - bh / 2
@@ -1298,6 +1371,7 @@ private fun Fx2QuestPop(fx: Fx2, coins: Int, xp: Int) {
         Fx2.CARNIVAL -> PopLook(RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomEnd = 4.dp, bottomStart = 18.dp), 3.dp, ColorCoin, c, Color.White, ColorCoin, rot = -3f)
         Fx2.BAROQUE -> PopLook(CutCornerShape(8.dp), 2.dp, c, bg, c, ink)
         Fx2.VAPORWAVE -> PopLook(CutCornerShape(topStart = 0.dp, topEnd = 10.dp, bottomEnd = 0.dp, bottomStart = 10.dp), 1.5.dp, ColorAccent, bg, lerp(c, Color.White, 0.4f), ColorAccent, mono = true)
+        Fx2.HABITICA -> PopLook(RoundedCornerShape(6.dp), 2.dp, ColorCoin, Color(0xFF432874), Color(0xFFFFBE5D), Color.White)
         Fx2.NONE -> return
     }
     val word = Fx2X.word("done", "Quest done")

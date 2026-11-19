@@ -170,7 +170,7 @@ internal fun Modifier.fxFrame(): Modifier {
     val shape = fxShape()
     val extras = ThemeExtras.on
     val tilt = remember { ((0..100).random() - 50) / 60f }
-    val scan = if (fx == Fx.SYSTEM) rememberInfiniteTransition(label = "scan").animateFloat(
+    val scan = if (fx == Fx.SYSTEM && AnimConfig.ambientBg) rememberInfiniteTransition(label = "scan").animateFloat(
         0f, 1f, infiniteRepeatable(tween(7000, easing = LinearEasing)), label = "scanY") else null
     val base: Modifier = when (fx) {
         Fx.SYSTEM -> this.shadow(5.dp, shape, ambientColor = c.copy(alpha = 0.55f), spotColor = c.copy(alpha = 0.55f))
@@ -236,32 +236,88 @@ internal fun Modifier.fxBackground(): Modifier {
     if (fx == Fx.NONE) return fx2Background()
     val c = ColorPrimary
     val ink = ColorText
-    val t = if (fx == Fx.HASHIRA || fx == Fx.MONARCH) rememberInfiniteTransition(label = "bg").animateFloat(
-        0f, 1f, infiniteRepeatable(tween(if (fx == Fx.HASHIRA) 20000 else 9000, easing = LinearEasing)), label = "bgT") else null
+    val anim = AnimConfig.ambientBg
+    val t = if (anim && fx != Fx.NONE) rememberInfiniteTransition(label = "bg").animateFloat(
+        0f, 1f, infiniteRepeatable(tween(when (fx) {
+            Fx.HASHIRA -> 20000
+            Fx.GOTHIC, Fx.BLUEPRINT -> 16000
+            Fx.NINJA, Fx.GUILD -> 14000
+            Fx.PIXEL -> 6000
+            else -> 9000
+        }, easing = LinearEasing)), label = "bgT") else null
     return drawBehind {
+        val p = t?.value ?: 0f
         when (fx) {
-            Fx.SYSTEM -> grid(c.copy(alpha = 0.06f), 28.dp.toPx(), 1000, 0.06f)
-            Fx.BLUEPRINT -> grid(ink.copy(alpha = 0.07f), 20.dp.toPx(), 5, 0.15f)
+            Fx.SYSTEM -> {
+                grid(c.copy(alpha = 0.06f), 28.dp.toPx(), 1000, 0.06f)
+                if (anim) {
+                    val sy = size.height * p
+                    drawRect(Brush.verticalGradient(listOf(Color.Transparent, c.copy(alpha = 0.08f), Color.Transparent), sy - 36f, sy + 36f),
+                        Offset(0f, sy - 36f), Size(size.width, 72f))
+                }
+            }
+            Fx.BLUEPRINT -> {
+                grid(ink.copy(alpha = 0.07f), 20.dp.toPx(), 5, 0.15f)
+                if (anim) {
+                    val pulse = 0.08f + 0.07f * kotlin.math.sin(p * Math.PI * 2.0).toFloat()
+                    drawCircle(ink.copy(alpha = pulse), size.minDimension * 0.28f, Offset(size.width * 0.85f, size.height * 0.18f), style = Stroke(1.dp.toPx()))
+                }
+            }
             Fx.HANDHELD -> {
                 val pts = ArrayList<Offset>()
                 val step = 8.dp.toPx()
                 var y = step / 2
                 while (y < size.height) { var x = step / 2; while (x < size.width) { pts.add(Offset(x, y)); x += step }; y += step }
                 drawPoints(pts, PointMode.Points, ink.copy(alpha = 0.10f), 1.5f)
+                if (anim) {
+                    val sy = size.height * p
+                    drawRect(ink.copy(alpha = 0.04f), Offset(0f, sy), Size(size.width, 18.dp.toPx()))
+                }
             }
             Fx.HASHIRA -> {
-                val p = t?.value ?: 0f
                 val r1 = size.minDimension * 0.7f; val c1 = Offset(size.width * (0.2f + 0.6f * p), size.height * 0.30f)
                 val r2 = size.minDimension * 0.8f; val c2 = Offset(size.width * (0.8f - 0.6f * p), size.height * 0.75f)
                 drawCircle(Brush.radialGradient(listOf(c.copy(alpha = 0.18f), Color.Transparent), c1, r1), r1, c1)
                 drawCircle(Brush.radialGradient(listOf(c.copy(alpha = 0.12f), Color.Transparent), c2, r2), r2, c2)
             }
             Fx.MONARCH -> {
-                val p = t?.value ?: 0f
-                for (i in 0 until 14) {
+                for (i in 0 until 18) {
                     val x = size.width * (((i * 37) % 100) / 100f)
-                    val y = size.height * (1f - ((p + i / 14f) % 1f))
-                    drawCircle(c.copy(alpha = 0.35f), 1.5.dp.toPx(), Offset(x, y))
+                    val y = size.height * (1f - ((p + i / 18f) % 1f))
+                    drawCircle(c.copy(alpha = 0.35f), (1.2f + (i % 3) * 0.6f).dp.toPx(), Offset(x, y))
+                }
+            }
+            Fx.NINJA -> if (anim) {
+                for (i in 0 until 12) {
+                    val x = size.width * (((i * 43 + 11) % 100) / 100f + 0.05f * kotlin.math.sin((p + i * 0.1f) * Math.PI * 2.0).toFloat())
+                    val y = size.height * ((p + i / 12f) % 1f)
+                    drawCircle(c.copy(alpha = 0.12f), (2f + (i % 2)).dp.toPx(), Offset(x, y))
+                }
+            }
+            Fx.GOTHIC -> if (anim) {
+                val ctr = Offset(size.width * 0.5f, size.height * 0.35f)
+                val r = size.minDimension * 0.42f
+                drawCircle(ink.copy(alpha = 0.04f), r, ctr, style = Stroke(1.dp.toPx()))
+                val ang = p * Math.PI * 2.0
+                drawCircle(c.copy(alpha = 0.22f), 3.dp.toPx(), Offset(ctr.x + (r * kotlin.math.cos(ang)).toFloat(), ctr.y + (r * kotlin.math.sin(ang)).toFloat()))
+            }
+            Fx.GUILD -> if (anim) {
+                val warm = Color(0xFFB8862B)
+                for (i in 0 until 10) {
+                    val x = size.width * (((i * 53 + 7) % 100) / 100f)
+                    val y = size.height * (1f - ((p + i / 10f) % 1f))
+                    drawCircle(warm.copy(alpha = 0.14f), 2.dp.toPx(), Offset(x, y))
+                }
+            }
+            Fx.PIXEL -> if (anim) {
+                val stepP = ((p * 8f).toInt() / 8f)
+                for (i in 0 until 14) {
+                    val on = ((i + (stepP * 8).toInt()) % 3 == 0)
+                    if (on) {
+                        val x = size.width * (((i * 41 + 19) % 100) / 100f)
+                        val y = size.height * (((i * 67 + 13) % 100) / 100f)
+                        drawRect(c.copy(alpha = 0.18f), Offset(x, y), Size(4.dp.toPx(), 4.dp.toPx()))
+                    }
                 }
             }
             else -> Unit

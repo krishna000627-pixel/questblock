@@ -3,6 +3,14 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("292.0.0", "Animations, living themes, and full sound engine",
+        listOf(
+            "Global animation engine (all toggleable in Flags): screen transitions, staggered card entrances, spring press physics, rolling coin/streak counters, XP bar shimmer, floating empty states, and back-to-back Quest Combo popups",
+            "All 31+ themes redesigned with living animated backgrounds (HUD radar sweep, rising embers, drifting sakura/leaves/petals, twinkling stars, underwater bubbles, pulsing neon, CRT scanlines, and OLED-safe edge glow)",
+            "New ThemeSounds engine: 18 theme-matched UI & animation sounds (tap, tab, toggle, open/close, swipe, rising hold-to-unlock ticks, unlock chord, denied buzz, undo sweep, combo, streak, theme switch) plus 4 synthesized Focus ambient soundscapes (Cyber Hum, Night Forest, Library Hearth, Deep Space)",
+            "Hold-to-unlock radial charge halo & animation-synced haptics on the lock screen, plus an interactive Animation & Sound Studio in Flags > Theme effects",
+            "Code: ui/AnimEngine.kt, util/ThemeSounds.kt, util/Sounds.kt, util/Haptics.kt, ui/ThemeFx.kt, ui/ThemeFx2.kt, ui/MainScreen.kt, ui/BlockActivity.kt, data/Flags.kt. Not yet compiled in CI",
+        )),
     VersionEntry("291.0.0", "Chalk & Charcoal is the first theme",
         listOf(
             "A new install starts on the Chalk & Charcoal theme: it is already owned and equipped, and its daily rent is waived until you equip another theme",

@@ -269,6 +269,15 @@ class GameRepository @Inject constructor(
     }
 
     // ── v73: +5 min of fun time, and undo for a finished quest ──
+    suspend fun spendCoins(amount: Int, reason: String, detail: String = ""): Boolean = db.withTransaction {
+        if (amount <= 0) return@withTransaction true
+        val p = playerDao.get() ?: Player()
+        if (p.coins < amount) return@withTransaction false
+        playerDao.upsert(p.copy(coins = p.coins - amount))
+        logCoin(-amount, reason, detail)
+        true
+    }
+
     suspend fun buyFunExtension(): Boolean = db.withTransaction {
         val p = playerDao.get() ?: Player()
         if (p.coins < FUN_EXTEND_COST) return@withTransaction false

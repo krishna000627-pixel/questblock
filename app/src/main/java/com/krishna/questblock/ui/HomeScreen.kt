@@ -101,7 +101,8 @@ class HomeViewModel @Inject constructor(
 }
 
 @Composable
-fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenHub: () -> Unit, onOpenChapters: () -> Unit = {}, onOpenAttendance: () -> Unit = {}, onOpenHomework: () -> Unit = {}, vm: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenHub: () -> Unit, onOpenChapters: () -> Unit = {}, onOpenAttendance: () -> Unit = {}, onOpenHomework: () -> Unit = {},
+    onOpenAdopt: () -> Unit = {}, vm: HomeViewModel = hiltViewModel()) {
     val player       by vm.player.collectAsStateWithLifecycle()
     val tasks        by vm.tasks.collectAsStateWithLifecycle()
     val achievements by vm.achievements.collectAsStateWithLifecycle()
@@ -174,6 +175,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
 
         // ── Hero card ──────────────────────────────────────────────────────
         item { HeroCard(player = player, doneToday = shownDone, total = shownTotal, hideCoins = vm.prefs.optHideCoins, onCoinsClick = onOpenShop, onAddQuest = { vm.addSuggestion(it) }) }
+        if (com.krishna.questblock.data.Flags.get("adopt")) item { CompanionMiniCard(onOpenAdopt = onOpenAdopt) }
 
         // ── Daily login bonus ──────────────────────────────────────────────
         if (vm.loginBonus > 0) {
@@ -403,7 +405,10 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Bool
                         Text("Lv. $level", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = ColorText)
                         Text("$xp / 100 XP", style = MaterialTheme.typography.labelMedium, color = ColorMuted)
                     }
-                    if (AnyFx.on) FxXpBar(xpAnim, xp) else GlowBar(xpAnim, height = 10.dp)
+                    Box(Modifier.fillMaxWidth()) {
+                        if (AnyFx.on) FxXpBar(xpAnim, xp) else GlowBar(xpAnim, height = 10.dp)
+                        XpShimmerOverlay(xpAnim, ColorPrimary, Modifier.matchParentSize())
+                    }
                     Text("${player.xp} XP total", style = MaterialTheme.typography.labelSmall, color = ColorMuted)
                     if (player.goal.isNotBlank()) {
                         Text("\uD83C\uDFAF ${player.goal}", style = MaterialTheme.typography.labelSmall, color = ColorPrimary,
@@ -413,8 +418,18 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Bool
             }
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatTile("\uD83E\uDE99", if (hideCoins) "???" else "${player.coins}", "Coins", Modifier.weight(1f).clickable { onCoinsClick() })
-                StatTile("\uD83D\uDD25", "${player.streak}d", "Streak", Modifier.weight(1f))
+                val animCoins by androidx.compose.animation.core.animateIntAsState(
+                    targetValue = player.coins,
+                    animationSpec = if (AnimConfig.counters) androidx.compose.animation.core.tween(500) else androidx.compose.animation.core.tween(0),
+                    label = "home_coins",
+                )
+                val animStreak by androidx.compose.animation.core.animateIntAsState(
+                    targetValue = player.streak,
+                    animationSpec = if (AnimConfig.counters) androidx.compose.animation.core.tween(450) else androidx.compose.animation.core.tween(0),
+                    label = "home_streak",
+                )
+                StatTile("\uD83E\uDE99", if (hideCoins) "???" else "$animCoins", "Coins", Modifier.weight(1f).bounceClick(onClick = onCoinsClick))
+                StatTile("\uD83D\uDD25", "${animStreak}d", "Streak", Modifier.weight(1f))
                 if (com.krishna.questblock.data.Flags.get("ui_daily_ring")) DailyRingTile(doneToday, total, Modifier.weight(1f)) else StatTile("\u2705", "$doneToday/$total", "Quests", Modifier.weight(1f))
             }
 

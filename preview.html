@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuestBlock v292 Preview — Habitica RPG &amp; Pixel Companions</title>
+  <style>
+    :root {
+      --bg: #edeaf6;
+      --purple-dark: #432874;
+      --purple: #6133b4;
+      --card: #ffffff;
+      --border: #d2cbe6;
+      --text: #34313a;
+      --muted: #686274;
+      --hp: #ff6165;
+      --xp: #ffbe5d;
+      --mp: #50b5e9;
+      --gold: #ffa623;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding-bottom: 64px;
+    }
+    .hud {
+      background: var(--purple-dark);
+      color: #fff;
+      padding: 14px 18px;
+      border-bottom: 3px solid var(--gold);
+    }
+    .hud-inner { max-width: 980px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+    .burger {
+      width: 34px; height: 34px; border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.28);
+      display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 0 7px;
+      background: rgba(255,255,255,0.08);
+    }
+    .burger span { height: 2px; background: #fff; display: block; border-radius: 2px; }
+    .bars { display: flex; gap: 12px; flex-wrap: wrap; flex: 1; }
+    .bar-box { min-width: 110px; flex: 1; }
+    .bar-lbl { font-size: 10px; font-weight: 800; margin-bottom: 3px; letter-spacing: 0.4px; }
+    .bar-track { height: 7px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden; }
+    .bar-fill { height: 100%; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 18px 16px; display: grid; grid-template-columns: 240px 1fr; gap: 18px; }
+    @media (max-width: 720px) { .wrap { grid-template-columns: 1fr; } }
+    .drawer {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      height: fit-content;
+    }
+    .drawer-head { background: var(--purple-dark); color: #fff; padding: 14px; border-bottom: 2px solid var(--gold); }
+    .drawer-item { padding: 9px 14px; font-size: 13px; font-weight: 600; border-bottom: 1px solid #f0edf7; color: var(--text); }
+    .drawer-item.active { background: rgba(97,51,180,0.12); color: var(--purple); font-weight: 800; }
+    h2 { font-size: 15px; color: var(--purple-dark); margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.6px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .rpg-card {
+      background: var(--card);
+      border: 1.5px solid rgba(97,51,180,0.45);
+      border-left: 6px solid var(--gold);
+      border-radius: 6px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    canvas.px { image-rendering: pixelated; width: 56px; height: 56px; flex-shrink: 0; }
+    .title { font-weight: 800; font-size: 14px; }
+    .evo { font-size: 11px; color: var(--purple); font-weight: 600; margin: 3px 0; }
+    .cost { display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 4px; background: #fff3d6; color: #945d00; border: 1px solid var(--gold); }
+    .bottom-bar {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      background: #fff; border-top: 2px solid var(--purple);
+      display: flex; justify-content: space-around; padding: 8px 6px;
+      font-size: 11px; font-weight: 700; color: var(--muted);
+    }
+    .bottom-bar .active { color: var(--purple); }
+  </style>
+</head>
+<body>
+  <div class="hud">
+    <div class="hud-inner">
+      <div class="burger" title="3-line Side Menu"><span></span><span></span><span></span></div>
+      <div>
+        <div style="font-weight:900;font-size:16px;">Habitica RPG Mode</div>
+        <div style="font-size:11px;color:#d8ccf0;">3-Line Drawer + Settings Bottom Bar</div>
+      </div>
+      <div class="bars">
+        <div class="bar-box"><div class="bar-lbl">HP 50 / 50</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--hp)"></div></div></div>
+        <div class="bar-box"><div class="bar-lbl">XP 64 / 100</div><div class="bar-track"><div class="bar-fill" style="width:64%;background:var(--xp)"></div></div></div>
+        <div class="bar-box"><div class="bar-lbl">MP 35 / 50</div><div class="bar-track"><div class="bar-fill" style="width:70%;background:var(--mp)"></div></div></div>
+      </div>
+      <div style="font-weight:900;color:var(--gold);font-size:13px;">LV 4 · 120 G</div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="drawer">
+      <div class="drawer-head">
+        <div style="font-weight:800;font-size:14px;">3-Line Side Menu</div>
+        <div style="font-size:11px;color:#ffbe5d;">Ember Kit · Lv. 4</div>
+      </div>
+      <div class="drawer-item active">Tasks &amp; Quests</div>
+      <div class="drawer-item">Tavern Home</div>
+      <div class="drawer-item">Focus Quest</div>
+      <div class="drawer-item">App Vault</div>
+      <div class="drawer-item">Adopt &amp; Stables</div>
+      <div class="drawer-item">Market &amp; Shop</div>
+      <div class="drawer-item">Hero Profile</div>
+      <div class="drawer-item">Stats &amp; Ranks</div>
+      <div class="drawer-item">Player Hub</div>
+      <div class="drawer-item">Settings</div>
+    </div>
+
+    <div>
+      <h2>Animated 16x16 Pixel-Art Companions</h2>
+      <div class="grid" id="pets"></div>
+    </div>
+  </div>
+
+  <div class="bottom-bar">
+    <span>Home</span>
+    <span>Quests</span>
+    <span>Focus</span>
+    <span>Vault</span>
+    <span class="active">Settings</span>
+  </div>
+
+  <script>
+    const SPRITES = {
+      kitsune: { name: "Kitsune Ember", evo: "Ember Kit -> Nine-Tail Spark -> Solar Kitsune", cost: "FREE STARTER", pal: { O:"#2A140E", M:"#FF8243", L:"#FFE6C7", W:"#FFFFFF", E:"#1A1423" }, grid: ["................","..OO........OO..",".OMMO......OMMO.",".OMLMO....OMLMO.",".OMMMOOOOOOMMMO.","..OMMMMMMMMMMO..","..OMMWMMMMWMMO..","..OMMEMMMMEMMO..","..OMLLLLLLLLMO..","...OLLLOOLLLO...","...OMMMMMMMMO...","..OMMLLLLLLMMO..","..OMMLLLLLLMMO..","...OOMMMMMMOO...","....OO....OO....","................"] },
+      wolf:    { name: "Shadow Wolf",   evo: "Shadow Pup -> Dusk Fang -> Monarch Hound",    cost: "25 GOLD",      pal: { O:"#161122", M:"#5D647B", L:"#B8C0D9", W:"#EAF0FF", E:"#B388FF" }, grid: ["................","..OO........OO..",".OMMO......OMMO.",".OMMMO....OMMMO.",".OMMMMOOOOMMMMO.","..OMMMMMMMMMMO..","..OMMEMMMMEMMO..","..OMMWMMMMWMMO..","..OMLLLLLLLLMO..","...OLLLOOLLLO...","...OMMMMMMMMO...","..OMMMLLLLMMMO..","..OMMMLLLLMMMO..","...OOMMMMMMOO...","....OO....OO....","................"] },
+      owl:     { name: "Owl Scholar",   evo: "Owlet -> Arcane Owl -> Grand Archivist",      cost: "20 GOLD",      pal: { O:"#1A1423", M:"#7B563E", L:"#E8D5B7", W:"#FFC857", E:"#1A1423" }, grid: ["................","...OO......OO...","..OMMO....OMMO..","..OMMMOOOOMMMO..","..OMMMMMMMMMMO..",".OMMWWMMMMWWMMO.",".OMWEWMMMMWEWMO.",".OMMWWMOOOWWMMO.","..OMMMMWWMMMMO..","..OMMLLLLLLMMO..","..OMLMLMLMLMLO..","..OMMLLLLLLMMO..","...OMMMMMMMMO...","...OOWO..OWOO...","................","................"] },
+      cat:     { name: "Cyber Cat",     evo: "Pixel Kitty -> Neon Lynx -> Quantum Panther", cost: "25 GOLD",      pal: { O:"#0A101E", M:"#28324A", L:"#00E5FF", W:"#E0FBFF", E:"#00E5FF" }, grid: ["................","..OO........OO..",".OLLO......OLLO.",".OMMMO....OMMMO.",".OMMMMOOOOMMMMO.","..OMMMMMMMMMMO..","..OMLEMMMMELMO..","..OMMMMMMMMMMO..","..OMMMWOOOWMMO..","...OMMMMMMMMO...","...OMMLLLLMMO...","..OMMMLLLLMMMO..","...OMMMMMMMMO...","....OO....OO....","................","................"] },
+      dragon:  { name: "Jade Dragon",   evo: "Jade Hatchling -> Mist Wyrm -> Celestial",    cost: "40 GOLD",      pal: { O:"#0E2416", M:"#4EA864", L:"#FFD166", W:"#DFF7E2", E:"#1A1423" }, grid: ["................","..LL........LL..","..OMMO....OMMO..","..OMMMOOOOMMMO..",".OOMMMMMMMMMMOO.",".OMMWEMMMMEWMMO.","..OMMMMMMMMMMO..","..OMLLLLLLLLMO..","...OMMMMMMMMO...","..OMMMWWWWMMMO..",".OMMMMWWWWMMMMO.","..OMMMWWWWMMMO..","...OOMMMMMMOO...","....OO....OO....","................","................"] },
+      frog:    { name: "Zen Frog",      evo: "Pond Tadpole -> Lotus Toad -> Sage Guardian", cost: "15 GOLD",      pal: { O:"#172819", M:"#6B9E6E", L:"#D8F3DC", W:"#FF9EBB", E:"#1A1423" }, grid: ["................","...OOO....OOO...","..OWEMO..OMEWO..","..OMMMOOOOOMMO..",".OMMMMMMMMMMMMO.",".OMWMMMMMMMMWMO.",".OMMMMMMMMMMMMO.","..OMLLLLLLLLMO..","..OMLLLLLLLLMO..","...OMMMMMMMMO...","..OMMLLLLLLMMO..","..OOMMMMMMMMOO..","...OO......OO...","................","................","................"] }
+    };
+    const root = document.getElementById("pets");
+    const canvases = [];
+    Object.values(SPRITES).forEach(s => {
+      const card = document.createElement("div");
+      card.className = "rpg-card";
+      const cv = document.createElement("canvas");
+      cv.width = 16; cv.height = 16; cv.className = "px";
+      canvases.push({ cv, s });
+      const info = document.createElement("div");
+      info.innerHTML = `<div class="title">${s.name}</div><div class="evo">${s.evo}</div><span class="cost">${s.cost}</span>`;
+      card.appendChild(cv); card.appendChild(info); root.appendChild(card);
+    });
+    let tick = 0;
+    function drawAll() {
+      tick++;
+      const bob = (tick % 4 < 2) ? 0 : -1;
+      const blink = (tick % 12 === 0);
+      canvases.forEach(({ cv, s }) => {
+        const ctx = cv.getContext("2d");
+        ctx.clearRect(0, 0, 16, 16);
+        for (let r = 0; r < 16; r++) {
+          for (let c = 0; c < 16; c++) {
+            const ch = s.grid[r][c];
+            if (ch === ".") continue;
+            const col = (blink && ch === "E") ? s.pal.M : s.pal[ch];
+            ctx.fillStyle = col;
+            ctx.fillRect(c, Math.max(0, r + bob), 1, 1);
+          }
+        }
+      });
+    }
+    drawAll();
+    setInterval(drawAll, 320);
+  </script>
+</body>
+</html>

@@ -1,5 +1,13 @@
 package com.krishna.questblock.ui
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -29,6 +37,7 @@ object UndoBus {
 class UndoViewModel @javax.inject.Inject constructor(private val repo: com.krishna.questblock.data.GameRepository) : androidx.lifecycle.ViewModel() {
     fun undo(u: com.krishna.questblock.data.GameRepository.CompletionUndo) =
         viewModelScope.launch { repo.undoCompletion(u) }
+    val player = repo.player
     val theme = repo.player.map { it.equippedTheme }
 }
 
@@ -40,6 +49,14 @@ private val NAV_ITEMS = listOf(
     NavItem("focus",   "Focus",   Icons.Default.Bolt),
     NavItem("vault",   "Vault",   Icons.Default.Lock),
     NavItem("profile", "Profile", Icons.Default.Person),
+)
+
+private val HABITICA_NAV_ITEMS = listOf(
+    NavItem("home",     "Home",     Icons.Default.Home),
+    NavItem("quests",   "Quests",   Icons.Default.CheckBox),
+    NavItem("focus",    "Focus",    Icons.Default.Bolt),
+    NavItem("vault",    "Vault",    Icons.Default.Lock),
+    NavItem("settings", "Settings", Icons.Default.Settings),
 )
 private val TAB_ROUTES = NAV_ITEMS.map { it.route }
 
@@ -98,6 +115,10 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
     LaunchedEffect(strict, route) { if (strict && route != null && route != "focus") navController.goTab("focus") }
     androidx.activity.compose.BackHandler(enabled = strict) { }
     val snack = remember { SnackbarHostState() }
+    val playerNow by undoVm.player.collectAsState(initial = com.krishna.questblock.data.Player())
+    val isHabitica = Fx2Now == Fx2.HABITICA && Fx2X.on
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val drawerScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         UndoBus.events.collect { u ->
             val r = snack.showSnackbar(ThemeExtras.word("done", "Quest done"), actionLabel = "Undo", duration = SnackbarDuration.Long)
@@ -105,40 +126,71 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
         }
     }
 
-    Scaffold(
-        containerColor = ColorBg,
-        topBar = { if (FxOn) androidx.compose.foundation.layout.Column {
-            FxBar()
-            if (SystemOn) SystemHost(strict) { navController.goTab("quests") }
-            if (ThemeExtras.on) ThemeExtrasHost()
-        } else if (Fx2X.on) androidx.compose.foundation.layout.Column {
-            Fx2Bar()
-            Fx2Host()
-        } },
-        snackbarHost = { SnackbarHost(snack) },
-        bottomBar = {
-            if (!strict) NavigationBar(
-                containerColor = ColorSurface,
-                modifier = Modifier.glowLine(),
-            ) {
-                NAV_ITEMS.forEach { item ->
-                    NavigationBarItem(
-                        selected = activeTab == item.route,
-                        onClick  = { navController.goTab(item.route) },
-                        icon  = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor   = ColorPrimary, selectedTextColor   = ColorPrimary,
-                            indicatorColor      = ColorPrimary.copy(0.15f),
-                            unselectedIconColor = ColorMuted,  unselectedTextColor = ColorMuted,
-                        ),
-                    )
+    val mainScaffold: @Composable () -> Unit = {
+        Scaffold(
+            containerColor = ColorBg,
+            topBar = { androidx.compose.foundation.layout.Column {
+                if (FxOn) {
+                    FxBar()
+                    if (SystemOn) SystemHost(strict) { navController.goTab("quests") }
+                    if (ThemeExtras.on) ThemeExtrasHost()
+                } else if (isHabitica) {
+                    HabiticaTopHud(player = playerNow, onOpenMenu = { drawerScope.launch { drawerState.open() } })
+                    Fx2Host()
+                } else if (Fx2X.on) {
+                    Fx2Bar()
+                    Fx2Host()
+                }
+                ComboHost()
+            } },
+            snackbarHost = { SnackbarHost(snack) },
+            bottomBar = {
+                if (!strict) NavigationBar(
+                    containerColor = if (isHabitica) ColorSurface else ColorSurface,
+                    modifier = Modifier.glowLine(),
+                ) {
+                    val items = if (isHabitica) HABITICA_NAV_ITEMS else NAV_ITEMS
+                    items.forEach { item ->
+                        val sel = if (isHabitica && item.route == "settings") route == "settings" else activeTab == item.route
+                        NavigationBarItem(
+                            selected = sel,
+                            onClick  = {
+                                if (!sel) com.krishna.questblock.util.Sounds.uiTab()
+                                if (item.route == "settings") navController.openPage("settings") else navController.goTab(item.route)
+                            },
+                            icon  = { Icon(item.icon, contentDescription = item.label) },
+                            label = { Text(item.label) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor   = ColorPrimary, selectedTextColor   = ColorPrimary,
+                                indicatorColor      = ColorPrimary.copy(0.15f),
+                                unselectedIconColor = ColorMuted,  unselectedTextColor = ColorMuted,
+                            ),
+                        )
+                    }
                 }
             }
-        }
-    ) { innerPadding ->
-        NavHost(navController = navController, startDestination = startDest,
-            modifier = Modifier.fillMaxSize().padding(innerPadding).fxBackground()) {
+        ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = startDest,
+            enterTransition = {
+                if (AnimConfig.transitions) fadeIn(tween(220)) + slideInHorizontally(tween(240)) { it / 14 } + scaleIn(tween(240), initialScale = 0.98f)
+                else EnterTransition.None
+            },
+            exitTransition = {
+                if (AnimConfig.transitions) fadeOut(tween(170)) + slideOutHorizontally(tween(200)) { -it / 18 }
+                else ExitTransition.None
+            },
+            popEnterTransition = {
+                if (AnimConfig.transitions) fadeIn(tween(220)) + slideInHorizontally(tween(240)) { -it / 14 }
+                else EnterTransition.None
+            },
+            popExitTransition = {
+                if (AnimConfig.transitions) fadeOut(tween(170)) + slideOutHorizontally(tween(200)) { it / 14 }
+                else ExitTransition.None
+            },
+            modifier = Modifier.fillMaxSize().padding(innerPadding).fxBackground(),
+        ) {
             composable("home") {
                 HomeScreen(
                     onAddQuest = { navController.openPage("quest_types") },
@@ -149,6 +201,7 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
                     onOpenChapters = { navController.openPage("chapters") },
                     onOpenAttendance = { navController.openPage("attendance") },
                     onOpenHomework = { navController.openPage("homework") },
+                    onOpenAdopt = { navController.openPage("adopt") },
                 )
             }
             composable("quests") {
@@ -168,6 +221,7 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
                     onOpenCoins = { navController.openPage("coins") },
                     onOpenAbout = { navController.openPage("about") },
                     onOpenStreak = { navController.openPage("streak") },
+                    onOpenAdopt = { navController.openPage("adopt") },
                 )
             }
             composable("quest_types") {
@@ -235,6 +289,7 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
                 onOpenVersions = { navController.openPage("versions") }, onOpenFeatures = { navController.openPage("features") }) }
             composable("features")     { FeaturesScreen(onBack = { navController.popBackStack() }) }
             composable("shop")         { InventoryScreen(onBack = { navController.popBackStack() }) }
+            composable("adopt")        { AdoptScreen(onBack = { navController.popBackStack() }) }
             composable("hub")          { PlayerHubScreen(
                 onBack = { navController.popBackStack() },
                 onOpenGoals = { navController.openPage("hub_goals") },
@@ -249,6 +304,25 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
             composable("hub_experiments") { ExperimentsScreen(onBack = { navController.popBackStack() }) }
             composable("hub_sites")    { SitesScreen(onBack = { navController.popBackStack() }) }
         }
+    }
+    }
+    if (isHabitica && !strict) {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                HabiticaDrawerSheet(
+                    player = playerNow,
+                    activeRoute = route,
+                    onNavigate = { target ->
+                        if (target in TAB_ROUTES) navController.goTab(target) else navController.openPage(target)
+                    },
+                    onClose = { drawerScope.launch { drawerState.close() } },
+                )
+            },
+            content = mainScaffold,
+        )
+    } else {
+        mainScaffold()
     }
 }
 

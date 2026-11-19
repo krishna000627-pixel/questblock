@@ -15,6 +15,22 @@ object Flags {
         Def("ui_daily_ring", "Daily ring", "The ring in the Quests tile on Home (off = the old check tile)", false),
         Def("ui_skeleton", "Loading placeholder", "The shimmering placeholder on Home during the first load"),
         Def("ui_haptic_ticks", "Tap ticks", "The light tick on filter pills and the Home shortcut pills (also needs the Haptics flag)"),
+        // v292: animation, theme redesign, and new sound engine flags (all toggleable on/off)
+        Def("anim_master", "Animations (master)", "Master switch for all UI, transition, and theme animations"),
+        Def("anim_transitions", "Screen transitions", "Smooth directional slide + fade + scale between tabs and subpages"),
+        Def("anim_stagger", "Card entrance cascade", "Staggered slide & fade entrance when cards and lists appear"),
+        Def("anim_press", "Tactile press physics", "Springy press-scale bounce on buttons, cards, and chips"),
+        Def("anim_counters", "Animated counters", "Rolling count-up animation for coins, XP, and streaks"),
+        Def("anim_xp_shimmer", "XP bar shimmer", "Traveling light & spark sweep across XP bars"),
+        Def("anim_hold_fx", "Hold-to-unlock FX", "Radial charge glow, pulse, and shatter/iris unlock animation on the lock screen"),
+        Def("anim_ambient_bg", "Living theme backgrounds", "Animated particles, caustics, scanlines, mist, stars, and petals in themes"),
+        Def("anim_combo", "Quest combo popups", "Escalating 2x/3x combo badge & rising chime when clearing quests back-to-back"),
+        Def("anim_empty_states", "Animated empty states", "Gentle floating/breathing animation on empty state cards"),
+        Def("snd_ui", "UI animation sounds", "Theme-matched tap, tab switch, toggle, open/close, and swipe sounds"),
+        Def("snd_hold", "Hold-to-unlock ticks", "Rising-pitch audio ticks while holding to unlock an app"),
+        Def("snd_ambient_theme", "Theme-matched Focus ambient", "Synthesized Focus soundscapes (Cyber Hum, Night Forest, Library Hearth, Deep Space)"),
+        Def("haptics_sync", "Animation-synced haptics", "Rising hold-to-unlock ramp, multi-beat level-up/combo patterns, and theme-tuned tap feel"),
+        Def("adopt", "Companion (Adopt)", "Adopt, name, feed, and level up an RPG study companion on Home and Profile"),
         Def("a11y_bits", "Accessibility extras", "48 dp plus and minus buttons in the quest creator and spoken labels on icons"),
         Def("mood", "Mood check-in", "The Mood section on the Attendance page, terminal mood"),
         Def("leaderboard", "Daily leaderboard", "The leaderboard card on Stats, terminal leaderboard"),
@@ -52,6 +68,7 @@ object Flags {
         Def("fx_carnival", "Carnival extras", "Carnival: marquee bulb Focus ring, candy stripe XP bar, fireworks level up with a light border, confetti pop, striped cards, bunting strip, lock screen"),
         Def("fx_baroque", "Baroque extras", "Baroque: gold double ring Focus ring, gold frame XP bar, wax seal level up, Gilded pop, ornate frames and dividers, lock screen"),
         Def("fx_vaporwave", "Vaporwave extras", "Vaporwave: gradient Focus ring, glitch XP bar, sun grid level up and background, chrome text, INSERT COIN words, lock screen"),
+        Def("fx_habitica", "Habitica RPG extras", "Habitica RPG: royal purple & gold Focus ring, HP/XP/MP bars, RPG quest cards, LEVEL UP!, lock screen"),
     )
 
     var HOMEWORK_ENABLED: Boolean = false
