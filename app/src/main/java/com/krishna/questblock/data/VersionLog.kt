@@ -3,6 +3,44 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("300.0.0", "Flags sub-pages with back navigation",
+        listOf(
+            "Replaced collapsible flag sections with dedicated sub-pages (Animations & Motion, Sounds & Haptics, UI, Themes & Layout, Command Deck (55), Companion & App Pages) with top back arrow and system BackHandler support",
+        )),
+    VersionEntry("299.0.0", "Grouped Developer Flags by page & system",
+        listOf(
+            "Grouped FlagsScreen into 5 collapsible categories (Animations & Motion, Sounds & Haptics, UI, Themes & Layout, Command Deck (55), Companion & App Pages)",
+            "Added live search filter, flag IDs in parentheses for terminal parity, and per-group All On / All Off switches",
+        )),
+    VersionEntry("298.0.0", "On/off Flags for all 55 Command Deck features",
+        listOf(
+            "Added granular on/off Flags for every Command Deck feature group (focus_presets, urge_shield, focus_mixer, boss_battle, hero_titles, daily_fortune, flashcards, exam_countdown, scratchpad, water_tracker, morning_night_routines, audio_haptic_presets, json_export)",
+            "Every card in PowerSuiteScreen now respects its Flag live",
+        )),
+    VersionEntry("297.0.0", "Command Deck: 55 new Focus, RPG, Pet, Study & Wellness features",
+        listOf(
+            "Added PowerSuiteScreen (Command Deck) and PowerFeatures store with 55 integrated tools across 5 tabs (Focus, RPG, Study, Wellness, System)",
+            "Includes Pomodoro/Deep Work/Sprint presets, Urge Shield, Weekly Study Boss, Daily Loot Chest, Hero Titles, Quick Flashcards, Exam Countdown, Scratchpad, Water & Eye Break tracker, Morning/Night routines, and JSON Snapshot Export",
+        )),
+    VersionEntry("296.0.0", "Articulated digital pet habitat & zero-emoji theme rework",
+        listOf(
+            "Upgraded PixelCompanionSprite with horizontal patrol wander across a digital pet habitat floor, dynamic ground shadow, ear twitch, wagging tail pixels, and 6 animated states",
+            "Removed all emojis from Shop theme icons, Adopt screens, and ThemeFx2 wordings for a clean typographic + pixel-art aesthetic",
+        )),
+    VersionEntry("295.0.0", "Inbuilt Companion AI, multi-state pet animations & theme UI/UX v2",
+        listOf(
+            "Added lightweight inbuilt CompanionAi engine in AdoptScreen (greets by time of day, answers focus/motivation/status questions, zero model bloat)",
+            "Added 6 pet animation states (IDLE, HAPPY, EATING, TRAINING, THINKING, SLEEPY) across all themes",
+            "Expanded ThemeCopy per-theme strings to all 31 non-Tavern themes (Tavern theme excluded from per-theme strings)",
+            "Added New Theme UI/UX (theme_ux_v2) on/off switch in Flags",
+        )),
+    VersionEntry("294.0.0", "Tavern RPG, UI redesign, per-theme strings & expanded sounds",
+        listOf(
+            "Renamed Habitica RPG theme to Tavern RPG (keeping saved selection intact)",
+            "Added Redesigned App UI (ui_redesign) and Per-theme UI strings (theme_strings) switches in Flags",
+            "Expanded ThemeSounds with spatial echo tail and 11 new events (quest_add, quest_delete, shop_buy, focus_start, focus_end, pet_happy, pet_feed, pet_evolve, drawer_open, drawer_close, error)",
+            "Added ThemeCopy so tab names and Home counters adapt to the equipped theme",
+        )),
     VersionEntry("293.0.0", "Habitica RPG & Adopt build fixes",
         listOf(
             "Fixed Habitica XP bar Size(sw, bh) in ui/ThemeFx2.kt and missing LaunchedEffect import in ui/ThemeFxPage.kt",

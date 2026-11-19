@@ -108,7 +108,7 @@ object Fx2X {
     val on: Boolean get() { val fx = Fx2Now; return fx != Fx2.NONE && Flags.get("themefx") && Flags.get(FLAG_KEY.getValue(fx)) }
 
     private val WORDS: Map<Fx2, Map<String, String>> = mapOf(
-        Fx2.SUNSET to mapOf("locked" to "The sun has set", "done" to "\u2600 Golden hour", "level" to "NEW DAY", "ring" to "until sunset"),
+        Fx2.SUNSET to mapOf("locked" to "The sun has set", "done" to "GOLDEN HOUR", "level" to "NEW DAY", "ring" to "until sunset"),
         Fx2.OCEAN to mapOf("locked" to "Too deep to reach", "done" to "Tide is in", "level" to "DEEPER", "ring" to "until low tide"),
         Fx2.FOREST to mapOf("locked" to "The path is overgrown", "done" to "Grown", "level" to "GROWTH", "ring" to "growing"),
         Fx2.NEON to mapOf("locked" to "OFFLINE", "done" to "NICE", "level" to "LEVEL UP", "ring" to "ON AIR"),
@@ -122,8 +122,8 @@ object Fx2X {
         Fx2.LILAC to mapOf("locked" to "Petals closed", "done" to "In bloom", "level" to "BLOOM", "ring" to "to bloom"),
         Fx2.CHALK to mapOf("locked" to "Class dismissed", "done" to "Marked", "level" to "A+", "ring" to "left in class"),
         Fx2.CLAY to mapOf("locked" to "Squished shut", "done" to "Squish", "level" to "BOING!", "ring" to "left"),
-        Fx2.ROSE to mapOf("locked" to "Heart closed", "done" to "\u2665 Lovely", "level" to "LOVELY", "ring" to "with love"),
-        Fx2.INDIGO to mapOf("locked" to "The night is closed", "done" to "\u2726 Shooting star", "level" to "STARGAZER", "ring" to "until dawn"),
+        Fx2.ROSE to mapOf("locked" to "Heart closed", "done" to "LOVELY", "level" to "LOVELY", "ring" to "with love"),
+        Fx2.INDIGO to mapOf("locked" to "The night is closed", "done" to "STARLIGHT", "level" to "STARGAZER", "ring" to "until dawn"),
         // v277: the minimalist and maximalist themes
         Fx2.MONO to mapOf("locked" to "Locked", "done" to "Done.", "level" to "", "ring" to "left"),
         Fx2.WHITESPACE to mapOf("locked" to "Closed", "done" to "Done", "level" to "Level up", "ring" to "left"),
@@ -360,7 +360,7 @@ fun Fx2Bar() {
         Fx2.CARNIVAL -> { l = "STEP RIGHT UP"; r = "ADMIT ONE" }
         Fx2.BAROQUE -> { l = "THE GRAND SALON"; r = date }
         Fx2.VAPORWAVE -> { l = "INSERT COIN"; r = "CREDIT 00" }
-        Fx2.HABITICA -> { l = "HP  |  XP  |  MP"; r = "HABITICA RPG" }
+        Fx2.HABITICA -> { l = "HP  |  XP  |  MP"; r = "TAVERN RPG" }
         else -> {
             Spacer(Modifier.fillMaxWidth().background(ColorBg).statusBarsPadding())
             return

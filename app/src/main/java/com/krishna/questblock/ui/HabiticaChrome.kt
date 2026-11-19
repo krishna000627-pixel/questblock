@@ -67,6 +67,7 @@ val HABITICA_DRAWER_LINKS = listOf(
     HabiticaDrawerLink("focus", "Focus Quest", Icons.Default.Bolt),
     HabiticaDrawerLink("vault", "App Vault", Icons.Default.Lock),
     HabiticaDrawerLink("adopt", "Adopt & Stables", Icons.Default.Favorite),
+    HabiticaDrawerLink("power_suite", "Command Deck (55)", Icons.Default.Bolt),
     HabiticaDrawerLink("shop", "Market & Shop", Icons.Default.ShoppingBag),
     HabiticaDrawerLink("profile", "Hero Profile", Icons.Default.Person),
     HabiticaDrawerLink("stats", "Stats & Ranks", Icons.Default.Star),
@@ -105,7 +106,7 @@ fun HabiticaTopHud(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            IconButton(onClick = { Sounds.uiOpen(); onOpenMenu() }) {
+            IconButton(onClick = { Sounds.drawerOpen(); onOpenMenu() }) {
                 Icon(Icons.Default.Menu, contentDescription = "Menu", tint = Color.White)
             }
 
@@ -160,7 +161,7 @@ private fun HudBarRow(label: String, frac: Float, color: Color) {
 }
 
 /**
- * v292: 3-line side navigation drawer styled after Habitica Android.
+ * v292: 3-line side navigation drawer styled after Tavern RPG.
  */
 @Composable
 fun HabiticaDrawerSheet(
@@ -218,7 +219,7 @@ fun HabiticaDrawerSheet(
                     label = { Text(link.label, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium) },
                     selected = selected,
                     onClick = {
-                        Sounds.uiTab()
+                        Sounds.drawerClose()
                         onClose()
                         onNavigate(link.route)
                     },
@@ -236,7 +237,7 @@ fun HabiticaDrawerSheet(
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp), color = ColorDivider)
             Text(
-                text = "Habitica RPG Mode · Open Source Layout",
+                text = "Tavern RPG Mode · Open Source Layout",
                 style = MaterialTheme.typography.labelSmall,
                 color = ColorMuted,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),

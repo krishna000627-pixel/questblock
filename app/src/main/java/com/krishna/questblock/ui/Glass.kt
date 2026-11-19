@@ -43,12 +43,16 @@ import androidx.compose.ui.unit.dp
 
 /** Thin outline in the accent colour. */
 @Composable
-fun glowBorder(): BorderStroke = BorderStroke(1.dp, ColorPrimary.copy(alpha = if (LightMode) 0.30f else 0.26f))
+fun glowBorder(): BorderStroke = if (com.krishna.questblock.data.Flags.get("ui_redesign")) {
+    BorderStroke(1.25.dp, Brush.verticalGradient(listOf(ColorPrimary.copy(alpha = if (LightMode) 0.42f else 0.38f), ColorDivider.copy(alpha = 0.25f))))
+} else {
+    BorderStroke(1.dp, ColorPrimary.copy(alpha = if (LightMode) 0.30f else 0.26f))
+}
 
 @Composable
 fun Card(
     modifier: Modifier = Modifier,
-    shape: Shape = CardDefaults.shape,
+    shape: Shape = if (com.krishna.questblock.data.Flags.get("ui_redesign")) RoundedCornerShape(16.dp) else CardDefaults.shape,
     colors: CardColors = CardDefaults.cardColors(),
     elevation: CardElevation = CardDefaults.cardElevation(),
     border: BorderStroke? = glowBorder(),
@@ -72,7 +76,7 @@ fun Card(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    shape: Shape = CardDefaults.shape,
+    shape: Shape = if (com.krishna.questblock.data.Flags.get("ui_redesign")) RoundedCornerShape(16.dp) else CardDefaults.shape,
     colors: CardColors = CardDefaults.cardColors(),
     elevation: CardElevation = CardDefaults.cardElevation(),
     border: BorderStroke? = glowBorder(),

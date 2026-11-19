@@ -179,6 +179,18 @@ object Sounds {
         themed("combo", pitchStep = ((count - 2) * 2).coerceIn(0, 12), allowFallbackVoice = true)
     }
 
+    fun questAdd() { Haptics.uiTick(); if (Flags.get("snd_ui")) themed("quest_add", allowFallbackVoice = true) }
+    fun questDelete() { Haptics.uiTick(); if (Flags.get("snd_ui")) themed("quest_delete", allowFallbackVoice = true) }
+    fun shopBuy() { Haptics.toggle(true); if (sfxOn) themed("shop_buy", allowFallbackVoice = true) }
+    fun focusStart() { Haptics.toggle(true); if (sfxOn) themed("focus_start", allowFallbackVoice = true) }
+    fun focusEnd() { Haptics.event("chime"); if (sfxOn) themed("focus_end", allowFallbackVoice = true) }
+    fun petHappy() { Haptics.uiTick(); if (sfxOn) themed("pet_happy", allowFallbackVoice = true) }
+    fun petFeed() { Haptics.toggle(true); if (sfxOn) themed("pet_feed", allowFallbackVoice = true) }
+    fun petEvolve() { Haptics.combo(4); if (sfxOn) themed("pet_evolve", allowFallbackVoice = true) }
+    fun drawerOpen() { if (Flags.get("snd_ui")) themed("drawer_open", allowFallbackVoice = true) }
+    fun drawerClose() { if (Flags.get("snd_ui")) themed("drawer_close", allowFallbackVoice = true) }
+    fun error() { Haptics.denied(); if (sfxOn) themed("error", allowFallbackVoice = true) }
+
     fun themeSwitch(themeId: String = currentTheme()) {
         if (!Flags.get("snd_ui") || !sfxOn) return
         if (ThemeSounds.isSilent(themeId)) { Haptics.uiTick(); return }

@@ -193,6 +193,17 @@ internal object ThemeSounds {
             "streak" -> a(0, 4, 7, 12, 16)
             "combo" -> a(0 + pitchStep, 4 + pitchStep, 7 + pitchStep, 12 + pitchStep)
             "theme_switch" -> a(0, 4, 7, 11, 14)
+            "quest_add" -> a(0, 4, 7)
+            "quest_delete" -> a(7, 2, -3)
+            "shop_buy" -> a(0, 7, 12, 16)
+            "focus_start" -> a(0, 5, 7, 12)
+            "focus_end" -> a(12, 7, 4, 0)
+            "pet_happy" -> a(0, 4, 7, 12)
+            "pet_feed" -> a(0, 2, 4, 7)
+            "pet_evolve" -> a(0, 4, 7, 11, 12, 16, 19)
+            "drawer_open" -> a(0, 5, 9)
+            "drawer_close" -> a(9, 5, 0)
+            "error" -> a(-2, -5)
             else -> v.chime
         }
 
@@ -255,6 +266,13 @@ internal object ThemeSounds {
             }
         }
 
+        // Warm spatial echo tail for non-UI celebratory sounds
+        if (!isUi) {
+            val echoDelay = (RATE * 0.085).toInt()
+            for (i in echoDelay until total) {
+                buf[i] += buf[i - echoDelay] * 0.22
+            }
+        }
         val out = ShortArray(total)
         for (i in 0 until total) {
             out[i] = (buf[i].coerceIn(-1.0, 1.0) * 32000.0).toInt().toShort()

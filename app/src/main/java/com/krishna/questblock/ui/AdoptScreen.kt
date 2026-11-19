@@ -107,12 +107,16 @@ fun AdoptScreen(
 
     var showRename by remember { mutableStateOf(false) }
     var petBurst by remember { mutableStateOf(false) }
+    var petAnim by remember { mutableStateOf(if (st.hunger < 30) PetAnimState.SLEEPY else PetAnimState.IDLE) }
+    var aiText by remember { mutableStateOf(com.krishna.questblock.engine.CompanionAi.greet(player, st)) }
+    var aiInput by remember { mutableStateOf("") }
     var statusMsg by remember { mutableStateOf("") }
 
-    LaunchedEffect(petBurst) {
-        if (petBurst) {
-            delay(700L)
+    LaunchedEffect(petBurst, petAnim) {
+        if (petBurst || petAnim != PetAnimState.IDLE) {
+            delay(1100L)
             petBurst = false
+            petAnim = if (st.hunger < 30) PetAnimState.SLEEPY else PetAnimState.IDLE
         }
     }
 
@@ -189,13 +193,14 @@ fun AdoptScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(110.dp)
-                            .clip(CircleShape)
-                            .background(Brush.radialGradient(listOf(accent.copy(alpha = 0.28f), accent.copy(alpha = 0.05f))))
-                            .border(2.dp, accent.copy(alpha = 0.65f), CircleShape)
+                            .fillMaxWidth()
+                            .height(132.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.18f), ColorSurface)))
+                            .border(1.5.dp, accent.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
                             .bounceClick {
-                                CompanionStore.pet(ctx)
-                                Sounds.coin()
+                                petAnim = PetAnimState.HAPPY; CompanionStore.pet(ctx)
+                                Sounds.petHappy()
                                 petBurst = true
                                 statusMsg = "$displayName loved that! (+6 XP)"
                             },
@@ -205,7 +210,9 @@ fun AdoptScreen(
                             companionId = st.activeId,
                             stageIndex = st.stageIndex,
                             happy = petBurst,
-                            modifier = Modifier.size(82.dp).graphicsLayer { translationY = floatY },
+                            animState = petAnim,
+                            showHabitat = true,
+                            modifier = Modifier.fillMaxWidth().height(116.dp).graphicsLayer { translationY = floatY },
                         )
                         androidx.compose.animation.AnimatedVisibility(
                             visible = petBurst,
@@ -260,8 +267,8 @@ fun AdoptScreen(
                             accent = accent,
                             modifier = Modifier.weight(1f),
                         ) {
-                            CompanionStore.pet(ctx)
-                            Sounds.coin()
+                            petAnim = PetAnimState.HAPPY; CompanionStore.pet(ctx)
+                            Sounds.petHappy()
                             petBurst = true
                             statusMsg = "$displayName purred happily!"
                         }
@@ -272,14 +279,14 @@ fun AdoptScreen(
                             modifier = Modifier.weight(1f),
                         ) {
                             if (freeSnack) {
-                                CompanionStore.feed(ctx, freeDaily = true)
-                                Sounds.combo(2)
+                                petAnim = PetAnimState.EATING; CompanionStore.feed(ctx, freeDaily = true)
+                                Sounds.petFeed()
                                 statusMsg = "Fed $displayName today's free snack! (+18 XP)"
                             } else {
                                 vm.spendCoins(2, "Companion treat", displayName) { ok ->
                                     if (ok) {
-                                        CompanionStore.feed(ctx, freeDaily = false)
-                                        Sounds.coin()
+                                        petAnim = PetAnimState.EATING; CompanionStore.feed(ctx, freeDaily = false)
+                                        Sounds.petFeed()
                                         statusMsg = "Gave $displayName a tasty treat! (+18 XP)"
                                     } else {
                                         Sounds.denied()
@@ -294,14 +301,62 @@ fun AdoptScreen(
                             accent = ColorPrimary,
                             modifier = Modifier.weight(1f),
                         ) {
-                            CompanionStore.train(ctx)
+                            petAnim = PetAnimState.TRAINING; CompanionStore.train(ctx)
                             Sounds.streak()
                             statusMsg = "$displayName trained hard! (+24 XP)"
                         }
                     }
 
+
                     if (statusMsg.isNotEmpty()) {
                         Text(statusMsg, style = MaterialTheme.typography.bodySmall, color = ColorPrimary, fontWeight = FontWeight.Medium)
+                    }
+
+                    // Inbuilt Companion AI Bubble
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(ColorSurface)
+                            .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                            .padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text("Companion AI", style = MaterialTheme.typography.labelSmall, color = accent, fontWeight = FontWeight.Bold)
+                        Text(aiText, style = MaterialTheme.typography.bodySmall, color = ColorText)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf("What next?", "Focus tip", "Motivate me", "Mood?").forEach { q ->
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(accent.copy(alpha = 0.14f))
+                                        .bounceClick {
+                                            petAnim = PetAnimState.THINKING
+                                            aiText = com.krishna.questblock.engine.CompanionAi.reply(q, player, st)
+                                        }
+                                        .padding(horizontal = 8.dp, vertical = 5.dp),
+                                ) {
+                                    Text(q, style = MaterialTheme.typography.labelSmall, color = ColorText, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        }
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            OutlinedTextField(
+                                value = aiInput,
+                                onValueChange = { aiInput = it.take(80) },
+                                singleLine = true,
+                                placeholder = { Text("Ask your companion...", style = MaterialTheme.typography.bodySmall) },
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = {
+                                if (aiInput.isNotBlank()) {
+                                    petAnim = PetAnimState.THINKING
+                                    Sounds.uiTap()
+                                    aiText = com.krishna.questblock.engine.CompanionAi.reply(aiInput, player, st)
+                                    aiInput = ""
+                                }
+                            }) { Text("Ask", fontWeight = FontWeight.Bold) }
+                        }
                     }
                 }
             }
@@ -357,13 +412,13 @@ fun AdoptScreen(
                                     statusMsg = "${item.baseName} is now your active companion!"
                                 } else if (item.cost == 0) {
                                     CompanionStore.markAdopted(ctx, item.id)
-                                    Sounds.levelUp()
+                                    Sounds.petEvolve()
                                     statusMsg = "Adopted ${item.baseName}!"
                                 } else {
                                     vm.spendCoins(item.cost, "Adopted ${item.baseName}", "Companion") { ok ->
                                         if (ok) {
                                             CompanionStore.markAdopted(ctx, item.id)
-                                            Sounds.levelUp()
+                                            Sounds.shopBuy()
                                             statusMsg = "Welcome ${item.baseName}!"
                                         } else {
                                             Sounds.denied()

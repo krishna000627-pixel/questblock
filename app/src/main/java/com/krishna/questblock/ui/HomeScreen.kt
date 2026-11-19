@@ -102,7 +102,8 @@ class HomeViewModel @Inject constructor(
 
 @Composable
 fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> Unit, onOpenStats: () -> Unit, onOpenHub: () -> Unit, onOpenChapters: () -> Unit = {}, onOpenAttendance: () -> Unit = {}, onOpenHomework: () -> Unit = {},
-    onOpenAdopt: () -> Unit = {}, vm: HomeViewModel = hiltViewModel()) {
+    onOpenAdopt: () -> Unit = {},
+    onOpenPowerSuite: () -> Unit = {}, vm: HomeViewModel = hiltViewModel()) {
     val player       by vm.player.collectAsStateWithLifecycle()
     val tasks        by vm.tasks.collectAsStateWithLifecycle()
     val achievements by vm.achievements.collectAsStateWithLifecycle()
@@ -176,6 +177,7 @@ fun HomeScreen(onAddQuest: () -> Unit, onGoFocus: () -> Unit, onOpenShop: () -> 
         // ── Hero card ──────────────────────────────────────────────────────
         item { HeroCard(player = player, doneToday = shownDone, total = shownTotal, hideCoins = vm.prefs.optHideCoins, onCoinsClick = onOpenShop, onAddQuest = { vm.addSuggestion(it) }) }
         if (com.krishna.questblock.data.Flags.get("adopt")) item { CompanionMiniCard(onOpenAdopt = onOpenAdopt) }
+        if (com.krishna.questblock.data.Flags.get("power_suite")) item { PowerSuiteMiniCard(onOpenPowerSuite = onOpenPowerSuite) }
 
         // ── Daily login bonus ──────────────────────────────────────────────
         if (vm.loginBonus > 0) {
@@ -428,8 +430,8 @@ private fun HeroCard(player: Player, doneToday: Int, total: Int, hideCoins: Bool
                     animationSpec = if (AnimConfig.counters) androidx.compose.animation.core.tween(450) else androidx.compose.animation.core.tween(0),
                     label = "home_streak",
                 )
-                StatTile("\uD83E\uDE99", if (hideCoins) "???" else "$animCoins", "Coins", Modifier.weight(1f).bounceClick(onClick = onCoinsClick))
-                StatTile("\uD83D\uDD25", "${animStreak}d", "Streak", Modifier.weight(1f))
+                StatTile("\uD83E\uDE99", if (hideCoins) "???" else "$animCoins", ThemeCopy.word("coinsLabel", "Coins"), Modifier.weight(1f).bounceClick(onClick = onCoinsClick))
+                StatTile("\uD83D\uDD25", "${animStreak}d", ThemeCopy.word("streakLabel", "Streak"), Modifier.weight(1f))
                 if (com.krishna.questblock.data.Flags.get("ui_daily_ring")) DailyRingTile(doneToday, total, Modifier.weight(1f)) else StatTile("\u2705", "$doneToday/$total", "Quests", Modifier.weight(1f))
             }
 

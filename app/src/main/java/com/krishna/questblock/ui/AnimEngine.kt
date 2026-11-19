@@ -363,6 +363,11 @@ fun SoundAndAnimStudioCard() {
                     "Combo ${comboStep}x" to { Sounds.combo(comboStep); Sounds.comboEvents.tryEmit(comboStep); comboStep = if (comboStep >= 5) 2 else comboStep + 1 },
                     "Level Up" to { Sounds.levelUp() },
                     "Streak" to { Sounds.streak() },
+                    "Shop Buy" to { Sounds.shopBuy() },
+                    "Pet Happy" to { Sounds.petHappy() },
+                    "Pet Evolve" to { Sounds.petEvolve() },
+                    "Focus Start" to { Sounds.focusStart() },
+                    "Drawer" to { Sounds.drawerOpen() },
                 )
                 buttons.forEach { (label, action) ->
                     Box(

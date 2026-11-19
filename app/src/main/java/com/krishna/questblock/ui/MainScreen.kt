@@ -146,8 +146,11 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
             snackbarHost = { SnackbarHost(snack) },
             bottomBar = {
                 if (!strict) NavigationBar(
-                    containerColor = if (isHabitica) ColorSurface else ColorSurface,
-                    modifier = Modifier.glowLine(),
+                    containerColor = if (com.krishna.questblock.data.Flags.get("theme_ux_v2") && !isHabitica) ColorCard else ColorSurface,
+                    tonalElevation = if (com.krishna.questblock.data.Flags.get("theme_ux_v2")) 4.dp else 0.dp,
+                    modifier = if (com.krishna.questblock.data.Flags.get("theme_ux_v2") && (FxOn || Fx2X.on)) {
+                        Modifier.glowLine().padding(horizontal = 4.dp)
+                    } else Modifier.glowLine(),
                 ) {
                     val items = if (isHabitica) HABITICA_NAV_ITEMS else NAV_ITEMS
                     items.forEach { item ->
@@ -159,7 +162,17 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
                                 if (item.route == "settings") navController.openPage("settings") else navController.goTab(item.route)
                             },
                             icon  = { Icon(item.icon, contentDescription = item.label) },
-                            label = { Text(item.label) },
+                            label = {
+                            val key = when (item.route) {
+                                "home" -> "homeTab"
+                                "quests" -> "questsTab"
+                                "focus" -> "focusTab"
+                                "vault" -> "vaultTab"
+                                "settings" -> "settingsTab"
+                                else -> "profileTab"
+                            }
+                            Text(ThemeCopy.word(key, item.label), maxLines = 1)
+                        },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor   = ColorPrimary, selectedTextColor   = ColorPrimary,
                                 indicatorColor      = ColorPrimary.copy(0.15f),
@@ -202,6 +215,7 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
                     onOpenAttendance = { navController.openPage("attendance") },
                     onOpenHomework = { navController.openPage("homework") },
                     onOpenAdopt = { navController.openPage("adopt") },
+                    onOpenPowerSuite = { navController.openPage("power_suite") },
                 )
             }
             composable("quests") {
@@ -290,6 +304,7 @@ fun MainScreen(openRoute: String? = null, onRouteHandled: () -> Unit = {}) {
             composable("features")     { FeaturesScreen(onBack = { navController.popBackStack() }) }
             composable("shop")         { InventoryScreen(onBack = { navController.popBackStack() }) }
             composable("adopt")        { AdoptScreen(onBack = { navController.popBackStack() }) }
+            composable("power_suite")  { PowerSuiteScreen(onBack = { navController.popBackStack() }) }
             composable("hub")          { PlayerHubScreen(
                 onBack = { navController.popBackStack() },
                 onOpenGoals = { navController.openPage("hub_goals") },
