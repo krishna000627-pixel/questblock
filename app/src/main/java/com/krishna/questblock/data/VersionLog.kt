@@ -3,6 +3,11 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("293.0.0", "Habitica RPG & Adopt build fixes",
+        listOf(
+            "Fixed Habitica XP bar Size(sw, bh) in ui/ThemeFx2.kt and missing LaunchedEffect import in ui/ThemeFxPage.kt",
+            "Includes Adopt pixel-art companions, Habitica RPG drawer/HUD/Settings bottom bar, animations, and 18-event sound engine",
+        )),
     VersionEntry("292.0.0", "Animations, living themes, and full sound engine",
         listOf(
             "Global animation engine (all toggleable in Flags): screen transitions, staggered card entrances, spring press physics, rolling coin/streak counters, XP bar shimmer, floating empty states, and back-to-back Quest Combo popups",

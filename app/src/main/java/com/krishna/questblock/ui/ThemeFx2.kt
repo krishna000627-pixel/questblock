@@ -1137,11 +1137,12 @@ internal fun Fx2XpBar(fraction: Float, xp: Int) {
                 fx2Diamond(Offset(fw.coerceIn(8.dp.toPx(), w - 8.dp.toPx()), mid), 8.dp.toPx(), coin)
             }
             Fx2.HABITICA -> {
+                val bh = 10.dp.toPx(); val y = mid - bh / 2
                 val segs = 12; val gap = 2.dp.toPx(); val sw = (w - gap * (segs - 1)) / segs
                 val lit = (f * segs).roundToInt()
                 for (i in 0 until segs) {
                     val sx = i * (sw + gap)
-                    drawRect(if (i < lit) Color(0xFFFFBE5D) else c.copy(alpha = 0.22f), Offset(sx, 0f), Size(sw, h))
+                    drawRect(if (i < lit) Color(0xFFFFBE5D) else c.copy(alpha = 0.22f), Offset(sx, y), Size(sw, bh))
                 }
             }
             Fx2.VAPORWAVE -> {
