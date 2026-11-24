@@ -79,10 +79,12 @@ class QuestReminderReceiver : BroadcastReceiver() {
 @AndroidEntryPoint
 class BootReceiver : BroadcastReceiver() {
     @Inject lateinit var repo: GameRepository
+    @Inject lateinit var prefs: com.krishna.questblock.data.Prefs
 
     override fun onReceive(ctx: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         KeepAlive.start(ctx)
+        if (prefs.keepPerms) com.krishna.questblock.util.Perms.keepPermsOn(ctx)   // v301/v302
         val result = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try { repo.rescheduleAllReminders() } finally { result.finish() }

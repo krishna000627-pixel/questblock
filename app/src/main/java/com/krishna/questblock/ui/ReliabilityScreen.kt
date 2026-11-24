@@ -119,6 +119,19 @@ fun ReliabilityScreen(onBack: () -> Unit, vm: ReliabilityViewModel = hiltViewMod
         // ── Permissions ─────────────────────────────────────────────────
         RpgPanel("✅ Permissions", accent = ColorPrimary) {
             val pkgUriP = remember { Uri.parse("package:${ctx.packageName}") }
+            var keepPerms by remember { mutableStateOf(prefs.keepPerms) }
+            val grantOk = remember(stamp) { Perms.secureSettingsGranted(ctx) }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f)) {
+                    Text("Keep permissions on", color = ColorText, fontWeight = FontWeight.SemiBold)
+                    Text(if (grantOk) "Turns Accessibility (and music access, if it was on) back on by itself if it gets switched off. Stays on until you stop it here."
+                        else "Needs a one-time adb grant: pm grant ${ctx.packageName} android.permission.WRITE_SECURE_SETTINGS",
+                        color = ColorMuted, style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(checked = keepPerms, onCheckedChange = { keepPerms = it; prefs.keepPerms = it },
+                    colors = SwitchDefaults.colors(checkedThumbColor = ColorOnPrimary, checkedTrackColor = ColorPrimary,
+                        uncheckedThumbColor = ColorMuted, uncheckedTrackColor = ColorSurfaceHigh))
+            }
             PermRow("Accessibility service", "Detects blocked apps", accessibilityOn) {
                 ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }

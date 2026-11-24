@@ -3,6 +3,16 @@ package com.krishna.questblock.data
 data class VersionEntry(val version: String, val headline: String, val items: List<String>)
 
 val VERSION_LOG: List<VersionEntry> = listOf(
+    VersionEntry("302.0.0", "Keep permissions on until you stop it (Reliability page)",
+        listOf(
+            "New Reliability > Permissions switch 'Keep permissions on' (default on): with the secure-settings grant, QuestBlock re-enables Accessibility, and music access if it was on before, on boot and every 5 s",
+            "Switch it off there to stop. Overlay, usage access, battery and device admin cannot be restored by an app; those still need the normal Android screens",
+        )),
+    VersionEntry("301.0.0", "Accessibility turns itself back on (secure-settings grant)",
+        listOf(
+            "Declared WRITE_SECURE_SETTINGS; after a one-time adb grant, QuestBlock re-enables its own accessibility service on boot and every 5 s if it was switched off",
+            "No grant, no change: behaviour is exactly as before. Grant: adb shell pm grant com.krishna.questblock android.permission.WRITE_SECURE_SETTINGS",
+        )),
     VersionEntry("300.0.0", "Flags sub-pages with back navigation",
         listOf(
             "Replaced collapsible flag sections with dedicated sub-pages (Animations & Motion, Sounds & Haptics, UI, Themes & Layout, Command Deck (55), Companion & App Pages) with top back arrow and system BackHandler support",

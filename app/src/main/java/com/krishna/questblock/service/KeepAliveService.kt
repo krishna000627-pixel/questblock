@@ -146,6 +146,7 @@ class KeepAliveService : Service() {
                 while (true) {
                     delay(5_000L)
                     val strict = prefs.focusStrict && prefs.focusUntilCache > System.currentTimeMillis()
+                    if (prefs.keepPerms) Perms.keepPermsOn(applicationContext)   // v301/v302: self-heal until stopped on the Reliability page
                     off = if (strict && !Perms.accessibilityEnabled(applicationContext)) off + 1 else 0
                     if (off >= 2) {
                         off = 0
